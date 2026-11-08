@@ -12,6 +12,7 @@
     session: null, me: null, err: '', tab: 'sortie', loading: false,
     articles: [], byId: {}, stocks: {}, fournisseurs: {}, profils: [], attente: [], histo: [],
     sortie: { cab: null, q: '', panier: {}, msg: null, busy: false },
+    ret: { cab: null, q: '', panier: {}, msg: null, busy: false },
     stockQ: '', stockF: '', histTous: false, eqEdit: null, pwAbc: false, dernierInv: {}, recents: [], j0: null, invJ0: {}, fiche: null, artQ: '', artF: 'tous', artMax: 100, archives: [], fournListe: [], foArch: false, commandes: [], lignes: {}, afPrix: {}, cmdSub: 'sug', sugQ: {}, sugOpen: {}, alias: {}, nc: { fid: '', num: '', q: '', l: [] },
     inv: { emp: null, d: {}, q: '', tous: false, recap: false, motifs: {}, busy: false, msg: null, max: 80 }
   };
@@ -58,6 +59,7 @@
   function oublierPersonne() {
     S.session = null; S.me = null; S.tab = 'sortie'; S.tabChoisi = false; S.fiche = null; S.eqEdit = null; S.eqNew = null; S.cmBusy = false;
     S.sortie = { cab: null, q: '', panier: {}, msg: null, busy: false };
+    S.ret = { cab: null, q: '', panier: {}, msg: null, busy: false };
     S.inv = { emp: null, d: {}, q: '', tous: false, recap: false, motifs: {}, busy: false, msg: null, max: 80 };
   }
   function deconnexion() { sb.auth.signOut().then(function () { oublierPersonne(); render(); }); }
@@ -95,7 +97,8 @@
       S.me = r.data || null;
       if (!S.me || !S.me.actif) { S.loading = false; render(); return; }
       if (S.sortie.cab == null) S.sortie.cab = S.me.cabinet || 1;
-      if (!gestion() && ['sortie', 'inventaire', 'histo'].indexOf(S.tab) < 0) S.tab = 'sortie';
+      if (S.ret.cab == null) S.ret.cab = S.me.cabinet || 1;
+      if (!gestion() && ['sortie', 'retour', 'inventaire', 'histo', 'compte'].indexOf(S.tab) < 0) S.tab = 'sortie';
       if (S.inv.emp == null && S.me.cabinet) choisirEmp(S.me.cabinet);
       if (gestion() && !S.tabChoisi) S.tab = 'accueil';
       return charger();
@@ -153,7 +156,7 @@
       app.innerHTML = '<div class="lg"><div class="lg-top"></div><div class="lg-in"><div class="lg-card"><h1>Compte non activé</h1><p>Votre connexion fonctionne, mais votre compte n’a pas encore de profil actif dans l’application. Demandez à la responsable des achats ou à la référente de l’activer.</p><button class="btn l" id="bout">Se déconnecter</button></div></div></div>';
       $('bout').onclick = deconnexion; return;
     }
-    var tabs = gestion() ? [['accueil', 'Accueil'], ['sortie', 'Sortie'], ['inventaire', 'Inventaire']] : [['sortie', 'Sortie'], ['inventaire', 'Inventaire']];
+    var tabs = gestion() ? [['accueil', 'Accueil'], ['sortie', 'Sortie'], ['retour', 'Retour'], ['inventaire', 'Inventaire']] : [['sortie', 'Sortie'], ['retour', 'Retour'], ['inventaire', 'Inventaire']];
     if (gestion()) tabs.push(['demandes', 'Demandes' + (S.attente.length ? '<span class="badge">' + S.attente.length + '</span>' : '')], ['stock', 'Stock'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs']);
     tabs.push(['histo', 'Historique']);
     if (gestion()) tabs.push(['equipe', 'Équipe']);
@@ -161,9 +164,9 @@
       + '<div class="top-who"><b>' + esc(S.me.nom) + (C.env === 'dev' ? ' <span class="env">TEST</span>' : '') + '</b><span>' + LABEL[S.me.role] + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + '</span></div>'
       + '<button class="btn l sm" data-tab="compte" title="Changer mon code" aria-label="Changer mon code">🔑</button><button class="btn l sm" data-act="out">Changer de personne</button></div>'
       + '<nav class="tabs" aria-label="Menu">' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav></header>';
-    h += '<main>' + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte }[S.tab] || vSortie)() + '</main>';
+    h += '<main>' + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour }[S.tab] || vSortie)() + '</main>';
     h += '<p class="mu" style="text-align:center;font-size:12px;margin:0 0 90px">Version ' + esc(C.version || '') + '</p>';
-    h += (S.tab === 'sortie' ? vBarSortie() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
+    h += (S.tab === 'sortie' ? vBarSortie() : S.tab === 'retour' ? vBarRetour() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
     var fq = document.activeElement && document.activeElement.id, pos = fq && document.activeElement.selectionStart;
     app.innerHTML = h;
     if (fq && $(fq)) { $(fq).focus(); try { $(fq).setSelectionRange(pos, pos); } catch (e) {} }
@@ -196,6 +199,49 @@
     return '<div class="bar"><div class="bar-in"><span class="grow mu">' + (n ? n + ' article(s) · cabinet ' + S.sortie.cab : 'Panier vide') + '</span>'
       + (n ? '<button class="btn l" data-act="vider">Vider</button>' : '') + '<button class="btn" data-act="valider"' + (n && !S.sortie.busy ? '' : ' disabled') + '>Valider la sortie</button></div></div>';
   }
+  // ---------- Retour d'un cabinet vers la réserve (tout le monde) ----------
+  // Saisie dans l'unité de la réserve, en entiers : boîtes fermées pour un article rangé en boîte.
+  function vRetour() {
+    var s = S.ret, hors = S.me.cabinet && +s.cab !== +S.me.cabinet;
+    var h = '<h2>Retour en réserve</h2><p class="mu" style="margin-top:-6px">Articles non utilisés qui repartent du cabinet vers la réserve. Pour un article rangé en boîte, seules les <b>boîtes fermées</b> reviennent ; les unités en vrac restent au cabinet.</p>';
+    if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
+    h += '<div class="card"><div class="g2"><label class="mu">Depuis le cabinet<select class="in" id="rcab">'
+      + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+s.cab === c ? ' selected' : '') + '>Cabinet ' + c + (S.me.cabinet === c ? ' (le mien)' : '') + '</option>'; }).join('')
+      + '</select></label><label class="mu">Rechercher un article<input class="in" id="rq" type="search" placeholder="Nom ou référence" value="' + esc(s.q) + '"></label></div>'
+      + (hors ? '<p class="ban warn" style="margin:10px 0 0">Ce n’est pas votre cabinet : le retour sera enregistré « hors cabinet » (remplacement).</p>' : '') + '</div>';
+    var q = norm(s.q), ids = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; });
+    var liste = q ? S.articles.filter(function (a) { return norm(a.nom + ' ' + (a.reference || '')).indexOf(q) >= 0; }).slice(0, 40)
+                  : ids.map(function (k) { return S.byId[k]; }).filter(Boolean);
+    if (!liste.length) return h + '<p class="mu">' + (q ? 'Aucun article trouvé.' : 'Tapez le nom d’un article pour l’ajouter au retour.') + '</p>';
+    return h + '<div class="card">' + liste.map(function (a) {
+      var v = s.panier[a.id] || 0, f = facteur(a), cab = stockDe(a.id, +s.cab), boites = f > 1 ? Math.floor(cab / f + 1e-9) : null, trop = f > 1 ? v > boites : v > cab;
+      return '<div class="it"><div class="it-n"><b>' + esc(a.nom) + (a.reference && a.reference !== 'SR' ? '<span class="ref">' + esc(a.reference) + '</span>' : '') + '</b>'
+        + '<span class="' + (trop ? 'pill warn' : '') + '">Au cabinet ' + s.cab + ' : ' + fr(cab) + ' u.' + (f > 1 ? ' (' + boites + ' boîte(s) entière(s) de ' + fr(a.qte_par_boite) + ')' : '') + (trop ? ' · plus que le stock enregistré' : '') + '</span>'
+        + '<span style="display:block;font-weight:600;color:var(--ink2)">Retour en ' + (f > 1 || a.conditionnement === 'BOITE' ? 'boîtes' : 'unités') + '</span></div>'
+        + '<div class="stp"><button type="button" data-rmoins="' + a.id + '" aria-label="Moins un">−</button><input inputmode="numeric" data-rqte="' + a.id + '" value="' + (v || '') + '" placeholder="0" aria-label="Quantité"><button type="button" data-rplus="' + a.id + '" aria-label="Plus un">+</button></div></div>';
+    }).join('') + '</div>';
+  }
+  function vBarRetour() {
+    var n = Object.keys(S.ret.panier).filter(function (k) { return S.ret.panier[k] > 0; }).length;
+    return '<div class="bar"><div class="bar-in"><span class="grow mu">' + (n ? n + ' article(s) · depuis le cabinet ' + S.ret.cab : 'Aucun article') + '</span>'
+      + (n ? '<button class="btn l" data-act="rvider">Vider</button>' : '') + '<button class="btn" data-act="rvalider"' + (n && !S.ret.busy ? '' : ' disabled') + '>Valider le retour</button></div></div>';
+  }
+  function setRet(id, v) { v = Math.max(0, Math.floor(nb(String(v).replace(',', '.')) || 0)); if (v) S.ret.panier[id] = v; else delete S.ret.panier[id]; }
+  function validerRetour() {
+    var s = S.ret, lignes = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; }).map(function (k) { return { article_id: +k, quantite: s.panier[k] }; });
+    if (!lignes.length || s.busy) return;
+    s.busy = true; render();
+    sb.rpc('retour_reserve', { p_cabinet: +s.cab, p_lignes: lignes }).then(function (r) {
+      s.busy = false;
+      if (r.error) { s.msg = ['ko', esc(msgErr(r.error))]; render(); return; }
+      var d = r.data || {}, m = ['✔ ' + d.retours + ' article(s) retourné(s) en réserve depuis le cabinet ' + s.cab + '.'];
+      if (d.ecarts) m.push('Pour ' + d.ecarts + ' article(s), le stock enregistré du cabinet était plus bas : il est mis à 0 (le prochain inventaire du cabinet corrigera).');
+      if (d.hors_cabinet) m.push('Enregistré « hors cabinet ».');
+      s.msg = [d.ecarts ? 'warn' : 'ok', m.join(' ')]; s.panier = {}; s.q = '';
+      charger();
+    });
+  }
+
   function setQte(id, v) { v = Math.max(0, nb(String(v).replace(',', '.'))); if (v) S.sortie.panier[id] = v; else delete S.sortie.panier[id]; }
   function validerSortie() {
     var s = S.sortie, lignes = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; }).map(function (k) { return { article_id: +k, quantite: s.panier[k] }; });
@@ -392,7 +438,7 @@
     if (!S.recents.length) h += '<p class="mu" style="margin:6px 0 0">Aucun mouvement pour l’instant.</p>';
     else h += S.recents.slice(0, 12).map(function (m) {
       var a = S.byId[m.article_id] || { nom: '(article)' }, st = STAT[m.statut] || ['', m.statut];
-      var lieu = m.type === 'sortie' || m.type === 'demande' ? ' → ' + cabTxt(m.emplacement_vers) : m.emplacement_de != null ? ' · ' + cabTxt(m.emplacement_de) : '';
+      var lieu = m.type === 'retour' ? ' ' + cabTxt(m.emplacement_de) + ' → réserve' : m.type === 'sortie' || m.type === 'demande' ? ' → ' + cabTxt(m.emplacement_vers) : m.emplacement_de != null ? ' · ' + cabTxt(m.emplacement_de) : '';
       return '<div class="it"><div class="it-n"><b>' + (TYP[m.type] || m.type) + lieu + ' · ' + esc(a.nom) + ' × ' + fr(m.quantite) + '</b><span>' + quand(m.cree_le) + ' · ' + esc(m.auteur_nom || '') + '</span></div>'
         + (m.statut !== 'ok' ? '<span class="pill ' + st[0] + '">' + st[1] + '</span>' : '') + (m.hors_cabinet ? '<span class="pill warn">hors cabinet</span>' : '') + '</div>';
     }).join('') + '<div style="margin-top:8px"><button class="lnk" data-go="histo">Tout l’historique</button></div>';
@@ -427,7 +473,7 @@
     if (!S.histo.length) return h + '<p class="mu">Aucun mouvement pour l’instant.</p>';
     return h + '<div class="scroll"><table class="tbl"><thead><tr><th>Date</th><th>Mouvement</th><th class="n">Qté</th><th>Par</th></tr></thead><tbody>' + S.histo.map(function (m) {
       var a = S.byId[m.article_id] || { nom: '(article)' }, st = STAT[m.statut] || ['', m.statut];
-      var lieu = m.type === 'sortie' || m.type === 'demande' ? ' → ' + cabTxt(m.emplacement_vers) : m.emplacement_de != null ? ' · ' + cabTxt(m.emplacement_de) : '';
+      var lieu = m.type === 'retour' ? ' ' + cabTxt(m.emplacement_de) + ' → réserve' : m.type === 'sortie' || m.type === 'demande' ? ' → ' + cabTxt(m.emplacement_vers) : m.emplacement_de != null ? ' · ' + cabTxt(m.emplacement_de) : '';
       return '<tr><td>' + quand(m.cree_le) + '</td><td>' + (TYP[m.type] || m.type) + lieu + ' · <b>' + esc(a.nom) + '</b> ' + (m.statut !== 'ok' ? '<span class="pill ' + st[0] + '">' + st[1] + '</span> ' : '') + (m.hors_cabinet ? '<span class="pill warn">hors cabinet</span>' : '') + (m.ecart ? '<br><span class="mu">écart ' + fr(m.ecart) + (m.valeur ? ' · ' + eur(m.valeur) : '') + '</span>' : '') + '</td><td class="n">' + fr(m.quantite) + '</td><td>' + esc(m.auteur_nom || '') + '</td></tr>';
     }).join('') + '</tbody></table></div>';
   }
@@ -1033,6 +1079,10 @@
     if (d.tab) { S.fiche = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'out') { if (confirm('Changer de personne ? La personne suivante devra se connecter avec son identifiant et son code.')) deconnexion(); return; }
     if (d.act === 'valider') return validerSortie();
+    if (d.act === 'rvalider') return validerRetour();
+    if (d.act === 'rvider') { S.ret.panier = {}; render(); return; }
+    if (d.rplus) { setRet(d.rplus, (S.ret.panier[d.rplus] || 0) + 1); S.ret.msg = null; render(); return; }
+    if (d.rmoins) { setRet(d.rmoins, (S.ret.panier[d.rmoins] || 0) - 1); render(); return; }
     if (d.act === 'vider') { S.sortie.panier = {}; render(); return; }
     if (d.plus) { setQte(d.plus, (S.sortie.panier[d.plus] || 0) + 1); S.sortie.msg = null; render(); return; }
     if (d.moins) { setQte(d.moins, (S.sortie.panier[d.moins] || 0) - 1); render(); return; }
@@ -1103,6 +1153,8 @@
   document.addEventListener('input', function (e) {
     var t = e.target; if (!S.me) return;
     if (t.id === 'sq') { S.sortie.q = t.value; S.sortie.msg = null; render(); }
+    else if (t.id === 'rq') { S.ret.q = t.value; S.ret.msg = null; render(); }
+    else if (t.dataset && t.dataset.rqte) { setRet(t.dataset.rqte, t.value); var rb = document.querySelector('.bar'); if (rb) rb.outerHTML = vBarRetour(); }
     else if (t.id === 'stq') { S.stockQ = t.value; render(); }
     else if (t.dataset && t.dataset.sugq) { S.sugQ[t.dataset.sugq] = t.value; }
     else if (t.id === 'ncnum') { S.nc.num = t.value; }
@@ -1129,6 +1181,7 @@
     else if (t.id === 'impf') { var fi = t.files && t.files[0]; t.value = ''; importerFacture(fi); }
     else if (t.dataset && t.dataset.impc != null && S.fiche && S.fiche.imp) { S.fiche.imp.items[+t.dataset.impc].choix = t.value; render(); }
     else if (t.id === 'scab') { S.sortie.cab = +t.value; render(); }
+    else if (t.id === 'rcab') { S.ret.cab = +t.value; render(); }
     else if (t.id === 'ncfo') { S.nc.fid = t.value; S.nc.l.forEach(function (l) { l.prix = prixChez(S.byId[l.article_id], +t.value); }); render(); }
     else if (t.id === 'foarch') { S.foArch = t.checked; render(); }
     else if (t.dataset && (t.dataset.afF || t.dataset.foK) && S.fiche) { if (t.dataset.afF) S.fiche.d[t.dataset.afF] = t.type === 'checkbox' ? t.checked : t.value; else S.fiche.foEdit[+t.dataset.foI][t.dataset.foK] = t.value; if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); }
