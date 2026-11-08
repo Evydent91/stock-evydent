@@ -320,12 +320,12 @@
   function vBarInv() { var n = nbComptes(); return '<div class="bar"><div class="bar-in"><span class="grow mu">' + n + ' article(s) comptés · ' + cabTxt(S.inv.emp) + '</span><button class="btn" data-act="iterminer"' + (n || aZero().length ? '' : ' disabled') + '>Terminer</button></div></div>'; }
 
   // ---------- Tableau de bord (gestion) ----------
-  var STF = { rupture: 'En rupture', commander: 'À commander', sr: 'Sans référence', sf: 'Sans fournisseur', seuil: 'Sans seuil' };
+  var STF = { commander: 'À commander', rupture: 'En rupture', sr: 'Sans référence', sf: 'Sans fournisseur', seuil: 'Sans seuil' };
   function estSR(a) { return !a.reference || /^\s*SR\s*$/i.test(a.reference); }
   function filtreStock(a, f) {
     var r = stockDe(a.id, 0), s = +a.seuil || 0;
     if (f === 'rupture') return !a.sans_seuil && s > 0 && r <= 0;
-    if (f === 'commander') return !a.sans_seuil && s > 0 && r > 0 && r <= s;
+    if (f === 'commander') return !a.sans_seuil && s > 0 && r <= s; // inclut les ruptures
     if (f === 'sr') return estSR(a);
     if (f === 'sf') return !a.fournisseur_id;
     if (f === 'seuil') return !a.sans_seuil && !(s > 0);
@@ -351,11 +351,11 @@
     var heure = new Date().getHours(), bj = heure < 18 ? 'Bonjour' : 'Bonsoir';
     var h = '<h2>' + bj + ' ' + esc(S.me.nom) + '</h2>';
     // à traiter
-    var att = S.attente.length, cmd = cnt.rupture + cnt.commander;
+    var att = S.attente.length, cmd = cnt.commander;
     h += '<div class="tiles">'
       + tuile(att, 'demande' + (att > 1 ? 's' : '') + ' à confirmer', att ? 'warn' : 'ok', 'demandes', att ? 'Sorties au-delà de la réserve' : 'Rien en attente')
       + tuile(cnt.rupture, 'en rupture', cnt.rupture ? 'ko' : 'ok', 'stock:rupture', 'Réserve à zéro')
-      + tuile(cnt.commander, 'à commander', cnt.commander ? 'warn' : 'ok', 'stock:commander', 'Sous le seuil d’alerte')
+      + tuile(cnt.commander, 'à commander', cnt.commander ? 'warn' : 'ok', 'stock:commander', cnt.rupture ? 'dont ' + cnt.rupture + ' en rupture' : 'Au seuil d’alerte ou en dessous')
       + tuile(eur(valR), 'valeur de la réserve', '', 'stock:', 'Cabinets : ' + eur(valC))
       + '</div>';
     // inventaires
