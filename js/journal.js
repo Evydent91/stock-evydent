@@ -14,7 +14,8 @@ window.JOURNAL = [{v:"2.0",t:"Majeure",n:"Nouvelle application en ligne",d:"Nove
  "Équipe : création des comptes, réinitialisation d’un code oublié, changement d’identifiant, désactivation (l’historique est conservé) ; bouton 🔑 pour changer soi-même son code.",
  "Retour en réserve : renvoi d’articles non utilisés d’un cabinet vers la réserve, en boîtes fermées pour les articles rangés en boîte.",
  "Historique : toute l’équipe par défaut pour la référente et la responsable ; numéro de version affiché en bas de chaque page ; bandeau « Nouvelle version disponible » avec bouton « Mettre à jour ».",
- "Plus : journal des versions (cet écran) et sauvegarde Excel complète, avec rappel sur l’accueil quand la dernière a plus d’un mois."],
+ "Plus : journal des versions (cet écran) et sauvegarde Excel complète, avec rappel sur l’accueil quand la dernière a plus d’un mois.",
+ "Traitement en masse par Excel : dans Articles, export de toutes les fiches puis réimport (une case vide garde la valeur actuelle, une ligne sans N° crée une fiche, aperçu des changements avant « Appliquer ») ; dans Inventaire › Réserve, fichier de comptage à remplir puis à réimporter, qui aboutit au récapitulatif habituel avant validation."],
  x:["Base de test (Evydent-Dev) : mises à jour 001 à 005 appliquées, fonction « equipe » installée ; données d’essai importées depuis l’ancienne application (11 fournisseurs, 292 articles, 154 lignes de stock, 512 prix).",
    "Base réelle (Evydent-Prod) : pas encore utilisée. À la mise en ligne : mises à jour 001 à 005, fonction « equipe », reprise des données réelles de l’ancienne application, création des comptes."]},
 

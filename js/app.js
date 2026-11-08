@@ -316,6 +316,7 @@
       + (emp != null && emp > 0 && S.me.cabinet && emp !== S.me.cabinet ? '<p class="ban warn" style="margin:10px 0 0">Ce n’est pas votre cabinet : l’inventaire sera enregistré « hors cabinet » (remplacement).</p>' : '')
       + (!peutReserve() ? '<p class="mu" style="margin:8px 0 0">L’inventaire de la réserve est fait par la responsable ou la référente (ou sur autorisation).</p>' : '') + '</div>';
     if (emp == null) return h;
+    if (emp === 0 && !I.recap && peutReserve()) h += '<div class="row wrap" style="margin:0 0 10px"><button class="btn l sm" data-act="iexp">⬇️ Fichier de comptage Excel</button><label class="btn l sm" style="display:inline-flex;align-items:center">⬆️ Importer le comptage<input type="file" id="iimpf" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label></div>';
     if (I.recap) return h + vRecap();
     var der = S.dernierInv[emp];
     h += '<p class="mu">' + (der ? 'Dernier inventaire : ' + new Date(der).toLocaleDateString('fr-FR') : 'Premier inventaire de cet emplacement : tous les articles sont listés, saisissez ceux qui sont présents.') + ' Votre saisie est gardée sur cet appareil jusqu’à la validation.</p>';
@@ -491,6 +492,8 @@
     var l = base.filter(function (a) { return (f === 'tous' || f === 'archive' || filtreStock(a, f)) && (!q || norm(a.nom + ' ' + (a.reference || '') + ' ' + (S.fournisseurs[a.fournisseur_id] || '')).indexOf(q) >= 0); });
     var h = '<h2>Articles</h2><div class="card row wrap"><input class="in grow" id="aq" type="search" placeholder="Rechercher un article, une référence, un fournisseur" value="' + esc(S.artQ) + '"><button class="btn" data-act="anew">+ Nouvel article</button></div>'
       + '<div class="chips" style="margin:0 0 10px">' + Object.keys(AF).map(function (k) { return '<button class="chip' + (f === k ? ' on' : '') + '" data-af="' + k + '">' + AF[k] + '</button>'; }).join('') + '</div>'
+      + '<div class="row wrap" style="margin:0 0 10px"><button class="btn l sm" data-act="aexp">⬇️ Exporter Excel</button><label class="btn l sm" style="display:inline-flex;align-items:center">⬆️ Importer Excel<input type="file" id="aimpf" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label><span class="mu">Modifier les fiches en masse</span></div>'
+      + (S.artImp ? vImportArticles() : '')
       + '<p class="mu">' + l.length + ' article(s)</p>';
     h += '<div class="card">' + l.slice(0, S.artMax || 100).map(function (a) {
       return '<button class="it lrow" data-aopen="' + a.id + '"><span class="it-n"><b>' + esc(a.nom) + (a.reference && !estSR(a) ? '<span class="ref">' + esc(a.reference) + '</span>' : ' <span class="pill warn">SR</span>') + '</b><span>' + esc(S.fournisseurs[a.fournisseur_id] || 'SF') + ' · ' + condTxt(a) + ' · réserve ' + fr(stockDe(a.id, 0)) + ' ' + uRes(a) + '</span></span><span aria-hidden="true">›</span></button>';
@@ -1012,6 +1015,175 @@
       .catch(function (e) { S.sauvBusy = false; toast('Sauvegarde impossible : ' + msgErr(e)); render(); });
   }
 
+  // ---------- Traitement en masse par Excel ----------
+  function telecharger(blob, nom) {
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nom; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  }
+  function nomFichier(base) { return base + '-' + aujourdhui() + (C.env === 'dev' ? '-TEST' : '') + '.xlsx'; }
+  function ouiNon(v) {
+    var t = norm(String(v)).trim();
+    if (['oui', 'o', 'x', '1', 'vrai', 'true', 'yes'].indexOf(t) >= 0) return true;
+    if (['non', 'n', '0', 'faux', 'false', 'no'].indexOf(t) >= 0) return false;
+    return null;
+  }
+  function vide(v) { return v === null || v === undefined || String(v).trim() === ''; }
+  function nombre(v) { if (typeof v === 'number') return v; var n = parseFloat(String(v).replace(/\s/g, '').replace(',', '.')); return isNaN(n) ? null : n; }
+  function colonnes(entete, attendues) {
+    var idx = {}; (entete || []).forEach(function (c, i) { var k = norm(String(c || '')).replace(/[^a-z0-9]/g, ''); attendues.forEach(function (a) { if (k === norm(a[0]).replace(/[^a-z0-9]/g, '')) idx[a[1]] = i; }); });
+    return idx;
+  }
+  function feuilleDe(classeur, nom) { return classeur[nom] || classeur[Object.keys(classeur)[0]] || []; }
+
+  // --- Articles : export / import des fiches ---
+  var COLS_A = [['N°', 'id'], ['Nom', 'nom'], ['Référence', 'reference'], ['Fournisseur principal', 'fournisseur'], ['Prix TTC', 'prix'], ['Réf. chez le fournisseur', 'ref_fo'],
+    ['Livré', 'conditionnement'], ['Unités par boîte', 'qte_par_boite'], ['Sortie au cabinet', 'consommation'], ['Seuil', 'seuil'], ['Sans seuil', 'sans_seuil'], ['Conso. vérifiée', 'conso_verifiee'], ['Archivé', 'archive']];
+  function afPrincipal(a) { return a.fournisseur_id ? (S.afPrix[a.id] || []).filter(function (p) { return p.fournisseur_id === a.fournisseur_id; })[0] || null : null; }
+  function exporterArticles() {
+    var tous = S.articles.concat(S.archives).sort(function (a, b) { return a.nom.localeCompare(b.nom); });
+    var lignes = tous.map(function (a) {
+      var p = afPrincipal(a);
+      return [a.id, a.nom, a.reference || 'SR', S.fournisseurs[a.fournisseur_id] || 'SF', p ? +p.prix : +a.prix || 0, p && p.reference || '', a.conditionnement === 'BOITE' ? 'Boîte' : 'Unité', +a.qte_par_boite,
+        a.consommation === 'BOITE' ? 'Boîte' : 'Unité', +a.seuil, a.sans_seuil ? 'oui' : 'non', a.conso_verifiee ? 'oui' : 'non', a.archive ? 'oui' : 'non', fr(stockDe(a.id, 0)) + ' ' + uRes(a), +a.cout_moyen];
+    });
+    var aide = [['Modifiez les cases à changer, puis importez le fichier avec « Importer Excel » dans l’onglet Articles.'], ['Une case laissée VIDE garde la valeur actuelle de la fiche.'], ['Ne modifiez pas la colonne N° : elle relie la ligne à la fiche.'],
+      ['Nouvel article : ajoutez une ligne en bas SANS N°, avec au moins le Nom.'], ['Fournisseur principal : nom exact d’un fournisseur de la feuille Fournisseurs, ou SF pour « sans fournisseur ».'], ['Référence : SR pour « sans référence ».'],
+      ['Livré / Sortie au cabinet : Boîte ou Unité.  Sans seuil, Conso. vérifiée, Archivé : oui ou non.'], ['Prix TTC : prix chez le fournisseur principal (le dernier prix connu).'], ['Les colonnes « (info) » ne sont pas importées : la réserve se met à jour par l’inventaire.']];
+    XLSX_EVY.creer([
+      { nom: 'Articles', colonnes: COLS_A.map(function (c) { return c[0]; }).concat(['Réserve (info)', 'Coût moyen (info)']), lignes: lignes },
+      { nom: 'Fournisseurs', colonnes: ['Fournisseurs connus'], lignes: S.fournListe.filter(function (f) { return !f.archive; }).map(function (f) { return [f.nom]; }) },
+      { nom: 'Mode d’emploi', colonnes: ['Mode d’emploi'], lignes: aide }
+    ]).then(function (b) { telecharger(b, nomFichier('articles-evydent')); toast('✔ Fichier des articles téléchargé'); }).catch(function (e) { toast(msgErr(e)); });
+  }
+  function importerArticles(file) {
+    if (!file) return;
+    S.artImp = { lecture: true }; render();
+    file.arrayBuffer().then(XLSX_EVY.lire).then(function (cl) {
+      var rows = feuilleDe(cl, 'Articles'), idx = colonnes(rows[0], COLS_A), R = { modifs: [], nouveaux: [], erreurs: [], nb: 0 };
+      if (idx.nom == null && idx.id == null) throw new Error('Colonnes « N° » et « Nom » introuvables : utilisez le fichier exporté depuis l’onglet Articles');
+      var parFo = {}; S.fournListe.forEach(function (f) { parFo[norm(f.nom).trim()] = f; });
+      var CH = { nom: 'Nom', reference: 'Référence', fournisseur_id: 'Fournisseur', prix: 'Prix TTC', ref_fo: 'Réf. fournisseur', conditionnement: 'Livré', qte_par_boite: 'Unités par boîte', consommation: 'Sortie au cabinet', seuil: 'Seuil', sans_seuil: 'Sans seuil', conso_verifiee: 'Conso. vérifiée', archive: 'Archivé' };
+      rows.slice(1).forEach(function (r, i) {
+        if (!r || r.every(vide)) return;
+        var n = i + 2, cell = function (k) { return idx[k] == null ? null : r[idx[k]]; }, v = {}, err = [];
+        var id = vide(cell('id')) ? null : nombre(cell('id'));
+        var a = id ? S.byId[id] || S.archives.filter(function (x) { return x.id === id; })[0] : null;
+        if (id && !a) { R.erreurs.push('Ligne ' + n + ' : N° ' + id + ' inconnu'); return; }
+        if (!vide(cell('nom'))) v.nom = String(cell('nom')).trim();
+        if (!vide(cell('reference'))) v.reference = String(cell('reference')).trim();
+        if (!vide(cell('fournisseur'))) { var fn = norm(String(cell('fournisseur'))).trim(); if (fn === 'sf') v.fournisseur_id = null; else if (parFo[fn]) v.fournisseur_id = parFo[fn].id; else err.push('fournisseur « ' + cell('fournisseur') + ' » inconnu'); }
+        if (!vide(cell('prix'))) { var p = nombre(cell('prix')); if (p == null || p < 0) err.push('prix invalide'); else v.prix = Math.round(p * 10000) / 10000; }
+        if (!vide(cell('ref_fo'))) v.ref_fo = String(cell('ref_fo')).trim();
+        ['conditionnement', 'consommation'].forEach(function (k) { if (!vide(cell(k))) { var t = norm(String(cell(k))).trim(); if (t.indexOf('boi') === 0) v[k] = 'BOITE'; else if (t.indexOf('uni') === 0) v[k] = 'Unité'; else err.push(CH[k] + ' : Boîte ou Unité'); } });
+        if (!vide(cell('qte_par_boite'))) { var q = nombre(cell('qte_par_boite')); if (!(q > 0)) err.push('unités par boîte invalides'); else v.qte_par_boite = q; }
+        if (!vide(cell('seuil'))) { var s = nombre(cell('seuil')); if (s == null || s < 0) err.push('seuil invalide'); else v.seuil = s; }
+        ['sans_seuil', 'conso_verifiee', 'archive'].forEach(function (k) { if (!vide(cell(k))) { var b = ouiNon(cell(k)); if (b == null) err.push(CH[k] + ' : oui ou non'); else v[k] = b; } });
+        if (err.length) { R.erreurs.push('Ligne ' + n + (a ? ' (' + a.nom + ')' : '') + ' : ' + err.join(', ')); return; }
+        R.nb++;
+        if (!a) { if (!v.nom) { R.erreurs.push('Ligne ' + n + ' : nouvel article sans nom'); return; } R.nouveaux.push({ ligne: n, v: v }); return; }
+        var pr = afPrincipal(a), act = { nom: a.nom, reference: a.reference || 'SR', fournisseur_id: a.fournisseur_id || null, prix: pr ? +pr.prix : +a.prix || 0, ref_fo: pr && pr.reference || '', conditionnement: a.conditionnement, qte_par_boite: +a.qte_par_boite, consommation: a.consommation, seuil: +a.seuil, sans_seuil: !!a.sans_seuil, conso_verifiee: !!a.conso_verifiee, archive: !!a.archive };
+        var diffs = Object.keys(v).filter(function (k) { return typeof v[k] === 'number' ? Math.abs(v[k] - act[k]) > 1e-9 : v[k] !== act[k]; });
+        if (diffs.length) R.modifs.push({ a: a, v: v, act: act, diffs: diffs });
+      });
+      // références en double
+      var refs = {}; S.articles.concat(S.archives).forEach(function (a) { refs[a.id] = a.reference; });
+      R.modifs.forEach(function (m) { if (m.v.reference) refs[m.a.id] = m.v.reference; });
+      R.nouveaux.forEach(function (x, i) { refs['n' + i] = x.v.reference || 'SR'; });
+      var vu = {}; Object.keys(refs).forEach(function (k) { var r = String(refs[k] || '').toUpperCase(); if (!r || r === 'SR') return; (vu[r] = vu[r] || []).push(k); });
+      Object.keys(vu).forEach(function (r) { if (vu[r].length > 1 && vu[r].some(function (k) { return k[0] === 'n' || R.modifs.some(function (m) { return String(m.a.id) === k && m.v.reference; }); })) R.erreurs.push('Référence ' + r + ' utilisée par plusieurs articles'); });
+      R.CH = CH; S.artImp = R; render(); window.scrollTo(0, 0);
+    }).catch(function (e) { S.artImp = null; toast('Lecture du fichier impossible : ' + (e && e.message || e)); render(); });
+  }
+  function valTxt(k, x) {
+    if (k === 'fournisseur_id') return x ? S.fournisseurs[x] || '?' : 'SF';
+    if (k === 'prix') return eur(x);
+    if (typeof x === 'boolean') return x ? 'oui' : 'non';
+    if (k === 'conditionnement' || k === 'consommation') return x === 'BOITE' ? 'Boîte' : 'Unité';
+    return x === '' || x == null ? '—' : String(x);
+  }
+  function vImportArticles() {
+    var R = S.artImp;
+    if (R.lecture) return '<div class="card"><b>Lecture du fichier…</b></div>';
+    var h = '<div class="card" style="border:2px solid var(--gold)"><b>📥 Import Excel des articles</b><p class="mu" style="margin:4px 0 8px">' + R.nb + ' ligne(s) lue(s) · <b>' + R.modifs.length + '</b> fiche(s) modifiée(s) · <b>' + R.nouveaux.length + '</b> nouvelle(s) · ' + R.erreurs.length + ' erreur(s). Rien n’est enregistré avant « Appliquer ».</p>';
+    if (R.erreurs.length) h += '<div class="ban ko"><b>À corriger dans le fichier' + (R.erreurs.some(function (e) { return /plusieurs articles/.test(e); }) ? ' (import bloqué)' : ' (ces lignes seront ignorées)') + ' :</b><br>' + R.erreurs.map(esc).join('<br>') + '</div>';
+    h += R.modifs.slice(0, 300).map(function (m) {
+      return '<div class="it"><div class="it-n"><b>' + esc(m.a.nom) + '</b><span>' + m.diffs.map(function (k) { return R.CH[k] + ' : ' + esc(valTxt(k, m.act[k])) + ' → <b>' + esc(valTxt(k, m.v[k])) + '</b>'; }).join(' · ') + '</span></div></div>';
+    }).join('');
+    h += R.nouveaux.map(function (x) { return '<div class="it"><div class="it-n"><b>' + esc(x.v.nom) + ' <span class="pill ok">nouvelle fiche</span></b><span>' + Object.keys(x.v).filter(function (k) { return k !== 'nom'; }).map(function (k) { return R.CH[k] + ' : ' + esc(valTxt(k, x.v[k])); }).join(' · ') + '</span></div></div>'; }).join('');
+    var bloque = R.erreurs.some(function (e) { return /plusieurs articles/.test(e); }) || !(R.modifs.length + R.nouveaux.length);
+    return h + '<div class="row" style="margin-top:12px"><span class="grow"></span><button class="btn l" data-act="aimpno">Annuler</button><button class="btn" data-act="aimpok"' + (bloque || R.busy ? ' disabled' : '') + '>' + (R.busy ? 'Enregistrement… ' + (R.fait || 0) + '/' + (R.modifs.length + R.nouveaux.length) : 'Appliquer') + '</button></div></div>';
+  }
+  function enregistrerFiche(a, v) {
+    // a = fiche existante (ou null pour une nouvelle), v = valeurs du fichier
+    var upd = {}; ['nom', 'reference', 'conditionnement', 'qte_par_boite', 'consommation', 'seuil', 'sans_seuil', 'conso_verifiee', 'archive'].forEach(function (k) { if (k in v) upd[k] = v[k]; });
+    if (upd.sans_seuil) upd.seuil = 0;
+    if ('fournisseur_id' in v) upd.fournisseur_id = v.fournisseur_id;
+    if ('prix' in v) upd.prix = v.prix;
+    var p;
+    if (a) p = Object.keys(upd).length ? sb.from('articles').update(upd).eq('id', a.id).then(function (r) { if (r.error) throw r.error; return a.id; }) : Promise.resolve(a.id);
+    else { upd.reference = upd.reference || 'SR'; if ('prix' in v) upd.cout_moyen = v.prix; p = sb.from('articles').insert(upd).select().single().then(function (r) { if (r.error) throw r.error; return r.data.id; }); }
+    return p.then(function (id) {
+      var fid = 'fournisseur_id' in v ? v.fournisseur_id : a ? a.fournisseur_id : null;
+      if (!fid || !('fournisseur_id' in v || 'prix' in v || 'ref_fo' in v)) return;
+      var anc = a ? (S.afPrix[a.id] || []) : [], ex = anc.filter(function (x) { return x.fournisseur_id === fid; })[0];
+      var ligne = { article_id: id, fournisseur_id: fid, prix: 'prix' in v ? v.prix : ex ? +ex.prix : a ? +a.prix || 0 : 0, reference: 'ref_fo' in v ? v.ref_fo : ex ? ex.reference : null, rang: 0 };
+      var ops = [sb.from('article_fournisseurs').upsert(ligne, { onConflict: 'article_id,fournisseur_id' })];
+      anc.filter(function (x) { return x.fournisseur_id !== fid && x.rang === 0; }).forEach(function (x) { ops.push(sb.from('article_fournisseurs').update({ rang: 1 }).eq('article_id', id).eq('fournisseur_id', x.fournisseur_id)); });
+      if ('prix' in v && v.prix > 0) ops.push(sb.from('prix_historique').upsert({ article_id: id, fournisseur_id: fid, date_prix: aujourdhui(), prix: v.prix, source: 'Import Excel' }, { onConflict: 'article_id,fournisseur_id,date_prix,prix', ignoreDuplicates: true }));
+      return Promise.all(ops).then(function (rs) { rs.forEach(function (r) { if (r && r.error) throw r.error; }); });
+    });
+  }
+  function appliquerImportArticles() {
+    var R = S.artImp, taches = R.modifs.map(function (m) { var v = {}; m.diffs.forEach(function (k) { v[k] = m.v[k]; }); if (m.diffs.indexOf('fournisseur_id') >= 0) { if (!('prix' in v) && 'prix' in m.v) v.prix = m.v.prix; if (!('ref_fo' in v) && 'ref_fo' in m.v) v.ref_fo = m.v.ref_fo; } return [m.a, v]; })
+      .concat(R.nouveaux.map(function (x) { return [null, x.v]; }));
+    R.busy = true; R.fait = 0; render();
+    var i = 0, ko = [];
+    function suite() {
+      if (i >= taches.length) return Promise.resolve();
+      var lot = taches.slice(i, i + 8); i += 8;
+      return Promise.all(lot.map(function (t) { return enregistrerFiche(t[0], t[1]).catch(function (e) { ko.push((t[0] ? t[0].nom : t[1].nom) + ' : ' + msgErr(e)); }); }))
+        .then(function () { R.fait = Math.min(i, taches.length); render(); return suite(); });
+    }
+    suite().then(function () {
+      S.artImp = null;
+      toast(ko.length ? '⚠️ ' + (taches.length - ko.length) + ' fiche(s) enregistrée(s), ' + ko.length + ' en erreur : ' + ko.slice(0, 3).join(' ; ') : '✔ Import terminé : ' + R.modifs.length + ' fiche(s) modifiée(s), ' + R.nouveaux.length + ' créée(s)');
+      charger();
+    });
+  }
+
+  // --- Inventaire de la réserve : fichier de comptage ---
+  var COLS_I = [['N°', 'id'], ['Quantité comptée', 'q'], ['Motif si écart', 'motif']];
+  function exporterComptage() {
+    var l = S.articles.slice().sort(function (a, b) { return a.nom.localeCompare(b.nom); });
+    var lignes = l.map(function (a) { return [a.id, a.nom, a.reference || 'SR', S.fournisseurs[a.fournisseur_id] || 'SF', uInv(a, 0) === 'u.' ? (facteur(a) > 1 ? 'unités (boîte de ' + fr(a.qte_par_boite) + ')' : 'unités') : 'boîtes', theo(a, 0), null, null]; });
+    var aide = [['Remplissez la colonne « Quantité comptée » pour chaque article compté dans la réserve, puis importez le fichier dans l’onglet Inventaire (emplacement Réserve).'],
+      ['Comptez dans l’unité indiquée par la colonne « Compter en ».'], ['Case vide = article non compté. Pendant l’inventaire de départ (J0), au premier comptage de la réserve, les articles non comptés passent à 0 : l’appli vous le rappelle avant de valider.'],
+      ['Mettez 0 pour un article absent.'], ['Motif si écart (hors J0) : ' + MOTIFS.join(', ') + '.'], ['Après l’import, l’appli affiche le récapitulatif habituel : rien n’est enregistré avant « Valider l’inventaire ».']];
+    XLSX_EVY.creer([
+      { nom: 'Comptage réserve', colonnes: ['N°', 'Article', 'Référence', 'Fournisseur', 'Compter en', 'Stock enregistré', 'Quantité comptée', 'Motif si écart'], lignes: lignes },
+      { nom: 'Mode d’emploi', colonnes: ['Mode d’emploi'], lignes: aide }
+    ]).then(function (b) { telecharger(b, nomFichier('comptage-reserve')); toast('✔ Fichier de comptage téléchargé'); }).catch(function (e) { toast(msgErr(e)); });
+  }
+  function importerComptage(file) {
+    if (!file) return;
+    file.arrayBuffer().then(XLSX_EVY.lire).then(function (cl) {
+      var rows = feuilleDe(cl, 'Comptage réserve'), idx = colonnes(rows[0], COLS_I), d = {}, motifs = {}, err = [], n = 0;
+      if (idx.id == null || idx.q == null) throw new Error('Colonnes « N° » et « Quantité comptée » introuvables : utilisez le fichier de comptage de l’appli');
+      rows.slice(1).forEach(function (r, i) {
+        if (!r || vide(r[idx.id]) || vide(r[idx.q])) return;
+        var id = nombre(r[idx.id]), q = nombre(r[idx.q]), a = S.byId[id];
+        if (!a) { err.push('ligne ' + (i + 2) + ' : N° inconnu ou article archivé'); return; }
+        if (q == null || q < 0) { err.push('ligne ' + (i + 2) + ' (' + a.nom + ') : quantité invalide'); return; }
+        d[id] = String(q).replace('.', ','); n++;
+        if (idx.motif != null && !vide(r[idx.motif])) { var m = MOTIFS.filter(function (x) { return norm(x) === norm(String(r[idx.motif])).trim(); })[0]; if (m) motifs[id] = m; }
+      });
+      if (!n) throw new Error('Aucune quantité comptée dans le fichier' + (err.length ? ' (' + err.length + ' erreur(s))' : ''));
+      choisirEmp(0); S.inv.d = d; S.inv.motifs = motifs; ecrireBrouillon(); S.inv.recap = true;
+      S.inv.msg = [err.length ? 'warn' : 'ok', '📥 Fichier importé : ' + n + ' article(s) compté(s)' + (err.length ? '. Lignes ignorées : ' + err.map(esc).join(' · ') : '') + '. Vérifiez le récapitulatif ci-dessous puis validez l’inventaire.'];
+      render(); window.scrollTo(0, 0);
+    }).catch(function (e) { toast('Lecture du fichier impossible : ' + (e && e.message || e)); });
+  }
+
   // ---------- Équipe (gestion) ----------
   // Règles des codes : assistante = 6 chiffres ; référente / responsable = 10 caractères, lettres et chiffres.
   function regleMdp(role, m) {
@@ -1138,6 +1310,10 @@
     if (d.act === 'out') { if (confirm('Changer de personne ? La personne suivante devra se connecter avec son identifiant et son code.')) deconnexion(); return; }
     if (d.act === 'maj') return mettreAJour();
     if (d.act === 'sauver') return telechargerSauvegarde();
+    if (d.act === 'aexp') return exporterArticles();
+    if (d.act === 'aimpno') { S.artImp = null; render(); return; }
+    if (d.act === 'aimpok') return appliquerImportArticles();
+    if (d.act === 'iexp') return exporterComptage();
     if (d.act === 'valider') return validerSortie();
     if (d.act === 'rvalider') return validerRetour();
     if (d.act === 'rvider') { S.ret.panier = {}; render(); return; }
@@ -1238,6 +1414,8 @@
     var t = e.target; if (!S.me) return;
     if (t.id === 'nrole' && S.eqNew) { S.eqNew.role = t.value; S.eqNew.identifiant = $('nid').value; S.eqNew.nom = $('nnom').value; render(); }
     else if (t.id === 'ncab' && S.eqNew) { S.eqNew.cabinet = t.value; }
+    else if (t.id === 'aimpf') { var fa = t.files && t.files[0]; t.value = ''; importerArticles(fa); }
+    else if (t.id === 'iimpf') { var fc = t.files && t.files[0]; t.value = ''; importerComptage(fc); }
     else if (t.id === 'impf') { var fi = t.files && t.files[0]; t.value = ''; importerFacture(fi); }
     else if (t.dataset && t.dataset.impc != null && S.fiche && S.fiche.imp) { S.fiche.imp.items[+t.dataset.impc].choix = t.value; render(); }
     else if (t.id === 'scab') { S.sortie.cab = +t.value; render(); }
