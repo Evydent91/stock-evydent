@@ -12,7 +12,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const DOMAINE = "espace-dentaire-val-d-yerres.fr";
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-region, x-supabase-api-version, accept-profile, content-profile",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const rep = (corps: unknown, statut = 200) =>
@@ -38,11 +38,19 @@ function cleService(): string {
     const v = k.default || Object.values(k)[0];
     if (v) return String(v);
   } catch { /* ignoré */ }
-  return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const k = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!k) throw new Error("clé de service introuvable dans la fonction (SUPABASE_SECRET_KEYS / SUPABASE_SERVICE_ROLE_KEY)");
+  return k;
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  // Toute erreur inattendue est renvoyée avec son message (et les en-têtes CORS) pour être lisible dans l'appli
+  try { return await traiter(req); }
+  catch (e) { console.error(e); return erreur("Erreur du service des comptes : " + ((e as Error)?.message || String(e)), 500); }
+});
+
+async function traiter(req: Request): Promise<Response> {
   if (req.method !== "POST") return erreur("Méthode non autorisée", 405);
 
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, cleService(), {
@@ -120,4 +128,4 @@ Deno.serve(async (req) => {
   }
 
   return erreur("Action inconnue");
-});
+}
