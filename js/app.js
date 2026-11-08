@@ -122,7 +122,7 @@
       toutLire('fournisseurs', '*', function (q) { return q.order('nom'); }),
       sb.from('profils').select('*').order('nom').then(function (r) { if (r.error) throw r.error; return r.data; }),
       sb.from('mouvements').select('*').eq('statut', 'attente').order('cree_le').then(function (r) { if (r.error) throw r.error; return r.data; }),
-      sb.from('parametres').select('cle,valeur').in('cle', ['j0', 'alias_refs']).then(function (r) { if (r.error) throw r.error; return r.data; }),
+      sb.from('parametres').select('cle,valeur').in('cle', ['j0', 'alias_refs', 'derniere_sauvegarde']).then(function (r) { if (r.error) throw r.error; return r.data; }),
       sb.from('inventaires').select('emplacement,date_inv,j0').order('date_inv', { ascending: false }).limit(500).then(function (r) { if (r.error) throw r.error; return r.data; }),
       sb.from('mouvements').select('*').order('cree_le', { ascending: false }).limit(30).then(function (r) { if (r.error) throw r.error; return r.data; }),
       toutLire('article_fournisseurs', 'article_id,fournisseur_id,prix,reference,rang'),
@@ -135,6 +135,7 @@
       S.profils = x[3]; S.attente = x[4];
       var pj = x[5].filter(function (p) { return p.cle === 'j0'; })[0], pa = x[5].filter(function (p) { return p.cle === 'alias_refs'; })[0];
       S.j0 = pj ? pj.valeur : null; S.alias = pa ? pa.valeur : {};
+      var ps2 = x[5].filter(function (p) { return p.cle === 'derniere_sauvegarde'; })[0]; S.sauv = ps2 ? ps2.valeur : null;
       S.dernierInv = {}; S.invJ0 = {}; x[6].forEach(function (i) { if (!S.dernierInv[i.emplacement]) S.dernierInv[i.emplacement] = i.date_inv; if (i.j0 && S.j0 && S.j0.debut && i.date_inv.slice(0, 10) >= S.j0.debut) S.invJ0[i.emplacement] = true; });
       S.recents = x[7];
       S.afPrix = {}; (x[8] || []).forEach(function (p) { (S.afPrix[p.article_id] = S.afPrix[p.article_id] || []).push(p); });
@@ -160,13 +161,13 @@
     var tabs = gestion() ? [['accueil', 'Accueil'], ['sortie', 'Sortie'], ['retour', 'Retour'], ['inventaire', 'Inventaire']] : [['sortie', 'Sortie'], ['retour', 'Retour'], ['inventaire', 'Inventaire']];
     if (gestion()) tabs.push(['demandes', 'Demandes' + (S.attente.length ? '<span class="badge">' + S.attente.length + '</span>' : '')], ['stock', 'Stock'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs']);
     tabs.push(['histo', 'Historique']);
-    if (gestion()) tabs.push(['equipe', 'Équipe']);
+    if (gestion()) tabs.push(['equipe', 'Équipe'], ['plus', 'Plus']);
     var h = '<header class="top"><div class="top-in"><img src="assets/logo-evydent.jpg" alt="">'
       + '<div class="top-who"><b>' + esc(S.me.nom) + (C.env === 'dev' ? ' <span class="env">TEST</span>' : '') + '</b><span>' + LABEL[S.me.role] + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + '</span></div>'
       + '<button class="btn l sm" data-tab="compte" title="Changer mon code" aria-label="Changer mon code">🔑</button><button class="btn l sm" data-act="out">Changer de personne</button></div>'
       + '<nav class="tabs" aria-label="Menu">' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav></header>';
     if (S.nouvelleVersion) h += '<div class="ban ok" style="max-width:1100px;margin:10px auto 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1">Une nouvelle version de l’application est disponible (' + esc(S.nouvelleVersion) + ').</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>';
-    h += '<main>' + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour }[S.tab] || vSortie)() + '</main>';
+    h += '<main>' + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour, plus: vPlus }[S.tab] || vSortie)() + '</main>';
     h += '<p class="mu" style="text-align:center;font-size:12px;margin:0 0 90px">Version ' + esc(C.version || '') + '</p>';
     h += (S.tab === 'sortie' ? vBarSortie() : S.tab === 'retour' ? vBarRetour() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
     var fq = document.activeElement && document.activeElement.id, pos = fq && document.activeElement.selectionStart;
@@ -410,6 +411,7 @@
     A.forEach(function (a) { var cm = +a.cout_moyen || 0, f = facteur(a); valR += stockDe(a.id, 0) * cm; for (var c = 1; c <= 8; c++) valC += stockDe(a.id, c) / f * cm; });
     var heure = new Date().getHours(), bj = heure < 18 ? 'Bonjour' : 'Bonsoir';
     var h = '<h2>' + bj + ' ' + esc(S.me.nom) + '</h2>';
+    if (sauvegardeEnRetard()) h += '<div class="ban warn row wrap"><span class="grow">💾 ' + (S.sauv && S.sauv.date ? 'Dernière sauvegarde il y a ' + joursDepuis(S.sauv.date) + ' jours : pensez à la sauvegarde du mois.' : 'Aucune sauvegarde téléchargée pour l’instant.') + '</span><button class="btn sm" data-act="sauver"' + (S.sauvBusy ? ' disabled' : '') + '>' + (S.sauvBusy ? 'Préparation…' : 'Télécharger la sauvegarde') + '</button></div>';
     // à traiter
     var att = S.attente.length, cmd = cnt.commander;
     h += '<div class="tiles">'
@@ -956,6 +958,60 @@
     });
   }
 
+  // ---------- Plus : sauvegarde et journal des versions (gestion) ----------
+  function joursDepuis(iso) { return iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : null; }
+  function sauvegardeEnRetard() { var j = joursDepuis(S.sauv && S.sauv.date); return j == null || j > 30; }
+  function vPlus() {
+    var j = joursDepuis(S.sauv && S.sauv.date), h = '<h2>Plus</h2>';
+    h += '<div class="card"><div class="row wrap"><div class="grow"><b>💾 Sauvegarde</b><br><span class="mu">'
+      + (S.sauv && S.sauv.date ? 'Dernière : ' + new Date(S.sauv.date).toLocaleDateString('fr-FR') + ' par ' + esc(S.sauv.par || '?') + (j ? ' (il y a ' + j + ' jour' + (j > 1 ? 's' : '') + ')' : ' (aujourd’hui)') : 'Aucune sauvegarde téléchargée pour l’instant')
+      + '</span></div><button class="btn' + (sauvegardeEnRetard() ? ' gold' : '') + '" data-act="sauver"' + (S.sauvBusy ? ' disabled' : '') + '>' + (S.sauvBusy ? 'Préparation…' : 'Télécharger la sauvegarde') + '</button></div>'
+      + '<p class="mu" style="margin:8px 0 0">Un fichier Excel avec une feuille par tableau : stock par emplacement, articles, prix par fournisseur, fournisseurs, commandes, mouvements, inventaires, équipe. À ranger dans un dossier sûr, une fois par mois. Les mots de passe des comptes fournisseurs n’y figurent pas.</p></div>';
+    h += '<h2 style="margin-top:20px">Journal des versions</h2><p class="mu" style="margin-top:-6px">Version installée : <b>' + esc(C.version) + '</b>. Majeure : changement profond · Mineure : nouvelle fonction · Correctif : réparation.</p>';
+    var TC = { Majeure: 'ko', Mineure: 'ok', Correctif: 'warn' };
+    h += (window.JOURNAL || []).map(function (v, i) {
+      return '<details class="card"' + (i === 0 ? ' open' : '') + '><summary style="cursor:pointer;list-style:none"><b>Version ' + esc(v.v) + ' — ' + esc(v.n) + '</b> <span class="pill ' + (TC[v.t] || '') + '">' + esc(v.t) + '</span><br><span class="mu">' + esc(v.d) + '</span></summary>'
+        + '<p style="margin:10px 0 6px"><b>Pourquoi :</b> ' + esc(v.w) + '</p>'
+        + (v.c && v.c.length ? '<b>Changements</b><ul style="margin:4px 0 8px;padding-left:20px">' + v.c.map(function (x) { return '<li style="margin:4px 0">' + esc(x) + '</li>'; }).join('') + '</ul>' : '')
+        + (v.x && v.x.length ? '<b>Données</b><ul style="margin:4px 0 0;padding-left:20px">' + v.x.map(function (x) { return '<li style="margin:4px 0">' + esc(x) + '</li>'; }).join('') + '</ul>' : '')
+        + '</details>';
+    }).join('');
+    return h;
+  }
+  function telechargerSauvegarde() {
+    if (S.sauvBusy) return;
+    S.sauvBusy = true; render();
+    var T = ['articles', 'article_fournisseurs', 'fournisseurs', 'stocks', 'commandes', 'commande_lignes', 'mouvements', 'prix_historique', 'inventaires', 'profils', 'parametres'];
+    var ORD = { stocks: ['article_id', 'emplacement'], article_fournisseurs: ['article_id', 'fournisseur_id'], parametres: ['cle'], profils: ['id'] };
+    Promise.all(T.map(function (t) { return toutLire(t, '*', function (q) { (ORD[t] || ['id']).forEach(function (k) { q = q.order(k); }); return q; }); })).then(function (R) {
+      var D = {}; T.forEach(function (t, i) { D[t] = R[i]; });
+      var nomA = {}, nomF = {}; D.articles.forEach(function (a) { nomA[a.id] = a.nom; }); D.fournisseurs.forEach(function (f) { nomF[f.id] = f.nom; });
+      // feuille lisible : stock par emplacement
+      var st = {}; D.stocks.forEach(function (s) { (st[s.article_id] = st[s.article_id] || {})[s.emplacement] = +s.quantite; });
+      var stock = { nom: 'Stock', colonnes: ['Article', 'Référence', 'Fournisseur', 'Unité réserve', 'Réserve', 'Cab. 1', 'Cab. 2', 'Cab. 3', 'Cab. 4', 'Cab. 5', 'Cab. 6', 'Cab. 7', 'Cab. 8', 'Coût moyen TTC', 'Valeur réserve TTC', 'Archivé'],
+        lignes: D.articles.slice().sort(function (a, b) { return a.nom.localeCompare(b.nom); }).map(function (a) {
+          var s = st[a.id] || {}, r = s[0] || 0;
+          return [a.nom, a.reference, nomF[a.fournisseur_id] || 'SF', a.conditionnement === 'BOITE' ? 'boîte de ' + a.qte_par_boite : 'unité', r].concat([1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return s[c] || 0; })).concat([+a.cout_moyen, Math.round(r * a.cout_moyen * 100) / 100, a.archive]);
+        }) };
+      // feuilles brutes (toutes les colonnes) + nom de l'article / du fournisseur pour la lecture
+      function brut(nom, rows) {
+        var cols = []; rows.forEach(function (r) { Object.keys(r).forEach(function (k) { if (cols.indexOf(k) < 0) cols.push(k); }); });
+        var out = []; cols.forEach(function (k) { out.push(k); if (k === 'article_id') out.push('article'); if (k === 'fournisseur_id') out.push('fournisseur'); });
+        return { nom: nom, colonnes: out, lignes: rows.map(function (r) { return out.map(function (k) { return k === 'article' ? nomA[r.article_id] : k === 'fournisseur' ? nomF[r.fournisseur_id] : r[k]; }); }) };
+      }
+      var feuilles = [stock, brut('Articles', D.articles), brut('Prix par fournisseur', D.article_fournisseurs), brut('Fournisseurs', D.fournisseurs), brut('Commandes', D.commandes), brut('Lignes de commande', D.commande_lignes),
+        brut('Mouvements', D.mouvements), brut('Historique des prix', D.prix_historique), brut('Inventaires', D.inventaires), brut('Équipe', D.profils), brut('Paramètres', D.parametres), brut('Stock brut', D.stocks)];
+      return XLSX_EVY.creer(feuilles).then(function (blob) {
+        var d = new Date(), nom = 'sauvegarde-stock-evydent-' + d.toISOString().slice(0, 10) + (C.env === 'dev' ? '-TEST' : '') + '.xlsx';
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nom; document.body.appendChild(a); a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+        var v = { date: d.toISOString(), par: S.me.nom, fichier: nom, lignes: D.mouvements.length };
+        return sb.from('parametres').upsert({ cle: 'derniere_sauvegarde', valeur: v }, { onConflict: 'cle' }).then(function (r) { if (r.error) throw r.error; S.sauv = v; return nom; });
+      });
+    }).then(function (nom) { S.sauvBusy = false; toast('✔ Sauvegarde téléchargée : ' + nom); render(); })
+      .catch(function (e) { S.sauvBusy = false; toast('Sauvegarde impossible : ' + msgErr(e)); render(); });
+  }
+
   // ---------- Équipe (gestion) ----------
   // Règles des codes : assistante = 6 chiffres ; référente / responsable = 10 caractères, lettres et chiffres.
   function regleMdp(role, m) {
@@ -1081,6 +1137,7 @@
     if (d.tab) { S.fiche = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'out') { if (confirm('Changer de personne ? La personne suivante devra se connecter avec son identifiant et son code.')) deconnexion(); return; }
     if (d.act === 'maj') return mettreAJour();
+    if (d.act === 'sauver') return telechargerSauvegarde();
     if (d.act === 'valider') return validerSortie();
     if (d.act === 'rvalider') return validerRetour();
     if (d.act === 'rvider') { S.ret.panier = {}; render(); return; }
