@@ -17,13 +17,13 @@ Aucun secret dans ce dépôt : seules les clés publiques Supabase y figurent.
 Le schéma est maintenu uniquement par les fichiers numérotés de `supabase/migrations/`,
 appliqués dans l'éditeur SQL de Supabase : d'abord sur Evydent-Dev, puis sur Evydent-Prod après validation.
 
-**Dernière migration appliquée : dev 006, prod — aucune**
+**Dernière migration appliquée : dev 006, prod 006**
 
 ## Fonctions Supabase (Edge Functions)
 
 | Fonction | Rôle | Dev | Prod |
 |---|---|---|---|
-| `equipe` (`supabase/functions/equipe/index.ts`) | création des comptes, codes, identifiants, désactivation | déployée (Verify JWT désactivé) | à déployer avant la mise en ligne |
+| `equipe` (`supabase/functions/equipe/index.ts`) | création des comptes, codes, identifiants, désactivation | déployée (Verify JWT désactivé) | déployée (Verify JWT désactivé) |
 
 Déploiement : Supabase → Edge Functions → Deploy a new function → Via Editor, nom `equipe`, coller le fichier, puis désactiver « Verify JWT » (la fonction vérifie elle-même le rôle de l'appelant).
 

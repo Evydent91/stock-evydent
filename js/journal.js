@@ -1,7 +1,7 @@
 // Journal des versions (affiché dans Plus, pour la référente et la responsable).
 // Types : Majeure (changement profond), Mineure (nouvelle fonction), Correctif (réparation).
 // c = changements visibles ; x = opérations sur les données (pour la responsable).
-window.JOURNAL = [{v:"2.0",t:"Majeure",n:"Nouvelle application en ligne",d:"Novembre 2026 (en test)",
+window.JOURNAL = [{v:"2.0",t:"Majeure",n:"Nouvelle application en ligne",d:"8 novembre 2026",
  w:"Passer d’une application dans Claude à une vraie application en ligne : comptes personnels, données dans une base sécurisée (Supabase), site de test séparé du site réel, chaque modification validée étape par étape avant la mise en ligne.",
  c:[
  "Connexion personnelle : chaque personne a son identifiant (sans email) ; les assistantes se connectent avec un code à 6 chiffres (clavier numérique sur téléphone), la référente et la responsable avec un mot de passe solide (10 caractères minimum, lettres et chiffres). Pas de déconnexion automatique ; bouton « Changer de personne » qui remet l’appli à zéro pour la suivante (cabinet par défaut, panier, inventaire).",
@@ -16,8 +16,8 @@ window.JOURNAL = [{v:"2.0",t:"Majeure",n:"Nouvelle application en ligne",d:"Nove
  "Historique : toute l’équipe par défaut pour la référente et la responsable ; numéro de version affiché en bas de chaque page ; bandeau « Nouvelle version disponible » avec bouton « Mettre à jour ».",
  "Plus : journal des versions (cet écran) et sauvegarde Excel complète, avec rappel sur l’accueil quand la dernière a plus d’un mois.",
  "Traitement en masse par Excel : dans Articles, export de toutes les fiches puis réimport (une case vide garde la valeur actuelle, une ligne sans N° crée une fiche, « oui » dans la colonne Supprimer supprime une fiche, aperçu des changements avant « Appliquer ») ; dans Inventaire › Réserve, fichier de comptage à remplir puis à réimporter, qui aboutit au récapitulatif habituel avant validation."],
- x:["Base de test (Evydent-Dev) : mises à jour 001 à 005 appliquées, fonction « equipe » installée ; données d’essai importées depuis l’ancienne application (11 fournisseurs, 292 articles, 154 lignes de stock, 512 prix).",
-   "Base réelle (Evydent-Prod) : pas encore utilisée. À la mise en ligne : mises à jour 001 à 005, fonction « equipe », reprise des données réelles de l’ancienne application, création des comptes."]},
+ x:["Base de test (Evydent-Dev) : mises à jour 001 à 006 appliquées, fonction « equipe » installée ; données d’essai importées depuis l’ancienne application (11 fournisseurs, 292 articles, 154 lignes de stock, 512 prix).",
+   "Base réelle (Evydent-Prod) : installation 001 à 006 et fonction « equipe » ; reprise depuis l’ancienne application de 11 fournisseurs (avec leurs comptes), 292 fiches articles et 512 prix ; stock de la réserve et des cabinets à 0, à établir par l’inventaire de départ (J0) ; mouvements passés conservés dans l’ancienne application."]},
 
 {v:"1.1",t:"Mineure",n:"Page de connexion",d:"8 novembre 2026",
  w:"Réserver l’accès à l’application au personnel du centre, avec une page à l’image du centre.",
