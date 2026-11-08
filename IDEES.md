@@ -4,7 +4,7 @@ Liste tenue à jour par Claude au fil des échanges avec Gwen (référente).
 Rien ici n'est fait tant que ce n'est pas passé dans le journal des versions (onglet Plus).
 Une idée est développée sur le site de test, validée par Gwen, puis mise en ligne.
 
-Légende : 🟢 prête à faire · 🟡 à préciser avec Gwen · ⚪ à l'étude
+Légende : 🟢 prête à faire · 🟡 à préciser avec Gwen · ⚪ à l’étude · 🧪 en test sur le site de test
 
 ## Stock et mouvements
 - ⚪ **Transfert d'un cabinet à un autre** : écarté pour l'instant (seul le retour vers la réserve existe), à reprendre si les remplacements le demandent.
@@ -23,7 +23,7 @@ Légende : 🟢 prête à faire · 🟡 à préciser avec Gwen · ⚪ à l'étud
 - 🟡 **Importer une sauvegarde** : recharger dans l'appli un fichier Excel de sauvegarde (onglet Plus), pour restaurer les données après un problème. À préciser : tout remplacer ou seulement une partie (fiches, stock, fournisseurs), et qui a le droit de le faire.
 
 ## Ergonomie
-- 🟡 **Meilleure ergonomie sur téléphone (type iPhone)** : écrans plus adaptés au petit écran et au pouce (onglets, boutons, listes, barre du bas), affichage sur l'écran d'accueil comme une application. À préciser avec Gwen à partir de captures des écrans gênants.
+- 🧪 **Meilleure ergonomie sur téléphone (type iPhone)** — en test sur le site de test (version 2.1) : écrans plus adaptés au petit écran et au pouce (onglets, boutons, listes, barre du bas), affichage sur l'écran d'accueil comme une application. À préciser avec Gwen à partir de captures des écrans gênants.
 
 ## Suivi et pilotage
 - ⚪ **Statistiques de consommation** par article et par cabinet (mois par mois), pour ajuster les seuils.

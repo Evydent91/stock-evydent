@@ -1,7 +1,17 @@
 // Journal des versions (affiché dans Plus, pour la référente et la responsable).
 // Types : Majeure (changement profond), Mineure (nouvelle fonction), Correctif (réparation).
 // c = changements visibles ; x = opérations sur les données (pour la responsable).
-window.JOURNAL = [{v:"2.0",t:"Majeure",n:"Nouvelle application en ligne",d:"8 novembre 2026",
+window.JOURNAL = [{v:"2.1",t:"Mineure",n:"Confort sur téléphone",d:"Novembre 2026 (en test)",
+ w:"Rendre l’application plus simple à utiliser d’une main sur téléphone (iPhone et Android), là où elle sert le plus au cabinet.",
+ c:[
+ "Sur téléphone, les onglets passent en bas de l’écran, à portée de pouce : Accueil, Sortie, Inventaire, Commandes et Menu pour la référente et la responsable ; Sortie, Retour, Inventaire et Historique pour les assistantes.",
+ "Le bouton « Menu » ouvre une grille avec les autres écrans (Demandes avec leur nombre, Retour, Stock, Articles, Fournisseurs, Historique, Équipe, Plus, Mon code, Changer de personne).",
+ "En-tête plus compact ; la barre « Valider la sortie / le retour / l’inventaire » se place juste au-dessus des onglets.",
+ "Boutons, cases de quantité et filtres plus grands pour le doigt ; filtres sur une seule ligne qui défile.",
+ "Historique présenté en cartes lisibles au lieu d’un tableau.",
+ "Installation possible sur l’écran d’accueil (iPhone : Partager › Sur l’écran d’accueil) : l’appli s’ouvre alors en plein écran avec son icône, comme une application.",
+ "Ordinateur : aucun changement."],x:[]},
+{v:"2.0",t:"Majeure",n:"Nouvelle application en ligne",d:"8 novembre 2026",
  w:"Passer d’une application dans Claude à une vraie application en ligne : comptes personnels, données dans une base sécurisée (Supabase), site de test séparé du site réel, chaque modification validée étape par étape avant la mise en ligne.",
  c:[
  "Connexion personnelle : chaque personne a son identifiant (sans email) ; les assistantes se connectent avec un code à 6 chiffres (clavier numérique sur téléphone), la référente et la responsable avec un mot de passe solide (10 caractères minimum, lettres et chiffres). Pas de déconnexion automatique ; bouton « Changer de personne » qui remet l’appli à zéro pour la suivante (cabinet par défaut, panier, inventaire).",

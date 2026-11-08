@@ -57,7 +57,7 @@
   }
   // À chaque changement de personne : on repart de zéro (cabinet par défaut, panier, inventaire, écrans ouverts)
   function oublierPersonne() {
-    S.session = null; S.me = null; S.tab = 'sortie'; S.tabChoisi = false; S.fiche = null; S.eqEdit = null; S.eqNew = null; S.cmBusy = false; S.histTous = false; S.histo = [];
+    S.session = null; S.me = null; S.tab = 'sortie'; S.tabChoisi = false; S.fiche = null; S.eqEdit = null; S.eqNew = null; S.cmBusy = false; S.histTous = false; S.histo = []; S.menu = false;
     S.sortie = { cab: null, q: '', panier: {}, msg: null, busy: false };
     S.ret = { cab: null, q: '', panier: {}, msg: null, busy: false };
     S.inv = { emp: null, d: {}, q: '', tous: false, recap: false, motifs: {}, busy: false, msg: null, max: 80 };
@@ -164,15 +164,32 @@
     if (gestion()) tabs.push(['equipe', 'Équipe'], ['plus', 'Plus']);
     var h = '<header class="top"><div class="top-in"><img src="assets/logo-evydent.jpg" alt="">'
       + '<div class="top-who"><b>' + esc(S.me.nom) + (C.env === 'dev' ? ' <span class="env">TEST</span>' : '') + '</b><span>' + LABEL[S.me.role] + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + '</span></div>'
-      + '<button class="btn l sm" data-tab="compte" title="Changer mon code" aria-label="Changer mon code">🔑</button><button class="btn l sm" data-act="out">Changer de personne</button></div>'
+      + '<button class="btn l sm" data-tab="compte" title="Changer mon code" aria-label="Changer mon code">🔑</button><button class="btn l sm" data-act="out" aria-label="Changer de personne"><span class="m-hide">Changer de personne</span><span class="m-only">👤 Changer</span></button></div>'
       + '<nav class="tabs" aria-label="Menu">' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav></header>';
     if (S.nouvelleVersion) h += '<div class="ban ok" style="max-width:1100px;margin:10px auto 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1">Une nouvelle version de l’application est disponible (' + esc(S.nouvelleVersion) + ').</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>';
     h += '<main>' + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour, plus: vPlus }[S.tab] || vSortie)() + '</main>';
     h += '<p class="mu" style="text-align:center;font-size:12px;margin:0 0 90px">Version ' + esc(C.version || '') + '</p>';
+    h += vNavMobile();
     h += (S.tab === 'sortie' ? vBarSortie() : S.tab === 'retour' ? vBarRetour() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
     var fq = document.activeElement && document.activeElement.id, pos = fq && document.activeElement.selectionStart;
     app.innerHTML = h;
     if (fq && $(fq)) { $(fq).focus(); try { $(fq).setSelectionRange(pos, pos); } catch (e) {} }
+  }
+
+  // ---------- Navigation téléphone : barre du bas + menu ----------
+  var ICO = { accueil: '🏠', sortie: '📤', retour: '↩️', inventaire: '📋', demandes: '⏳', stock: '📦', commandes: '🛒', articles: '🏷️', fournisseurs: '🚚', histo: '🕘', equipe: '👥', plus: '⚙️', compte: '🔑' };
+  var NOMS = { accueil: 'Accueil', sortie: 'Sortie', retour: 'Retour', inventaire: 'Inventaire', demandes: 'Demandes', stock: 'Stock', commandes: 'Commandes', articles: 'Articles', fournisseurs: 'Fournisseurs', histo: 'Historique', equipe: 'Équipe', plus: 'Plus', compte: 'Mon code' };
+  function vNavMobile() {
+    var bas = gestion() ? ['accueil', 'sortie', 'inventaire', 'commandes'] : ['sortie', 'retour', 'inventaire', 'histo'];
+    var menu = gestion() ? ['demandes', 'retour', 'stock', 'articles', 'fournisseurs', 'histo', 'equipe', 'plus', 'compte'] : ['compte'];
+    var att = gestion() ? S.attente.length : 0, dansMenu = menu.indexOf(S.tab) >= 0;
+    var h = '<nav class="bnav" aria-label="Menu principal">' + bas.map(function (t) {
+      return '<button data-tab="' + t + '" class="' + (S.tab === t && !S.menu ? 'on' : '') + '"><span class="bi">' + ICO[t] + '</span><span>' + NOMS[t] + '</span></button>';
+    }).join('') + '<button data-act="menu" class="' + (S.menu || dansMenu ? 'on' : '') + '" aria-expanded="' + !!S.menu + '"><span class="bi">☰' + (att ? '<span class="badge">' + att + '</span>' : '') + '</span><span>' + (dansMenu && !S.menu ? NOMS[S.tab] : 'Menu') + '</span></button></nav>';
+    if (S.menu) h += '<button class="sheet-bg" data-act="menu" aria-label="Fermer le menu"></button><div class="sheet" role="dialog" aria-label="Menu"><div class="sheet-grip"></div><div class="sheet-grid">'
+      + menu.map(function (t) { return '<button data-tab="' + t + '" class="' + (S.tab === t ? 'on' : '') + '"><span class="bi">' + ICO[t] + (t === 'demandes' && att ? '<span class="badge">' + att + '</span>' : '') + '</span><span>' + NOMS[t] + '</span></button>'; }).join('')
+      + '<button data-act="out"><span class="bi">👤</span><span>Changer de personne</span></button></div></div>';
+    return h;
   }
 
   // ---------- Sortie ----------
@@ -1343,7 +1360,8 @@
     var t = e.target.closest('button'); if (!t || !S.me) return;
     var d = t.dataset;
     if (d.go) { var g = d.go.split(':'); S.tab = g[0]; S.tabChoisi = true; if (g[0] === 'stock') S.stockF = g[1] || ''; if (g[0] === 'inventaire' && g[1] !== undefined) choisirEmp(+g[1]); if (g[0] === 'histo') { S.histTous = true; chargerHisto(); } render(); window.scrollTo(0, 0); return; }
-    if (d.tab) { S.fiche = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); render(); window.scrollTo(0, 0); return; }
+    if (d.act === 'menu') { S.menu = !S.menu; render(); return; }
+    if (d.tab) { S.menu = false; S.fiche = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'out') { if (confirm('Changer de personne ? La personne suivante devra se connecter avec son identifiant et son code.')) deconnexion(); return; }
     if (d.act === 'maj') return mettreAJour();
     if (d.act === 'sauver') return telechargerSauvegarde();
