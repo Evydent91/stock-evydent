@@ -6,6 +6,7 @@
 //   { action: "creer", identifiant, nom, role, cabinet, mdp }
 //   { action: "reinit", user_id, mdp }          -> nouveau code / mot de passe
 //   { action: "actif", user_id, actif }         -> bloque ou débloque la connexion
+//   { action: "identifiant", user_id, identifiant } -> change l'identifiant de connexion
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const DOMAINE = "espace-dentaire-val-d-yerres.fr";
@@ -103,6 +104,19 @@ Deno.serve(async (req) => {
     const { error: e2 } = await admin.from("profils").update({ actif }).eq("id", id);
     if (e2) return erreur(e2.message);
     return rep({ ok: true });
+  }
+
+  // 5. Changement d'identifiant de connexion
+  if (b.action === "identifiant") {
+    const id = String(b.user_id), identifiant = identifiantPropre(String(b.identifiant));
+    if (!/^[a-z0-9._-]{2,30}$/.test(identifiant)) return erreur("Identifiant : 2 à 30 lettres ou chiffres, sans espace ni accent");
+    const { data: deja } = await admin.from("profils").select("id").eq("identifiant", identifiant).neq("id", id).maybeSingle();
+    if (deja) return erreur("Cet identifiant est déjà utilisé");
+    const { error } = await admin.auth.admin.updateUserById(id, { email: `${identifiant}@${DOMAINE}`, email_confirm: true });
+    if (error) return erreur(error.message.includes("already") ? "Cet identifiant est déjà utilisé" : "Changement impossible : " + error.message);
+    const { error: e2 } = await admin.from("profils").update({ identifiant }).eq("id", id);
+    if (e2) return erreur(e2.message);
+    return rep({ ok: true, identifiant });
   }
 
   return erreur("Action inconnue");

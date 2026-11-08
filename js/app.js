@@ -947,6 +947,7 @@
     return h + ps.map(function (p) {
       if (S.eqEdit === p.id) {
         return '<div class="card"><div class="g2">'
+          + '<label class="mu">Identifiant de connexion<input class="in" id="eid" autocomplete="off" autocapitalize="none" value="' + esc(p.identifiant) + '"></label>'
           + '<label class="mu">Prénom affiché<input class="in" id="enom" value="' + esc(p.nom) + '"></label>'
           + '<label class="mu">Rôle<select class="in" id="erole">' + ['assistante', 'referente', 'responsable'].map(function (r) { return '<option value="' + r + '"' + (p.role === r ? ' selected' : '') + '>' + LABEL[r] + '</option>'; }).join('') + '</select></label>'
           + '<label class="mu">Cabinet par défaut<select class="in" id="ecab"><option value="">Aucun</option>' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (p.cabinet === c ? ' selected' : '') + '>Cabinet ' + c + '</option>'; }).join('') + '</select></label>'
@@ -983,7 +984,9 @@
   function sauverProfil(id) {
     var p = S.profils.filter(function (x) { return x.id === id; })[0];
     var o = { nom: $('enom').value.trim(), role: $('erole').value, cabinet: $('ecab').value ? +$('ecab').value : null, reserve_jusquau: $('eres').value || null };
-    var actif = $('eact').checked;
+    var actif = $('eact').checked, ident = norm($('eid').value).replace(/\s+/g, ''), identChange = ident !== p.identifiant || (id === S.me.id && S.session && S.session.user && String(S.session.user.email).toLowerCase() !== ident + '@' + C.domaine);
+    if (!ident) { toast('L’identifiant ne peut pas être vide'); return; }
+    if (identChange && !confirm('Nouvel identifiant de connexion pour ' + p.nom + ' : « ' + ident + ' ».\nÀ la prochaine connexion, il faudra taper « ' + ident + ' ». Le code ne change pas.')) return;
     if (!o.nom) { toast('Le prénom ne peut pas être vide'); return; }
     if (id === S.me.id && o.role === 'assistante' && !confirm('Vous allez retirer vos propres droits de gestion. Continuer ?')) return;
     if (p.actif && !actif && !confirm('Désactiver le compte de ' + p.nom + ' ? Elle ne pourra plus se connecter. Son historique est conservé et le compte pourra être réactivé.')) return;
@@ -993,7 +996,8 @@
       if (!r.data || !r.data.length) throw new Error('Modification refusée');
       if (id === S.me.id) S.me = r.data[0];
       return actif !== p.actif ? equipe({ action: 'actif', user_id: id, actif: actif }) : null;
-    }).then(function () { S.eqEdit = null; toast('✔ Profil enregistré' + (actif !== p.actif ? (actif ? ' · compte réactivé' : ' · compte désactivé') : '')); charger(); })
+    }).then(function () { return identChange ? equipe({ action: 'identifiant', user_id: id, identifiant: ident }) : null;
+    }).then(function () { if (identChange && id === S.me.id) S.me.identifiant = ident; S.eqEdit = null; toast('✔ Profil enregistré' + (identChange ? ' · identifiant : ' + ident : '') + (actif !== p.actif ? (actif ? ' · compte réactivé' : ' · compte désactivé') : '')); charger(); })
       .catch(function (e) { toast(msgErr(e)); });
   }
   // ---------- Mon code (tout le monde) ----------
