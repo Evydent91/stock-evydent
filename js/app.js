@@ -164,6 +164,7 @@
       + '<div class="top-who"><b>' + esc(S.me.nom) + (C.env === 'dev' ? ' <span class="env">TEST</span>' : '') + '</b><span>' + LABEL[S.me.role] + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + '</span></div>'
       + '<button class="btn l sm" data-tab="compte" title="Changer mon code" aria-label="Changer mon code">🔑</button><button class="btn l sm" data-act="out">Changer de personne</button></div>'
       + '<nav class="tabs" aria-label="Menu">' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav></header>';
+    if (S.nouvelleVersion) h += '<div class="ban ok" style="max-width:1100px;margin:10px auto 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1">Une nouvelle version de l’application est disponible (' + esc(S.nouvelleVersion) + ').</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>';
     h += '<main>' + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour }[S.tab] || vSortie)() + '</main>';
     h += '<p class="mu" style="text-align:center;font-size:12px;margin:0 0 90px">Version ' + esc(C.version || '') + '</p>';
     h += (S.tab === 'sortie' ? vBarSortie() : S.tab === 'retour' ? vBarRetour() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
@@ -1078,6 +1079,7 @@
     if (d.go) { var g = d.go.split(':'); S.tab = g[0]; S.tabChoisi = true; if (g[0] === 'stock') S.stockF = g[1] || ''; if (g[0] === 'inventaire' && g[1] !== undefined) choisirEmp(+g[1]); if (g[0] === 'histo') { S.histTous = true; chargerHisto(); } render(); window.scrollTo(0, 0); return; }
     if (d.tab) { S.fiche = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'out') { if (confirm('Changer de personne ? La personne suivante devra se connecter avec son identifiant et son code.')) deconnexion(); return; }
+    if (d.act === 'maj') return mettreAJour();
     if (d.act === 'valider') return validerSortie();
     if (d.act === 'rvalider') return validerRetour();
     if (d.act === 'rvider') { S.ret.panier = {}; render(); return; }
@@ -1190,7 +1192,19 @@
     else if (t.dataset && t.dataset.imotif) { S.inv.motifs[t.dataset.imotif] = t.value; }
     else if (t.id === 'htous') { S.histTous = t.checked; chargerHisto(); }
   });
-  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && S.me) charger(); });
+  // Nouvelle version publiée ? On compare avec le fichier config.js du serveur, sans cache.
+  function verifierVersion() {
+    fetch('js/config.js?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+      var m = t.match(/version = '([^']+)'/);
+      if (m && m[1] !== C.version && !S.nouvelleVersion) { S.nouvelleVersion = m[1]; render(); }
+    }).catch(function () {});
+  }
+  function mettreAJour() {
+    var f = ['./', 'index.html'];
+    Promise.all(f.map(function (u) { return fetch(u, { cache: 'reload' }).catch(function () {}); })).then(function () { location.reload(); });
+  }
+  setInterval(verifierVersion, 5 * 60 * 1000); setTimeout(verifierVersion, 3000);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { verifierVersion(); if (S.me) charger(); } });
 
   // ---------- Démarrage ----------
   sb.auth.getSession().then(function (r) { if (r.data.session) demarrer(r.data.session); else render(); });
