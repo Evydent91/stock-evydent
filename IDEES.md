@@ -19,6 +19,12 @@ Légende : 🟢 prête à faire · 🟡 à préciser avec Gwen · ⚪ à l'étud
 - 🟡 **Refuser les codes trop simples** (123456, 000000, suites, chiffres identiques) pour les assistantes.
 - ⚪ **Message d'erreur plus précis** quand le service des comptes ne répond pas (afficher la cause technique).
 
+## Sauvegarde
+- 🟡 **Importer une sauvegarde** : recharger dans l'appli un fichier Excel de sauvegarde (onglet Plus), pour restaurer les données après un problème. À préciser : tout remplacer ou seulement une partie (fiches, stock, fournisseurs), et qui a le droit de le faire.
+
+## Ergonomie
+- 🟡 **Meilleure ergonomie sur téléphone (type iPhone)** : écrans plus adaptés au petit écran et au pouce (onglets, boutons, listes, barre du bas), affichage sur l'écran d'accueil comme une application. À préciser avec Gwen à partir de captures des écrans gênants.
+
 ## Suivi et pilotage
 - ⚪ **Statistiques de consommation** par article et par cabinet (mois par mois), pour ajuster les seuils.
 - ⚪ **Rappel automatique de sauvegarde** par email ou notification, en plus du bandeau sur l'accueil.
