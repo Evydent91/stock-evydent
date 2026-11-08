@@ -36,6 +36,7 @@
   function msgErr(e) {
     var m = (e && (e.message || e.error_description)) || String(e);
     if (/Invalid login credentials/i.test(m)) return 'Identifiant ou mot de passe incorrect.';
+    if (/banned/i.test(m)) return 'Ce compte est désactivé. Voyez la référente ou la responsable.';
     if (/row-level security|permission denied/i.test(m)) return 'Action non autorisée pour votre compte.';
     if (/Failed to fetch|NetworkError/i.test(m)) return 'Pas de connexion internet. Réessayez.';
     return m;
@@ -152,9 +153,9 @@
     if (gestion()) tabs.push(['equipe', 'Équipe']);
     var h = '<header class="top"><div class="top-in"><img src="assets/logo-evydent.jpg" alt="">'
       + '<div class="top-who"><b>' + esc(S.me.nom) + (C.env === 'dev' ? ' <span class="env">TEST</span>' : '') + '</b><span>' + LABEL[S.me.role] + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + '</span></div>'
-      + '<button class="btn l sm" data-act="out">Changer de personne</button></div>'
+      + '<button class="btn l sm" data-tab="compte" title="Changer mon code" aria-label="Changer mon code">🔑</button><button class="btn l sm" data-act="out">Changer de personne</button></div>'
       + '<nav class="tabs" aria-label="Menu">' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav></header>';
-    h += '<main>' + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes }[S.tab] || vSortie)() + '</main>';
+    h += '<main>' + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte }[S.tab] || vSortie)() + '</main>';
     h += (S.tab === 'sortie' ? vBarSortie() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
     var fq = document.activeElement && document.activeElement.id, pos = fq && document.activeElement.selectionStart;
     app.innerHTML = h;
@@ -901,34 +902,116 @@
   }
 
   // ---------- Équipe (gestion) ----------
+  // Règles des codes : assistante = 6 chiffres ; référente / responsable = 10 caractères, lettres et chiffres.
+  function regleMdp(role, m) {
+    if (role === 'assistante') return /^\d{6}$/.test(m) ? null : 'Le code d’une assistante doit faire 6 chiffres';
+    return m.length >= 10 && /[A-Za-z]/.test(m) && /\d/.test(m) ? null : 'Le mot de passe doit faire au moins 10 caractères, avec des lettres et des chiffres';
+  }
+  function champMdp(id, role, label) {
+    var num = role === 'assistante';
+    return '<label class="mu">' + label + ' <small>(' + (num ? '6 chiffres' : '10 caractères min., lettres et chiffres') + ')</small><input class="in" id="' + id + '" type="password" autocomplete="new-password"' + (num ? ' inputmode="numeric" maxlength="6"' : '') + '></label>';
+  }
+  function equipe(corps) {
+    return sb.functions.invoke('equipe', { body: corps }).then(function (r) {
+      if (r.error) {
+        var c = r.error.context;
+        if (c && typeof c.json === 'function') return c.json().then(function (j) { throw new Error(j && j.erreur || r.error.message); }, function () { throw new Error(r.error.message); });
+        throw new Error(/Failed to send|fetch/i.test(r.error.message) ? 'Service des comptes injoignable (fonction « equipe » pas encore installée ?)' : r.error.message);
+      }
+      if (r.data && r.data.erreur) throw new Error(r.data.erreur);
+      return r.data;
+    });
+  }
   function vEquipe() {
-    var h = '<h2>Équipe</h2><p class="mu">Rôle, cabinet par défaut, activation, et autorisation temporaire d’inventaire de la réserve. La création des comptes depuis l’application arrive dans la prochaine livraison.</p>';
-    return h + S.profils.map(function (p) {
+    var h = '<h2>Équipe</h2><div class="row wrap" style="margin-bottom:10px"><p class="mu grow" style="margin:0">Comptes, rôles, cabinet par défaut et autorisation temporaire d’inventaire de la réserve. Un compte désactivé ne peut plus se connecter ; son historique est conservé.</p>'
+      + (S.eqNew ? '' : '<button class="btn" data-act="eqnew">+ Nouveau compte</button>') + '</div>';
+    if (S.eqNew) {
+      var N = S.eqNew;
+      h += '<div class="card" style="border:2px solid var(--gold)"><b>Nouveau compte</b><div class="g2" style="margin-top:8px">'
+        + '<label class="mu">Identifiant de connexion<input class="in" id="nid" autocomplete="off" autocapitalize="none" value="' + esc(N.identifiant) + '" placeholder="ex. sarah"></label>'
+        + '<label class="mu">Prénom affiché<input class="in" id="nnom" value="' + esc(N.nom) + '"></label>'
+        + '<label class="mu">Rôle<select class="in" id="nrole">' + ['assistante', 'referente', 'responsable'].map(function (r) { return '<option value="' + r + '"' + (N.role === r ? ' selected' : '') + '>' + LABEL[r] + '</option>'; }).join('') + '</select></label>'
+        + '<label class="mu">Cabinet par défaut<select class="in" id="ncab"><option value="">Aucun</option>' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+N.cabinet === c ? ' selected' : '') + '>Cabinet ' + c + '</option>'; }).join('') + '</select></label>'
+        + champMdp('nmdp', N.role, N.role === 'assistante' ? 'Code' : 'Mot de passe') + champMdp('nmdp2', N.role, 'Confirmer')
+        + '</div><p class="mu" style="margin:10px 0">Notez le code et donnez-le à la personne : il ne sera plus affiché ensuite.</p>'
+        + '<div class="row"><button class="btn l" data-act="eqnewno">Annuler</button><button class="btn" data-act="eqnewok"' + (N.busy ? ' disabled' : '') + '>Créer le compte</button></div></div>';
+    }
+    var ps = S.profils.slice().sort(function (a, b) { return (b.actif - a.actif) || a.nom.localeCompare(b.nom); });
+    return h + ps.map(function (p) {
       if (S.eqEdit === p.id) {
         return '<div class="card"><div class="g2">'
           + '<label class="mu">Prénom affiché<input class="in" id="enom" value="' + esc(p.nom) + '"></label>'
           + '<label class="mu">Rôle<select class="in" id="erole">' + ['assistante', 'referente', 'responsable'].map(function (r) { return '<option value="' + r + '"' + (p.role === r ? ' selected' : '') + '>' + LABEL[r] + '</option>'; }).join('') + '</select></label>'
           + '<label class="mu">Cabinet par défaut<select class="in" id="ecab"><option value="">Aucun</option>' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (p.cabinet === c ? ' selected' : '') + '>Cabinet ' + c + '</option>'; }).join('') + '</select></label>'
           + '<label class="mu">Inventaire de la réserve autorisé jusqu’au<input class="in" type="date" id="eres" value="' + esc(p.reserve_jusquau || '') + '"></label>'
-          + '</div><label class="row" style="margin:12px 0"><input type="checkbox" id="eact"' + (p.actif ? ' checked' : '') + ' style="width:20px;height:20px"> Compte actif</label>'
-          + '<div class="row"><button class="btn l" data-act="eannule">Annuler</button><button class="btn" data-esave="' + p.id + '">Enregistrer</button></div></div>';
+          + '</div><label class="row" style="margin:12px 0"><input type="checkbox" id="eact"' + (p.actif ? ' checked' : '') + (p.id === S.me.id ? ' disabled' : '') + ' style="width:20px;height:20px"> Compte actif' + (p.id === S.me.id ? ' <span class="mu">(votre compte)</span>' : '') + '</label>'
+          + '<div class="row"><button class="btn l" data-act="eannule">Annuler</button><button class="btn" data-esave="' + p.id + '">Enregistrer</button></div>'
+          + '<div style="border-top:1px solid var(--soft);margin-top:14px;padding-top:12px"><b>🔑 Réinitialiser ' + (p.role === 'assistante' ? 'le code' : 'le mot de passe') + '</b> <span class="mu">(si la personne l’a oublié)</span><div class="g2" style="margin-top:8px">'
+          + champMdp('rmdp', p.role, 'Nouveau') + champMdp('rmdp2', p.role, 'Confirmer') + '</div><button class="btn l" style="margin-top:10px" data-ereinit="' + p.id + '">Réinitialiser</button></div></div>';
       }
       var res = p.reserve_jusquau && p.reserve_jusquau >= new Date().toISOString().slice(0, 10);
-      return '<div class="card row wrap"><div class="grow"><b>' + esc(p.nom) + '</b> <span class="mu">(' + esc(p.identifiant) + ')</span><br><span class="mu">' + LABEL[p.role] + (p.cabinet ? ' · cabinet ' + p.cabinet : '') + (res ? ' · réserve autorisée jusqu’au ' + p.reserve_jusquau.split('-').reverse().join('/') : '') + '</span> ' + (p.actif ? '' : '<span class="pill ko">inactif</span>') + '</div>'
+      return '<div class="card row wrap"' + (p.actif ? '' : ' style="opacity:.65"') + '><div class="grow"><b>' + esc(p.nom) + '</b> <span class="mu">(' + esc(p.identifiant) + ')</span>' + (p.actif ? '' : ' <span class="pill ko">désactivé</span>') + '<br><span class="mu">' + LABEL[p.role] + (p.cabinet ? ' · cabinet ' + p.cabinet : '') + (res ? ' · réserve autorisée jusqu’au ' + p.reserve_jusquau.split('-').reverse().join('/') : '') + '</span></div>'
         + '<button class="btn l sm" data-eedit="' + p.id + '">Modifier</button></div>';
     }).join('');
   }
+  function creerCompte() {
+    var N = S.eqNew, m = $('nmdp').value, m2 = $('nmdp2').value;
+    N.identifiant = norm($('nid').value).replace(/\s+/g, ''); N.nom = $('nnom').value.trim();
+    if (!N.identifiant || !N.nom) { toast('Identifiant et prénom obligatoires'); return; }
+    var pb = regleMdp(N.role, m); if (pb) { toast(pb); return; }
+    if (m !== m2) { toast('Les deux saisies ne correspondent pas'); return; }
+    N.busy = true; render();
+    equipe({ action: 'creer', identifiant: N.identifiant, nom: N.nom, role: N.role, cabinet: N.cabinet ? +N.cabinet : null, mdp: m }).then(function (r) {
+      S.eqNew = null; toast('✔ Compte créé · identifiant : ' + r.identifiant); charger();
+    }).catch(function (e) { N.busy = false; toast(e.message); render(); });
+  }
+  function reinitMdp(id) {
+    var p = S.profils.filter(function (x) { return x.id === id; })[0], m = $('rmdp').value, m2 = $('rmdp2').value;
+    var pb = regleMdp(p.role, m); if (pb) { toast(pb); return; }
+    if (m !== m2) { toast('Les deux saisies ne correspondent pas'); return; }
+    if (!confirm('Remplacer ' + (p.role === 'assistante' ? 'le code' : 'le mot de passe') + ' de ' + p.nom + ' ?')) return;
+    equipe({ action: 'reinit', user_id: id, mdp: m }).then(function () { $('rmdp').value = ''; $('rmdp2').value = ''; toast('✔ Nouveau ' + (p.role === 'assistante' ? 'code' : 'mot de passe') + ' enregistré pour ' + p.nom); })
+      .catch(function (e) { toast(e.message); });
+  }
   function sauverProfil(id) {
-    var o = { nom: $('enom').value.trim(), role: $('erole').value, cabinet: $('ecab').value ? +$('ecab').value : null, actif: $('eact').checked, reserve_jusquau: $('eres').value || null };
+    var p = S.profils.filter(function (x) { return x.id === id; })[0];
+    var o = { nom: $('enom').value.trim(), role: $('erole').value, cabinet: $('ecab').value ? +$('ecab').value : null, reserve_jusquau: $('eres').value || null };
+    var actif = $('eact').checked;
     if (!o.nom) { toast('Le prénom ne peut pas être vide'); return; }
-    if (id === S.me.id && (!o.actif || o.role === 'assistante') && !confirm('Vous allez retirer vos propres droits de gestion. Continuer ?')) return;
+    if (id === S.me.id && o.role === 'assistante' && !confirm('Vous allez retirer vos propres droits de gestion. Continuer ?')) return;
+    if (p.actif && !actif && !confirm('Désactiver le compte de ' + p.nom + ' ? Elle ne pourra plus se connecter. Son historique est conservé et le compte pourra être réactivé.')) return;
+    if (o.role !== p.role) toast(o.role === 'assistante' ? 'Pensez à lui donner un code à 6 chiffres (Réinitialiser)' : p.role === 'assistante' ? 'Pensez à lui donner un mot de passe solide (Réinitialiser)' : '');
     sb.from('profils').update(o).eq('id', id).select().then(function (r) {
-      if (r.error) { toast(msgErr(r.error)); return; }
-      if (!r.data || !r.data.length) { toast('Modification refusée'); return; }
-      S.eqEdit = null; toast('✔ Profil enregistré');
+      if (r.error) throw r.error;
+      if (!r.data || !r.data.length) throw new Error('Modification refusée');
       if (id === S.me.id) S.me = r.data[0];
-      charger();
-    });
+      return actif !== p.actif ? equipe({ action: 'actif', user_id: id, actif: actif }) : null;
+    }).then(function () { S.eqEdit = null; toast('✔ Profil enregistré' + (actif !== p.actif ? (actif ? ' · compte réactivé' : ' · compte désactivé') : '')); charger(); })
+      .catch(function (e) { toast(msgErr(e)); });
+  }
+  // ---------- Mon code (tout le monde) ----------
+  function vCompte() {
+    var r = S.me.role, quoi = r === 'assistante' ? 'code' : 'mot de passe';
+    return '<h2>Changer mon ' + quoi + '</h2><div class="card" style="max-width:520px">'
+      + '<p class="mu" style="margin-top:0">Connectée en tant que <b>' + esc(S.me.nom) + '</b> (' + esc(S.me.identifiant) + ').</p><div style="display:flex;flex-direction:column;gap:10px">'
+      + champMdp('cm0', r, (r === 'assistante' ? 'Code' : 'Mot de passe') + ' actuel').replace(' autocomplete="new-password"', ' autocomplete="current-password"')
+      + champMdp('cm1', r, 'Nouveau ' + quoi) + champMdp('cm2', r, 'Confirmer le nouveau ' + quoi)
+      + '</div><div class="row" style="margin-top:12px"><button class="btn l" data-tab="' + (gestion() ? 'accueil' : 'sortie') + '">Annuler</button><button class="btn" data-act="cmok"' + (S.cmBusy ? ' disabled' : '') + '>Enregistrer</button></div></div>';
+  }
+  function changerMonMdp() {
+    var r = S.me.role, a = $('cm0').value, m = $('cm1').value, m2 = $('cm2').value;
+    var pb = regleMdp(r, m); if (pb) { toast(pb); return; }
+    if (m !== m2) { toast('Les deux saisies ne correspondent pas'); return; }
+    if (m === a) { toast('Le nouveau doit être différent de l’actuel'); return; }
+    S.cmBusy = true; render();
+    var email = S.session && S.session.user && S.session.user.email;
+    sb.auth.signInWithPassword({ email: email, password: a }).then(function (x) {
+      if (x.error) throw new Error((r === 'assistante' ? 'Code' : 'Mot de passe') + ' actuel incorrect');
+      return sb.auth.updateUser({ password: m });
+    }).then(function (x) {
+      if (x.error) throw x.error;
+      S.cmBusy = false; toast('✔ ' + (r === 'assistante' ? 'Code' : 'Mot de passe') + ' changé'); S.tab = gestion() ? 'accueil' : 'sortie'; render();
+    }).catch(function (e) { S.cmBusy = false; toast(msgErr(e)); render(); });
   }
 
   // ---------- Événements (délégation) ----------
@@ -1000,6 +1083,11 @@
     if (d.copie != null) { try { navigator.clipboard.writeText(d.copie).then(function () { toast('✔ Copié'); }); } catch (er) { toast('Copie impossible'); } return; }
     if (d.act === 'eannule') { S.eqEdit = null; render(); return; }
     if (d.esave) return sauverProfil(d.esave);
+    if (d.ereinit) return reinitMdp(d.ereinit);
+    if (d.act === 'eqnew') { S.eqNew = { identifiant: '', nom: '', role: 'assistante', cabinet: '' }; S.eqEdit = null; render(); return; }
+    if (d.act === 'eqnewno') { S.eqNew = null; render(); return; }
+    if (d.act === 'eqnewok') return creerCompte();
+    if (d.act === 'cmok') return changerMonMdp();
   });
   document.addEventListener('input', function (e) {
     var t = e.target; if (!S.me) return;
@@ -1025,7 +1113,9 @@
   });
   document.addEventListener('change', function (e) {
     var t = e.target; if (!S.me) return;
-    if (t.id === 'impf') { var fi = t.files && t.files[0]; t.value = ''; importerFacture(fi); }
+    if (t.id === 'nrole' && S.eqNew) { S.eqNew.role = t.value; S.eqNew.identifiant = $('nid').value; S.eqNew.nom = $('nnom').value; render(); }
+    else if (t.id === 'ncab' && S.eqNew) { S.eqNew.cabinet = t.value; }
+    else if (t.id === 'impf') { var fi = t.files && t.files[0]; t.value = ''; importerFacture(fi); }
     else if (t.dataset && t.dataset.impc != null && S.fiche && S.fiche.imp) { S.fiche.imp.items[+t.dataset.impc].choix = t.value; render(); }
     else if (t.id === 'scab') { S.sortie.cab = +t.value; render(); }
     else if (t.id === 'ncfo') { S.nc.fid = t.value; S.nc.l.forEach(function (l) { l.prix = prixChez(S.byId[l.article_id], +t.value); }); render(); }
