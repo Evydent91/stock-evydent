@@ -517,13 +517,23 @@
     });
   }
   function optFo(sel, vide) { return (vide ? '<option value="">' + vide + '</option>' : '') + S.fournListe.filter(function (f) { return !f.archive || String(f.id) === String(sel); }).map(function (f) { return '<option value="' + f.id + '"' + (String(f.id) === String(sel) ? ' selected' : '') + '>' + esc(f.nom) + '</option>'; }).join(''); }
+  // Synthèse : y a-t-il du stock de cet article quelque part ?
+  function synthStock(a) {
+    var f = facteur(a), r = stockDe(a.id, 0), cabs = [1, 2, 3, 4, 5, 6, 7, 8].filter(function (c) { return Math.abs(stockDe(a.id, c)) > 1e-9; });
+    if (Math.abs(r) < 1e-9 && !cabs.length) return '<div class="ban ok">📦 <b>Aucun stock</b> : réserve et cabinets à 0.</div>';
+    var uc = cabs.reduce(function (t, c) { return t + stockDe(a.id, c); }, 0), cm = +a.cout_moyen || 0, val = r * cm + uc / f * cm, parts = [];
+    if (Math.abs(r) > 1e-9) parts.push(fr(r) + ' ' + uRes(a) + ' en réserve');
+    if (cabs.length) parts.push(fr(uc) + ' u. dans ' + cabs.length + ' cabinet' + (cabs.length > 1 ? 's' : '') + ' (' + cabs.map(function (c) { return c; }).join(', ') + ')');
+    return '<div class="ban warn">📦 <b>En stock</b> : ' + parts.join(' + ') + (cm ? ' · valeur ≈ ' + eur(val) : '') + '.</div>';
+  }
   function vFicheArticle() {
     var F = S.fiche, a = F.d;
     var h = '<button class="lnk" data-act="fclose">← Tous les articles</button>';
     if (!a) return h + '<p class="mu">Chargement…</p>';
-    if (F.edit) return h + vEditArticle();
+    if (F.edit) return h + synthStock(a) + vEditArticle();
     var f = facteur(a), cabs = [1, 2, 3, 4, 5, 6, 7, 8].filter(function (c) { return stockDe(a.id, c); });
     h += '<div class="card"><div class="row wrap"><div class="grow"><h2 style="margin:0">' + esc(a.nom) + '</h2><span class="mu">Réf. ' + (a.reference && !estSR(a) ? esc(a.reference) : '<span class="pill warn">SR</span>') + ' · ' + esc(S.fournisseurs[a.fournisseur_id] || 'SF') + (a.archive ? ' · <span class="pill ko">archivé</span>' : '') + '</span></div><button class="btn" data-act="aedit">✏️ Modifier</button></div></div>';
+    h += synthStock(a);
     h += '<div class="card"><b>📦 Conditionnement et stock</b><dl class="dl">'
       + '<dt>Conditionnement</dt><dd>' + condTxt(a) + (a.conditionnement === 'BOITE' && +a.qte_par_boite > 1 && !a.conso_verifiee ? ' <span class="pill warn">consommation à vérifier</span>' : '') + '</dd>'
       + '<dt>Réserve</dt><dd>' + fr(stockDe(a.id, 0)) + ' ' + uRes(a) + (f > 1 ? ' (' + fr(stockDe(a.id, 0) * f) + ' u.)' : '') + '</dd>'
