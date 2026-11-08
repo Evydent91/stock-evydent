@@ -198,6 +198,15 @@ html{-webkit-tap-highlight-color:transparent}
   /* formulaires */
   .g2,.g4{grid-template-columns:1fr}
   .in,select.in{height:50px}
+  /* fiche article en modification : une ligne fournisseur = nom sur toute la largeur, puis prix et référence */
+  .forow{display:grid !important;grid-template-columns:18px 1fr 1fr auto auto;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--soft)}
+  .forow select.in{grid-column:2 / -1}
+  .forow input.in{width:auto !important;min-width:0}
+  .forow input.in:first-of-type{grid-column:2}
+  /* boutons d'action qui passent à la ligne au lieu de sortir de l'écran */
+  .actrow{flex-wrap:wrap}
+  .actrow .grow{flex-basis:100%;height:0}
+  .actrow .btn{flex:1 1 auto}
 }
 /* appli ouverte depuis l'écran d'accueil (mode application) */
 @media (display-mode:standalone){ body{overscroll-behavior-y:none} }
