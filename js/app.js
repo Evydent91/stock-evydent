@@ -12,7 +12,7 @@
     session: null, me: null, err: '', tab: 'sortie', loading: false,
     articles: [], byId: {}, stocks: {}, fournisseurs: {}, profils: [], attente: [], histo: [],
     sortie: { cab: null, q: '', panier: {}, msg: null, busy: false },
-    stockQ: '', stockF: '', histTous: false, eqEdit: null, pwAbc: false, dernierInv: {}, recents: [], j0: null, invJ0: {}, fiche: null, artQ: '', artF: 'tous', artMax: 100, archives: [], fournListe: [], foArch: false,
+    stockQ: '', stockF: '', histTous: false, eqEdit: null, pwAbc: false, dernierInv: {}, recents: [], j0: null, invJ0: {}, fiche: null, artQ: '', artF: 'tous', artMax: 100, archives: [], fournListe: [], foArch: false, commandes: [], lignes: {}, afPrix: {}, cmdSub: 'sug', sugQ: {}, nc: { fid: '', num: '', q: '', l: [] },
     inv: { emp: null, d: {}, q: '', tous: false, recap: false, motifs: {}, busy: false, msg: null, max: 80 }
   };
   var LABEL = { assistante: 'Assistante', referente: 'Référente', responsable: 'Responsable' };
@@ -113,7 +113,9 @@
       sb.from('mouvements').select('*').eq('statut', 'attente').order('cree_le').then(function (r) { if (r.error) throw r.error; return r.data; }),
       sb.from('parametres').select('cle,valeur').eq('cle', 'j0').then(function (r) { if (r.error) throw r.error; return r.data; }),
       sb.from('inventaires').select('emplacement,date_inv,j0').order('date_inv', { ascending: false }).limit(500).then(function (r) { if (r.error) throw r.error; return r.data; }),
-      sb.from('mouvements').select('*').order('cree_le', { ascending: false }).limit(30).then(function (r) { if (r.error) throw r.error; return r.data; })
+      sb.from('mouvements').select('*').order('cree_le', { ascending: false }).limit(30).then(function (r) { if (r.error) throw r.error; return r.data; }),
+      toutLire('article_fournisseurs', 'article_id,fournisseur_id,prix,rang'),
+      gestion() ? chargerCommandes() : Promise.resolve()
     ];
     return Promise.all(ps).then(function (x) {
       S.articles = x[0].filter(function (a) { return !a.archive; }); S.archives = x[0].filter(function (a) { return a.archive; }); S.byId = {}; x[0].forEach(function (a) { S.byId[a.id] = a; });
@@ -123,6 +125,7 @@
       S.j0 = x[5][0] ? x[5][0].valeur : null;
       S.dernierInv = {}; S.invJ0 = {}; x[6].forEach(function (i) { if (!S.dernierInv[i.emplacement]) S.dernierInv[i.emplacement] = i.date_inv; if (i.j0 && S.j0 && S.j0.debut && i.date_inv.slice(0, 10) >= S.j0.debut) S.invJ0[i.emplacement] = true; });
       S.recents = x[7];
+      S.afPrix = {}; (x[8] || []).forEach(function (p) { (S.afPrix[p.article_id] = S.afPrix[p.article_id] || []).push(p); });
       S.loading = false; render();
       if (S.tab === 'histo') chargerHisto();
     }).catch(function (e) { S.loading = false; toast(msgErr(e)); render(); });
@@ -143,14 +146,14 @@
       $('bout').onclick = deconnexion; return;
     }
     var tabs = gestion() ? [['accueil', 'Accueil'], ['sortie', 'Sortie'], ['inventaire', 'Inventaire']] : [['sortie', 'Sortie'], ['inventaire', 'Inventaire']];
-    if (gestion()) tabs.push(['demandes', 'Demandes' + (S.attente.length ? '<span class="badge">' + S.attente.length + '</span>' : '')], ['stock', 'Stock'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs']);
+    if (gestion()) tabs.push(['demandes', 'Demandes' + (S.attente.length ? '<span class="badge">' + S.attente.length + '</span>' : '')], ['stock', 'Stock'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs']);
     tabs.push(['histo', 'Historique']);
     if (gestion()) tabs.push(['equipe', 'Équipe']);
     var h = '<header class="top"><div class="top-in"><img src="assets/logo-evydent.jpg" alt="">'
       + '<div class="top-who"><b>' + esc(S.me.nom) + (C.env === 'dev' ? ' <span class="env">TEST</span>' : '') + '</b><span>' + LABEL[S.me.role] + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + '</span></div>'
       + '<button class="btn l sm" data-act="out">Changer de personne</button></div>'
       + '<nav class="tabs" aria-label="Menu">' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav></header>';
-    h += '<main>' + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs }[S.tab] || vSortie)() + '</main>';
+    h += '<main>' + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes }[S.tab] || vSortie)() + '</main>';
     h += (S.tab === 'sortie' ? vBarSortie() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
     var fq = document.activeElement && document.activeElement.id, pos = fq && document.activeElement.selectionStart;
     app.innerHTML = h;
@@ -607,6 +610,147 @@
     sb.from('fournisseurs').update({ archive: v }).eq('id', f.id).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } toast(v ? 'Fiche archivée' : 'Fiche réactivée'); S.fiche = null; charger(); });
   }
 
+  // ---------- Commandes et réceptions (gestion) ----------
+  var CST = { attente: ['warn', 'en attente'], partielle: ['warn', 'reliquat'], recue: ['ok', 'reçue'], close: ['', 'close'] };
+  function chargerCommandes() {
+    return Promise.all([
+      sb.from('commandes').select('*').order('date_commande', { ascending: false }).order('id', { ascending: false }).limit(200),
+      sb.from('commande_lignes').select('*')
+    ]).then(function (r) {
+      if (r[0].error) throw r[0].error;
+      S.commandes = r[0].data; S.lignes = {};
+      (r[1].data || []).forEach(function (l) { (S.lignes[l.commande_id] = S.lignes[l.commande_id] || []).push(l); });
+    });
+  }
+  function prixChez(a, fid) { var x = (S.afPrix[a.id] || []).filter(function (p) { return p.fournisseur_id === fid; })[0]; return x && +x.prix ? +x.prix : +a.prix || +a.cout_moyen || 0; }
+  function qteSuggeree(a) { var s = +a.seuil || 0, r = stockDe(a.id, 0); return Math.max(1, Math.ceil(2 * s - r)); }
+  function enCoursPour(aid) { var n = 0; S.commandes.forEach(function (c) { if (c.statut === 'attente' || c.statut === 'partielle') (S.lignes[c.id] || []).forEach(function (l) { if (l.article_id === aid && !l.reliquat_abandonne) n += Math.max(0, l.quantite - l.recu); }); }); return n; }
+  function vCommandes() {
+    if (S.fiche && S.fiche.type === 'commande') return vCommande();
+    var sub = S.cmdSub || 'sug', ouvertes = S.commandes.filter(function (c) { return c.statut === 'attente' || c.statut === 'partielle'; });
+    var h = '<h2>Commandes</h2><div class="chips" style="margin:0 0 12px">'
+      + [['sug', 'À commander'], ['enc', 'En cours' + (ouvertes.length ? ' · ' + ouvertes.length : '')], ['new', '+ Nouvelle commande'], ['his', 'Historique']].map(function (x) { return '<button class="chip' + (sub === x[0] ? ' on' : '') + '" data-csub="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
+    if (sub === 'sug') return h + vSuggestions();
+    if (sub === 'new') return h + vNouvelleCommande();
+    var l = sub === 'enc' ? ouvertes : S.commandes.filter(function (c) { return c.statut === 'recue' || c.statut === 'close'; });
+    if (!l.length) return h + '<p class="mu">' + (sub === 'enc' ? 'Aucune commande en cours.' : 'Aucune commande reçue pour l’instant.') + '</p>';
+    return h + '<div class="card">' + l.map(function (c) {
+      var li = S.lignes[c.id] || [], tot = li.reduce(function (t, x) { return t + x.quantite * x.prix; }, 0), st = CST[c.statut] || ['', c.statut];
+      return '<button class="it lrow" data-copen="' + c.id + '"><span class="it-n"><b>' + esc(S.fournisseurs[c.fournisseur_id] || '?') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</b><span>' + c.date_commande.split('-').reverse().join('/') + ' · ' + li.length + ' ligne(s) · ' + eur(tot) + '</span></span><span class="pill ' + st[0] + '">' + st[1] + '</span></button>';
+    }).join('') + '</div>';
+  }
+  function vSuggestions() {
+    var parF = {};
+    S.articles.filter(function (a) { return filtreStock(a, 'commander'); }).forEach(function (a) { var k = a.fournisseur_id || 0; (parF[k] = parF[k] || []).push(a); });
+    var ks = Object.keys(parF).sort(function (x, y) { return (S.fournisseurs[x] || 'zz').localeCompare(S.fournisseurs[y] || 'zz'); });
+    if (!ks.length) return '<p class="mu">Rien à commander : aucun article sous son seuil d’alerte.</p>';
+    return '<p class="mu">Articles au seuil d’alerte ou en dessous, regroupés par fournisseur principal. Quantité proposée : de quoi remonter à deux fois le seuil (modifiable). Une quantité à 0 retire l’article.</p>' + ks.map(function (k) {
+      var fid = +k, arts = parF[k], tot = 0;
+      var h = '<div class="card"><div class="row wrap"><b class="grow">' + esc(S.fournisseurs[fid] || 'Fournisseur à renseigner (SF)') + ' · ' + arts.length + ' article(s)</b>' + (fid ? '<button class="btn sm" data-cfrom="' + fid + '">Créer la commande</button>' : '<span class="mu">Renseignez le fournisseur des articles pour commander</span>') + '</div>';
+      h += arts.map(function (a) {
+        var key = fid + ':' + a.id, q = S.sugQ[key] != null ? S.sugQ[key] : qteSuggeree(a), p = prixChez(a, fid), enc = enCoursPour(a.id); tot += (+q || 0) * p;
+        return '<div class="it"><div class="it-n"><b>' + esc(a.nom) + (a.reference && !estSR(a) ? '<span class="ref">' + esc(a.reference) + '</span>' : '') + '</b><span>Réserve ' + fr(stockDe(a.id, 0)) + ' / seuil ' + fr(a.seuil) + ' ' + uRes(a) + (stockDe(a.id, 0) <= 0 ? ' · <span class="pill ko">rupture</span>' : '') + (enc ? ' · <span class="pill warn">' + fr(enc) + ' déjà en commande</span>' : '') + ' · ' + eur(p) + '</span></div>'
+          + '<div class="stp"><input inputmode="decimal" data-sugq="' + key + '" value="' + esc(q) + '" aria-label="Quantité à commander"></div></div>';
+      }).join('');
+      return h + '<p class="mu" style="margin:8px 0 0;text-align:right">Total estimé : <b>' + eur(tot) + '</b> TTC</p></div>';
+    }).join('');
+  }
+  function creerCommande(fid, lignes, numero) {
+    lignes = lignes.filter(function (l) { return l.quantite > 0; });
+    if (!fid) { toast('Choisissez le fournisseur'); return Promise.resolve(); }
+    if (!lignes.length) { toast('Aucune ligne à commander'); return Promise.resolve(); }
+    return sb.from('commandes').insert({ fournisseur_id: fid, numero: numero || null, manuelle: true }).select().single().then(function (r) {
+      if (r.error) throw r.error;
+      var id = r.data.id;
+      return sb.from('commande_lignes').insert(lignes.map(function (l) { return { commande_id: id, article_id: l.article_id, quantite: l.quantite, prix: l.prix }; })).then(function (r2) { if (r2.error) throw r2.error; return id; });
+    }).then(function (id) { toast('✔ Commande créée'); return chargerCommandes().then(function () { ouvrirCommande(id); }); })
+      .catch(function (e) { toast(msgErr(e)); });
+  }
+  function depuisSuggestion(fid) {
+    var lignes = S.articles.filter(function (a) { return filtreStock(a, 'commander') && (a.fournisseur_id || 0) === fid; }).map(function (a) {
+      var key = fid + ':' + a.id, q = S.sugQ[key] != null ? nb(String(S.sugQ[key]).replace(',', '.')) : qteSuggeree(a);
+      return { article_id: a.id, quantite: q, prix: prixChez(a, fid) };
+    });
+    creerCommande(fid, lignes, null);
+  }
+  // Nouvelle commande manuelle
+  function vNouvelleCommande() {
+    var N = S.nc, h = '<div class="card"><div class="g2"><label class="mu">Fournisseur<select class="in" id="ncfo">' + optFo(N.fid, 'Choisir…') + '</select></label><label class="mu">N° de commande (facultatif)<input class="in" id="ncnum" value="' + esc(N.num) + '"></label></div></div>';
+    if (!N.fid) return h + '<p class="mu">Choisissez d’abord le fournisseur.</p>';
+    h += '<div class="card"><label class="mu">Ajouter un article<input class="in" id="ncq" type="search" placeholder="Nom ou référence" value="' + esc(N.q) + '"></label>';
+    var q = norm(N.q);
+    if (q) h += S.articles.filter(function (a) { return norm(a.nom + ' ' + (a.reference || '')).indexOf(q) >= 0; }).slice(0, 12).map(function (a) { return '<button class="it lrow" data-ncadd="' + a.id + '"><span class="it-n"><b>' + esc(a.nom) + '</b><span>' + esc(S.fournisseurs[a.fournisseur_id] || 'SF') + ' · ' + eur(prixChez(a, +N.fid)) + '</span></span><span>+</span></button>'; }).join('');
+    h += '</div>';
+    if (N.l.length) {
+      var tot = 0;
+      h += '<div class="card"><b>Lignes</b>' + N.l.map(function (l, i) {
+        var a = S.byId[l.article_id]; tot += (+l.quantite || 0) * (+l.prix || 0);
+        return '<div class="row wrap" style="margin-top:8px"><span class="grow">' + esc(a ? a.nom : '?') + ' <span class="mu">(' + (a ? uRes(a) : '') + ')</span></span><input class="in" style="width:90px" inputmode="decimal" data-ncl="' + i + '" data-nck="quantite" value="' + esc(l.quantite) + '" aria-label="Quantité"><input class="in" style="width:110px" inputmode="decimal" data-ncl="' + i + '" data-nck="prix" value="' + esc(l.prix) + '" aria-label="Prix unitaire TTC"><button class="btn l sm" data-ncdel="' + i + '" aria-label="Retirer">✕</button></div>';
+      }).join('') + '<p class="mu" style="text-align:right">Total : <b>' + eur(tot) + '</b> TTC</p><button class="btn" data-act="ncgo">Créer la commande</button></div>';
+    }
+    return h;
+  }
+  // Détail d'une commande et réception
+  function ouvrirCommande(id) {
+    S.fiche = { type: 'commande', id: id, rx: {}, recs: [] };
+    S.cmdSub = 'enc'; S.tab = 'commandes'; render();
+    sb.from('mouvements').select('*').eq('commande_id', id).order('cree_le').then(function (r) { if (S.fiche && S.fiche.id === id) { S.fiche.recs = r.data || []; render(); } });
+  }
+  function vCommande() {
+    var F = S.fiche, c = S.commandes.filter(function (x) { return x.id === F.id; })[0];
+    var h = '<button class="lnk" data-act="fclose">← Toutes les commandes</button>';
+    if (!c) return h + '<p class="mu">Chargement…</p>';
+    var li = S.lignes[c.id] || [], st = CST[c.statut] || ['', c.statut], ouverte = c.statut === 'attente' || c.statut === 'partielle';
+    h += '<div class="card row wrap"><div class="grow"><h2 style="margin:0">' + esc(S.fournisseurs[c.fournisseur_id] || '?') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</h2><span class="mu">Commande du ' + c.date_commande.split('-').reverse().join('/') + '</span> <span class="pill ' + st[0] + '">' + st[1] + '</span></div>' + (ouverte ? '<button class="btn l sm" data-act="cclose">Clôturer</button>' : '') + '</div>';
+    h += '<div class="card"><b>Lignes' + (ouverte ? ' · saisir ce qui est arrivé' : '') + '</b>' + li.map(function (l) {
+      var a = S.byId[l.article_id] || { nom: '(article supprimé)' }, reste = Math.max(0, l.quantite - l.recu), r = F.rx[l.id] || {};
+      return '<div class="it" style="flex-wrap:wrap"><div class="it-n"><b>' + esc(a.nom) + '</b><span>Commandé ' + fr(l.quantite) + ' · reçu ' + fr(l.recu) + (l.gratuit ? ' + ' + fr(l.gratuit) + ' offert(s)' : '') + ' · ' + eur(l.prix) + (l.reliquat_abandonne ? ' · <span class="pill">reliquat abandonné</span>' : reste && c.statut !== 'attente' ? ' · <span class="pill warn">reste ' + fr(reste) + '</span>' : '') + '</span></div>'
+        + (ouverte && !l.reliquat_abandonne && a.id ? '<div class="row" style="gap:6px"><label class="mu" style="font-size:13px">Reçu<input class="in" style="width:80px;height:42px" inputmode="decimal" data-rxq="' + l.id + '" value="' + esc(r.q != null ? r.q : reste) + '"></label><label class="mu" style="font-size:13px">Offert<input class="in" style="width:70px;height:42px" inputmode="decimal" data-rxg="' + l.id + '" value="' + esc(r.g || '') + '" placeholder="0"></label>' + (reste ? '<button class="btn l sm" title="Ne plus attendre le reste" data-rxab="' + l.id + '">Abandonner le reste</button>' : '') + '</div>' : '') + '</div>';
+    }).join('') + (ouverte ? '<div class="row" style="margin-top:12px"><span class="grow mu">Les quantités offertes entrent en stock sans valeur.</span><button class="btn" data-act="rxgo"' + (F.busy ? ' disabled' : '') + '>Réceptionner</button></div>' : '') + '</div>';
+    var lots = {}; F.recs.forEach(function (m) { if (m.type === 'reception') (lots[m.lot] = lots[m.lot] || []).push(m); });
+    var ks = Object.keys(lots);
+    if (ks.length) h += '<div class="card"><b>Réceptions</b>' + ks.map(function (k) {
+      var ms = lots[k], annule = ms.every(function (m) { return m.statut === 'annule'; });
+      return '<div class="it"><div class="it-n"><b>' + quand(ms[0].cree_le) + ' · ' + esc(ms[0].auteur_nom || '') + (annule ? ' <span class="pill">annulée</span>' : '') + '</b><span>' + ms.map(function (m) { var a = S.byId[m.article_id] || { nom: '?' }; return esc(a.nom) + ' × ' + fr(m.quantite - (m.gratuit || 0)) + (m.gratuit ? ' + ' + fr(m.gratuit) + ' offert(s)' : ''); }).join(', ') + '</span></div>' + (annule ? '' : '<button class="btn l sm" data-rxundo="' + k + '">↩️ Annuler</button>') + '</div>';
+    }).join('') + '</div>';
+    return h;
+  }
+  function receptionner() {
+    var F = S.fiche, c = S.commandes.filter(function (x) { return x.id === F.id; })[0], li = S.lignes[c.id] || [];
+    var lignes = li.filter(function (l) { return !l.reliquat_abandonne && l.article_id; }).map(function (l) {
+      var r = F.rx[l.id] || {}, q = r.q != null ? nb(String(r.q).replace(',', '.')) : Math.max(0, l.quantite - l.recu);
+      return { ligne_id: l.id, quantite: Math.max(0, q), gratuit: Math.max(0, nb(String(r.g || 0).replace(',', '.'))) };
+    }).filter(function (l) { return l.quantite > 0 || l.gratuit > 0; });
+    if (!lignes.length) { toast('Aucune quantité à réceptionner'); return; }
+    F.busy = true; render();
+    sb.rpc('recevoir_commande', { p_commande: c.id, p_lignes: lignes }).then(function (r) {
+      F.busy = false;
+      if (r.error) { toast(msgErr(r.error)); render(); return; }
+      toast('✔ Réception enregistrée : ' + r.data.lignes + ' ligne(s), ' + eur(r.data.valeur) + (r.data.statut === 'partielle' ? ' · reliquat attendu' : ''));
+      F.rx = {}; Promise.all([charger(), chargerCommandes()]).then(function () { ouvrirCommande(c.id); });
+    });
+  }
+  function annulerReception(lot) {
+    if (!confirm('Annuler cette réception ? Les quantités sortent de la réserve et le coût moyen est recalculé.')) return;
+    sb.rpc('annuler_reception', { p_lot: lot }).then(function (r) {
+      if (r.error) { toast(msgErr(r.error)); return; }
+      toast('✔ Réception annulée' + (r.data.reserve_insuffisante ? ' · réserve insuffisante pour : ' + r.data.reserve_insuffisante + ' (mise à 0)' : ''));
+      var id = S.fiche.id; Promise.all([charger(), chargerCommandes()]).then(function () { ouvrirCommande(id); });
+    });
+  }
+  function abandonnerReste(lid) {
+    if (!confirm('Ne plus attendre le reste de cette ligne ?')) return;
+    sb.from('commande_lignes').update({ reliquat_abandonne: true }).eq('id', lid).then(function (r) {
+      if (r.error) { toast(msgErr(r.error)); return; }
+      sb.rpc('statut_commande', { p_commande: S.fiche.id }).then(function () { var id = S.fiche.id; chargerCommandes().then(function () { ouvrirCommande(id); }); });
+    });
+  }
+  function cloturerCommande() {
+    if (!confirm('Clôturer cette commande ? Plus rien n’est attendu.')) return;
+    var id = S.fiche.id;
+    sb.from('commandes').update({ statut: 'close' }).eq('id', id).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } toast('Commande clôturée'); chargerCommandes().then(function () { ouvrirCommande(id); }); });
+  }
+
   // ---------- Équipe (gestion) ----------
   function vEquipe() {
     var h = '<h2>Équipe</h2><p class="mu">Rôle, cabinet par défaut, activation, et autorisation temporaire d’inventaire de la réserve. La création des comptes depuis l’application arrive dans la prochaine livraison.</p>';
@@ -661,6 +805,16 @@
     if (d.confirmer) return traiter(+d.confirmer, true);
     if (d.refuser) return traiter(+d.refuser, false);
     if (d.eedit) { S.eqEdit = d.eedit; render(); return; }
+    if (d.csub) { S.cmdSub = d.csub; S.fiche = null; render(); return; }
+    if (d.cfrom) return depuisSuggestion(+d.cfrom);
+    if (d.copen) { ouvrirCommande(+d.copen); window.scrollTo(0, 0); return; }
+    if (d.ncadd) { if (!S.nc.l.some(function (l) { return l.article_id === +d.ncadd; })) { var aa = S.byId[d.ncadd]; S.nc.l.push({ article_id: +d.ncadd, quantite: 1, prix: prixChez(aa, +S.nc.fid) }); } S.nc.q = ''; render(); return; }
+    if (d.ncdel) { S.nc.l.splice(+d.ncdel, 1); render(); return; }
+    if (d.act === 'ncgo') { var N = S.nc; return creerCommande(+N.fid, N.l.map(function (l) { return { article_id: l.article_id, quantite: nb(String(l.quantite).replace(',', '.')), prix: nb(String(l.prix).replace(',', '.')) }; }), N.num.trim()).then(function () { S.nc = { fid: '', num: '', q: '', l: [] }; }); }
+    if (d.act === 'rxgo') return receptionner();
+    if (d.rxundo) return annulerReception(d.rxundo);
+    if (d.rxab) return abandonnerReste(+d.rxab);
+    if (d.act === 'cclose') return cloturerCommande();
     if (d.af) { S.artF = d.af; S.artMax = 100; render(); return; }
     if (d.aopen) { ouvrirArticle(+d.aopen); window.scrollTo(0, 0); return; }
     if (d.act === 'anew') { ouvrirArticle('new'); return; }
@@ -692,6 +846,12 @@
     var t = e.target; if (!S.me) return;
     if (t.id === 'sq') { S.sortie.q = t.value; S.sortie.msg = null; render(); }
     else if (t.id === 'stq') { S.stockQ = t.value; render(); }
+    else if (t.dataset && t.dataset.sugq) { S.sugQ[t.dataset.sugq] = t.value; }
+    else if (t.id === 'ncnum') { S.nc.num = t.value; }
+    else if (t.id === 'ncq') { S.nc.q = t.value; render(); }
+    else if (t.dataset && t.dataset.ncl != null) { S.nc.l[+t.dataset.ncl][t.dataset.nck] = t.value; }
+    else if (t.dataset && t.dataset.rxq) { (S.fiche.rx[t.dataset.rxq] = S.fiche.rx[t.dataset.rxq] || {}).q = t.value; }
+    else if (t.dataset && t.dataset.rxg) { (S.fiche.rx[t.dataset.rxg] = S.fiche.rx[t.dataset.rxg] || {}).g = t.value; }
     else if (t.id === 'aq') { S.artQ = t.value; S.artMax = 100; render(); }
     else if (t.dataset && t.dataset.afF && S.fiche) { S.fiche.d[t.dataset.afF] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox') render(); }
     else if (t.dataset && t.dataset.foI != null && S.fiche) { S.fiche.foEdit[+t.dataset.foI][t.dataset.foK] = t.value; }
@@ -705,6 +865,7 @@
   document.addEventListener('change', function (e) {
     var t = e.target; if (!S.me) return;
     if (t.id === 'scab') { S.sortie.cab = +t.value; render(); }
+    else if (t.id === 'ncfo') { S.nc.fid = t.value; S.nc.l.forEach(function (l) { l.prix = prixChez(S.byId[l.article_id], +t.value); }); render(); }
     else if (t.id === 'foarch') { S.foArch = t.checked; render(); }
     else if (t.dataset && (t.dataset.afF || t.dataset.foK) && S.fiche) { if (t.dataset.afF) S.fiche.d[t.dataset.afF] = t.type === 'checkbox' ? t.checked : t.value; else S.fiche.foEdit[+t.dataset.foI][t.dataset.foK] = t.value; if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); }
     else if (t.id === 'iemp') { if (t.value === '') { S.inv.emp = null; } else choisirEmp(+t.value); render(); }
