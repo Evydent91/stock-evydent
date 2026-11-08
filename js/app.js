@@ -74,7 +74,7 @@
       + (S.err ? '<p class="lg-err" role="alert">' + esc(S.err) + '</p>' : '')
       + '<button class="btn gold" id="lbtn" type="submit">Se connecter</button>'
       + '<p class="lg-help">Identifiant ou code oublié ? Demandez à la responsable des achats ou à la référente.</p></form>'
-      + '<div class="lg-foot">Accès réservé au personnel du centre · 01 85 12 00 85</div></div></div>';
+      + '<div class="lg-foot">Accès réservé au personnel du centre · 01 85 12 00 85<br><small>Version ' + esc(C.version || '') + '</small></div></div></div>';
   }
   function bindLogin() {
     $('lform').addEventListener('submit', connexion);
@@ -162,6 +162,7 @@
       + '<button class="btn l sm" data-tab="compte" title="Changer mon code" aria-label="Changer mon code">🔑</button><button class="btn l sm" data-act="out">Changer de personne</button></div>'
       + '<nav class="tabs" aria-label="Menu">' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav></header>';
     h += '<main>' + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte }[S.tab] || vSortie)() + '</main>';
+    h += '<p class="mu" style="text-align:center;font-size:12px;margin:0 0 90px">Version ' + esc(C.version || '') + '</p>';
     h += (S.tab === 'sortie' ? vBarSortie() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
     var fq = document.activeElement && document.activeElement.id, pos = fq && document.activeElement.selectionStart;
     app.innerHTML = h;
