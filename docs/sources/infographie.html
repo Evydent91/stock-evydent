@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Application de stock — comment ça marche</title>
+<style>
+@page{size:A4;margin:0}
+:root{--navy:#2b3e4c;--navy2:#1f2e39;--gold:#c9b97a;--ivory:#f6f3ec;--ink:#1f2a33;--mute:#5a646d;--line:#dcd6c6;
+  --claude:#c96442;--git:#3b4a57;--net:#0e8f86;--supa:#2f8a57}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,sans-serif;color:var(--ink);background:#fff;font-size:10.2pt;line-height:1.38}
+.page{width:210mm;height:297mm;padding:13mm 14mm 11mm;position:relative;overflow:hidden;background:var(--ivory);page-break-after:always}
+.page:last-child{page-break-after:auto}
+.serif{font-family:"Bitstream Charter",Charter,Georgia,serif}
+header.h{display:flex;align-items:center;gap:12px;border-bottom:2px solid var(--gold);padding-bottom:9px;margin-bottom:11px}
+header.h img{width:46px;height:46px;border-radius:23px}
+header.h .t{flex:1}
+header.h h1{font-family:"Bitstream Charter",Georgia,serif;font-size:21pt;font-weight:700;color:var(--navy);line-height:1.1}
+header.h .s{font-size:9pt;color:var(--mute);letter-spacing:.06em;text-transform:uppercase;font-weight:600;margin-top:2px}
+header.h .pg{font-size:8.5pt;color:var(--mute)}
+.lead{font-size:10.6pt;margin:0 0 10px;color:var(--ink)}
+.lead b{color:var(--navy)}
+h2{font-family:"Bitstream Charter",Georgia,serif;font-size:13.5pt;color:var(--navy);margin:12px 0 7px;display:flex;align-items:center;gap:8px}
+h2 .n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:11px;background:var(--navy);color:#fff;font-family:Inter,sans-serif;font-size:10pt;font-weight:700}
+/* 4 briques */
+.grid4{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.brick{background:#fff;border-radius:10px;padding:10px 11px 9px;border-top:5px solid var(--c);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.brick .top{display:flex;align-items:center;gap:9px;margin-bottom:5px}
+.brick .ic{width:34px;height:34px;border-radius:9px;background:var(--c);display:flex;align-items:center;justify-content:center;flex:none}
+.brick .ic svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.brick h3{font-size:12pt;font-weight:700;line-height:1.1}
+.brick .role{font-size:8.6pt;font-weight:700;color:var(--c);text-transform:uppercase;letter-spacing:.05em}
+.brick p{font-size:9.2pt;margin:3px 0}
+.brick ul{list-style:none;margin-top:3px}
+.brick li{font-size:9pt;padding-left:11px;position:relative;margin:2px 0}
+.brick li:before{content:"";position:absolute;left:0;top:6px;width:5px;height:5px;border-radius:3px;background:var(--c)}
+.brick .img{font-size:8.6pt;color:var(--mute);font-style:italic;margin-top:4px;border-top:1px dashed var(--line);padding-top:4px}
+/* deux mondes */
+.worlds{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.world{border-radius:10px;padding:9px 11px;background:#fff;border:2px solid var(--w)}
+.world .lab{display:inline-block;font-size:8.3pt;font-weight:800;letter-spacing:.06em;padding:2px 8px;border-radius:5px;background:var(--w);color:#fff;margin-bottom:5px}
+.world h4{font-size:11pt;margin-bottom:3px}
+.world .row{display:flex;gap:6px;align-items:baseline;font-size:9pt;margin:2px 0}
+.world .row b{min-width:62px;color:var(--mute);font-weight:600}
+.world code{font-family:Inter,sans-serif;font-weight:600;font-size:9pt;color:var(--navy)}
+/* circuit */
+.flow{display:grid;grid-template-columns:repeat(6,1fr);gap:0;align-items:stretch;margin-top:2px}
+.st{position:relative;background:#fff;border-radius:9px;padding:8px 7px 7px;margin-right:13px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,.06);border-bottom:4px solid var(--c)}
+.st:last-child{margin-right:0}
+.st:not(:last-child):after{content:"";position:absolute;right:-12px;top:50%;margin-top:-6px;border:6px solid transparent;border-left:9px solid var(--navy)}
+.st .k{display:inline-flex;width:20px;height:20px;border-radius:10px;background:var(--c);color:#fff;font-weight:800;font-size:9pt;align-items:center;justify-content:center}
+.st .who{font-size:7.8pt;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--c);margin:3px 0 2px}
+.st .w{font-size:8.6pt;line-height:1.3}
+.gate{margin:8px 0 0;background:#fff;border-left:5px solid var(--gold);border-radius:8px;padding:7px 11px;font-size:9.3pt}
+.gate b{color:var(--navy)}
+/* page 2 */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.box{background:#fff;border-radius:10px;padding:10px 12px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.box h3{font-size:11pt;color:var(--navy);margin-bottom:5px;display:flex;align-items:center;gap:7px}
+.box h3 svg{width:17px;height:17px;stroke:var(--navy);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.box ul{list-style:none}
+.box li{font-size:9.1pt;padding-left:13px;position:relative;margin:3px 0}
+.box li:before{content:"";position:absolute;left:1px;top:6px;width:6px;height:6px;border-radius:3px;background:var(--gold)}
+table{width:100%;border-collapse:collapse;font-size:9pt}
+th,td{text-align:left;padding:5px 6px;border-bottom:1px solid #eee8da;vertical-align:top}
+th{font-size:8pt;text-transform:uppercase;letter-spacing:.05em;color:var(--mute)}
+td.c{font-weight:700;white-space:nowrap}
+.pill{display:inline-block;font-size:8pt;font-weight:700;padding:1px 7px;border-radius:9px;background:#e6f4ec;color:#1f7a4d}
+.pill.w{background:#fdf0e6;color:#9a4a0b}
+.roles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.r{background:#fff;border-radius:10px;padding:9px 11px;border-left:5px solid var(--navy)}
+.r h4{font-size:10.3pt;margin-bottom:2px}
+.r p{font-size:8.9pt;color:var(--ink)}
+.day{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;background:#fff;border-radius:10px;padding:10px 12px}
+.day .d{font-weight:800;color:#fff;background:var(--navy);border-radius:6px;padding:3px 8px;font-size:8.6pt;text-align:center}
+.day .x{font-size:9.2pt}
+.foot{position:absolute;left:14mm;right:14mm;bottom:8mm;font-size:7.8pt;color:var(--mute);display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:4px}
+.key{background:var(--navy);color:#fff;border-radius:10px;padding:10px 13px;margin-top:9px;font-size:9.6pt}
+.key b{color:var(--gold)}
+.p2 h2{margin:9px 0 6px}
+.p2 .day{gap:4px 10px;padding:8px 12px}
+.p2 .box{padding:8px 11px}
+.p2 .box li{margin:2px 0;font-size:8.9pt}
+.p2 td,.p2 th{padding:4px 6px}
+.p2 .key{margin-top:8px;padding:9px 12px}
+</style>
+</head>
+<body>
+
+<!-- ===================== PAGE 1 ===================== -->
+<section class="page">
+  <header class="h">
+    <img src="data:image/jpeg;base64,LOGO" alt="">
+    <div class="t"><h1>L’application de stock, comment ça marche</h1><div class="s">Espace dentaire Val d’Yerres · Gestion du stock · version 2</div></div>
+    <div class="pg">1 / 2</div>
+  </header>
+
+  <p class="lead">L’application repose sur <b>quatre outils</b>, chacun avec un rôle précis. <b>Trois seulement servent au quotidien</b> (GitHub, Netlify, Supabase) ; <b>Claude</b> intervient uniquement pour fabriquer et faire évoluer l’application. Tous sont aujourd’hui utilisés en <b>offre gratuite</b>.</p>
+
+  <h2><span class="n">1</span>Les quatre briques</h2>
+  <div class="grid4">
+    <div class="brick" style="--c:var(--claude)">
+      <div class="top"><div class="ic"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg></div>
+        <div><div class="role">L’atelier</div><h3>Claude</h3></div></div>
+      <p>Assistant d’intelligence artificielle qui <b>écrit et modifie l’application</b> à la demande de la référente.</p>
+      <ul><li>Construit les écrans et les règles (stock, commandes, inventaires…)</li><li>Prépare les mises à jour de la base de données</li><li>Teste avant de livrer, explique chaque changement</li></ul>
+      <div class="img">N’a pas besoin d’être ouvert pour que l’équipe utilise l’appli.</div>
+    </div>
+    <div class="brick" style="--c:var(--git)">
+      <div class="top"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="9" r="2.5"/><path d="M6 8.5v7M18 11.5c0 4-6 3-11 5"/></svg></div>
+        <div><div class="role">Le classeur</div><h3>GitHub</h3></div></div>
+      <p>Range <b>le programme de l’application</b> et garde l’historique de chaque modification (qui, quand, quoi).</p>
+      <ul><li>Deux versions : <b>dev</b> = version de test, <b>main</b> = version réelle</li><li>Héberge gratuitement le <b>site de test</b></li><li>Aucune donnée du centre, aucun mot de passe</li></ul>
+      <div class="img">Compte : Evydent91.</div>
+    </div>
+    <div class="brick" style="--c:var(--net)">
+      <div class="top"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg></div>
+        <div><div class="role">La vitrine</div><h3>Netlify</h3></div></div>
+      <p>Publie <b>le site réel</b> utilisé par l’équipe, sur ordinateur, tablette et téléphone.</p>
+      <ul><li>Adresse : <b>evystock.netlify.app</b></li><li>Ne se met à jour que depuis la version <b>main</b>, donc après validation</li><li>Installable sur l’écran d’accueil du téléphone</li></ul>
+      <div class="img">Ne contient que l’affichage, pas les données.</div>
+    </div>
+    <div class="brick" style="--c:var(--supa)">
+      <div class="top"><div class="ic"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7.5" ry="3"/><path d="M4.5 6v12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V6M4.5 12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3"/></svg></div>
+        <div><div class="role">Le coffre</div><h3>Supabase</h3></div></div>
+      <p>La <b>base de données</b> : articles, fournisseurs, stock, mouvements, commandes, inventaires et comptes.</p>
+      <ul><li>Connexion personnelle (identifiant + code ou mot de passe)</li><li>Droits selon le rôle, contrôlés par la base elle-même</li><li>Deux bases séparées : <b>Dev</b> (essais) et <b>Prod</b> (réelle)</li></ul>
+      <div class="img">Les vraies données ne sont jamais dans GitHub.</div>
+    </div>
+  </div>
+
+  <h2><span class="n">2</span>Deux mondes séparés : le test et le réel</h2>
+  <div class="worlds">
+    <div class="world" style="--w:#b58a1c">
+      <span class="lab">TEST</span><h4>Pour essayer sans risque</h4>
+      <div class="row"><b>Site</b><code>evydent91.github.io/stock-evydent</code></div>
+      <div class="row"><b>Version</b><span>« dev » sur GitHub</span></div>
+      <div class="row"><b>Base</b><span>Supabase <b>Evydent-Dev</b> (données d’essai)</span></div>
+      <div class="row"><b>Repère</b><span>badge jaune <b>TEST</b> à côté du prénom</span></div>
+    </div>
+    <div class="world" style="--w:var(--navy)">
+      <span class="lab">RÉEL</span><h4>Utilisé par l’équipe</h4>
+      <div class="row"><b>Site</b><code>evystock.netlify.app</code></div>
+      <div class="row"><b>Version</b><span>« main » sur GitHub</span></div>
+      <div class="row"><b>Base</b><span>Supabase <b>Evydent-Prod</b> (vraies données)</span></div>
+      <div class="row"><b>Repère</b><span>pas de badge ; version 2.x en bas de page</span></div>
+    </div>
+  </div>
+
+  <h2><span class="n">3</span>Le circuit d’une amélioration</h2>
+  <div class="flow">
+    <div class="st" style="--c:var(--navy)"><span class="k">1</span><div class="who">Référente</div><div class="w">Exprime un besoin ou une idée (liste d’idées tenue à jour)</div></div>
+    <div class="st" style="--c:var(--claude)"><span class="k">2</span><div class="who">Claude</div><div class="w">Pose ses questions puis développe et teste</div></div>
+    <div class="st" style="--c:var(--git)"><span class="k">3</span><div class="who">GitHub · dev</div><div class="w">La nouveauté arrive sur le site de test</div></div>
+    <div class="st" style="--c:var(--navy)"><span class="k">4</span><div class="who">Référente</div><div class="w">Teste sur le site de test et répond « validé »</div></div>
+    <div class="st" style="--c:var(--supa)"><span class="k">5</span><div class="who">Supabase · Prod</div><div class="w">Mise à jour de la base réelle si besoin</div></div>
+    <div class="st" style="--c:var(--net)"><span class="k">6</span><div class="who">GitHub → Netlify</div><div class="w">Fusion dev → main : le site réel se met à jour</div></div>
+  </div>
+  <div class="gate"><b>Règle d’or :</b> rien n’arrive sur le site réel sans avoir été testé puis validé par la référente. Chaque version est décrite dans le <b>journal des versions</b> (onglet Plus), avec le détail des opérations sur les données.</div>
+
+  <div class="foot"><span>Evydent – Espace dentaire Val d’Yerres · Application de gestion du stock</span><span>Document de présentation · novembre 2026</span></div>
+</section>
+
+<!-- ===================== PAGE 2 ===================== -->
+<section class="page p2">
+  <header class="h">
+    <img src="data:image/jpeg;base64,LOGO" alt="">
+    <div class="t"><h1>Au quotidien, sécurité et coûts</h1><div class="s">Espace dentaire Val d’Yerres · Gestion du stock · version 2</div></div>
+    <div class="pg">2 / 2</div>
+  </header>
+
+  <h2><span class="n">4</span>Ce qui se passe quand une assistante fait une sortie</h2>
+  <div class="day">
+    <span class="d">1</span><span class="x">Elle ouvre <b>evystock.netlify.app</b> (ou l’icône sur son téléphone) : <b>Netlify</b> envoie l’affichage de l’application.</span>
+    <span class="d">2</span><span class="x">Elle se connecte avec <b>son identifiant et son code à 6 chiffres</b> : <b>Supabase</b> vérifie qui elle est et ce qu’elle a le droit de faire.</span>
+    <span class="d">3</span><span class="x">Elle choisit les articles et valide : <b>Supabase</b> retire les quantités de la réserve, les ajoute au cabinet et enregistre le mouvement à son nom.</span>
+    <span class="d">4</span><span class="x">La référente et la responsable voient immédiatement le stock à jour, les alertes et l’historique, depuis n’importe quel appareil.</span>
+  </div>
+
+  <h2><span class="n">5</span>Qui peut faire quoi</h2>
+  <div class="roles">
+    <div class="r"><h4>Assistantes</h4><p>Sorties, retours en réserve et inventaire des cabinets ; leur propre historique. Un cabinet par défaut ; un autre cabinet est possible en remplacement, marqué « hors cabinet ».</p></div>
+    <div class="r"><h4>Référente</h4><p>Tout l’outil : commandes et réceptions, articles, fournisseurs, inventaire de la réserve, équipe (comptes, codes), sauvegardes. Valide chaque évolution.</p></div>
+    <div class="r"><h4>Responsable</h4><p>Les mêmes droits que la référente. Suit le stock, les commandes et le journal des versions ; peut créer et désactiver des comptes.</p></div>
+  </div>
+
+  <div class="two" style="margin-top:9px">
+    <div class="box">
+      <h3><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Sécurité des données</h3>
+      <ul>
+        <li>Un compte personnel par personne, désactivable à tout moment ; l’historique est conservé.</li>
+        <li>Chaque mouvement est enregistré avec le nom de son auteur.</li>
+        <li>Les règles d’accès sont appliquées par la base elle-même, pas seulement par l’écran.</li>
+        <li>La clé qui permet de créer des comptes reste chez Supabase, jamais dans le navigateur.</li>
+        <li>Le programme sur GitHub ne contient ni données du centre, ni mot de passe.</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3><svg viewBox="0 0 24 24"><path d="M4 4h12l4 4v12H4z"/><path d="M8 4v5h8V4M8 20v-6h8v6"/></svg>Sauvegardes et continuité</h3>
+      <ul>
+        <li>Sauvegarde complète en un clic (fichier Excel) dans l’onglet Plus.</li>
+        <li>Rappel sur l’accueil si la dernière date de plus d’un mois.</li>
+        <li>Fichier à ranger dans un dossier sûr du centre.</li>
+        <li>Import par Excel pour corriger les fiches articles en masse et pour l’inventaire de la réserve.</li>
+        <li>L’ancienne application reste consultable pour l’historique d’avant la bascule.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2><span class="n">6</span>Combien ça coûte</h2>
+  <div class="box">
+    <table>
+      <tr><th>Outil</th><th>Offre</th><th>Ce qu’elle permet</th><th>Point d’attention</th></tr>
+      <tr><td class="c">GitHub</td><td><span class="pill">Gratuit</span></td><td>Programme, historique des versions, site de test</td><td>—</td></tr>
+      <tr><td class="c">Netlify</td><td><span class="pill">Gratuit</span></td><td>300 crédits par mois : l’usage quotidien en consomme peu (environ 10 à 20) ; chaque mise en ligne en coûte 15</td><td><span class="pill w">Regrouper les mises en ligne</span> : si les crédits sont épuisés, le site est mis en pause jusqu’au mois suivant. Offre payante si besoin : 9 $/mois</td></tr>
+      <tr><td class="c">Supabase</td><td><span class="pill">Gratuit</span></td><td>Base de données et comptes, largement suffisants pour le centre</td><td>Un projet gratuit inutilisé 7 jours est mis en pause (concerne surtout la base de test)</td></tr>
+      <tr><td class="c">Claude</td><td>—</td><td>Utilisé pour développer et faire évoluer l’application</td><td>Pas nécessaire au fonctionnement quotidien</td></tr>
+    </table>
+  </div>
+
+  <div class="key"><b>En une phrase :</b> l’équipe utilise un site (<b>Netlify</b>) relié à une base de données sécurisée (<b>Supabase</b>) ; le programme est rangé et versionné dans <b>GitHub</b> ; <b>Claude</b> le fait évoluer, et chaque évolution est testée puis validée par la référente avant d’être mise en ligne.</div>
+
+  <div class="foot"><span>Evydent – Espace dentaire Val d’Yerres · Application de gestion du stock</span><span>Document de présentation · novembre 2026</span></div>
+</section>
+</body>
+</html>

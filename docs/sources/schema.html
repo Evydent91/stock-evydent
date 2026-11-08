@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>Schéma de l'application de stock</title>
+<style>
+@page{size:A4 landscape;margin:0}
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:297mm;height:210mm;background:#f6f3ec;font-family:Inter,sans-serif;color:#1f2a33}
+svg{display:block;width:297mm;height:210mm}
+.t{font-family:"Bitstream Charter",Georgia,serif}
+</style></head><body>
+<svg viewBox="0 0 1123 794" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <marker id="fl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2b3e4c"/></marker>
+  <marker id="flg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f8a57"/></marker>
+  <marker id="flo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c96442"/></marker>
+  <filter id="sh" x="-5%" y="-5%" width="110%" height="120%"><feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#1f2a33" flood-opacity=".10"/></filter>
+</defs>
+<style>
+  .box{fill:#fff;filter:url(#sh)}
+  .h{font:700 17px Inter,sans-serif;fill:#1f2a33}
+  .r{font:800 10.5px Inter,sans-serif;letter-spacing:.07em}
+  .p{font:400 12.5px Inter,sans-serif;fill:#333d46}
+  .s{font:600 11.5px Inter,sans-serif;fill:#2b3e4c}
+  .lab{font:700 11.5px Inter,sans-serif;fill:#2b3e4c}
+  .lane{font:800 13px Inter,sans-serif;letter-spacing:.08em}
+  .ar{stroke:#2b3e4c;stroke-width:2.2;fill:none;marker-end:url(#fl)}
+  .arg{stroke:#2f8a57;stroke-width:2.2;fill:none;marker-end:url(#flg)}
+  .aro{stroke:#c96442;stroke-width:2.2;fill:none;marker-end:url(#flo);stroke-dasharray:6 4}
+  .tag{fill:#fff;stroke:#d9dee3}
+</style>
+
+<!-- Titre -->
+<image href="data:image/jpeg;base64,LOGO" x="32" y="20" width="44" height="44"/>
+<text x="88" y="44" class="t" style="font-size:26px;font-weight:700;fill:#2b3e4c">Schéma de l’application de stock</text>
+<text x="88" y="63" style="font:600 11.5px Inter;letter-spacing:.07em;fill:#5a646d">ESPACE DENTAIRE VAL D’YERRES · QUI FAIT QUOI, ET OÙ VONT LES DONNÉES</text>
+<line x1="32" y1="78" x2="1091" y2="78" stroke="#c9b97a" stroke-width="2"/>
+
+<!-- ============ ZONE FABRICATION ============ -->
+<rect x="28" y="96" width="290" height="626" rx="16" fill="#efe9dc"/>
+<text x="46" y="122" class="lane" fill="#7a6a3a">FABRIQUER L’APPLI</text>
+
+<!-- Claude -->
+<rect x="46" y="140" width="254" height="128" rx="12" class="box"/>
+<rect x="46" y="140" width="254" height="6" rx="3" fill="#c96442"/>
+<rect x="62" y="162" width="38" height="38" rx="9" fill="#c96442"/>
+<path d="M88 172a6 6 0 0 0-8 8l-9.5 9.5 4.5 4.5 9.5-9.5a6 6 0 0 0 8-8l-3.8 3.8-3.6-.9-.9-3.6z" fill="none" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/>
+<text x="112" y="176" class="r" fill="#c96442">L’ATELIER</text>
+<text x="112" y="196" class="h">Claude</text>
+<text x="62" y="224" class="p">Écrit et modifie l’application</text>
+<text x="62" y="242" class="p">à la demande de la référente,</text>
+<text x="62" y="260" class="p">teste avant de livrer.</text>
+
+<!-- GitHub -->
+<rect x="46" y="330" width="254" height="250" rx="12" class="box"/>
+<rect x="46" y="330" width="254" height="6" rx="3" fill="#3b4a57"/>
+<rect x="62" y="352" width="38" height="38" rx="9" fill="#3b4a57"/>
+<g fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><circle cx="73" cy="362" r="3.6"/><circle cx="73" cy="380" r="3.6"/><circle cx="89" cy="366" r="3.6"/><path d="M73 366v10M89 370c0 6-8 5-14 8"/></g>
+<text x="112" y="366" class="r" fill="#3b4a57">LE CLASSEUR</text>
+<text x="112" y="386" class="h">GitHub</text>
+<text x="62" y="414" class="p">Programme + historique ; la</text>
+<text x="62" y="432" class="p">nouveauté arrive d’abord sur dev.</text>
+<!-- branches -->
+<rect x="62" y="450" width="222" height="36" rx="9" fill="#fbf3dc" stroke="#d6b44a"/>
+<text x="76" y="473" class="s">Version <tspan font-weight="800">dev</tspan> = test</text>
+<rect x="62" y="528" width="222" height="36" rx="9" fill="#e7ecf0" stroke="#2b3e4c"/>
+<text x="76" y="551" class="s">Version <tspan font-weight="800">main</tspan> = réelle</text>
+<path d="M173 487 L173 524" class="ar"/>
+<rect x="182" y="494" width="104" height="24" rx="12" fill="#2b3e4c"/>
+<text x="234" y="510" text-anchor="middle" style="font:700 11px Inter;fill:#c9b97a">après « validé »</text>
+
+<!-- Claude -> GitHub dev -->
+<path d="M110 270 L110 326" class="aro"/>
+<rect x="122" y="286" width="150" height="24" rx="12" class="tag"/>
+<text x="197" y="302" text-anchor="middle" class="lab" style="fill:#c96442">dépose les nouveautés</text>
+
+<!-- note Claude -->
+<text x="46" y="610" class="p" style="font-size:11.5px;fill:#5a646d">Claude n’est pas nécessaire au</text>
+<text x="46" y="626" class="p" style="font-size:11.5px;fill:#5a646d">fonctionnement quotidien : il sert</text>
+<text x="46" y="642" class="p" style="font-size:11.5px;fill:#5a646d">seulement à faire évoluer l’appli.</text>
+
+<!-- ============ VOIE TEST ============ -->
+<rect x="346" y="96" width="748" height="190" rx="16" fill="#fbf6e6" stroke="#d6b44a" stroke-width="2" stroke-dasharray="8 5"/>
+<rect x="364" y="108" width="62" height="22" rx="6" fill="#b58a1c"/><text x="395" y="124" text-anchor="middle" style="font:800 11.5px Inter;letter-spacing:.08em;fill:#fff">TEST</text>
+<text x="436" y="124" class="p" style="font-size:12px;fill:#7a6a3a">pour essayer sans risque · badge jaune TEST dans l’appli</text>
+
+<rect x="400" y="150" width="270" height="110" rx="12" class="box"/>
+<text x="418" y="176" class="r" fill="#3b4a57">SITE DE TEST (GITHUB)</text>
+<text x="418" y="198" class="h" style="font-size:15px">evydent91.github.io</text>
+<text x="418" y="220" class="p">La référente y essaie chaque</text>
+<text x="418" y="238" class="p">nouveauté avant de répondre « validé ».</text>
+
+<rect x="780" y="150" width="290" height="110" rx="12" class="box"/>
+<rect x="780" y="150" width="6" height="110" rx="3" fill="#2f8a57"/>
+<text x="800" y="176" class="r" fill="#2f8a57">BASE DE TEST</text>
+<text x="800" y="198" class="h" style="font-size:15px">Supabase Evydent-Dev</text>
+<text x="800" y="220" class="p">Données d’essai uniquement :</text>
+<text x="800" y="238" class="p">on peut tout tester sans danger.</text>
+<path d="M671 205 L776 205" class="arg"/>
+
+<!-- GitHub dev -> site test -->
+<path d="M285 466 C 330 466, 330 205, 396 205" class="ar"/>
+
+<!-- ============ VOIE RÉEL ============ -->
+<rect x="346" y="306" width="748" height="416" rx="16" fill="#eef1f4" stroke="#2b3e4c" stroke-width="2"/>
+<rect x="364" y="318" width="62" height="22" rx="6" fill="#2b3e4c"/><text x="395" y="334" text-anchor="middle" style="font:800 11.5px Inter;letter-spacing:.08em;fill:#fff">RÉEL</text>
+<text x="436" y="334" class="p" style="font-size:12px;fill:#2b3e4c">utilisé chaque jour par l’équipe</text>
+
+<!-- Netlify -->
+<rect x="400" y="360" width="270" height="124" rx="12" class="box"/>
+<rect x="400" y="360" width="270" height="6" rx="3" fill="#0e8f86"/>
+<rect x="416" y="382" width="38" height="38" rx="9" fill="#0e8f86"/>
+<g fill="none" stroke="#fff" stroke-width="2.2"><circle cx="435" cy="401" r="12"/><path d="M423 401h24M435 389c4 4 4 20 0 24M435 389c-4 4-4 20 0 24"/></g>
+<text x="466" y="396" class="r" fill="#0e8f86">LA VITRINE</text>
+<text x="466" y="416" class="h">Netlify</text>
+<text x="416" y="446" class="s">evystock.netlify.app</text>
+<text x="416" y="466" class="p">Envoie l’affichage de l’appli.</text>
+
+<!-- GitHub main -> Netlify -->
+<path d="M285 546 C 340 546, 340 420, 396 420" class="ar"/>
+<rect x="296" y="590" width="0" height="0"/>
+
+<!-- Équipe -->
+<rect x="400" y="560" width="270" height="140" rx="12" class="box"/>
+<text x="416" y="586" class="r" fill="#2b3e4c">L’ÉQUIPE</text>
+<text x="416" y="606" class="h" style="font-size:13.5px">Assistantes · référente · responsable</text>
+<!-- appareils -->
+<g fill="none" stroke="#2b3e4c" stroke-width="2.2" stroke-linejoin="round">
+  <rect x="420" y="624" width="58" height="38" rx="4"/><path d="M412 668h74"/>
+  <rect x="506" y="620" width="38" height="50" rx="5"/><circle cx="525" cy="664" r="1.5" fill="#2b3e4c"/>
+  <rect x="572" y="626" width="26" height="44" rx="5"/><path d="M581 632h8"/>
+</g>
+<text x="416" y="690" class="p" style="font-size:11.5px">ordinateur · tablette · téléphone</text>
+
+<!-- Équipe -> Netlify -->
+<path d="M535 558 L535 488" class="ar"/>
+<rect x="545" y="512" width="104" height="24" rx="12" class="tag"/>
+<text x="597" y="528" text-anchor="middle" class="lab">ouvre l’appli</text>
+
+<!-- Supabase Prod -->
+<rect x="780" y="360" width="290" height="340" rx="12" class="box"/>
+<rect x="780" y="360" width="290" height="6" rx="3" fill="#2f8a57"/>
+<rect x="796" y="382" width="38" height="38" rx="9" fill="#2f8a57"/>
+<g fill="none" stroke="#fff" stroke-width="2.2"><ellipse cx="815" cy="392" rx="11" ry="4.5"/><path d="M804 392v18c0 2.5 5 4.5 11 4.5s11-2 11-4.5V392M804 401c0 2.5 5 4.5 11 4.5s11-2 11-4.5"/></g>
+<text x="846" y="396" class="r" fill="#2f8a57">LE COFFRE</text>
+<text x="846" y="416" class="h">Supabase Evydent-Prod</text>
+<!-- sous-blocs -->
+<rect x="796" y="436" width="258" height="72" rx="9" fill="#e9f4ee"/>
+<text x="810" y="458" class="s" style="fill:#1f6b44">Connexion et droits</text>
+<text x="810" y="477" class="p" style="font-size:11.5px">Identifiant + code ou mot de passe ;</text>
+<text x="810" y="494" class="p" style="font-size:11.5px">chacun ne fait que ce que son rôle permet.</text>
+<rect x="796" y="516" width="258" height="90" rx="9" fill="#e9f4ee"/>
+<text x="810" y="538" class="s" style="fill:#1f6b44">Base de données</text>
+<text x="810" y="557" class="p" style="font-size:11.5px">Articles, fournisseurs, prix, stock,</text>
+<text x="810" y="574" class="p" style="font-size:11.5px">sorties, retours, commandes, inventaires ;</text>
+<text x="810" y="591" class="p" style="font-size:11.5px">chaque mouvement au nom de son auteur.</text>
+<rect x="796" y="614" width="258" height="72" rx="9" fill="#e9f4ee"/>
+<text x="810" y="636" class="s" style="fill:#1f6b44">Service des comptes</text>
+<text x="810" y="655" class="p" style="font-size:11.5px">Création des comptes et des codes ;</text>
+<text x="810" y="672" class="p" style="font-size:11.5px">sa clé ne quitte jamais Supabase.</text>
+
+<!-- Équipe <-> Supabase -->
+<path d="M674 630 L776 630" class="arg"/>
+<path d="M776 650 L674 650" class="arg"/>
+<rect x="680" y="584" width="94" height="38" rx="10" class="tag"/>
+<text x="727" y="600" text-anchor="middle" class="lab" style="fill:#1f6b44">lit et enregistre</text>
+<text x="727" y="615" text-anchor="middle" class="lab" style="fill:#1f6b44">les données</text>
+
+<!-- ============ LÉGENDE ============ -->
+<g transform="translate(32,742)">
+  <path d="M0 8 L34 8" class="aro"/><text x="42" y="12" class="p" style="font-size:11.5px">fabrication par Claude</text>
+  <path d="M200 8 L234 8" class="ar"/><text x="242" y="12" class="p" style="font-size:11.5px">publication du programme</text>
+  <path d="M420 8 L454 8" class="arg"/><text x="462" y="12" class="p" style="font-size:11.5px">échange de données (connexion sécurisée)</text>
+  <text x="740" y="12" class="p" style="font-size:11.5px;fill:#5a646d">Outils en offre gratuite · sauvegarde Excel chaque mois</text>
+</g>
+<text x="1091" y="780" text-anchor="end" style="font:400 10px Inter;fill:#8a929a">Evydent – Espace dentaire Val d’Yerres · novembre 2026</text>
+</svg>
+</body></html>
