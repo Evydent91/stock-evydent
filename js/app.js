@@ -12,7 +12,7 @@
     session: null, me: null, err: '', tab: 'sortie', loading: false,
     articles: [], byId: {}, stocks: {}, fournisseurs: {}, profils: [], attente: [], histo: [],
     sortie: { cab: null, q: '', panier: {}, msg: null, busy: false },
-    stockQ: '', stockF: '', histTous: false, eqEdit: null, pwAbc: false, dernierInv: {}, recents: [], j0: null, invJ0: {}, fiche: null, artQ: '', artF: 'tous', artMax: 100, archives: [], fournListe: [], foArch: false, commandes: [], lignes: {}, afPrix: {}, cmdSub: 'sug', sugQ: {}, sugOpen: {}, nc: { fid: '', num: '', q: '', l: [] },
+    stockQ: '', stockF: '', histTous: false, eqEdit: null, pwAbc: false, dernierInv: {}, recents: [], j0: null, invJ0: {}, fiche: null, artQ: '', artF: 'tous', artMax: 100, archives: [], fournListe: [], foArch: false, commandes: [], lignes: {}, afPrix: {}, cmdSub: 'sug', sugQ: {}, sugOpen: {}, alias: {}, nc: { fid: '', num: '', q: '', l: [] },
     inv: { emp: null, d: {}, q: '', tous: false, recap: false, motifs: {}, busy: false, msg: null, max: 80 }
   };
   var LABEL = { assistante: 'Assistante', referente: 'Référente', responsable: 'Responsable' };
@@ -111,7 +111,7 @@
       toutLire('fournisseurs', '*', function (q) { return q.order('nom'); }),
       sb.from('profils').select('*').order('nom').then(function (r) { if (r.error) throw r.error; return r.data; }),
       sb.from('mouvements').select('*').eq('statut', 'attente').order('cree_le').then(function (r) { if (r.error) throw r.error; return r.data; }),
-      sb.from('parametres').select('cle,valeur').eq('cle', 'j0').then(function (r) { if (r.error) throw r.error; return r.data; }),
+      sb.from('parametres').select('cle,valeur').in('cle', ['j0', 'alias_refs']).then(function (r) { if (r.error) throw r.error; return r.data; }),
       sb.from('inventaires').select('emplacement,date_inv,j0').order('date_inv', { ascending: false }).limit(500).then(function (r) { if (r.error) throw r.error; return r.data; }),
       sb.from('mouvements').select('*').order('cree_le', { ascending: false }).limit(30).then(function (r) { if (r.error) throw r.error; return r.data; }),
       toutLire('article_fournisseurs', 'article_id,fournisseur_id,prix,reference,rang'),
@@ -122,7 +122,8 @@
       S.stocks = {}; x[1].forEach(function (s) { (S.stocks[s.article_id] = S.stocks[s.article_id] || {})[s.emplacement] = +s.quantite; });
       S.fournisseurs = {}; x[2].forEach(function (f) { S.fournisseurs[f.id] = f.nom; }); S.fournListe = x[2];
       S.profils = x[3]; S.attente = x[4];
-      S.j0 = x[5][0] ? x[5][0].valeur : null;
+      var pj = x[5].filter(function (p) { return p.cle === 'j0'; })[0], pa = x[5].filter(function (p) { return p.cle === 'alias_refs'; })[0];
+      S.j0 = pj ? pj.valeur : null; S.alias = pa ? pa.valeur : {};
       S.dernierInv = {}; S.invJ0 = {}; x[6].forEach(function (i) { if (!S.dernierInv[i.emplacement]) S.dernierInv[i.emplacement] = i.date_inv; if (i.j0 && S.j0 && S.j0.debut && i.date_inv.slice(0, 10) >= S.j0.debut) S.invJ0[i.emplacement] = true; });
       S.recents = x[7];
       S.afPrix = {}; (x[8] || []).forEach(function (p) { (S.afPrix[p.article_id] = S.afPrix[p.article_id] || []).push(p); });
@@ -718,6 +719,11 @@
     if (!c) return h + '<p class="mu">Chargement…</p>';
     var li = S.lignes[c.id] || [], st = CST[c.statut] || ['', c.statut], ouverte = c.statut === 'attente' || c.statut === 'partielle';
     h += '<div class="card row wrap"><div class="grow"><h2 style="margin:0">' + esc(S.fournisseurs[c.fournisseur_id] || 'Fournisseur supprimé') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</h2>' + (c.numero && !F.editNum ? '<div style="margin:8px 0"><button class="btn l sm" data-act="cnumedit">✏️ Modifier la référence</button></div>' : '<div class="row" style="margin:8px 0;max-width:460px"><input class="in" id="cnum" placeholder="Référence de la commande passée" value="' + esc(F.num != null ? F.num : c.numero || '') + '" aria-label="Référence de la commande"><button class="btn sm" data-act="cnumok">Enregistrer</button>' + (c.numero ? '<button class="btn l sm" data-act="cnumno">Annuler</button>' : '') + '</div>') + '<span class="mu">Commande du ' + c.date_commande.split('-').reverse().join('/') + '</span> <span class="pill ' + st[0] + '">' + st[1] + '</span></div>' + (ouverte ? '<button class="btn l sm" data-act="cclose">Clôturer</button>' : '') + '</div>';
+    if (ouverte) {
+      h += '<div class="row wrap" style="margin:0 0 10px"><label class="btn gold" style="display:inline-flex;align-items:center">📄 Importer la facture PDF<input type="file" accept="application/pdf,.pdf" id="impf" hidden></label><button class="btn l" data-act="caouvre">+ Ajouter un article</button></div>';
+      if (F.imp) h += vImport(c);
+      h += vAjoutLigne(c);
+    }
     h += '<div class="card"><b>Lignes' + (ouverte ? ' · saisir ce qui est arrivé' : '') + '</b>' + li.map(function (l) {
       var a = S.byId[l.article_id] || { nom: '(article supprimé)' }, reste = Math.max(0, l.quantite - l.recu), r = F.rx[l.id] || {}, rf = a.id ? refChez(a, c.fournisseur_id) : '';
       return '<div class="it" style="flex-wrap:wrap"><div class="it-n"><b>' + esc(a.nom) + '</b><span style="display:block;font-weight:700;color:var(--ink2)">Réf. ' + (rf ? esc(rf) : '<span class="pill warn">SR</span>') + '</span><span>Commandé ' + fr(l.quantite) + ' · reçu ' + fr(l.recu) + (l.gratuit ? ' + ' + fr(l.gratuit) + ' offert(s)' : '') + ' · ' + eur(l.prix) + (l.reliquat_abandonne ? ' · <span class="pill">reliquat abandonné</span>' : reste && c.statut !== 'attente' ? ' · <span class="pill warn">reste ' + fr(reste) + '</span>' : '') + '</span></div>'
@@ -765,6 +771,133 @@
     if (!confirm('Clôturer cette commande ? Plus rien n’est attendu.')) return;
     var id = S.fiche.id;
     sb.from('commandes').update({ statut: 'close' }).eq('id', id).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } toast('Commande clôturée'); chargerCommandes().then(function () { ouvrirCommande(id); }); });
+  }
+
+  // ---------- Import d'une facture PDF dans une commande en cours ----------
+  function nRef(r) { return String(r || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+  function trouverArticle(ref, fid) {
+    var k = nRef(ref); if (!k) return null;
+    var al = (S.alias[fid] || {})[k]; if (al && S.byId[al] && !S.byId[al].archive) return S.byId[al];
+    var a = null;
+    S.articles.some(function (x) { return (S.afPrix[x.id] || []).some(function (p) { if (p.fournisseur_id === fid && nRef(p.reference) === k) { a = x; return true; } }); });
+    if (a) return a;
+    S.articles.some(function (x) { if (nRef(x.reference) === k && x.reference !== 'SR') { a = x; return true; } });
+    return a;
+  }
+  function importerFacture(file) {
+    var F = S.fiche, c = S.commandes.filter(function (x) { return x.id === F.id; })[0];
+    if (!file || !c) return;
+    F.imp = { lecture: true }; render();
+    file.arrayBuffer().then(FACTURES.extraireLignes).then(function (lignes) {
+      var R = FACTURES.lireFacture(lignes), nomFo = S.fournisseurs[c.fournisseur_id] || '';
+      if (!R.fournisseur) { F.imp = { inconnu: true }; render(); return; }
+      if (!R.lignes.length) { F.imp = null; toast('Aucune ligne d’article trouvée dans cette facture'); render(); return; }
+      if (norm(nomFo).replace(/\s/g, '').indexOf(norm(R.fournisseur).replace(/\s/g, '')) < 0 && !confirm('Cette facture est une facture ' + R.fournisseur + ', mais la commande est chez ' + nomFo + '.\n\nContinuer quand même ?')) { F.imp = null; render(); return; }
+      var lignesF = R.lignes, num = (c.numero || '').trim();
+      if (num) {
+        if (R.commandes.length && R.commandes.indexOf(num) < 0) {
+          if (!confirm('Cette facture correspond à la commande n° ' + R.commandes.join(', ') + '.\nVotre commande est enregistrée sous le n° ' + num + '.\n\nContinuer quand même ?')) { F.imp = null; render(); return; }
+        } else if (R.commandes.length > 1) lignesF = R.lignes.filter(function (x) { return x.commande === num; });
+      }
+      // regroupement par article (plusieurs références peuvent viser la même fiche)
+      var parA = {}, items = [];
+      lignesF.forEach(function (x) {
+        var a = trouverArticle(x.ref, c.fournisseur_id);
+        if (!a) { items.push({ type: 'inconnu', ref: x.ref, nom: x.nom, qte: x.qte, prix: x.prix, total: x.total, choix: '' }); return; }
+        var it = parA[a.id];
+        if (!it) { it = parA[a.id] = { type: 'connu', article_id: a.id, refs: [], qte: 0, total: 0 }; items.push(it); }
+        it.refs.push(x.ref); it.qte += x.qte; it.total += x.total != null ? x.total : x.qte * x.prix;
+      });
+      items.forEach(function (it) { if (it.type === 'connu') it.prix = it.qte ? Math.round(it.total / it.qte * 10000) / 10000 : 0; });
+      F.imp = { R: R, items: items, num: num };
+      render(); window.scrollTo(0, 0);
+    }).catch(function (e) { F.imp = null; toast('Lecture du PDF impossible : ' + (e && e.message || e)); render(); });
+  }
+  function vImport(c) {
+    var I = S.fiche.imp, li = S.lignes[c.id] || [];
+    if (I.lecture) return '<div class="card"><b>📄 Lecture de la facture…</b></div>';
+    if (I.inconnu) return '<div class="ban warn"><b>Fournisseur pas encore reconnu.</b> L’import sait lire les factures ' + FACTURES.modeles.join(' et ') + '. Ajoutez les articles à la main avec « + Ajouter un article » et envoyez une facture de ce fournisseur à Claude pour qu’il l’ajoute. <button class="lnk" data-act="impno">Fermer</button></div>';
+    var R = I.R, parL = {}; li.forEach(function (l) { parL[l.article_id] = l; });
+    var h = '<div class="card" style="border:2px solid var(--gold)"><b>📄 Facture ' + esc(R.fournisseur) + (R.facture ? ' n° ' + esc(R.facture) : '') + (R.date ? ' du ' + R.date.split('-').reverse().join('/') : '') + '</b>'
+      + '<p class="mu" style="margin:4px 0 8px">Commande sur la facture : ' + (R.commandes.length ? esc(R.commandes.join(', ')) : 'non indiquée') + (!I.num && R.commandes.length ? ' · sera enregistrée comme référence de la commande' : '') + '. Vérifiez puis appliquez : rien n’entre en stock avant « Réceptionner ».</p>';
+    var vus = {}, nb2 = { maj: 0, ajout: 0, ok: 0 };
+    h += I.items.map(function (it, i) {
+      if (it.type === 'inconnu') {
+        return '<div class="it" style="flex-wrap:wrap"><div class="it-n"><b>' + esc(it.nom) + '<span class="ref">' + esc(it.ref) + '</span></b><span><span class="pill warn">inconnu dans l’appli</span> · ' + fr(it.qte) + ' × ' + eur(it.prix) + '</span></div>'
+          + '<select class="in" style="max-width:340px" data-impc="' + i + '"><option value="">Choisir…</option><option value="creer"' + (it.choix === 'creer' ? ' selected' : '') + '>➕ Créer une fiche article</option><option value="ignorer"' + (it.choix === 'ignorer' ? ' selected' : '') + '>Ignorer cette ligne</option><optgroup label="Associer à une fiche existante">'
+          + S.articles.map(function (a) { return '<option value="' + a.id + '"' + (String(it.choix) === String(a.id) ? ' selected' : '') + '>' + esc(a.nom) + (a.reference && !estSR(a) ? ' — ' + esc(a.reference) : '') + '</option>'; }).join('') + '</optgroup></select></div>';
+      }
+      var a = S.byId[it.article_id], l = parL[it.article_id], txt; vus[it.article_id] = 1;
+      if (!l) { txt = '<span class="pill ok">ajouté à la commande</span> · ' + fr(it.qte) + ' × ' + eur(it.prix); nb2.ajout++; }
+      else if (l.quantite !== it.qte || Math.abs(l.prix - it.prix) > 0.004) { txt = '<span class="pill warn">corrigé</span> · ' + (l.quantite !== it.qte ? 'quantité ' + fr(l.quantite) + ' → <b>' + fr(it.qte) + '</b>' : 'quantité ' + fr(it.qte)) + ' · prix ' + (Math.abs(l.prix - it.prix) > 0.004 ? eur(l.prix) + ' → <b>' + eur(it.prix) + '</b>' : eur(it.prix)); nb2.maj++; }
+      else { txt = '<span class="pill">identique</span> · ' + fr(it.qte) + ' × ' + eur(it.prix); nb2.ok++; }
+      return '<div class="it"><div class="it-n"><b>' + esc(a.nom) + '<span class="ref">' + esc(it.refs.join(', ')) + '</span></b><span>' + txt + '</span></div></div>';
+    }).join('');
+    var absents = li.filter(function (l) { return !vus[l.article_id]; });
+    if (absents.length) h += '<p class="mu" style="margin:10px 0 0"><b>Pas sur la facture</b> (inchangé) : ' + absents.map(function (l) { return esc((S.byId[l.article_id] || { nom: '?' }).nom); }).join(', ') + '</p>';
+    var reste = I.items.filter(function (it) { return it.type === 'inconnu' && !it.choix; }).length;
+    h += '<div class="row wrap" style="margin-top:12px"><span class="grow mu">' + nb2.ajout + ' ajout(s), ' + nb2.maj + ' correction(s), ' + nb2.ok + ' identique(s)' + (reste ? ' · <b>' + reste + ' ligne(s) inconnue(s) à choisir</b>' : '') + '</span><button class="btn l" data-act="impno">Annuler</button><button class="btn" data-act="impok"' + (reste || I.busy ? ' disabled' : '') + '>Appliquer à la commande</button></div></div>';
+    return h;
+  }
+  function appliquerImport() {
+    var F = S.fiche, I = F.imp, c = S.commandes.filter(function (x) { return x.id === F.id; })[0], fid = c.fournisseur_id;
+    I.busy = true; render();
+    var aCreer = I.items.filter(function (it) { return it.type === 'inconnu' && it.choix === 'creer'; });
+    var alias = JSON.parse(JSON.stringify(S.alias || {})), aliasModif = false;
+    // 1. fiches à créer
+    var p = aCreer.length ? sb.from('articles').insert(aCreer.map(function (it) {
+      return { nom: it.nom, reference: it.ref, fournisseur_id: fid, conditionnement: 'BOITE', consommation: 'BOITE', qte_par_boite: 1, seuil: 0, prix: it.prix || 0, cout_moyen: it.prix || 0 };
+    })).select().then(function (r) {
+      if (r.error) throw r.error;
+      r.data.forEach(function (a, i) { aCreer[i].article_id = a.id; });
+      return sb.from('article_fournisseurs').insert(r.data.map(function (a, i) { return { article_id: a.id, fournisseur_id: fid, prix: aCreer[i].prix || 0, reference: aCreer[i].ref, rang: 0 }; })).then(function (r2) { if (r2.error) throw r2.error; });
+    }) : Promise.resolve();
+    return p.then(function () {
+      // 2. total par article
+      var fin = {};
+      I.items.forEach(function (it) {
+        var id = it.type === 'connu' ? it.article_id : it.choix === 'creer' ? it.article_id : it.choix && it.choix !== 'ignorer' ? +it.choix : null;
+        if (!id) return;
+        if (it.type === 'inconnu' && it.choix !== 'creer') { (alias[fid] = alias[fid] || {})[nRef(it.ref)] = id; aliasModif = true; }
+        var x = fin[id] = fin[id] || { qte: 0, total: 0 };
+        x.qte += it.qte; x.total += it.type === 'connu' ? it.total : (it.total != null ? it.total : it.qte * it.prix);
+      });
+      var li = S.lignes[c.id] || [], parL = {}; li.forEach(function (l) { parL[l.article_id] = l; });
+      var ops = [], ajouts = [];
+      Object.keys(fin).forEach(function (id) {
+        var x = fin[id], prix = x.qte ? Math.round(x.total / x.qte * 10000) / 10000 : 0, l = parL[id];
+        if (!l) ajouts.push({ commande_id: c.id, article_id: +id, quantite: x.qte, prix: prix });
+        else if (l.quantite !== x.qte || Math.abs(l.prix - prix) > 0.004) ops.push(sb.from('commande_lignes').update({ quantite: Math.max(x.qte, l.recu), prix: prix }).eq('id', l.id));
+      });
+      if (ajouts.length) ops.push(sb.from('commande_lignes').insert(ajouts));
+      if (!I.num && I.R.commandes.length) ops.push(sb.from('commandes').update({ numero: I.R.commandes.join(', ') }).eq('id', c.id));
+      if (aliasModif) ops.push(sb.from('parametres').upsert({ cle: 'alias_refs', valeur: alias }, { onConflict: 'cle' }));
+      return Promise.all(ops).then(function (rs) {
+        rs.forEach(function (r) { if (r && r.error) throw r.error; });
+        S.alias = alias;
+        return sb.rpc('statut_commande', { p_commande: c.id });
+      }).then(function () { return { ajouts: ajouts.length, maj: ops.length - (ajouts.length ? 1 : 0) - (aliasModif ? 1 : 0) - (!I.num && I.R.commandes.length ? 1 : 0), fiches: aCreer.length }; });
+    }).then(function (n) {
+      toast('✔ Facture appliquée : ' + n.ajouts + ' ligne(s) ajoutée(s), ' + n.maj + ' corrigée(s)' + (n.fiches ? ', ' + n.fiches + ' fiche(s) créée(s) à compléter' : ''));
+      F.imp = null; Promise.all([charger(), chargerCommandes()]).then(function () { ouvrirCommande(c.id); });
+    }).catch(function (e) { I.busy = false; toast(msgErr(e)); render(); });
+  }
+  // Ajout manuel d'une ligne dans une commande en cours
+  function vAjoutLigne(c) {
+    var A = S.fiche.ajout; if (!A) return '';
+    var q = norm(A.q), h = '<div class="card"><b>+ Ajouter un article à la commande</b><input class="in" id="caq" type="search" placeholder="Nom ou référence" value="' + esc(A.q) + '" style="margin-top:8px">';
+    if (q) h += S.articles.filter(function (a) { return norm(a.nom + ' ' + (a.reference || '')).indexOf(q) >= 0; }).slice(0, 12).map(function (a) { return '<button class="it lrow" data-caadd="' + a.id + '"><span class="it-n"><b>' + esc(a.nom) + '</b><span>' + esc(refChez(a, c.fournisseur_id) || 'SR') + ' · ' + eur(prixChez(a, c.fournisseur_id)) + '</span></span><span>+</span></button>'; }).join('');
+    return h + '<button class="lnk" style="margin-top:8px" data-act="cano">Fermer</button></div>';
+  }
+  function ajouterLigne(aid) {
+    var F = S.fiche, c = S.commandes.filter(function (x) { return x.id === F.id; })[0], a = S.byId[aid];
+    if ((S.lignes[c.id] || []).some(function (l) { return l.article_id === aid; })) { toast('Cet article est déjà dans la commande'); return; }
+    var q = nb(String(prompt('Quantité commandée pour « ' + a.nom + ' » (' + uRes(a) + ') ?', '1') || '').replace(',', '.'));
+    if (!(q > 0)) return;
+    sb.from('commande_lignes').insert({ commande_id: c.id, article_id: aid, quantite: q, prix: prixChez(a, c.fournisseur_id) }).then(function (r) {
+      if (r.error) { toast(msgErr(r.error)); return; }
+      F.ajout = null; toast('✔ Ligne ajoutée'); return sb.rpc('statut_commande', { p_commande: c.id }).then(function () { return chargerCommandes(); }).then(render);
+    });
   }
 
   // ---------- Équipe (gestion) ----------
@@ -832,6 +965,11 @@
     if (d.rxundo) return annulerReception(d.rxundo);
     if (d.rxab) return abandonnerReste(+d.rxab);
     if (d.act === 'cclose') return cloturerCommande();
+    if (d.act === 'impno') { S.fiche.imp = null; render(); return; }
+    if (d.act === 'impok') return appliquerImport();
+    if (d.act === 'caouvre') { S.fiche.ajout = { q: '' }; render(); var ca = document.getElementById('caq'); if (ca) ca.focus(); return; }
+    if (d.act === 'cano') { S.fiche.ajout = null; render(); return; }
+    if (d.caadd) return ajouterLigne(+d.caadd);
     if (d.act === 'cnumedit') { S.fiche.editNum = true; render(); var ci = document.getElementById('cnum'); if (ci) ci.focus(); return; }
     if (d.act === 'cnumno') { S.fiche.editNum = false; S.fiche.num = null; render(); return; }
     if (d.act === 'cnumok') { var cid = S.fiche.id, nv = (S.fiche.num != null ? S.fiche.num : (document.getElementById('cnum') || {}).value || '').trim(); return sb.from('commandes').update({ numero: nv || null }).eq('id', cid).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } toast('✔ Référence de commande enregistrée'); S.fiche.num = null; S.fiche.editNum = false; chargerCommandes().then(render); }); }
@@ -870,6 +1008,7 @@
     else if (t.dataset && t.dataset.sugq) { S.sugQ[t.dataset.sugq] = t.value; }
     else if (t.id === 'ncnum') { S.nc.num = t.value; }
     else if (t.id === 'cnum') { S.fiche.num = t.value; }
+    else if (t.id === 'caq') { S.fiche.ajout.q = t.value; render(); var ca = document.getElementById('caq'); if (ca) { ca.focus(); ca.setSelectionRange(ca.value.length, ca.value.length); } }
     else if (t.id === 'ncq') { S.nc.q = t.value; render(); }
     else if (t.dataset && t.dataset.ncl != null) { S.nc.l[+t.dataset.ncl][t.dataset.nck] = t.value; }
     else if (t.dataset && t.dataset.rxq) { (S.fiche.rx[t.dataset.rxq] = S.fiche.rx[t.dataset.rxq] || {}).q = t.value; }
@@ -886,7 +1025,9 @@
   });
   document.addEventListener('change', function (e) {
     var t = e.target; if (!S.me) return;
-    if (t.id === 'scab') { S.sortie.cab = +t.value; render(); }
+    if (t.id === 'impf') { var fi = t.files && t.files[0]; t.value = ''; importerFacture(fi); }
+    else if (t.dataset && t.dataset.impc != null && S.fiche && S.fiche.imp) { S.fiche.imp.items[+t.dataset.impc].choix = t.value; render(); }
+    else if (t.id === 'scab') { S.sortie.cab = +t.value; render(); }
     else if (t.id === 'ncfo') { S.nc.fid = t.value; S.nc.l.forEach(function (l) { l.prix = prixChez(S.byId[l.article_id], +t.value); }); render(); }
     else if (t.id === 'foarch') { S.foArch = t.checked; render(); }
     else if (t.dataset && (t.dataset.afF || t.dataset.foK) && S.fiche) { if (t.dataset.afF) S.fiche.d[t.dataset.afF] = t.type === 'checkbox' ? t.checked : t.value; else S.fiche.foEdit[+t.dataset.foI][t.dataset.foK] = t.value; if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); }
