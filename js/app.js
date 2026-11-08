@@ -12,7 +12,7 @@
     session: null, me: null, err: '', tab: 'sortie', loading: false,
     articles: [], byId: {}, stocks: {}, fournisseurs: {}, profils: [], attente: [], histo: [],
     sortie: { cab: null, q: '', panier: {}, msg: null, busy: false },
-    stockQ: '', stockF: '', histTous: false, eqEdit: null, pwAbc: false, dernierInv: {}, recents: [], j0: null, invJ0: {},
+    stockQ: '', stockF: '', histTous: false, eqEdit: null, pwAbc: false, dernierInv: {}, recents: [], j0: null, invJ0: {}, fiche: null, artQ: '', artF: 'tous', artMax: 100, archives: [], fournListe: [], foArch: false,
     inv: { emp: null, d: {}, q: '', tous: false, recap: false, motifs: {}, busy: false, msg: null, max: 80 }
   };
   var LABEL = { assistante: 'Assistante', referente: 'Référente', responsable: 'Responsable' };
@@ -106,9 +106,9 @@
   }
   function charger() {
     var ps = [
-      toutLire('articles', 'id,code,nom,reference,fournisseur_id,conditionnement,qte_par_boite,consommation,seuil,sans_seuil,cout_moyen,archive', function (q) { return q.eq('archive', false).order('nom'); }),
+      toutLire('articles', 'id,code,nom,reference,fournisseur_id,conditionnement,qte_par_boite,consommation,conso_verifiee,seuil,sans_seuil,cout_moyen,prix,archive', function (q) { return q.order('nom'); }),
       toutLire('stocks', 'article_id,emplacement,quantite'),
-      toutLire('fournisseurs', 'id,nom'),
+      toutLire('fournisseurs', '*', function (q) { return q.order('nom'); }),
       sb.from('profils').select('*').order('nom').then(function (r) { if (r.error) throw r.error; return r.data; }),
       sb.from('mouvements').select('*').eq('statut', 'attente').order('cree_le').then(function (r) { if (r.error) throw r.error; return r.data; }),
       sb.from('parametres').select('cle,valeur').eq('cle', 'j0').then(function (r) { if (r.error) throw r.error; return r.data; }),
@@ -116,9 +116,9 @@
       sb.from('mouvements').select('*').order('cree_le', { ascending: false }).limit(30).then(function (r) { if (r.error) throw r.error; return r.data; })
     ];
     return Promise.all(ps).then(function (x) {
-      S.articles = x[0]; S.byId = {}; S.articles.forEach(function (a) { S.byId[a.id] = a; });
+      S.articles = x[0].filter(function (a) { return !a.archive; }); S.archives = x[0].filter(function (a) { return a.archive; }); S.byId = {}; x[0].forEach(function (a) { S.byId[a.id] = a; });
       S.stocks = {}; x[1].forEach(function (s) { (S.stocks[s.article_id] = S.stocks[s.article_id] || {})[s.emplacement] = +s.quantite; });
-      S.fournisseurs = {}; x[2].forEach(function (f) { S.fournisseurs[f.id] = f.nom; });
+      S.fournisseurs = {}; x[2].forEach(function (f) { S.fournisseurs[f.id] = f.nom; }); S.fournListe = x[2];
       S.profils = x[3]; S.attente = x[4];
       S.j0 = x[5][0] ? x[5][0].valeur : null;
       S.dernierInv = {}; S.invJ0 = {}; x[6].forEach(function (i) { if (!S.dernierInv[i.emplacement]) S.dernierInv[i.emplacement] = i.date_inv; if (i.j0 && S.j0 && S.j0.debut && i.date_inv.slice(0, 10) >= S.j0.debut) S.invJ0[i.emplacement] = true; });
@@ -143,14 +143,14 @@
       $('bout').onclick = deconnexion; return;
     }
     var tabs = gestion() ? [['accueil', 'Accueil'], ['sortie', 'Sortie'], ['inventaire', 'Inventaire']] : [['sortie', 'Sortie'], ['inventaire', 'Inventaire']];
-    if (gestion()) tabs.push(['demandes', 'Demandes' + (S.attente.length ? '<span class="badge">' + S.attente.length + '</span>' : '')], ['stock', 'Stock']);
+    if (gestion()) tabs.push(['demandes', 'Demandes' + (S.attente.length ? '<span class="badge">' + S.attente.length + '</span>' : '')], ['stock', 'Stock'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs']);
     tabs.push(['histo', 'Historique']);
     if (gestion()) tabs.push(['equipe', 'Équipe']);
     var h = '<header class="top"><div class="top-in"><img src="assets/logo-evydent.jpg" alt="">'
       + '<div class="top-who"><b>' + esc(S.me.nom) + (C.env === 'dev' ? ' <span class="env">TEST</span>' : '') + '</b><span>' + LABEL[S.me.role] + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + '</span></div>'
       + '<button class="btn l sm" data-act="out">Changer de personne</button></div>'
       + '<nav class="tabs" aria-label="Menu">' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav></header>';
-    h += '<main>' + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe }[S.tab] || vSortie)() + '</main>';
+    h += '<main>' + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs }[S.tab] || vSortie)() + '</main>';
     h += (S.tab === 'sortie' ? vBarSortie() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
     var fq = document.activeElement && document.activeElement.id, pos = fq && document.activeElement.selectionStart;
     app.innerHTML = h;
@@ -420,6 +420,193 @@
     }).join('') + '</tbody></table></div>';
   }
 
+  // ---------- Articles (gestion) ----------
+  var AF = { tous: 'Tous', sr: 'Sans référence', sf: 'Sans fournisseur', seuil: 'Sans seuil', archive: 'Archivés' };
+  function vArticles() {
+    if (S.fiche && S.fiche.type === 'article') return vFicheArticle();
+    var q = norm(S.artQ), f = S.artF || 'tous';
+    var base = f === 'archive' ? S.archives : S.articles;
+    var l = base.filter(function (a) { return (f === 'tous' || f === 'archive' || filtreStock(a, f)) && (!q || norm(a.nom + ' ' + (a.reference || '') + ' ' + (S.fournisseurs[a.fournisseur_id] || '')).indexOf(q) >= 0); });
+    var h = '<h2>Articles</h2><div class="card row wrap"><input class="in grow" id="aq" type="search" placeholder="Rechercher un article, une référence, un fournisseur" value="' + esc(S.artQ) + '"><button class="btn" data-act="anew">+ Nouvel article</button></div>'
+      + '<div class="chips" style="margin:0 0 10px">' + Object.keys(AF).map(function (k) { return '<button class="chip' + (f === k ? ' on' : '') + '" data-af="' + k + '">' + AF[k] + '</button>'; }).join('') + '</div>'
+      + '<p class="mu">' + l.length + ' article(s)</p>';
+    h += '<div class="card">' + l.slice(0, S.artMax || 100).map(function (a) {
+      return '<button class="it lrow" data-aopen="' + a.id + '"><span class="it-n"><b>' + esc(a.nom) + (a.reference && !estSR(a) ? '<span class="ref">' + esc(a.reference) + '</span>' : ' <span class="pill warn">SR</span>') + '</b><span>' + esc(S.fournisseurs[a.fournisseur_id] || 'SF') + ' · ' + condTxt(a) + ' · réserve ' + fr(stockDe(a.id, 0)) + ' ' + uRes(a) + '</span></span><span aria-hidden="true">›</span></button>';
+    }).join('') + '</div>';
+    if (l.length > (S.artMax || 100)) h += '<button class="btn l" style="width:100%" data-act="amore">Afficher plus</button>';
+    return h;
+  }
+  function condTxt(a) { return a.conditionnement === 'BOITE' ? 'boîte de ' + fr(a.qte_par_boite) + (a.consommation === 'Unité' && +a.qte_par_boite > 1 ? ', sortie à l’unité' : ', sortie à la boîte') : 'à l’unité'; }
+  function ouvrirArticle(id) {
+    S.fiche = { type: 'article', id: id, edit: id === 'new', d: null, fo: [], hist: [], cor: null };
+    if (id === 'new') { S.fiche.d = { nom: '', reference: 'SR', conditionnement: 'Unité', qte_par_boite: 1, consommation: 'Unité', conso_verifiee: false, seuil: 0, sans_seuil: false, cout_moyen: 0, prix: 0 }; render(); return; }
+    render();
+    Promise.all([
+      sb.from('articles').select('*').eq('id', id).maybeSingle(),
+      sb.from('article_fournisseurs').select('*').eq('article_id', id).order('rang'),
+      sb.from('prix_historique').select('*').eq('article_id', id).order('date_prix', { ascending: false }).limit(20)
+    ]).then(function (r) {
+      if (!S.fiche || S.fiche.id !== id) return;
+      if (r[0].error) { toast(msgErr(r[0].error)); return; }
+      S.fiche.d = r[0].data; S.fiche.fo = r[1].data || []; S.fiche.hist = r[2].data || []; render();
+    });
+  }
+  function optFo(sel, vide) { return (vide ? '<option value="">' + vide + '</option>' : '') + S.fournListe.filter(function (f) { return !f.archive || String(f.id) === String(sel); }).map(function (f) { return '<option value="' + f.id + '"' + (String(f.id) === String(sel) ? ' selected' : '') + '>' + esc(f.nom) + '</option>'; }).join(''); }
+  function vFicheArticle() {
+    var F = S.fiche, a = F.d;
+    var h = '<button class="lnk" data-act="fclose">← Tous les articles</button>';
+    if (!a) return h + '<p class="mu">Chargement…</p>';
+    if (F.edit) return h + vEditArticle();
+    var f = facteur(a), cabs = [1, 2, 3, 4, 5, 6, 7, 8].filter(function (c) { return stockDe(a.id, c); });
+    h += '<div class="card"><div class="row wrap"><div class="grow"><h2 style="margin:0">' + esc(a.nom) + '</h2><span class="mu">Réf. ' + (a.reference && !estSR(a) ? esc(a.reference) : '<span class="pill warn">SR</span>') + ' · ' + esc(S.fournisseurs[a.fournisseur_id] || 'SF') + (a.archive ? ' · <span class="pill ko">archivé</span>' : '') + '</span></div><button class="btn" data-act="aedit">✏️ Modifier</button></div></div>';
+    h += '<div class="card"><b>📦 Conditionnement et stock</b><dl class="dl">'
+      + '<dt>Conditionnement</dt><dd>' + condTxt(a) + (a.conditionnement === 'BOITE' && +a.qte_par_boite > 1 && !a.conso_verifiee ? ' <span class="pill warn">consommation à vérifier</span>' : '') + '</dd>'
+      + '<dt>Réserve</dt><dd>' + fr(stockDe(a.id, 0)) + ' ' + uRes(a) + (f > 1 ? ' (' + fr(stockDe(a.id, 0) * f) + ' u.)' : '') + '</dd>'
+      + '<dt>Cabinets</dt><dd>' + (cabs.length ? cabs.map(function (c) { return 'cab. ' + c + ' : ' + fr(stockDe(a.id, c)) + ' u.'; }).join(' · ') : 'aucun') + '</dd>'
+      + '<dt>Seuil d’alerte</dt><dd>' + (a.sans_seuil ? 'aucun (voulu)' : +a.seuil > 0 ? fr(a.seuil) + ' ' + uRes(a) : '<span class="pill warn">à renseigner</span>') + '</dd>'
+      + '<dt>Coût moyen</dt><dd>' + eur(a.cout_moyen) + ' / ' + (a.conditionnement === 'BOITE' ? 'boîte' : 'unité') + '</dd></dl>'
+      + (F.cor ? vCorrection() : '<button class="btn l sm" data-act="cor">🛠 Corriger les quantités sans impact financier</button>') + '</div>';
+    h += '<div class="card"><b>🚚 Fournisseurs et prix</b>' + (F.fo.length ? F.fo.map(function (x) { return '<div class="it"><div class="it-n"><b>' + (x.rang === 0 ? '★ ' : '') + esc(S.fournisseurs[x.fournisseur_id] || '?') + '</b><span>' + (x.reference ? 'réf. ' + esc(x.reference) + ' · ' : '') + eur(x.prix) + '</span></div></div>'; }).join('') : '<p class="mu">Aucun fournisseur (SF).</p>') + '</div>';
+    h += '<div class="card"><b>📈 Historique des prix</b>' + (F.hist.length ? '<div class="scroll"><table class="tbl"><tbody>' + F.hist.map(function (p) { return '<tr><td>' + p.date_prix.split('-').reverse().join('/') + '</td><td>' + esc(S.fournisseurs[p.fournisseur_id] || '') + '</td><td class="n">' + eur(p.prix) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="mu">Aucun prix enregistré.</p>') + '</div>';
+    return h;
+  }
+  function vEditArticle() {
+    var F = S.fiche, a = F.d, nouv = F.id === 'new';
+    if (!F.foEdit) F.foEdit = F.fo.map(function (x) { return { fournisseur_id: x.fournisseur_id, prix: x.prix, reference: x.reference || '' }; });
+    var h = '<div class="ban j0">✏️ <b>' + (nouv ? 'Nouvel article' : 'Modification') + '</b> : rien n’est enregistré tant que vous ne touchez pas « Enregistrer ».</div>';
+    h += '<div class="card"><div class="g2">'
+      + '<label class="mu">Nom<input class="in" data-af-f="nom" value="' + esc(a.nom) + '"></label>'
+      + '<label class="mu">Référence (SR si aucune)<input class="in" data-af-f="reference" value="' + esc(a.reference || '') + '"></label>'
+      + '<label class="mu">Livré<select class="in" data-af-f="conditionnement"><option value="Unité"' + (a.conditionnement === 'Unité' ? ' selected' : '') + '>À l’unité</option><option value="BOITE"' + (a.conditionnement === 'BOITE' ? ' selected' : '') + '>En boîte</option></select></label>'
+      + '<label class="mu">Unités par boîte<input class="in" inputmode="decimal" data-af-f="qte_par_boite" value="' + esc(a.qte_par_boite) + '"></label>'
+      + '<label class="mu">Sortie au cabinet<select class="in" data-af-f="consommation"><option value="Unité"' + (a.consommation === 'Unité' ? ' selected' : '') + '>À l’unité</option><option value="BOITE"' + (a.consommation === 'BOITE' ? ' selected' : '') + '>À la boîte entière</option></select></label>'
+      + '<label class="mu">Seuil d’alerte de la réserve<input class="in" inputmode="decimal" data-af-f="seuil" value="' + esc(a.seuil) + '"' + (a.sans_seuil ? ' disabled' : '') + '></label>'
+      + '</div><label class="row" style="margin-top:10px"><input type="checkbox" data-af-f="sans_seuil"' + (a.sans_seuil ? ' checked' : '') + ' style="width:20px;height:20px"> Article sans seuil (pas d’alerte même à zéro)</label>'
+      + '<label class="row" style="margin-top:6px"><input type="checkbox" data-af-f="conso_verifiee"' + (a.conso_verifiee ? ' checked' : '') + ' style="width:20px;height:20px"> Consommation vérifiée</label></div>';
+    h += '<div class="card"><b>🚚 Fournisseurs</b> <span class="mu">(★ le premier = principal)</span>' + F.foEdit.map(function (x, i) {
+      return '<div class="row wrap" style="margin-top:8px"><span style="width:18px">' + (i === 0 ? '★' : '') + '</span><select class="in grow" data-fo-i="' + i + '" data-fo-k="fournisseur_id">' + optFo(x.fournisseur_id, 'Choisir…') + '</select>'
+        + '<input class="in" style="width:110px" inputmode="decimal" placeholder="Prix €" data-fo-i="' + i + '" data-fo-k="prix" value="' + esc(x.prix || '') + '"><input class="in" style="width:130px" placeholder="Réf." data-fo-i="' + i + '" data-fo-k="reference" value="' + esc(x.reference || '') + '">'
+        + (i > 0 ? '<button class="btn l sm" data-fotop="' + i + '" title="Mettre en principal">★</button>' : '') + '<button class="btn l sm" data-fodel="' + i + '" aria-label="Retirer">✕</button></div>';
+    }).join('') + '<button class="btn l sm" style="margin-top:10px" data-act="foadd">+ Ajouter un fournisseur</button></div>';
+    return h + '<div class="row"><button class="btn l" data-act="aannule">Annuler</button><button class="btn" data-act="asave"' + (F.busy ? ' disabled' : '') + '>Enregistrer</button>' + (!nouv ? '<span class="grow"></span><button class="btn l sm" data-act="aarch">' + (a.archive ? 'Réactiver' : 'Archiver') + '</button>' : '') + '</div>';
+  }
+  function sauverArticle() {
+    var F = S.fiche, a = F.d, nouv = F.id === 'new';
+    var o = { nom: String(a.nom || '').trim(), reference: String(a.reference || '').trim() || 'SR', conditionnement: a.conditionnement, qte_par_boite: Math.max(1, nb(a.qte_par_boite) || 1),
+      consommation: a.consommation, seuil: a.sans_seuil ? 0 : Math.max(0, nb(a.seuil)), sans_seuil: !!a.sans_seuil, conso_verifiee: !!a.conso_verifiee };
+    if (!o.nom) { toast('Le nom est obligatoire'); return; }
+    var fo = F.foEdit.filter(function (x) { return x.fournisseur_id; });
+    var vus = {}; fo = fo.filter(function (x) { if (vus[x.fournisseur_id]) return false; vus[x.fournisseur_id] = 1; return true; });
+    o.fournisseur_id = fo.length ? +fo[0].fournisseur_id : null;
+    if (o.reference.toUpperCase() !== 'SR' && S.articles.concat(S.archives).some(function (x) { return x.id !== F.id && String(x.reference || '').toUpperCase() === o.reference.toUpperCase(); })) { toast('Cette référence est déjà utilisée par un autre article'); return; }
+    F.busy = true; render();
+    var p = nouv ? sb.from('articles').insert(o).select().single() : sb.from('articles').update(o).eq('id', F.id).select().single();
+    p.then(function (r) {
+      if (r.error) throw r.error;
+      var id = r.data.id, anciens = {}; F.fo.forEach(function (x) { anciens[x.fournisseur_id] = x; });
+      var ops = [sb.from('article_fournisseurs').delete().eq('article_id', id)];
+      return ops[0].then(function (d) {
+        if (d.error) throw d.error;
+        if (!fo.length) return id;
+        var lignes = fo.map(function (x, i) { return { article_id: id, fournisseur_id: +x.fournisseur_id, prix: Math.max(0, nb(x.prix)), reference: x.reference || null, rang: i }; });
+        var hist = lignes.filter(function (l) { var o2 = anciens[l.fournisseur_id]; return l.prix > 0 && (!o2 || nb(o2.prix) !== l.prix); }).map(function (l) { return { article_id: id, fournisseur_id: l.fournisseur_id, date_prix: aujourdhui(), prix: l.prix, source: 'Saisie dans la fiche' }; });
+        return sb.from('article_fournisseurs').insert(lignes).then(function (r2) {
+          if (r2.error) throw r2.error;
+          var maj = { prix: lignes[0].prix }; if (nouv && lignes[0].prix) maj.cout_moyen = lignes[0].prix;
+          return Promise.all([sb.from('articles').update(maj).eq('id', id), hist.length ? sb.from('prix_historique').upsert(hist, { onConflict: 'article_id,fournisseur_id,date_prix,prix', ignoreDuplicates: true }) : Promise.resolve({})]).then(function () { return id; });
+        });
+      });
+    }).then(function (id) {
+      toast(nouv ? '✔ Article créé' : '✔ Article enregistré'); S.fiche.busy = false; charger().then(function () { ouvrirArticle(id); });
+    }).catch(function (e) { F.busy = false; toast(msgErr(e)); render(); });
+  }
+  function archiverArticle() {
+    var a = S.fiche.d, v = !a.archive;
+    if (v && !confirm('Archiver « ' + a.nom + ' » ? Il disparaîtra des sorties, de l’inventaire et des listes. Vous pourrez le réactiver depuis le filtre « Archivés ».')) return;
+    sb.from('articles').update({ archive: v }).eq('id', a.id).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } toast(v ? 'Article archivé' : 'Article réactivé'); S.fiche = null; charger(); });
+  }
+  // Correction sans impact financier (double confirmation)
+  function vCorrection() {
+    var F = S.fiche, a = F.d, c = F.cor, f = facteur(a);
+    if (c.etape === 2) {
+      var ch = corChanges();
+      return '<div class="ban ko" role="alert"><b>⚠️ Confirmez la correction</b><ul style="margin:6px 0 6px 18px;padding:0">' + ch.map(function (x) { return '<li>' + cabTxt(x.emp) + ' : ' + fr(x.avant) + ' → <strong>' + fr(x.apres) + '</strong></li>'; }).join('') + '</ul>Les quantités seront remplacées <b>sans perte ni gain</b> ; le coût moyen ne change pas. La correction reste tracée dans l’historique.'
+        + '<div class="row" style="margin-top:10px"><button class="btn l sm" data-act="cor1">Non, revenir</button><button class="btn ko sm" data-act="corgo">Oui, corriger</button></div></div>';
+    }
+    return '<div class="card" style="border:2px dashed #b45309;margin-top:10px"><b>🛠 Correction sans impact financier</b><p class="mu" style="margin:4px 0 8px">Pour rectifier une erreur de saisie. Réserve en ' + (f > 1 ? 'boîtes' : uRes(a)) + ', cabinets en unités.</p><div class="g4">'
+      + [0, 1, 2, 3, 4, 5, 6, 7, 8].map(function (e) { return '<label class="mu">' + cabTxt(e) + '<input class="in" inputmode="decimal" data-cor="' + e + '" value="' + esc(c.v[e]) + '"></label>'; }).join('')
+      + '</div><div class="row" style="margin-top:10px"><button class="btn l sm" data-act="corx">Annuler</button><button class="btn sm" data-act="cor2">Enregistrer la correction</button></div></div>';
+  }
+  function corChanges() { var a = S.fiche.d, c = S.fiche.cor, out = []; for (var e = 0; e <= 8; e++) { var v = Math.max(0, nb(String(c.v[e]).replace(',', '.'))), s = stockDe(a.id, e); if (Math.abs(v - s) > 1e-9) out.push({ emp: e, avant: s, apres: v }); } return out; }
+  function corGo() {
+    var a = S.fiche.d, ch = corChanges();
+    Promise.all(ch.map(function (x) { return sb.rpc('fixer_stock', { p_article: a.id, p_emplacement: x.emp, p_quantite: x.apres, p_type: 'correction', p_motif: 'Correction sans impact financier' }); })).then(function (rs) {
+      var e = rs.filter(function (r) { return r.error; })[0];
+      if (e) { toast(msgErr(e.error)); return; }
+      S.fiche.cor = null; toast('✔ Quantités corrigées, sans impact financier'); charger();
+    });
+  }
+
+  // ---------- Fournisseurs (gestion) ----------
+  var FOC = [['Compte client', [['n_client', 'N° de client']]], ['Contact', [['telephone', 'Téléphone', 'tel'], ['email', 'Email (commandes)', 'mail'], ['site_web', 'Site / lien de commande', 'web'], ['mode_commande', 'Mode de commande habituel']]],
+    ['Commercial', [['commercial_nom', 'Nom'], ['commercial_tel', 'Portable', 'tel'], ['commercial_email', 'Email', 'mail']]],
+    ['Conditions commerciales', [['franco', 'Franco de port'], ['minimum_commande', 'Minimum de commande'], ['remises', 'Remises négociées'], ['paiement', 'Délai / mode de paiement']]], ['Notes', [['notes', 'Notes', 'area']]]];
+  function vFournisseurs() {
+    if (S.fiche && S.fiche.type === 'fournisseur') return vFicheFo();
+    var l = S.fournListe.filter(function (f) { return !!f.archive === !!S.foArch; });
+    var h = '<h2>Fournisseurs</h2><div class="card row wrap"><span class="grow mu">Une fiche par fournisseur : compte client, contacts, commercial, conditions.</span><button class="btn" data-act="fonew">+ Nouveau fournisseur</button></div>'
+      + '<label class="row" style="margin:0 0 10px"><input type="checkbox" id="foarch"' + (S.foArch ? ' checked' : '') + ' style="width:20px;height:20px"> Voir les fiches archivées</label>';
+    return h + '<div class="card">' + (l.length ? l.map(function (f) {
+      var na = S.articles.filter(function (a) { return a.fournisseur_id === f.id; }).length, manque = !f.n_client || !f.telephone || !f.email;
+      return '<button class="it lrow" data-foopen="' + f.id + '"><span class="it-n"><b>' + esc(f.nom) + '</b><span>' + na + ' article(s) en principal' + (f.n_client ? ' · client n° ' + esc(f.n_client) : '') + (f.telephone ? ' · ' + esc(f.telephone) : '') + '</span></span>' + (manque ? '<span class="pill warn">à compléter</span>' : '<span class="pill ok">complète</span>') + '</button>';
+    }).join('') : '<p class="mu">Aucune fiche.</p>') + '</div>';
+  }
+  function ouvrirFo(id) {
+    var f = id === 'new' ? { nom: '' } : JSON.parse(JSON.stringify(S.fournListe.filter(function (x) { return x.id === id; })[0] || {}));
+    S.fiche = { type: 'fournisseur', id: id, edit: id === 'new', d: f, cpt: null };
+    render();
+    if (id !== 'new') sb.from('fournisseur_comptes').select('*').eq('fournisseur_id', id).maybeSingle().then(function (r) { if (S.fiche && S.fiche.id === id) { S.fiche.cpt = r.data || {}; render(); } });
+    else S.fiche.cpt = {};
+  }
+  function lienFo(t, v) {
+    if (!v) return '<span class="mu">—</span>';
+    if (t === 'tel') return '<a href="tel:' + esc(v.replace(/[^\d+]/g, '')) + '">📞 ' + esc(v) + '</a>';
+    if (t === 'mail') return '<a href="mailto:' + esc(v) + '">✉️ ' + esc(v) + '</a>';
+    if (t === 'web') return '<a target="_blank" rel="noopener" href="' + esc(/^https?:/.test(v) ? v : 'https://' + v) + '">🌐 ' + esc(v) + '</a>';
+    return esc(v).replace(/\n/g, '<br>');
+  }
+  function vFicheFo() {
+    var F = S.fiche, f = F.d, h = '<button class="lnk" data-act="fclose">← Tous les fournisseurs</button>';
+    if (F.edit) {
+      h += '<div class="ban j0">✏️ <b>' + (F.id === 'new' ? 'Nouveau fournisseur' : 'Modification') + '</b> : rien n’est enregistré tant que vous ne touchez pas « Enregistrer ».</div>';
+      h += '<div class="card"><label class="mu">Nom du fournisseur<input class="in" data-fo-f="nom" value="' + esc(f.nom) + '"></label></div>';
+      FOC.forEach(function (g) { h += '<div class="card"><b>' + g[0] + '</b><div class="g2" style="margin-top:6px">' + g[1].map(function (x) { return '<label class="mu">' + x[1] + (x[2] === 'area' ? '<textarea class="in" style="height:90px;padding:10px" data-fo-f="' + x[0] + '">' + esc(f[x[0]] || '') + '</textarea>' : '<input class="in" data-fo-f="' + x[0] + '" value="' + esc(f[x[0]] || '') + '">') + '</label>'; }).join('') + '</div></div>'; });
+      h += '<div class="card"><b>🔐 Compte sur le site du fournisseur</b> <span class="mu">(visible seulement par la responsable et la référente)</span><div class="g2" style="margin-top:6px"><label class="mu">Identifiant<input class="in" data-cpt-f="identifiant" value="' + esc((F.cpt || {}).identifiant || '') + '"></label><label class="mu">Mot de passe<input class="in" data-cpt-f="mot_de_passe" value="' + esc((F.cpt || {}).mot_de_passe || '') + '"></label></div></div>';
+      return h + '<div class="row"><button class="btn l" data-act="foannule">Annuler</button><button class="btn" data-act="fosave">Enregistrer</button>' + (F.id !== 'new' ? '<span class="grow"></span><button class="btn l sm" data-act="foarchive">' + (f.archive ? 'Réactiver' : 'Archiver') + '</button>' : '') + '</div>';
+    }
+    h += '<div class="card row wrap"><div class="grow"><h2 style="margin:0">' + esc(f.nom) + '</h2>' + (f.archive ? '<span class="pill ko">archivée</span>' : '') + '</div><button class="btn" data-act="foedit">✏️ Modifier</button></div>';
+    FOC.forEach(function (g) { h += '<div class="card"><b>' + g[0] + '</b><dl class="dl">' + g[1].map(function (x) { return '<dt>' + x[1] + '</dt><dd>' + lienFo(x[2], f[x[0]]) + '</dd>'; }).join('') + '</dl></div>'; });
+    var c = F.cpt;
+    h += '<div class="card"><b>🔐 Compte sur le site du fournisseur</b>' + (c == null ? '<p class="mu">Chargement…</p>' : '<dl class="dl"><dt>Identifiant</dt><dd>' + (c.identifiant ? esc(c.identifiant) + ' <button class="btn l sm" data-copie="' + esc(c.identifiant) + '">📋</button>' : '<span class="mu">—</span>') + '</dd><dt>Mot de passe</dt><dd>' + (c.mot_de_passe ? esc(c.mot_de_passe) + ' <button class="btn l sm" data-copie="' + esc(c.mot_de_passe) + '">📋</button>' : '<span class="mu">—</span>') + '</dd></dl>') + '</div>';
+    return h;
+  }
+  function sauverFo() {
+    var F = S.fiche, f = F.d, o = { nom: String(f.nom || '').trim() };
+    if (!o.nom) { toast('Le nom est obligatoire'); return; }
+    FOC.forEach(function (g) { g[1].forEach(function (x) { o[x[0]] = String(f[x[0]] || '').trim() || null; }); });
+    var p = F.id === 'new' ? sb.from('fournisseurs').insert(o).select().single() : sb.from('fournisseurs').update(o).eq('id', F.id).select().single();
+    p.then(function (r) {
+      if (r.error) { if (/duplicate|unique/i.test(r.error.message)) throw new Error('Un autre fournisseur porte déjà ce nom'); throw r.error; }
+      var id = r.data.id, c = F.cpt || {};
+      return sb.from('fournisseur_comptes').upsert({ fournisseur_id: id, identifiant: c.identifiant || null, mot_de_passe: c.mot_de_passe || null, modifie_le: new Date().toISOString() }).then(function (r2) { if (r2.error) throw r2.error; return id; });
+    }).then(function (id) { toast('✔ Fiche fournisseur enregistrée'); charger().then(function () { ouvrirFo(id); }); })
+      .catch(function (e) { toast(msgErr(e)); });
+  }
+  function archiverFo() {
+    var f = S.fiche.d, v = !f.archive;
+    sb.from('fournisseurs').update({ archive: v }).eq('id', f.id).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } toast(v ? 'Fiche archivée' : 'Fiche réactivée'); S.fiche = null; charger(); });
+  }
+
   // ---------- Équipe (gestion) ----------
   function vEquipe() {
     var h = '<h2>Équipe</h2><p class="mu">Rôle, cabinet par défaut, activation, et autorisation temporaire d’inventaire de la réserve. La création des comptes depuis l’application arrive dans la prochaine livraison.</p>';
@@ -456,7 +643,7 @@
     var t = e.target.closest('button'); if (!t || !S.me) return;
     var d = t.dataset;
     if (d.go) { var g = d.go.split(':'); S.tab = g[0]; S.tabChoisi = true; if (g[0] === 'stock') S.stockF = g[1] || ''; if (g[0] === 'inventaire' && g[1] !== undefined) choisirEmp(+g[1]); if (g[0] === 'histo') { S.histTous = true; chargerHisto(); } render(); window.scrollTo(0, 0); return; }
-    if (d.tab) { S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); render(); window.scrollTo(0, 0); return; }
+    if (d.tab) { S.fiche = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'out') { if (confirm('Changer de personne ? La personne suivante devra se connecter avec son identifiant et son code.')) deconnexion(); return; }
     if (d.act === 'valider') return validerSortie();
     if (d.act === 'vider') { S.sortie.panier = {}; render(); return; }
@@ -474,6 +661,30 @@
     if (d.confirmer) return traiter(+d.confirmer, true);
     if (d.refuser) return traiter(+d.refuser, false);
     if (d.eedit) { S.eqEdit = d.eedit; render(); return; }
+    if (d.af) { S.artF = d.af; S.artMax = 100; render(); return; }
+    if (d.aopen) { ouvrirArticle(+d.aopen); window.scrollTo(0, 0); return; }
+    if (d.act === 'anew') { ouvrirArticle('new'); return; }
+    if (d.act === 'amore') { S.artMax += 100; render(); return; }
+    if (d.act === 'fclose') { S.fiche = null; render(); return; }
+    if (d.act === 'aedit') { S.fiche.edit = true; S.fiche.d = JSON.parse(JSON.stringify(S.fiche.d)); S.fiche.foEdit = null; render(); return; }
+    if (d.act === 'aannule') { if (S.fiche.id === 'new') S.fiche = null; else { var id0 = S.fiche.id; ouvrirArticle(id0); } render(); return; }
+    if (d.act === 'asave') return sauverArticle();
+    if (d.act === 'aarch') return archiverArticle();
+    if (d.act === 'foadd') { S.fiche.foEdit.push({ fournisseur_id: '', prix: '', reference: '' }); render(); return; }
+    if (d.fodel) { S.fiche.foEdit.splice(+d.fodel, 1); render(); return; }
+    if (d.fotop) { var x0 = S.fiche.foEdit.splice(+d.fotop, 1)[0]; S.fiche.foEdit.unshift(x0); render(); return; }
+    if (d.act === 'cor') { var a0 = S.fiche.d, v0 = {}; for (var e0 = 0; e0 <= 8; e0++) v0[e0] = fr(stockDe(a0.id, e0)); S.fiche.cor = { etape: 1, v: v0 }; render(); return; }
+    if (d.act === 'corx') { S.fiche.cor = null; render(); return; }
+    if (d.act === 'cor2') { if (!corChanges().length) { toast('Aucune quantité modifiée'); return; } S.fiche.cor.etape = 2; render(); return; }
+    if (d.act === 'cor1') { S.fiche.cor.etape = 1; render(); return; }
+    if (d.act === 'corgo') return corGo();
+    if (d.foopen) { ouvrirFo(+d.foopen); window.scrollTo(0, 0); return; }
+    if (d.act === 'fonew') { ouvrirFo('new'); return; }
+    if (d.act === 'foedit') { S.fiche.edit = true; S.fiche.d = JSON.parse(JSON.stringify(S.fiche.d)); S.fiche.cpt = JSON.parse(JSON.stringify(S.fiche.cpt || {})); render(); return; }
+    if (d.act === 'foannule') { if (S.fiche.id === 'new') S.fiche = null; else ouvrirFo(S.fiche.id); render(); return; }
+    if (d.act === 'fosave') return sauverFo();
+    if (d.act === 'foarchive') return archiverFo();
+    if (d.copie != null) { try { navigator.clipboard.writeText(d.copie).then(function () { toast('✔ Copié'); }); } catch (er) { toast('Copie impossible'); } return; }
     if (d.act === 'eannule') { S.eqEdit = null; render(); return; }
     if (d.esave) return sauverProfil(d.esave);
   });
@@ -481,6 +692,12 @@
     var t = e.target; if (!S.me) return;
     if (t.id === 'sq') { S.sortie.q = t.value; S.sortie.msg = null; render(); }
     else if (t.id === 'stq') { S.stockQ = t.value; render(); }
+    else if (t.id === 'aq') { S.artQ = t.value; S.artMax = 100; render(); }
+    else if (t.dataset && t.dataset.afF && S.fiche) { S.fiche.d[t.dataset.afF] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox') render(); }
+    else if (t.dataset && t.dataset.foI != null && S.fiche) { S.fiche.foEdit[+t.dataset.foI][t.dataset.foK] = t.value; }
+    else if (t.dataset && t.dataset.foF && S.fiche) { S.fiche.d[t.dataset.foF] = t.value; }
+    else if (t.dataset && t.dataset.cptF && S.fiche) { (S.fiche.cpt = S.fiche.cpt || {})[t.dataset.cptF] = t.value; }
+    else if (t.dataset && t.dataset.cor != null && S.fiche && S.fiche.cor) { S.fiche.cor.v[t.dataset.cor] = t.value; }
     else if (t.id === 'iq') { S.inv.q = t.value; S.inv.max = 80; render(); }
     else if (t.dataset && t.dataset.iq) { S.inv.d[t.dataset.iq] = t.value.trim(); ecrireBrouillon(); var b2 = document.querySelector('.bar'); if (b2) b2.outerHTML = vBarInv(); }
     else if (t.dataset && t.dataset.qte) { setQte(t.dataset.qte, t.value); var b = document.querySelector('.bar'); if (b) b.outerHTML = vBarSortie(); }
@@ -488,11 +705,12 @@
   document.addEventListener('change', function (e) {
     var t = e.target; if (!S.me) return;
     if (t.id === 'scab') { S.sortie.cab = +t.value; render(); }
+    else if (t.id === 'foarch') { S.foArch = t.checked; render(); }
+    else if (t.dataset && (t.dataset.afF || t.dataset.foK) && S.fiche) { if (t.dataset.afF) S.fiche.d[t.dataset.afF] = t.type === 'checkbox' ? t.checked : t.value; else S.fiche.foEdit[+t.dataset.foI][t.dataset.foK] = t.value; if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); }
     else if (t.id === 'iemp') { if (t.value === '') { S.inv.emp = null; } else choisirEmp(+t.value); render(); }
     else if (t.id === 'itous') { S.inv.tous = t.checked; render(); }
     else if (t.dataset && t.dataset.imotif) { S.inv.motifs[t.dataset.imotif] = t.value; }
     else if (t.id === 'htous') { S.histTous = t.checked; chargerHisto(); }
-    else if (t.dataset && t.dataset.qte) render();
   });
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && S.me) charger(); });
 

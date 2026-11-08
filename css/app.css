@@ -107,6 +107,14 @@ h2{font-family:var(--serif);font-size:26px;font-weight:600;margin:4px 0 12px}
 .ban.j0{background:#e3f1f1;color:#0b3f42;border:2px solid #0b6e72}
 .stp button.zero{width:44px;font-size:16px;font-weight:700;color:var(--mute)}
 
+.lrow{width:100%;background:none;border:none;border-bottom:1px solid var(--soft);text-align:left;font:inherit;color:inherit;cursor:pointer}
+.lrow:hover{background:#fafbfc}
+.dl{display:grid;grid-template-columns:minmax(120px,200px) 1fr;gap:6px 14px;margin:8px 0}
+.dl dt{color:var(--mute)}.dl dd{margin:0;word-break:break-word}
+.g4{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+textarea.in{font:inherit;width:100%}
+@media (max-width:600px){.dl{grid-template-columns:1fr}.dl dt{margin-top:6px}}
+
 /* ---------- Tableaux ---------- */
 .tbl{width:100%;border-collapse:collapse;background:#fff;border-radius:var(--r);overflow:hidden}
 .tbl th,.tbl td{padding:9px 10px;border-bottom:1px solid var(--soft);text-align:left;font-size:15px;vertical-align:top}
