@@ -44,5 +44,46 @@
       return z.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', compression: 'DEFLATE' });
     });
   }
-  window.XLSX_EVY = { creer: creer };
+
+  // Lecture d'un .xlsx (fichier modifié dans Excel) -> { "Nom de feuille": [[ligne1...], ...] }
+  function lire(buf) {
+    return chargerZip().then(function (JSZip) { return JSZip.loadAsync(buf); }).then(function (z) {
+      var fx = function (n) { var f = z.file(n); return f ? f.async('string') : Promise.resolve(''); };
+      return Promise.all([fx('xl/workbook.xml'), fx('xl/_rels/workbook.xml.rels'), fx('xl/sharedStrings.xml')]).then(function (r) {
+        var P = new DOMParser(), wb = P.parseFromString(r[0], 'application/xml'), rels = P.parseFromString(r[1], 'application/xml');
+        var ss = r[2] ? Array.prototype.map.call(P.parseFromString(r[2], 'application/xml').getElementsByTagName('si'), function (si) {
+          return Array.prototype.map.call(si.getElementsByTagName('t'), function (t) { return t.textContent; }).join('');
+        }) : [];
+        var cible = {}; Array.prototype.forEach.call(rels.getElementsByTagName('Relationship'), function (x) { cible[x.getAttribute('Id')] = x.getAttribute('Target'); });
+        var feuilles = Array.prototype.map.call(wb.getElementsByTagName('sheet'), function (sh) {
+          var id = sh.getAttribute('r:id') || sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id');
+          var t = (cible[id] || '').replace(/^\/?(xl\/)?/, ''); return { nom: sh.getAttribute('name'), chemin: 'xl/' + t };
+        });
+        return Promise.all(feuilles.map(function (f) { return fx(f.chemin); })).then(function (xs) {
+          var out = {};
+          xs.forEach(function (x, i) {
+            var d = P.parseFromString(x, 'application/xml'), rows = [];
+            Array.prototype.forEach.call(d.getElementsByTagName('row'), function (row) {
+              var n = +row.getAttribute('r') - 1, ligne = [];
+              Array.prototype.forEach.call(row.getElementsByTagName('c'), function (c) {
+                var ref = c.getAttribute('r') || '', lettres = ref.replace(/\d+/g, ''), k = 0;
+                for (var j = 0; j < lettres.length; j++) k = k * 26 + (lettres.charCodeAt(j) - 64);
+                var t = c.getAttribute('t'), v = c.getElementsByTagName('v')[0], val = null;
+                if (t === 's') val = v ? ss[+v.textContent] : null;
+                else if (t === 'inlineStr') val = Array.prototype.map.call(c.getElementsByTagName('t'), function (e) { return e.textContent; }).join('');
+                else if (t === 'b') val = v ? (v.textContent === '1' ? 'oui' : 'non') : null;
+                else if (t === 'str') val = v ? v.textContent : null;
+                else if (v) val = +v.textContent;
+                ligne[k ? k - 1 : ligne.length] = val;
+              });
+              rows[n] = ligne;
+            });
+            out[feuilles[i].nom] = rows;
+          });
+          return out;
+        });
+      });
+    });
+  }
+  window.XLSX_EVY = { creer: creer, lire: lire };
 })();
