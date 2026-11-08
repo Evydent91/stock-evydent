@@ -30,11 +30,21 @@ function identifiantPropre(s: string): string {
   return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, "");
 }
 
+// Clé de service fournie automatiquement par Supabase (nouvelle clé « secret » ou ancienne « service_role »)
+function cleService(): string {
+  try {
+    const k = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") || "{}");
+    const v = k.default || Object.values(k)[0];
+    if (v) return String(v);
+  } catch { /* ignoré */ }
+  return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return erreur("Méthode non autorisée", 405);
 
-  const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
+  const admin = createClient(Deno.env.get("SUPABASE_URL")!, cleService(), {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
