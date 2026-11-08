@@ -18,3 +18,11 @@ Le schéma est maintenu uniquement par les fichiers numérotés de `supabase/mig
 appliqués dans l'éditeur SQL de Supabase : d'abord sur Evydent-Dev, puis sur Evydent-Prod après validation.
 
 **Dernière migration appliquée : dev 004, prod — aucune**
+
+## Fonctions Supabase (Edge Functions)
+
+| Fonction | Rôle | Dev | Prod |
+|---|---|---|---|
+| `equipe` (`supabase/functions/equipe/index.ts`) | création des comptes, codes, identifiants, désactivation | déployée (Verify JWT désactivé) | à déployer avant la mise en ligne |
+
+Déploiement : Supabase → Edge Functions → Deploy a new function → Via Editor, nom `equipe`, coller le fichier, puis désactiver « Verify JWT » (la fonction vérifie elle-même le rôle de l'appelant).
