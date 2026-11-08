@@ -17,4 +17,4 @@ Aucun secret dans ce dépôt : seules les clés publiques Supabase y figurent.
 Le schéma est maintenu uniquement par les fichiers numérotés de `supabase/migrations/`,
 appliqués dans l'éditeur SQL de Supabase : d'abord sur Evydent-Dev, puis sur Evydent-Prod après validation.
 
-**Dernière migration appliquée : dev — aucune, prod — aucune**
+**Dernière migration appliquée : dev 002, prod — aucune**
