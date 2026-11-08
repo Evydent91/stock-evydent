@@ -25,10 +25,12 @@ appliqués dans l'éditeur SQL de Supabase : d'abord sur Evydent-Dev, puis sur E
 |---|---|---|---|
 | `equipe` (`supabase/functions/equipe/index.ts`) | création des comptes, codes, identifiants, désactivation | déployée (Verify JWT désactivé) | déployée (Verify JWT désactivé) |
 
-Déploiement : Supabase → Edge Functions → Deploy a new function → Via Editor, nom `equipe`, coller le fichier, puis désactiver « Verify JWT » (la fonction vérifie elle-même le rôle de l'appelant).
+Déploiement : Supabase → Edge Functions → Deploy a new function → Via Editor, nom `equipe` saisi AVANT le déploiement (renommer ensuite ne change pas l’adresse), coller le fichier, puis désactiver « Verify JWT » (la fonction vérifie elle-même le rôle de l'appelant).
 
 ## Mise en production
 
 `supabase/prod/installation-001-006.sql` assemble les migrations 001 à 006 pour installer une base neuve en une fois
 (à régénérer si une migration 007+ est ajoutée avant la bascule). Les données réelles (fiches, fournisseurs, comptes)
 ne sont jamais mises dans ce dépôt.
+
+Idées et évolutions envisagées : voir [IDEES.md](IDEES.md).
