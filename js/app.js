@@ -57,7 +57,7 @@
   }
   // À chaque changement de personne : on repart de zéro (cabinet par défaut, panier, inventaire, écrans ouverts)
   function oublierPersonne() {
-    S.session = null; S.me = null; S.tab = 'sortie'; S.tabChoisi = false; S.fiche = null; S.eqEdit = null; S.eqNew = null; S.cmBusy = false;
+    S.session = null; S.me = null; S.tab = 'sortie'; S.tabChoisi = false; S.fiche = null; S.eqEdit = null; S.eqNew = null; S.cmBusy = false; S.histTous = false; S.histo = [];
     S.sortie = { cab: null, q: '', panier: {}, msg: null, busy: false };
     S.ret = { cab: null, q: '', panier: {}, msg: null, busy: false };
     S.inv = { emp: null, d: {}, q: '', tous: false, recap: false, motifs: {}, busy: false, msg: null, max: 80 };
@@ -101,6 +101,7 @@
       if (!gestion() && ['sortie', 'retour', 'inventaire', 'histo', 'compte'].indexOf(S.tab) < 0) S.tab = 'sortie';
       if (S.inv.emp == null && S.me.cabinet) choisirEmp(S.me.cabinet);
       if (gestion() && !S.tabChoisi) S.tab = 'accueil';
+      S.histTous = gestion();
       return charger();
     });
   }
@@ -470,12 +471,12 @@
   var STAT = { ok: ['ok', 'ok'], attente: ['warn', 'en attente'], refuse: ['ko', 'refusée'], annule: ['', 'annulée'], corrige: ['', 'corrigée'] };
   function vHisto() {
     var h = '<h2>Historique</h2>';
-    if (gestion()) h += '<div class="row" style="margin-bottom:10px"><label class="row"><input type="checkbox" id="htous"' + (S.histTous ? ' checked' : '') + ' style="width:20px;height:20px"> Toute l’équipe</label></div>';
+    h += gestion() ? '<div class="row" style="margin-bottom:10px"><label class="row"><input type="checkbox" id="htous"' + (S.histTous ? ' checked' : '') + ' style="width:20px;height:20px"> Toute l’équipe</label>' + (S.histTous ? '' : '<span class="mu">(seulement vos mouvements)</span>') + '</div>' : '<p class="mu" style="margin-top:-6px">Vos derniers mouvements.</p>';
     if (!S.histo.length) return h + '<p class="mu">Aucun mouvement pour l’instant.</p>';
     return h + '<div class="scroll"><table class="tbl"><thead><tr><th>Date</th><th>Mouvement</th><th class="n">Qté</th><th>Par</th></tr></thead><tbody>' + S.histo.map(function (m) {
       var a = S.byId[m.article_id] || { nom: '(article)' }, st = STAT[m.statut] || ['', m.statut];
       var lieu = m.type === 'retour' ? ' ' + cabTxt(m.emplacement_de) + ' → réserve' : m.type === 'sortie' || m.type === 'demande' ? ' → ' + cabTxt(m.emplacement_vers) : m.emplacement_de != null ? ' · ' + cabTxt(m.emplacement_de) : '';
-      return '<tr><td>' + quand(m.cree_le) + '</td><td>' + (TYP[m.type] || m.type) + lieu + ' · <b>' + esc(a.nom) + '</b> ' + (m.statut !== 'ok' ? '<span class="pill ' + st[0] + '">' + st[1] + '</span> ' : '') + (m.hors_cabinet ? '<span class="pill warn">hors cabinet</span>' : '') + (m.ecart ? '<br><span class="mu">écart ' + fr(m.ecart) + (m.valeur ? ' · ' + eur(m.valeur) : '') + '</span>' : '') + '</td><td class="n">' + fr(m.quantite) + '</td><td>' + esc(m.auteur_nom || '') + '</td></tr>';
+      return '<tr><td>' + quand(m.cree_le) + '</td><td>' + (TYP[m.type] || m.type) + lieu + ' · <b>' + esc(a.nom) + '</b> ' + (m.statut !== 'ok' ? '<span class="pill ' + st[0] + '">' + st[1] + '</span> ' : '') + (m.hors_cabinet ? '<span class="pill warn">hors cabinet</span>' : '') + (m.ecart ? '<br><span class="mu">écart ' + fr(m.ecart) + (m.valeur ? ' · ' + eur(m.valeur) : '') + '</span>' : '') + '</td><td class="n">' + (m.type === 'retour' && m.quantite_reserve != null && +m.quantite_reserve !== +m.quantite ? fr(m.quantite_reserve) + ' boîte(s)<br><small class="mu">' + fr(m.quantite) + ' u.</small>' : fr(m.quantite)) + '</td><td>' + esc(m.auteur_nom || '') + '</td></tr>';
     }).join('') + '</tbody></table></div>';
   }
 
