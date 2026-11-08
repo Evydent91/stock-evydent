@@ -585,7 +585,7 @@
       h += '<div class="card"><label class="mu">Nom du fournisseur<input class="in" data-fo-f="nom" value="' + esc(f.nom) + '"></label></div>';
       FOC.forEach(function (g) { h += '<div class="card"><b>' + g[0] + '</b><div class="g2" style="margin-top:6px">' + g[1].map(function (x) { return '<label class="mu">' + x[1] + (x[2] === 'area' ? '<textarea class="in" style="height:90px;padding:10px" data-fo-f="' + x[0] + '">' + esc(f[x[0]] || '') + '</textarea>' : '<input class="in" data-fo-f="' + x[0] + '" value="' + esc(f[x[0]] || '') + '">') + '</label>'; }).join('') + '</div></div>'; });
       h += '<div class="card"><b>🔐 Compte sur le site du fournisseur</b> <span class="mu">(visible seulement par la responsable et la référente)</span><div class="g2" style="margin-top:6px"><label class="mu">Identifiant<input class="in" data-cpt-f="identifiant" value="' + esc((F.cpt || {}).identifiant || '') + '"></label><label class="mu">Mot de passe<input class="in" data-cpt-f="mot_de_passe" value="' + esc((F.cpt || {}).mot_de_passe || '') + '"></label></div></div>';
-      return h + '<div class="row"><button class="btn l" data-act="foannule">Annuler</button><button class="btn" data-act="fosave">Enregistrer</button>' + (F.id !== 'new' ? '<span class="grow"></span><button class="btn l sm" data-act="foarchive">' + (f.archive ? 'Réactiver' : 'Archiver') + '</button>' : '') + '</div>';
+      return h + '<div class="row"><button class="btn l" data-act="foannule">Annuler</button><button class="btn" data-act="fosave">Enregistrer</button>' + (F.id !== 'new' ? '<span class="grow"></span><button class="btn l sm" data-act="foarchive">' + (f.archive ? 'Réactiver' : 'Archiver') + '</button><button class="btn ko sm" data-act="fosuppr">🗑 Supprimer</button>' : '') + '</div>';
     }
     h += '<div class="card row wrap"><div class="grow"><h2 style="margin:0">' + esc(f.nom) + '</h2>' + (f.archive ? '<span class="pill ko">archivée</span>' : '') + '</div><button class="btn" data-act="foedit">✏️ Modifier</button></div>';
     FOC.forEach(function (g) { h += '<div class="card"><b>' + g[0] + '</b><dl class="dl">' + g[1].map(function (x) { return '<dt>' + x[1] + '</dt><dd>' + lienFo(x[2], f[x[0]]) + '</dd>'; }).join('') + '</dl></div>'; });
@@ -608,6 +608,19 @@
   function archiverFo() {
     var f = S.fiche.d, v = !f.archive;
     sb.from('fournisseurs').update({ archive: v }).eq('id', f.id).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } toast(v ? 'Fiche archivée' : 'Fiche réactivée'); S.fiche = null; charger(); });
+  }
+
+  function supprimerFo() {
+    var f = S.fiche.d, n = S.articles.filter(function (a) { return a.fournisseur_id === f.id; }).length;
+    var n2 = S.articles.filter(function (a) { return a.fournisseur_id !== f.id && (S.afPrix[a.id] || []).some(function (p) { return p.fournisseur_id === f.id; }); }).length;
+    if (!confirm('Supprimer définitivement le fournisseur « ' + f.nom + ' » ?\n\n• ' + n + ' article(s) dont c’est le fournisseur principal passeront en SF (sans fournisseur).\n• ' + (n2 ? n2 + ' article(s) le perdront comme fournisseur secondaire.\n• ' : '') + 'Son compte (identifiant, mot de passe) sera effacé.\n• Les commandes passées et l’historique des prix sont conservés, sans nom de fournisseur.\n\nCette suppression est définitive. Pour simplement le masquer, utilisez « Archiver ».')) return;
+    var t = prompt('Pour confirmer, tapez le nom du fournisseur : ' + f.nom);
+    if (t == null) return;
+    if (norm(t.trim()) !== norm(f.nom.trim())) { toast('Nom différent : suppression annulée'); return; }
+    sb.from('fournisseurs').delete().eq('id', f.id).then(function (r) {
+      if (r.error) { toast(msgErr(r.error)); return; }
+      toast('✔ Fournisseur supprimé · ' + n + ' article(s) en SF'); S.fiche = null; charger();
+    });
   }
 
   // ---------- Commandes et réceptions (gestion) ----------
@@ -637,7 +650,7 @@
     if (!l.length) return h + '<p class="mu">' + (sub === 'enc' ? 'Aucune commande en cours.' : 'Aucune commande reçue pour l’instant.') + '</p>';
     return h + '<div class="card">' + l.map(function (c) {
       var li = S.lignes[c.id] || [], tot = li.reduce(function (t, x) { return t + x.quantite * x.prix; }, 0), st = CST[c.statut] || ['', c.statut];
-      return '<button class="it lrow" data-copen="' + c.id + '"><span class="it-n"><b>' + esc(S.fournisseurs[c.fournisseur_id] || '?') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</b><span>' + c.date_commande.split('-').reverse().join('/') + ' · ' + li.length + ' ligne(s) · ' + eur(tot) + '</span></span><span class="pill ' + st[0] + '">' + st[1] + '</span></button>';
+      return '<button class="it lrow" data-copen="' + c.id + '"><span class="it-n"><b>' + esc(S.fournisseurs[c.fournisseur_id] || 'Fournisseur supprimé') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</b><span>' + c.date_commande.split('-').reverse().join('/') + ' · ' + li.length + ' ligne(s) · ' + eur(tot) + '</span></span><span class="pill ' + st[0] + '">' + st[1] + '</span></button>';
     }).join('') + '</div>';
   }
   function vSuggestions() {
@@ -704,7 +717,7 @@
     var h = '<button class="lnk" data-act="fclose">← Toutes les commandes</button>';
     if (!c) return h + '<p class="mu">Chargement…</p>';
     var li = S.lignes[c.id] || [], st = CST[c.statut] || ['', c.statut], ouverte = c.statut === 'attente' || c.statut === 'partielle';
-    h += '<div class="card row wrap"><div class="grow"><h2 style="margin:0">' + esc(S.fournisseurs[c.fournisseur_id] || '?') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</h2><span class="mu">Commande du ' + c.date_commande.split('-').reverse().join('/') + '</span> <span class="pill ' + st[0] + '">' + st[1] + '</span></div>' + (ouverte ? '<button class="btn l sm" data-act="cclose">Clôturer</button>' : '') + '</div>';
+    h += '<div class="card row wrap"><div class="grow"><h2 style="margin:0">' + esc(S.fournisseurs[c.fournisseur_id] || 'Fournisseur supprimé') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</h2><span class="mu">Commande du ' + c.date_commande.split('-').reverse().join('/') + '</span> <span class="pill ' + st[0] + '">' + st[1] + '</span></div>' + (ouverte ? '<button class="btn l sm" data-act="cclose">Clôturer</button>' : '') + '</div>';
     h += '<div class="card"><b>Lignes' + (ouverte ? ' · saisir ce qui est arrivé' : '') + '</b>' + li.map(function (l) {
       var a = S.byId[l.article_id] || { nom: '(article supprimé)' }, reste = Math.max(0, l.quantite - l.recu), r = F.rx[l.id] || {}, rf = a.id ? refChez(a, c.fournisseur_id) : '';
       return '<div class="it" style="flex-wrap:wrap"><div class="it-n"><b>' + esc(a.nom) + '</b><span style="display:block;font-weight:700;color:var(--ink2)">Réf. ' + (rf ? esc(rf) : '<span class="pill warn">SR</span>') + '</span><span>Commandé ' + fr(l.quantite) + ' · reçu ' + fr(l.recu) + (l.gratuit ? ' + ' + fr(l.gratuit) + ' offert(s)' : '') + ' · ' + eur(l.prix) + (l.reliquat_abandonne ? ' · <span class="pill">reliquat abandonné</span>' : reste && c.statut !== 'attente' ? ' · <span class="pill warn">reste ' + fr(reste) + '</span>' : '') + '</span></div>'
@@ -842,6 +855,7 @@
     if (d.act === 'foannule') { if (S.fiche.id === 'new') S.fiche = null; else ouvrirFo(S.fiche.id); render(); return; }
     if (d.act === 'fosave') return sauverFo();
     if (d.act === 'foarchive') return archiverFo();
+    if (d.act === 'fosuppr') return supprimerFo();
     if (d.copie != null) { try { navigator.clipboard.writeText(d.copie).then(function () { toast('✔ Copié'); }); } catch (er) { toast('Copie impossible'); } return; }
     if (d.act === 'eannule') { S.eqEdit = null; render(); return; }
     if (d.esave) return sauverProfil(d.esave);
