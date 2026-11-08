@@ -54,7 +54,13 @@
       S.err = ''; demarrer(r.data.session);
     });
   }
-  function deconnexion() { sb.auth.signOut().then(function () { S.session = null; S.me = null; S.tab = 'sortie'; render(); }); }
+  // À chaque changement de personne : on repart de zéro (cabinet par défaut, panier, inventaire, écrans ouverts)
+  function oublierPersonne() {
+    S.session = null; S.me = null; S.tab = 'sortie'; S.tabChoisi = false; S.fiche = null; S.eqEdit = null; S.eqNew = null; S.cmBusy = false;
+    S.sortie = { cab: null, q: '', panier: {}, msg: null, busy: false };
+    S.inv = { emp: null, d: {}, q: '', tous: false, recap: false, motifs: {}, busy: false, msg: null, max: 80 };
+  }
+  function deconnexion() { sb.auth.signOut().then(function () { oublierPersonne(); render(); }); }
 
   function vLogin() {
     var id = ($('lid') && $('lid').value) || '';
@@ -1130,5 +1136,5 @@
 
   // ---------- Démarrage ----------
   sb.auth.getSession().then(function (r) { if (r.data.session) demarrer(r.data.session); else render(); });
-  sb.auth.onAuthStateChange(function (ev, session) { if (ev === 'SIGNED_OUT') { S.session = null; S.me = null; render(); } else if (session) S.session = session; });
+  sb.auth.onAuthStateChange(function (ev, session) { if (ev === 'SIGNED_OUT') { oublierPersonne(); render(); } else if (session) S.session = session; });
 })();
