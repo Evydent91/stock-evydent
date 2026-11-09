@@ -57,7 +57,7 @@
   }
   // À chaque changement de personne : on repart de zéro (cabinet par défaut, panier, inventaire, écrans ouverts)
   function oublierPersonne() {
-    S.session = null; S.me = null; S.tab = 'sortie'; S.tabChoisi = false; S.fiche = null; S.eqEdit = null; S.eqNew = null; S.cmBusy = false; S.histTous = false; S.histo = []; S.menu = false;
+    S.session = null; S.me = null; S.tab = 'sortie'; S.tabChoisi = false; S.fiche = null; S.eqEdit = null; S.eqNew = null; S.cmBusy = false; S.histTous = false; S.histo = []; S.menu = false; S.tour = null;
     S.sortie = { cab: null, q: '', panier: {}, msg: null, busy: false };
     S.ret = { cab: null, q: '', panier: {}, msg: null, busy: false };
     S.inv = { emp: null, d: {}, q: '', tous: false, recap: false, motifs: {}, busy: false, msg: null, max: 80 };
@@ -98,7 +98,7 @@
       if (!S.me || !S.me.actif) { S.loading = false; render(); return; }
       if (S.sortie.cab == null) S.sortie.cab = S.me.cabinet || 1;
       if (S.ret.cab == null) S.ret.cab = S.me.cabinet || 1;
-      if (!gestion() && ['sortie', 'retour', 'inventaire', 'histo', 'compte'].indexOf(S.tab) < 0) S.tab = 'sortie';
+      if (!gestion() && ['sortie', 'retour', 'inventaire', 'histo', 'compte', 'aide'].indexOf(S.tab) < 0) S.tab = 'sortie';
       if (S.inv.emp == null && S.me.cabinet) choisirEmp(S.me.cabinet);
       if (gestion() && !S.tabChoisi) S.tab = 'accueil';
       S.histTous = gestion();
@@ -164,26 +164,126 @@
     if (gestion()) tabs.push(['demandes', 'Demandes' + (S.attente.length ? '<span class="badge">' + S.attente.length + '</span>' : '')], ['stock', 'Stock'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs']);
     tabs.push(['histo', 'Historique']);
     if (gestion()) tabs.push(['equipe', 'Équipe'], ['plus', 'Plus']);
+    tabs.push(['aide', '❓ Aide']);
     var h = '<header class="top"><div class="top-in"><img src="assets/logo-evydent.jpg" alt="">'
       + '<div class="top-who"><b>' + esc(S.me.nom) + (C.env === 'dev' ? ' <span class="env">TEST</span>' : '') + '</b><span>' + LABEL[S.me.role] + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + '</span></div>'
       + '<button class="btn l sm" data-tab="compte" title="Changer mon code" aria-label="Changer mon code">🔑</button><button class="btn l sm" data-act="out" aria-label="Changer de personne"><span class="m-hide">Changer de personne</span><span class="m-only">👤 Changer</span></button></div>'
       + '<nav class="tabs" aria-label="Menu">' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav></header>';
     if (S.nouvelleVersion) h += '<div class="ban ok" style="max-width:1100px;margin:10px auto 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1">Une nouvelle version de l’application est disponible (' + esc(S.nouvelleVersion) + ').</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>';
-    h += '<main>' + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour, plus: vPlus }[S.tab] || vSortie)() + '</main>';
+    h += '<main>' + vBienvenue() + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour, plus: vPlus, aide: vAide }[S.tab] || vSortie)() + '</main>';
     h += '<p class="mu" style="text-align:center;font-size:12px;margin:0 0 90px">Version ' + esc(C.version || '') + '</p>';
     h += vNavMobile();
     h += (S.tab === 'sortie' ? vBarSortie() : S.tab === 'retour' ? vBarRetour() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
     var fq = document.activeElement && document.activeElement.id, pos = fq && document.activeElement.selectionStart;
     app.innerHTML = h;
     if (fq && $(fq)) { $(fq).focus(); try { $(fq).setSelectionRange(pos, pos); } catch (e) {} }
+    placerTour();
+  }
+
+  // ---------- Aide : tutoriel et visite guidée ----------
+  // Fiches pas à pas (écran « Aide ») + visite guidée qui montre chaque bouton à l'écran.
+  var GUIDES = [
+    { id: 'connexion', ic: '🔐', t: 'Se connecter et changer de personne', duree: '1 min', tab: null, e: [
+      'Tapez votre <b>identifiant</b> (ex. : sarah), puis votre <b>code à 6 chiffres</b>. Sur téléphone, le clavier à chiffres s’ouvre tout seul.',
+      'Vous restez connectée : pas besoin de retaper votre code à chaque fois.',
+      'Sur un appareil partagé, appuyez sur <b>👤 Changer</b> (en haut) avant de passer la main : l’appli se vide pour la personne suivante.',
+      'Code oublié ? Demandez à la référente ou à la responsable : elles vous en donnent un nouveau.'] },
+    { id: 'sortie', ic: '📤', t: 'Faire une sortie (prendre dans la réserve)', duree: '2 min', tab: 'sortie', e: [
+      'Ouvrez <b>📤 Sortie</b>. Votre cabinet est déjà choisi (★ = le vôtre).',
+      'Les articles que votre cabinet sort le plus sont <b>en haut de la liste</b>. Sinon, tapez quelques lettres dans <b>🔍</b>.',
+      'Appuyez sur <b>+</b> pour chaque unité prise (ou tapez directement le nombre). L’article passe en vert.',
+      'Le bouton <b>🧺</b> en bas montre votre panier. Vérifiez puis appuyez sur <b>Valider la sortie</b>.',
+      'Si la réserve n’en a pas assez, la quantité en trop part en <b>demande à confirmer</b> par la référente : c’est normal.'] },
+    { id: 'remplacement', ic: '🔄', t: 'Remplacer une collègue dans un autre cabinet', duree: '1 min', tab: 'sortie', e: [
+      'Dans Sortie, Retour ou Inventaire, changez le cabinet dans la liste en haut (ex. : Cab. 6).',
+      'Un bandeau orange rappelle que ce n’est pas votre cabinet : l’opération sera notée « hors cabinet ». Rien d’autre à faire.'] },
+    { id: 'retour', ic: '↩️', t: 'Rendre des articles à la réserve', duree: '1 min', tab: 'retour', e: [
+      'Ouvrez <b>↩️ Retour</b> et cherchez l’article.',
+      'Pour un article en boîte, on ne rend que des <b>boîtes fermées</b> : la quantité se compte en boîtes. Les unités en vrac restent au cabinet.',
+      'Appuyez sur <b>Valider le retour</b>.'] },
+    { id: 'inventaire', ic: '📋', t: 'Faire l’inventaire de son cabinet', duree: '3 min', tab: 'inventaire', e: [
+      'Ouvrez <b>📋 Inventaire</b> et choisissez votre cabinet.',
+      'Pour chaque article, tapez la quantité <b>réellement présente</b> (en unités). Le bouton <b>0</b> met l’article à zéro en un geste.',
+      'Les articles déjà comptés passent en vert. Votre saisie est gardée sur l’appareil même si vous êtes interrompue.',
+      'Appuyez sur <b>Terminer</b> : un récapitulatif montre les écarts. Vérifiez, puis <b>Valider l’inventaire</b>.',
+      'La réserve est comptée par la référente ou la responsable (ou par vous si elles vous ont donné l’autorisation).'] },
+    { id: 'historique', ic: '🕘', t: 'Retrouver ce que j’ai fait', duree: '30 s', tab: 'histo', e: [
+      'Ouvrez <b>🕘 Historique</b> : vos derniers mouvements (sorties, retours, inventaires) avec la date et l’heure.',
+      'Une erreur ? Prévenez la référente : elle peut corriger.'] },
+    { id: 'code', ic: '🔑', t: 'Changer mon code', duree: '30 s', tab: 'compte', e: [
+      'Appuyez sur <b>🔑</b> en haut (ou Menu › Mon code).',
+      'Tapez votre code actuel, puis le nouveau deux fois (6 chiffres). Évitez 123456, 000000 ou votre date de naissance.'] },
+    { id: 'iphone', ic: '📱', t: 'Mettre l’appli sur l’écran d’accueil du téléphone', duree: '1 min', tab: null, e: [
+      '<b>iPhone (Safari)</b> : bouton Partager (carré avec une flèche) › <b>Sur l’écran d’accueil</b> › Ajouter.',
+      '<b>Android (Chrome)</b> : menu ⋮ › <b>Ajouter à l’écran d’accueil</b> (ou « Installer l’application »).',
+      'L’appli s’ouvre ensuite en plein écran avec l’icône Evydent.',
+      'Si un bandeau vert « Nouvelle version disponible » apparaît, appuyez sur <b>Mettre à jour</b>.'] }
+  ];
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function cleAide() { return 'evy-aide-' + (S.me ? S.me.id : '') + '-' + C.env; }
+  function aideVue() { var v = lsGet(cleAide()); try { return v ? JSON.parse(v) : {}; } catch (e) { return {}; } }
+  function marquerVu(id) { var v = aideVue(); v[id] = 1; lsSet(cleAide(), JSON.stringify(v)); }
+  function vBienvenue() {
+    if (S.tab === 'aide' || aideVue().bienvenue || S.tour) return '';
+    return '<div class="ban ok row wrap bienvenue"><span class="grow">👋 <b>Première fois ?</b> Une visite guidée de 2 minutes vous montre chaque bouton.</span><button class="btn sm" data-act="tour">▶️ Visite guidée</button><button class="btn l sm" data-act="bvno">Plus tard</button></div>';
+  }
+  function vAide() {
+    var vu = aideVue(), n = GUIDES.filter(function (g) { return vu[g.id]; }).length;
+    var h = '<h2>Aide</h2><div class="card aide-top"><b>Apprendre l’application</b><p class="mu" style="margin:4px 0 10px">La visite guidée vous montre chaque bouton directement à l’écran. Les fiches ci-dessous expliquent chaque geste pas à pas ; touchez-en une pour l’ouvrir.</p>'
+      + '<div class="row wrap"><button class="btn" data-act="tour">▶️ Lancer la visite guidée</button><span class="mu">' + n + ' / ' + GUIDES.length + ' fiches lues</span></div>'
+      + (C.env === 'dev' ? '<p class="ban warn" style="margin:10px 0 0">Vous êtes sur le <b>site de test</b> : vous pouvez vous entraîner sans risque, rien ne touche le vrai stock.</p>' : '<p class="mu" style="margin:10px 0 0">Ici, chaque sortie ou inventaire validé modifie le vrai stock : entraînez-vous plutôt sur le site de test si la référente vous y a créé un compte.</p>') + '</div>';
+    h += GUIDES.map(function (g) {
+      return '<details class="card guide"' + (S.aideOuverte === g.id ? ' open' : '') + ' data-guide="' + g.id + '"><summary><span class="gi">' + g.ic + '</span><span class="grow"><b>' + g.t + '</b><small>' + g.duree + (vu[g.id] ? ' · ✓ lue' : '') + '</small></span><span class="chev">›</span></summary>'
+        + '<ol class="etapes">' + g.e.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ol>'
+        + (g.tab && (g.tab !== 'histo' || true) ? '<button class="btn l sm" data-essai="' + g.tab + '" data-gid="' + g.id + '">Essayer maintenant →</button>' : '') + '</details>';
+    }).join('');
+    return h;
+  }
+  // Visite guidée : chaque étape désigne un élément de l'écran (bouton, champ…)
+  function etapesTour() {
+    var mob = window.matchMedia('(max-width:700px)').matches, nav = function (t) { return mob ? '.bnav [data-tab="' + t + '"]' : '.tabs [data-tab="' + t + '"]'; };
+    var E = [
+      { tab: 'sortie', sel: nav('sortie'), t: '📤 Sortie', x: 'Pour prendre des articles dans la réserve. C’est l’écran que vous utiliserez le plus.' },
+      { tab: 'sortie', sel: '#scab', t: 'Votre cabinet', x: 'Il est choisi d’office (★). Changez-le seulement si vous remplacez une collègue.' },
+      { tab: 'sortie', sel: '#sq', t: 'Recherche', x: 'Tapez quelques lettres du nom ou la référence. Sans recherche, les articles les plus sortis de votre cabinet sont en haut.' },
+      { tab: 'sortie', sel: '.stp', t: 'La quantité', x: 'Appuyez sur + pour chaque unité prise, ou tapez le nombre. L’article choisi passe en vert.' },
+      { tab: 'sortie', sel: '.bar [data-act="valider"]', t: 'Valider', x: 'Quand tout est prêt, appuyez ici. Le bouton 🧺 (à gauche) montre ce que vous avez choisi.' },
+      { tab: 'retour', sel: nav('retour'), t: '↩️ Retour', x: 'Pour rendre à la réserve des boîtes fermées non utilisées.' },
+      { tab: 'inventaire', sel: nav('inventaire'), t: '📋 Inventaire', x: 'Pour compter ce qui est réellement présent dans votre cabinet, puis valider.' },
+      { tab: 'histo', sel: mob && gestion() ? '.bnav [data-act="menu"]' : nav('histo'), t: '🕘 Historique', x: 'Pour retrouver tout ce que vous avez fait, avec la date et l’heure.' + (mob && gestion() ? ' (Dans le Menu.)' : '') },
+      { tab: null, sel: '.top [data-tab="compte"]', t: '🔑 Mon code', x: 'Pour changer votre code à 6 chiffres.' },
+      { tab: null, sel: '.top [data-act="out"]', t: '👤 Changer de personne', x: 'À utiliser avant de passer l’appareil à une collègue : l’appli se vide pour elle.' },
+      { tab: 'aide', sel: mob ? '.bnav [data-act="menu"]' : nav('aide'), t: '❓ Aide', x: 'Toutes les fiches pas à pas sont ici' + (mob ? ', dans le Menu' : '') + '. Bonne utilisation !' }
+    ];
+    return E;
+  }
+  function lancerTour() { S.tour = { i: 0 }; marquerVu('bienvenue'); allerEtape(); }
+  function allerEtape() {
+    var e = etapesTour()[S.tour.i];
+    S.menu = false; S.fiche = null;
+    if (e.tab && S.tab !== e.tab) { S.tab = e.tab; if (e.tab === 'histo') chargerHisto(); }
+    render(); window.scrollTo(0, 0);
+  }
+  function placerTour() {
+    var old = document.getElementById('tour'); if (old) old.remove();
+    if (!S.tour) return;
+    var E = etapesTour(), e = E[S.tour.i], el = document.querySelector(e.sel);
+    var d = document.createElement('div'); d.id = 'tour';
+    var r = el ? el.getBoundingClientRect() : null, vh = window.innerHeight, haut = r && r.top > vh / 2;
+    d.innerHTML = (r ? '<div class="tour-spot" style="top:' + (r.top - 6) + 'px;left:' + (r.left - 6) + 'px;width:' + (r.width + 12) + 'px;height:' + (r.height + 12) + 'px"></div>' : '<div class="tour-voile"></div>')
+      + '<div class="tour-bulle" role="dialog" aria-live="polite" style="' + (r ? (haut ? 'bottom:' + (vh - r.top + 16) + 'px' : 'top:' + (r.bottom + 16) + 'px') : 'top:30%') + '">'
+      + '<div class="row"><b class="grow">' + e.t + '</b><span class="mu">' + (S.tour.i + 1) + ' / ' + E.length + '</span></div><p>' + e.x + '</p>'
+      + '<div class="row"><button class="btn l sm" data-act="tourfin">Quitter</button><span class="grow"></span>' + (S.tour.i ? '<button class="btn l sm" data-act="tourprec">←</button>' : '') + '<button class="btn sm" data-act="toursuiv">' + (S.tour.i === E.length - 1 ? 'Terminer ✓' : 'Suivant →') + '</button></div></div>';
+    document.body.appendChild(d);
   }
 
   // ---------- Navigation téléphone : barre du bas + menu ----------
-  var ICO = { accueil: '🏠', sortie: '📤', retour: '↩️', inventaire: '📋', demandes: '⏳', stock: '📦', commandes: '🛒', articles: '🏷️', fournisseurs: '🚚', histo: '🕘', equipe: '👥', plus: '⚙️', compte: '🔑' };
-  var NOMS = { accueil: 'Accueil', sortie: 'Sortie', retour: 'Retour', inventaire: 'Inventaire', demandes: 'Demandes', stock: 'Stock', commandes: 'Commandes', articles: 'Articles', fournisseurs: 'Fournisseurs', histo: 'Historique', equipe: 'Équipe', plus: 'Plus', compte: 'Mon code' };
+  var ICO = { accueil: '🏠', sortie: '📤', retour: '↩️', inventaire: '📋', demandes: '⏳', stock: '📦', commandes: '🛒', articles: '🏷️', fournisseurs: '🚚', histo: '🕘', equipe: '👥', plus: '⚙️', compte: '🔑', aide: '❓' };
+  var NOMS = { accueil: 'Accueil', sortie: 'Sortie', retour: 'Retour', inventaire: 'Inventaire', demandes: 'Demandes', stock: 'Stock', commandes: 'Commandes', articles: 'Articles', fournisseurs: 'Fournisseurs', histo: 'Historique', equipe: 'Équipe', plus: 'Plus', compte: 'Mon code', aide: 'Aide' };
   function vNavMobile() {
     var bas = gestion() ? ['accueil', 'sortie', 'inventaire', 'commandes'] : ['sortie', 'retour', 'inventaire', 'histo'];
-    var menu = gestion() ? ['demandes', 'retour', 'stock', 'articles', 'fournisseurs', 'histo', 'equipe', 'plus', 'compte'] : ['compte'];
+    var menu = gestion() ? ['demandes', 'retour', 'stock', 'articles', 'fournisseurs', 'histo', 'equipe', 'plus', 'aide', 'compte'] : ['aide', 'compte'];
     var att = gestion() ? S.attente.length : 0, dansMenu = menu.indexOf(S.tab) >= 0;
     var h = '<nav class="bnav" aria-label="Menu principal">' + bas.map(function (t) {
       return '<button data-tab="' + t + '" class="' + (S.tab === t && !S.menu ? 'on' : '') + '"><span class="bi">' + ICO[t] + '</span><span>' + NOMS[t] + '</span></button>';
@@ -1368,10 +1468,18 @@
   }
 
   // ---------- Événements (délégation) ----------
+  document.addEventListener('toggle', function (e) { var g = e.target && e.target.dataset && e.target.dataset.guide; if (g && e.target.open) { marquerVu(g); S.aideOuverte = g; } }, true);
+  window.addEventListener('resize', function () { if (S.tour) placerTour(); });
   document.addEventListener('click', function (e) {
     var t = e.target.closest('button'); if (!t || !S.me) return;
     var d = t.dataset;
     if (d.go) { var g = d.go.split(':'); S.tab = g[0]; S.tabChoisi = true; if (g[0] === 'stock') S.stockF = g[1] || ''; if (g[0] === 'inventaire' && g[1] !== undefined) choisirEmp(+g[1]); if (g[0] === 'histo') { S.histTous = true; chargerHisto(); } render(); window.scrollTo(0, 0); return; }
+    if (d.act === 'tour') { lancerTour(); return; }
+    if (d.act === 'toursuiv') { if (S.tour.i >= etapesTour().length - 1) { S.tour = null; marquerVu('visite'); render(); toast('✔ Visite terminée — les fiches restent dans Aide'); } else { S.tour.i++; allerEtape(); } return; }
+    if (d.act === 'tourprec') { S.tour.i = Math.max(0, S.tour.i - 1); allerEtape(); return; }
+    if (d.act === 'tourfin') { S.tour = null; render(); return; }
+    if (d.act === 'bvno') { marquerVu('bienvenue'); render(); return; }
+    if (d.essai) { marquerVu(d.gid); S.aideOuverte = d.gid; S.tab = d.essai; S.tabChoisi = true; if (d.essai === 'histo') chargerHisto(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'menu') { S.menu = !S.menu; render(); return; }
     if (d.tab) { S.menu = false; S.fiche = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'out') { if (confirm('Changer de personne ? La personne suivante devra se connecter avec son identifiant et son code.')) deconnexion(); return; }
