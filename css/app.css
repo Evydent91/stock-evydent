@@ -210,3 +210,23 @@ html{-webkit-tap-highlight-color:transparent}
 }
 /* appli ouverte depuis l'écran d'accueil (mode application) */
 @media (display-mode:standalone){ body{overscroll-behavior-y:none} }
+
+/* ---------- Listes Sortie / Inventaire : classement et confort ---------- */
+.frow{display:grid;grid-template-columns:minmax(150px,240px) 1fr;gap:10px}
+.sect{font-weight:700;color:var(--navy);margin:14px 2px 6px;font-size:15px}
+.it .use{display:block;font-size:12.5px;color:var(--ok);font-weight:600}
+.it.choisi{background:#f4f8f1;margin:0 -16px;padding-left:16px;padding-right:16px;border-left:4px solid var(--ok)}
+.btn.plus{width:100%;margin-top:4px}
+.btn.panier{white-space:nowrap}
+@media (max-width:700px){
+  .frow{grid-template-columns:104px 1fr;gap:8px}
+  .frow .m-hide{display:none}
+  /* recherche toujours visible sous l'en-tête */
+  .card.filtre{position:sticky;top:calc(env(safe-area-inset-top) + 56px);z-index:4;padding:8px;margin:0 -4px 8px;box-shadow:0 4px 12px rgba(31,42,51,.10)}
+  .card.filtre .in{height:46px}
+  .card.filtre select.in{padding:0 8px}
+  .it.choisi{margin:0 -12px;padding-left:10px;padding-right:12px}
+  .liste .it{min-height:64px}
+  .liste .it-n b{font-size:15.5px;line-height:1.25}
+  .sect{margin:12px 2px 6px}
+}

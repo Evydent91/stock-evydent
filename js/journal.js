@@ -1,7 +1,7 @@
 // Journal des versions (affiché dans Plus, pour la référente et la responsable).
 // Types : Majeure (changement profond), Mineure (nouvelle fonction), Correctif (réparation).
 // c = changements visibles ; x = opérations sur les données (pour la responsable).
-window.JOURNAL = [{v:"2.1",t:"Mineure",n:"Confort sur téléphone",d:"Novembre 2026 (en test)",
+window.JOURNAL = [{v:"2.1",t:"Mineure",n:"Confort sur téléphone et listes classées",d:"Novembre 2026 (en test)",
  w:"Rendre l’application plus simple à utiliser d’une main sur téléphone (iPhone et Android), là où elle sert le plus au cabinet.",
  c:[
  "Sur téléphone, les onglets passent en bas de l’écran, à portée de pouce : Accueil, Sortie, Inventaire, Commandes et Menu pour la référente et la responsable ; Sortie, Retour, Inventaire et Historique pour les assistantes.",
@@ -9,8 +9,10 @@ window.JOURNAL = [{v:"2.1",t:"Mineure",n:"Confort sur téléphone",d:"Novembre 2
  "En-tête plus compact ; la barre « Valider la sortie / le retour / l’inventaire » se place juste au-dessus des onglets.",
  "Boutons, cases de quantité et filtres plus grands pour le doigt ; filtres sur une seule ligne qui défile.",
  "Historique présenté en cartes lisibles au lieu d’un tableau.",
+ "Sortie : sans rien taper, la liste des articles s’affiche du plus au moins sorti du cabinet choisi sur les 12 derniers mois (puis du centre), avec la quantité sortie ; la recherche reste en haut de l’écran pendant qu’on fait défiler ; les articles choisis sont surlignés en vert et le bouton 🧺 de la barre du bas montre le panier.",
+ "Inventaire : même ordre (les articles les plus sortis de l’emplacement en premier), articles déjà comptés surlignés, nombre d’articles comptés affiché.",
  "Installation possible sur l’écran d’accueil (iPhone : Partager › Sur l’écran d’accueil) : l’appli s’ouvre alors en plein écran avec son icône, comme une application.",
- "Ordinateur : aucun changement."],x:[]},
+ "Ordinateur : seules les listes classées de Sortie et Inventaire changent."],x:["Mise à jour 007 de la base : calcul du classement des articles les plus sortis (lecture seule, aucune donnée modifiée)."]},
 {v:"2.0",t:"Majeure",n:"Nouvelle application en ligne",d:"8 novembre 2026",
  w:"Passer d’une application dans Claude à une vraie application en ligne : comptes personnels, données dans une base sécurisée (Supabase), site de test séparé du site réel, chaque modification validée étape par étape avant la mise en ligne.",
  c:[

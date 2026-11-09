@@ -126,6 +126,7 @@
       sb.from('inventaires').select('emplacement,date_inv,j0').order('date_inv', { ascending: false }).limit(500).then(function (r) { if (r.error) throw r.error; return r.data; }),
       sb.from('mouvements').select('*').order('cree_le', { ascending: false }).limit(30).then(function (r) { if (r.error) throw r.error; return r.data; }),
       toutLire('article_fournisseurs', 'article_id,fournisseur_id,prix,reference,rang'),
+      sb.rpc('classement_sorties', { p_jours: 365 }).then(function (r) { return r.error ? [] : r.data || []; }, function () { return []; }),
       gestion() ? chargerCommandes() : Promise.resolve()
     ];
     return Promise.all(ps).then(function (x) {
@@ -138,6 +139,7 @@
       var ps2 = x[5].filter(function (p) { return p.cle === 'derniere_sauvegarde'; })[0]; S.sauv = ps2 ? ps2.valeur : null;
       S.dernierInv = {}; S.invJ0 = {}; x[6].forEach(function (i) { if (!S.dernierInv[i.emplacement]) S.dernierInv[i.emplacement] = i.date_inv; if (i.j0 && S.j0 && S.j0.debut && i.date_inv.slice(0, 10) >= S.j0.debut) S.invJ0[i.emplacement] = true; });
       S.recents = x[7];
+      S.rang = {}; (x[9] || []).forEach(function (r) { var o = S.rang[r.article_id] = S.rang[r.article_id] || { t: 0, c: {} }; o.t += +r.total; o.c[r.cabinet] = +r.total; });
       S.afPrix = {}; (x[8] || []).forEach(function (p) { (S.afPrix[p.article_id] = S.afPrix[p.article_id] || []).push(p); });
       S.loading = false; render();
       if (S.tab === 'histo') chargerHisto();
@@ -193,30 +195,40 @@
   }
 
   // ---------- Sortie ----------
+  // Classement : d'abord ce qui sort le plus de ce cabinet, puis le plus sorti de tout le centre, puis l'ordre alphabétique
+  function sortiesDe(a, cab) { var r = S.rang[a.id]; return r ? (cab ? r.c[cab] || 0 : r.t) : 0; }
+  function parUsage(cab) {
+    return function (x, y) { return sortiesDe(y, cab) - sortiesDe(x, cab) || sortiesDe(y) - sortiesDe(x) || x.nom.localeCompare(y.nom); };
+  }
+  function ligneSortie(a, s) {
+    var v = s.panier[a.id] || 0, d = dispoUnites(a), trop = v > d, n = sortiesDe(a, +s.cab);
+    return '<div class="it' + (v ? ' choisi' : '') + '"><div class="it-n"><b>' + esc(a.nom) + (a.reference && a.reference !== 'SR' ? '<span class="ref">' + esc(a.reference) + '</span>' : '') + '</b>'
+      + '<span class="' + (trop ? 'pill warn' : '') + '">Réserve : ' + fr(d) + ' u.' + (facteur(a) > 1 ? ' (' + fr(stockDe(a.id, 0)) + ' boîte(s) de ' + fr(a.qte_par_boite) + ')' : '') + (trop ? ' · au-delà : demande à confirmer' : '') + '</span>'
+      + (n ? '<span class="use">📈 ' + fr(n) + ' u. sorties en 12 mois</span>' : '') + '</div>'
+      + '<div class="stp"><button type="button" data-moins="' + a.id + '" aria-label="Moins un">−</button><input inputmode="decimal" data-qte="' + a.id + '" value="' + (v || '') + '" placeholder="0" aria-label="Quantité"><button type="button" data-plus="' + a.id + '" aria-label="Plus un">+</button></div></div>';
+  }
   function vSortie() {
     var s = S.sortie, hors = S.me.cabinet && +s.cab !== +S.me.cabinet;
     var h = '<h2>Nouvelle sortie</h2>';
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
-    h += '<div class="card"><div class="g2"><label class="mu">Cabinet<select class="in" id="scab">'
-      + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+s.cab === c ? ' selected' : '') + '>Cabinet ' + c + (S.me.cabinet === c ? ' (le mien)' : '') + '</option>'; }).join('')
-      + '</select></label><label class="mu">Rechercher un article<input class="in" id="sq" type="search" placeholder="Nom ou référence" value="' + esc(s.q) + '"></label></div>'
+    h += '<div class="card filtre"><div class="frow"><label class="mu fcab"><span class="m-hide">Cabinet</span><select class="in" id="scab" aria-label="Cabinet">'
+      + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+s.cab === c ? ' selected' : '') + '>Cab. ' + c + (S.me.cabinet === c ? ' ★' : '') + '</option>'; }).join('')
+      + '</select></label><label class="mu fq"><span class="m-hide">Rechercher un article</span><input class="in" id="sq" type="search" placeholder="🔍 Nom ou référence" value="' + esc(s.q) + '" aria-label="Rechercher un article"></label></div>'
       + (hors ? '<p class="ban warn" style="margin:10px 0 0">Ce n’est pas votre cabinet : la sortie sera enregistrée « hors cabinet » (remplacement).</p>' : '') + '</div>';
-    var q = norm(s.q), ids = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; });
-    var liste = q ? S.articles.filter(function (a) { return norm(a.nom + ' ' + (a.reference || '')).indexOf(q) >= 0; }).slice(0, 40)
-                  : ids.map(function (k) { return S.byId[k]; }).filter(Boolean);
-    if (!q && !ids.length) h += '<p class="mu">Tapez le nom d’un article pour l’ajouter à la sortie.</p>';
-    if (q && !liste.length) h += '<p class="mu">Aucun article trouvé.</p>';
-    if (liste.length) h += '<div class="card">' + liste.map(function (a) {
-      var v = s.panier[a.id] || 0, d = dispoUnites(a), trop = v > d;
-      return '<div class="it"><div class="it-n"><b>' + esc(a.nom) + (a.reference && a.reference !== 'SR' ? '<span class="ref">' + esc(a.reference) + '</span>' : '') + '</b>'
-        + '<span class="' + (trop ? 'pill warn' : '') + '">Réserve : ' + fr(d) + ' u.' + (facteur(a) > 1 ? ' (' + fr(stockDe(a.id, 0)) + ' boîte(s) de ' + fr(a.qte_par_boite) + ')' : '') + (trop ? ' · au-delà : demande à confirmer' : '') + '</span></div>'
-        + '<div class="stp"><button type="button" data-moins="' + a.id + '" aria-label="Moins un">−</button><input inputmode="decimal" data-qte="' + a.id + '" value="' + (v || '') + '" placeholder="0" aria-label="Quantité"><button type="button" data-plus="' + a.id + '" aria-label="Plus un">+</button></div></div>';
-    }).join('') + '</div>';
+    var q = norm(s.q), ids = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; }), tri = parUsage(+s.cab);
+    if (q) {
+      var trouves = S.articles.filter(function (a) { return norm(a.nom + ' ' + (a.reference || '')).indexOf(q) >= 0; }).sort(tri).slice(0, 40);
+      return h + (trouves.length ? '<div class="card liste">' + trouves.map(function (a) { return ligneSortie(a, s); }).join('') + '</div>' : '<p class="mu">Aucun article trouvé.</p>');
+    }
+    if (s.voir && ids.length) return h + '<div class="sect row"><span class="grow">🧺 Dans la sortie · ' + ids.length + ' article(s)</span><button class="lnk" data-act="svoir">← Tous les articles</button></div><div class="card liste">' + ids.map(function (k) { return S.byId[k]; }).filter(Boolean).map(function (a) { return ligneSortie(a, s); }).join('') + '</div>';
+    var autres = S.articles.slice().sort(tri), max = s.max || 30;
+    h += '<div class="sect">⭐ Les plus sortis · cabinet ' + s.cab + '</div><div class="card liste">' + autres.slice(0, max).map(function (a) { return ligneSortie(a, s); }).join('') + '</div>';
+    if (autres.length > max) h += '<button class="btn l plus" data-act="splus">Afficher plus d’articles (' + (autres.length - max) + ' restants)</button>';
     return h;
   }
   function vBarSortie() {
     var n = Object.keys(S.sortie.panier).filter(function (k) { return S.sortie.panier[k] > 0; }).length;
-    return '<div class="bar"><div class="bar-in"><span class="grow mu">' + (n ? n + ' article(s) · cabinet ' + S.sortie.cab : 'Panier vide') + '</span>'
+    return '<div class="bar"><div class="bar-in">' + (n ? '<button class="btn l panier" data-act="svoir">🧺 ' + n + '<span class="m-hide"> article(s) · voir</span></button><span class="grow"></span>' : '<span class="grow mu">Panier vide</span>')
       + (n ? '<button class="btn l" data-act="vider">Vider</button>' : '') + '<button class="btn" data-act="valider"' + (n && !S.sortie.busy ? '' : ' disabled') + '>Valider la sortie</button></div></div>';
   }
   // ---------- Retour d'un cabinet vers la réserve (tout le monde) ----------
@@ -274,7 +286,7 @@
       if (d.sorties) m.push('✔ ' + d.sorties + ' article(s) sorti(s) pour le cabinet ' + s.cab + '.');
       if (d.en_attente) m.push('⏳ ' + d.en_attente + ' article(s) dépassent la réserve : demande envoyée à la responsable, voyez-la pour confirmer.');
       if (d.hors_cabinet) m.push('Enregistré « hors cabinet ».');
-      s.msg = [d.en_attente ? 'warn' : 'ok', m.join(' ')]; s.panier = {}; s.q = '';
+      s.msg = [d.en_attente ? 'warn' : 'ok', m.join(' ')]; s.panier = {}; s.q = ''; s.voir = false; s.max = 30;
       charger();
     });
   }
@@ -319,7 +331,7 @@
     return S.articles.filter(function (a) {
       if (!tous && !(stockDe(a.id, emp) > 0) && d[a.id] == null) return false;
       return !q || norm(a.nom + ' ' + (a.reference || '')).indexOf(q) >= 0;
-    });
+    }).sort(parUsage(emp || null));
   }
   function nbComptes() { return Object.keys(S.inv.d).filter(function (k) { return S.inv.d[k] !== '' && S.inv.d[k] != null && S.byId[k]; }).length; }
   function vInventaire() {
@@ -328,8 +340,8 @@
     if (j0Actif()) h += '<div class="ban j0">🚩 <b>Inventaire de départ (J0)</b> jusqu’au ' + S.j0.fin.split('-').reverse().slice(0, 2).join('/') + ' : les quantités comptées <b>remplacent</b> le stock, sans perte ni gain.' + (emp != null && j0Premier(emp) ? ' <b>Les articles non comptés de cet emplacement passeront à 0.</b>' : '') + (gestion() ? ' <button class="lnk" data-act="j0off">Terminer le J0</button>' : '') + '</div>';
     else if (gestion()) h += (I.j0ask ? '<div class="ban j0"><b>Lancer l’inventaire de départ (J0) ?</b><br>Pendant 7 jours, chaque inventaire remplacera directement le stock : aucune perte, aucun gain, aucun motif. Au premier comptage de chaque emplacement, les articles non comptés passeront à 0.<div class="row" style="margin-top:10px"><button class="btn l sm" data-act="j0non">Non</button><button class="btn sm" data-act="j0oui">Oui, lancer le J0</button></div></div>' : '<button class="btn l sm" style="margin-bottom:12px" data-act="j0ask">🚩 Lancer l’inventaire de départ (J0)</button>');
     var opts = (peutReserve() ? '<option value="0"' + (emp === 0 ? ' selected' : '') + '>Réserve</option>' : '') + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (emp === c ? ' selected' : '') + '>Cabinet ' + c + (S.me.cabinet === c ? ' (le mien)' : '') + '</option>'; }).join('');
-    h += '<div class="card"><div class="g2"><label class="mu">Emplacement à compter<select class="in" id="iemp"><option value="">— Choisir —</option>' + opts + '</select></label>'
-      + (emp != null ? '<label class="mu">Rechercher<input class="in" id="iq" type="search" placeholder="Nom ou référence" value="' + esc(I.q) + '"></label>' : '') + '</div>'
+    h += '<div class="card' + (emp != null ? ' filtre' : '') + '"><div class="' + (emp != null ? 'frow' : 'g2') + '"><label class="mu fcab"><span class="m-hide">Emplacement à compter</span><select class="in" id="iemp" aria-label="Emplacement à compter"><option value="">— Choisir —</option>' + opts.replace(/>Cabinet (\d)( \(le mien\))?</g, function (m0, c, mien) { return '>Cab. ' + c + (mien ? ' ★' : '') + '<'; }) + '</select></label>'
+      + (emp != null ? '<label class="mu fq"><span class="m-hide">Rechercher</span><input class="in" id="iq" type="search" placeholder="🔍 Nom ou référence" value="' + esc(I.q) + '" aria-label="Rechercher"></label>' : '') + '</div>'
       + (emp != null && emp > 0 && S.me.cabinet && emp !== S.me.cabinet ? '<p class="ban warn" style="margin:10px 0 0">Ce n’est pas votre cabinet : l’inventaire sera enregistré « hors cabinet » (remplacement).</p>' : '')
       + (!peutReserve() ? '<p class="mu" style="margin:8px 0 0">L’inventaire de la réserve est fait par la responsable ou la référente (ou sur autorisation).</p>' : '') + '</div>';
     if (emp == null) return h;
@@ -340,9 +352,9 @@
     if (emp > 0 && der) h += '<label class="row" style="margin:0 0 10px"><input type="checkbox" id="itous"' + (I.tous ? ' checked' : '') + ' style="width:20px;height:20px"> Afficher tous les articles (produit trouvé qui n’était pas prévu)</label>';
     var l = listeInv(), max = I.max || 80;
     if (!l.length) h += '<p class="mu">Aucun article.</p>';
-    else h += '<div class="card">' + l.slice(0, max).map(function (a) {
+    else h += '<div class="sect">' + (emp ? '⭐ Les plus sortis du cabinet ' + emp + ' en premier' : '⭐ Les plus sortis du centre en premier') + ' · ' + nbComptes() + ' compté(s)</div><div class="card liste">' + l.slice(0, max).map(function (a) {
       var v = I.d[a.id];
-      return '<div class="it"><div class="it-n"><b>' + esc(a.nom) + (a.reference && !estSR(a) ? '<span class="ref">' + esc(a.reference) + '</span>' : '') + '</b><span>en ' + uInv(a, emp) + (gestion() ? ' · théorique : ' + fr(theo(a, emp)) : '') + '</span></div>'
+      return '<div class="it' + (v != null && v !== '' ? ' choisi' : '') + '"><div class="it-n"><b>' + esc(a.nom) + (a.reference && !estSR(a) ? '<span class="ref">' + esc(a.reference) + '</span>' : '') + '</b><span>en ' + uInv(a, emp) + (gestion() ? ' · théorique : ' + fr(theo(a, emp)) : '') + '</span></div>'
         + '<div class="stp"><button type="button" data-izero="' + a.id + '" class="zero" aria-label="Aucun">0</button><input inputmode="decimal" data-iq="' + a.id + '" value="' + esc(v == null ? '' : v) + '" placeholder="—" aria-label="Quantité comptée"></div></div>';
     }).join('') + '</div>';
     if (l.length > max) h += '<button class="btn l" style="width:100%" data-act="iplus">Afficher plus d’articles (' + (l.length - max) + ' restants)</button>';
@@ -1370,12 +1382,14 @@
     if (d.act === 'aimpno') { S.artImp = null; render(); return; }
     if (d.act === 'aimpok') return appliquerImportArticles();
     if (d.act === 'iexp') return exporterComptage();
+    if (d.act === 'svoir') { S.sortie.voir = !S.sortie.voir; render(); window.scrollTo(0, 0); return; }
+    if (d.act === 'splus') { S.sortie.max = (S.sortie.max || 30) + 40; render(); return; }
     if (d.act === 'valider') return validerSortie();
     if (d.act === 'rvalider') return validerRetour();
     if (d.act === 'rvider') { S.ret.panier = {}; render(); return; }
     if (d.rplus) { setRet(d.rplus, (S.ret.panier[d.rplus] || 0) + 1); S.ret.msg = null; render(); return; }
     if (d.rmoins) { setRet(d.rmoins, (S.ret.panier[d.rmoins] || 0) - 1); render(); return; }
-    if (d.act === 'vider') { S.sortie.panier = {}; render(); return; }
+    if (d.act === 'vider') { S.sortie.panier = {}; S.sortie.voir = false; render(); return; }
     if (d.plus) { setQte(d.plus, (S.sortie.panier[d.plus] || 0) + 1); S.sortie.msg = null; render(); return; }
     if (d.moins) { setQte(d.moins, (S.sortie.panier[d.moins] || 0) - 1); render(); return; }
     if (d.izero) { S.inv.d[d.izero] = '0'; ecrireBrouillon(); render(); return; }
