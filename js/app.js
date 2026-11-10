@@ -1121,12 +1121,69 @@
   // ---------- Plus : sauvegarde et journal des versions (gestion) ----------
   function joursDepuis(iso) { return iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : null; }
   function sauvegardeEnRetard() { var j = joursDepuis(S.sauv && S.sauv.date); return j == null || j > 30; }
+  // ---------- Bilan des écarts (Plus) ----------
+  var PERIODES = [['mois', 'Ce mois-ci'], ['prec', 'Mois dernier'], ['3m', '3 derniers mois'], ['12m', '12 derniers mois']];
+  function bornes(p) {
+    var d = new Date(), y = d.getFullYear(), m = d.getMonth();
+    if (p === 'mois') return [new Date(y, m, 1), null];
+    if (p === 'prec') return [new Date(y, m - 1, 1), new Date(y, m, 1)];
+    if (p === '3m') return [new Date(y, m - 2, 1), null];
+    return [new Date(y, m - 11, 1), null];
+  }
+  function chargerEcarts() {
+    var E = S.ecarts = S.ecarts || { p: 'mois' }, b = bornes(E.p);
+    E.charge = true; E.l = null;
+    var q = sb.from('mouvements').select('cree_le,type,statut,article_id,article_nom,emplacement_de,ecart,valeur,motif,auteur_nom').not('ecart', 'is', null).neq('statut', 'annule').gte('cree_le', b[0].toISOString()).order('cree_le', { ascending: false }).limit(5000);
+    if (b[1]) q = q.lt('cree_le', b[1].toISOString());
+    q.then(function (r) { E.charge = false; E.l = r.error ? [] : r.data; E.err = r.error ? msgErr(r.error) : null; render(); });
+  }
+  function vEcarts() {
+    if (!S.ecarts) setTimeout(chargerEcarts, 0);
+    var E = S.ecarts || { p: 'mois' };
+    var h = '<div class="card"><div class="row wrap"><b class="grow">📉 Bilan des écarts de stock</b></div><div class="chips" style="margin:8px 0 10px">'
+      + PERIODES.map(function (x) { return '<button class="chip' + (E.p === x[0] ? ' on' : '') + '" data-ecp="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
+    if (E.charge || !E.l) return h + '<p class="mu">Chargement…</p></div>';
+    if (E.err) return h + '<p class="ban ko">' + esc(E.err) + '</p></div>';
+    var j0 = 0, corr = 0, L = [];
+    E.l.forEach(function (m) {
+      if (/^Inventaire de départ/.test(m.motif || '')) { j0++; return; }
+      if (m.type === 'correction') { corr++; return; }
+      L.push(m);
+    });
+    var pertes = 0, gains = 0, parEmp = {}, parArt = {}, parMotif = {};
+    L.forEach(function (m) {
+      var v = +m.valeur || 0, e = m.type === 'sortie' ? 0 : (m.emplacement_de == null ? 0 : m.emplacement_de), a = S.byId[m.article_id], nom = a ? a.nom : (m.article_nom || 'article supprimé');
+      if (v < 0) pertes += v; else gains += v;
+      var pe = parEmp[e] = parEmp[e] || { n: 0, p: 0, g: 0 }; pe.n++; if (v < 0) pe.p += v; else pe.g += v;
+      var pa = parArt[nom] = parArt[nom] || { q: 0, v: 0, n: 0 }; pa.q += +m.ecart || 0; pa.v += v; pa.n++;
+      var mo = m.type === 'sortie' ? 'Sortie au-delà de la réserve' : m.type === 'retour' ? 'Retour (stock cabinet trop bas)' : (m.motif || (m.type === 'inventaire' ? 'Inventaire' : 'Régularisation'));
+      var pm = parMotif[mo] = parMotif[mo] || { n: 0, v: 0 }; pm.n++; pm.v += v;
+    });
+    if (!L.length) h += '<p class="mu">Aucun écart sur cette période.</p>';
+    else {
+      h += '<div class="tiles" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="tile ko"><b>' + eur(pertes) + '</b><span>Pertes</span></div><div class="tile ok"><b>' + eur(gains) + '</b><span>Gains</span></div><div class="tile ' + (pertes + gains < 0 ? 'warn' : 'ok') + '"><b>' + eur(pertes + gains) + '</b><span>Solde</span><small>' + L.length + ' écart(s)</small></div></div>';
+      h += '<b style="display:block;margin:12px 0 4px">Par emplacement</b>' + Object.keys(parEmp).sort(function (a, b) { return a - b; }).map(function (e) {
+        var x = parEmp[e]; return '<div class="it"><div class="it-n"><b>' + cabTxt(+e) + '</b><span>' + x.n + ' écart(s)</span></div><div style="text-align:right"><b style="color:var(--ko)">' + eur(x.p) + '</b><br><small class="mu">gains ' + eur(x.g) + '</small></div></div>';
+      }).join('');
+      var top = Object.keys(parArt).map(function (k) { return [k, parArt[k]]; }).filter(function (x) { return x[1].v < 0; }).sort(function (a, b) { return a[1].v - b[1].v; }).slice(0, 10);
+      if (top.length) h += '<b style="display:block;margin:14px 0 4px">Les 10 plus grosses pertes</b>' + top.map(function (x) {
+        return '<div class="it"><div class="it-n"><b>' + esc(x[0]) + '</b><span>' + fr(x[1].q) + ' · ' + x[1].n + ' fois</span></div><b style="color:var(--ko)">' + eur(x[1].v) + '</b></div>';
+      }).join('');
+      h += '<b style="display:block;margin:14px 0 4px">Par motif</b>' + Object.keys(parMotif).sort(function (a, b) { return parMotif[a].v - parMotif[b].v; }).map(function (k) {
+        return '<div class="it"><div class="it-n"><b>' + esc(k) + '</b><span>' + parMotif[k].n + ' écart(s)</span></div><b>' + eur(parMotif[k].v) + '</b></div>';
+      }).join('');
+    }
+    if (j0 || corr) h += '<p class="mu" style="margin:10px 0 0;font-size:13px">Non comptés dans le bilan : ' + (j0 ? j0 + ' ligne(s) de l’inventaire de départ (J0)' : '') + (j0 && corr ? ' et ' : '') + (corr ? corr + ' correction(s) sans impact financier' : '') + '.</p>';
+    return h + '<p class="mu" style="margin:8px 0 0;font-size:13px">Valeurs au coût moyen TTC. Détail ligne par ligne dans l’Historique.</p></div>';
+  }
+
   function vPlus() {
     var j = joursDepuis(S.sauv && S.sauv.date), h = '<h2>Plus</h2>';
-    h += '<div class="card"><div class="row wrap"><div class="grow"><b>💾 Sauvegarde</b><br><span class="mu">'
+    h += '<div class="card"><div class="row wrap sauvrow"><div class="grow"><b>💾 Sauvegarde</b><br><span class="mu">'
       + (S.sauv && S.sauv.date ? 'Dernière : ' + new Date(S.sauv.date).toLocaleDateString('fr-FR') + ' par ' + esc(S.sauv.par || '?') + (j ? ' (il y a ' + j + ' jour' + (j > 1 ? 's' : '') + ')' : ' (aujourd’hui)') : 'Aucune sauvegarde téléchargée pour l’instant')
       + '</span></div><button class="btn' + (sauvegardeEnRetard() ? ' gold' : '') + '" data-act="sauver"' + (S.sauvBusy ? ' disabled' : '') + '>' + (S.sauvBusy ? 'Préparation…' : 'Télécharger la sauvegarde') + '</button></div>'
       + '<p class="mu" style="margin:8px 0 0">Un fichier Excel avec une feuille par tableau : stock par emplacement, articles, prix par fournisseur, fournisseurs, commandes, mouvements, inventaires, équipe. À ranger dans un dossier sûr, une fois par mois. Les mots de passe des comptes fournisseurs n’y figurent pas.</p></div>';
+    h += vEcarts();
     h += '<h2 style="margin-top:20px">Journal des versions</h2><p class="mu" style="margin-top:-6px">Version installée : <b>' + esc(C.version) + '</b>. Majeure : changement profond · Mineure : nouvelle fonction · Correctif : réparation.</p>';
     var TC = { Majeure: 'ko', Mineure: 'ok', Correctif: 'warn' };
     h += (window.JOURNAL || []).map(function (v, i) {
@@ -1486,9 +1543,10 @@
     if (d.act === 'bvno') { marquerVu('bienvenue'); render(); return; }
     if (d.essai) { marquerVu(d.gid); S.aideOuverte = d.gid; S.tab = d.essai; S.tabChoisi = true; if (d.essai === 'histo') chargerHisto(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'menu') { S.menu = !S.menu; render(); return; }
-    if (d.tab) { S.menu = false; S.fiche = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); render(); window.scrollTo(0, 0); return; }
+    if (d.tab) { S.menu = false; S.fiche = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); if (d.tab === 'plus') chargerEcarts(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'out') { if (confirm('Changer de personne ? La personne suivante devra se connecter avec son identifiant et son code.')) deconnexion(); return; }
     if (d.act === 'maj') return mettreAJour();
+    if (d.ecp) { S.ecarts = S.ecarts || {}; S.ecarts.p = d.ecp; chargerEcarts(); render(); return; }
     if (d.act === 'sauver') return telechargerSauvegarde();
     if (d.act === 'aexp') return exporterArticles();
     if (d.act === 'asuppr') return supprimerArticle();
