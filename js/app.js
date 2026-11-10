@@ -300,12 +300,17 @@
   function parUsage(cab) {
     return function (x, y) { return sortiesDe(y, cab) - sortiesDe(x, cab) || sortiesDe(y) - sortiesDe(x) || x.nom.localeCompare(y.nom); };
   }
+  // Unité dans laquelle on sort l'article (ce que compte le + / −)
+  function enBoite(a) { return facteur(a) === 1 && a.conditionnement === 'BOITE'; }
+  function uSortie(a, n) { var p = Math.abs(n) > 1 ? 's' : ''; return enBoite(a) ? 'boîte' + p : 'unité' + p; }
   function ligneSortie(a, s) {
-    var v = s.panier[a.id] || 0, d = dispoUnites(a), trop = v > d, n = sortiesDe(a, +s.cab);
-    return '<div class="it' + (v ? ' choisi' : '') + '"><div class="it-n"><b>' + esc(a.nom) + (a.reference && a.reference !== 'SR' ? '<span class="ref">' + esc(a.reference) + '</span>' : '') + '</b>'
-      + '<span class="' + (trop ? 'pill warn' : '') + '">Réserve : ' + fr(d) + ' u.' + (facteur(a) > 1 ? ' (' + fr(stockDe(a.id, 0)) + ' boîte(s) de ' + fr(a.qte_par_boite) + ')' : '') + (trop ? ' · au-delà : demande à confirmer' : '') + '</span>'
-      + (n ? '<span class="use">📈 ' + fr(n) + ' u. sorties en 12 mois</span>' : '') + '</div>'
-      + '<div class="stp"><button type="button" data-moins="' + a.id + '" aria-label="Moins un">−</button><input inputmode="decimal" data-qte="' + a.id + '" value="' + (v || '') + '" placeholder="0" aria-label="Quantité"><button type="button" data-plus="' + a.id + '" aria-label="Plus un">+</button></div></div>';
+    var v = s.panier[a.id] || 0, d = dispoUnites(a), trop = v > d, n = sortiesDe(a, +s.cab), f = facteur(a);
+    var mode = enBoite(a) ? '<span class="mode boite">📦 Sortie à la <strong>boîte entière</strong></span>'
+      : '<span class="mode unite">🔹 Sortie à l’<strong>unité</strong>' + (f > 1 ? ' · boîte de ' + fr(a.qte_par_boite) : '') + '</span>';
+    return '<div class="it' + (v ? ' choisi' : '') + '"><div class="it-n"><b>' + esc(a.nom) + (a.reference && a.reference !== 'SR' ? '<span class="ref">' + esc(a.reference) + '</span>' : '') + '</b>' + mode
+      + '<span class="' + (trop ? 'pill warn' : '') + '">Réserve : ' + fr(d) + ' ' + uSortie(a, d) + (f > 1 ? ' (' + fr(stockDe(a.id, 0)) + ' boîte' + (stockDe(a.id, 0) > 1 ? 's' : '') + ')' : '') + (trop ? ' · au-delà : demande à confirmer' : '') + '</span>'
+      + (n ? '<span class="use">📈 ' + fr(n) + ' ' + uSortie(a, n) + ' sortie' + (n > 1 ? 's' : '') + ' en 12 mois</span>' : '') + '</div>'
+      + '<div class="stpw"><div class="stp"><button type="button" data-moins="' + a.id + '" aria-label="Moins un">−</button><input inputmode="decimal" data-qte="' + a.id + '" value="' + (v || '') + '" placeholder="0" aria-label="Quantité en ' + uSortie(a, 2) + '"><button type="button" data-plus="' + a.id + '" aria-label="Plus un">+</button></div><small class="stpu ' + (enBoite(a) ? 'boite' : 'unite') + '">en ' + uSortie(a, 2) + '</small></div></div>';
   }
   function vSortie() {
     var s = S.sortie, hors = S.me.cabinet && +s.cab !== +S.me.cabinet;

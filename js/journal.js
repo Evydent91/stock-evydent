@@ -11,6 +11,7 @@ window.JOURNAL = [{v:"2.1",t:"Mineure",n:"Confort sur téléphone et listes clas
  "Historique présenté en cartes lisibles au lieu d’un tableau.",
  "Sortie : sans rien taper, la liste des articles s’affiche du plus au moins sorti du cabinet choisi sur les 12 derniers mois (puis du centre), avec la quantité sortie ; la recherche reste en haut de l’écran pendant qu’on fait défiler ; les articles choisis sont surlignés en vert et le bouton 🧺 de la barre du bas montre le panier.",
  "Aide (Menu › Aide, ou onglet ❓ Aide sur ordinateur) : 8 fiches pas à pas pour les assistantes (connexion, sortie, remplacement, retour, inventaire, historique, code, installation sur le téléphone) avec un bouton « Essayer maintenant », et une visite guidée qui montre chaque bouton à l’écran ; proposée à la première connexion.",
+ "Sortie : chaque article indique clairement s’il se sort à l’unité (🔹 bleu, avec le nombre par boîte) ou à la boîte entière (📦 orange) ; la réserve et la case de quantité sont exprimées dans la même unité.",
  "Inventaire : même ordre (les articles les plus sortis de l’emplacement en premier), articles déjà comptés surlignés, nombre d’articles comptés affiché.",
  "Installation possible sur l’écran d’accueil (iPhone : Partager › Sur l’écran d’accueil) : l’appli s’ouvre alors en plein écran avec son icône, comme une application.",
  "Ordinateur : seules les listes classées de Sortie et Inventaire changent."],x:["Mise à jour 007 de la base : calcul du classement des articles les plus sortis (lecture seule, aucune donnée modifiée)."]},
