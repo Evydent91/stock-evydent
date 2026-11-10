@@ -275,3 +275,6 @@ html{-webkit-tap-highlight-color:transparent}
 .stpu.unite{color:#1d4f86}.stpu.boite{color:#7a4a05}
 .it .it-n .mode + span{display:block}
 @media (max-width:700px){ .sauvrow .grow{flex-basis:100%} .sauvrow .btn{width:100%} }
+.tiles.stk{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}
+.tiles.stk .tile b{white-space:nowrap}
+@media (max-width:700px){ .tiles.stk{grid-template-columns:minmax(0,1fr) minmax(0,1.8fr)} .tiles.stk .tile b{font-size:21px} }

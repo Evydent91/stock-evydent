@@ -449,7 +449,7 @@
       + (emp != null ? '<label class="mu fq"><span class="m-hide">Rechercher</span><input class="in" id="iq" type="search" placeholder="🔍 Nom ou référence" value="' + esc(I.q) + '" aria-label="Rechercher"></label>' : '') + '</div>'
       + (emp != null && emp > 0 && S.me.cabinet && emp !== S.me.cabinet ? '<p class="ban warn" style="margin:10px 0 0">Ce n’est pas votre cabinet : l’inventaire sera enregistré « hors cabinet » (remplacement).</p>' : '')
       + (!peutReserve() ? '<p class="mu" style="margin:8px 0 0">L’inventaire de la réserve est fait par la responsable ou la référente (ou sur autorisation).</p>' : '') + '</div>';
-    if (emp == null) return h;
+    if (emp == null) return h + (peutReserve() ? '<p class="mu">💡 Pour compter la réserve avec un fichier Excel, choisissez <b>Réserve</b> : les boutons « Fichier de comptage Excel » et « Importer le comptage » apparaissent.</p>' : '');
     if (emp === 0 && !I.recap && peutReserve()) h += '<div class="row wrap" style="margin:0 0 10px"><button class="btn l sm" data-act="iexp">⬇️ Fichier de comptage Excel</button><label class="btn l sm" style="display:inline-flex;align-items:center">⬆️ Importer le comptage<input type="file" id="iimpf" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label></div>';
     if (I.recap) return h + vRecap();
     var der = S.dernierInv[emp];
@@ -588,8 +588,8 @@
   function vStock() {
     var q = norm(S.stockQ), l = S.articles.filter(function (a) { return filtreStock(a, S.stockF) && (!q || norm(a.nom + ' ' + (a.reference || '') + ' ' + (S.fournisseurs[a.fournisseur_id] || '')).indexOf(q) >= 0); });
     var val = S.articles.reduce(function (t, a) { return t + stockDe(a.id, 0) * (+a.cout_moyen || 0); }, 0);
-    var h = '<h2>Stock</h2><div class="card row wrap"><span class="grow"><b>' + S.articles.length + '</b> articles · valeur de la réserve <b>' + eur(val) + '</b></span>'
-      + '<input class="in" style="max-width:320px" id="stq" type="search" placeholder="Rechercher" value="' + esc(S.stockQ) + '"></div>'
+    var h = '<h2>Stock</h2><div class="tiles stk"><div class="tile"><b>' + S.articles.length + '</b><span>articles</span></div><div class="tile ok"><b>' + eur(val) + '</b><span>valeur de la réserve</span><small>au coût moyen TTC</small></div></div>'
+      + '<div class="card filtre"><input class="in" id="stq" type="search" placeholder="🔍 Article, référence, fournisseur" value="' + esc(S.stockQ) + '" aria-label="Rechercher"></div>'
       + '<div class="chips" style="margin:0 0 10px"><button class="chip' + (!S.stockF ? ' on' : '') + '" data-go="stock:">Tous</button>' + Object.keys(STF).map(function (f) { return '<button class="chip' + (S.stockF === f ? ' on' : '') + '" data-go="stock:' + f + '">' + STF[f] + '</button>'; }).join('') + '</div>'
       + (S.stockF ? '<p class="mu">' + l.length + ' article(s) · ' + STF[S.stockF] + '</p>' : '');
     h += '<div class="scroll"><table class="tbl tbl-s"><thead><tr><th>Article</th><th class="n">Réserve</th><th class="n">Cabinets</th><th>État</th></tr></thead><tbody>';
