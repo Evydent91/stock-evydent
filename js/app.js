@@ -118,7 +118,7 @@
       if (S.ret.cab == null) S.ret.cab = S.me.cabinet || 1;
       if (!gestion() && ['maison', 'sortie', 'retour', 'inventaire', 'histo', 'compte', 'aide', 'moi'].indexOf(S.tab) < 0) S.tab = 'maison';
       if (S.inv.emp == null && S.me.cabinet) choisirEmp(S.me.cabinet);
-      if (gestion() && !S.tabChoisi) S.tab = 'accueil';
+      if (!S.tabChoisi) S.tab = gestion() ? 'accueil' : 'maison';
       S.histTous = gestion();
       return charger();
     });
@@ -170,6 +170,11 @@
   }
 
   // ---------- Rendu général ----------
+  function poser(app, h) {
+    var ae = document.activeElement, fq = ae && ae.id && ae.tagName === 'INPUT' ? ae.id : null, pos = fq && ae.selectionStart;
+    app.innerHTML = h;
+    if (fq && $(fq)) { S.refocus = true; $(fq).focus(); try { $(fq).setSelectionRange(pos, pos); } catch (e) {} S.refocus = false; }
+  }
   function render() {
     var app = $('app');
     document.body.classList.toggle('ecran-lg', !S.session);
@@ -179,6 +184,14 @@
       app.innerHTML = '<div class="lg"><div class="lg-top"></div><div class="lg-in"><div class="lg-card"><h1>Compte non activé</h1><p>Votre connexion fonctionne, mais votre compte n’a pas encore de profil actif dans l’application. Demandez à la responsable des achats ou à la référente de l’activer.</p><button class="btn l" id="bout">Se déconnecter</button></div></div></div>';
       $('bout').onclick = deconnexion; return;
     }
+    if (modeA()) {
+      poser(app, renderA());
+      document.body.classList.add('mode-a');
+      document.body.classList.toggle('ecran-ok', S.tab === 'sortie' && !!S.sortie.ok);
+      document.body.classList.toggle('sans-nav', enTache());
+      placerTour(); return;
+    }
+    document.body.classList.remove('mode-a', 'ecran-ok');
     var tabs = gestion() ? [['accueil', 'Accueil'], ['sortie', 'Sortie'], ['retour', 'Retour'], ['inventaire', 'Inventaire']] : [['maison', 'Accueil'], ['sortie', 'Sortie'], ['retour', 'Retour'], ['inventaire', 'Inventaire']];
     if (gestion()) tabs.push(['demandes', 'Demandes' + (S.attente.length ? '<span class="badge">' + S.attente.length + '</span>' : '')], ['stock', 'Stock'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs']);
     tabs.push(['histo', 'Historique']);
@@ -195,9 +208,7 @@
     h += (S.tab === 'sortie' ? vBarSortie() : S.tab === 'retour' ? vBarRetour() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
     // On remet le curseur dans le champ de saisie en cours, mais jamais sur une liste déroulante :
     // sur iPhone, redonner le focus à une liste la rouvre une seconde fois.
-    var ae = document.activeElement, fq = ae && ae.id && ae.tagName === 'INPUT' ? ae.id : null, pos = fq && ae.selectionStart;
-    app.innerHTML = h;
-    if (fq && $(fq)) { S.refocus = true; $(fq).focus(); try { $(fq).setSelectionRange(pos, pos); } catch (e) {} S.refocus = false; }
+    poser(app, h);
     document.body.classList.toggle('sans-nav', !!S.me && enTache());
     placerTour();
   }
@@ -208,11 +219,11 @@
     { id: 'connexion', ic: '🔐', t: 'Se connecter et changer de personne', duree: '1 min', tab: null, e: [
       'Tapez votre <b>identifiant</b> (ex. : sarah), puis votre <b>code à 6 chiffres</b> sur le pavé à grosses touches : la connexion se fait toute seule au 6ᵉ chiffre. L’identifiant est retenu sur le téléphone.',
       'Vous restez connectée : pas besoin de retaper votre code à chaque fois.',
-      'Sur un appareil partagé, appuyez sur <b>👤 Changer</b> (en haut) avant de passer la main : l’appli se vide pour la personne suivante.',
+      'Sur un appareil partagé, avant de passer la main : <b>Moi › Changer de personne</b> (en bas de l’écran). L’appli se vide pour la personne suivante.',
       'Code oublié ? Demandez à la référente ou à la responsable : elles vous en donnent un nouveau.'] },
     { id: 'sortie', ic: '📤', t: 'Faire une sortie (prendre dans la réserve)', duree: '2 min', tab: 'sortie', e: [
       'Sur l’accueil, touchez la grande tuile <b>📤 Sortie</b>. Votre cabinet est déjà choisi (★ = le vôtre).',
-      'Les articles que votre cabinet sort le plus sont <b>en haut de la liste</b>. Sinon, tapez quelques lettres dans <b>🔍</b>.',
+      'Les articles que votre cabinet sort le plus sont <b>en haut de la liste</b>. « Mes favoris » montre ceux que vous sortez vous-même, « A → Z » l’ordre alphabétique. Sinon, tapez quelques lettres dans <b>Chercher un article</b>.',
       'Appuyez sur <b>+</b> pour chaque unité prise (ou tapez directement le nombre). L’article passe en vert.',
       'Appuyez sur le gros bouton doré <b>Vérifier</b> : votre sortie s’affiche. Corrigez si besoin, puis <b>Valider la sortie</b>. Un écran vert confirme, puis l’appli revient à l’accueil.',
       'Si la réserve n’en a pas assez, la quantité en trop part en <b>demande à confirmer</b> par la référente : c’est normal.'] },
@@ -227,13 +238,13 @@
       'Ouvrez <b>📋 Inventaire</b> et choisissez votre cabinet.',
       'Pour chaque article, tapez la quantité <b>réellement présente</b> (en unités). Le bouton <b>0</b> met l’article à zéro en un geste.',
       'Les articles déjà comptés passent en vert. Votre saisie est gardée sur l’appareil même si vous êtes interrompue.',
-      'Appuyez sur <b>Terminer</b> : le bilan montre ce qui a été utilisé depuis le dernier inventaire (et ce qui serait en plus, à vérifier). Vérifiez, puis <b>Valider l’inventaire</b>.',
+      'Appuyez sur <b>J’ai fini de compter</b> : le bilan montre ce qui a été utilisé depuis le dernier inventaire (et ce qui serait en plus, à vérifier). Vérifiez, puis <b>Valider l’inventaire</b>.',
       'La réserve est comptée par la référente ou la responsable (ou par vous si elles vous ont donné l’autorisation).'] },
     { id: 'historique', ic: '🕘', t: 'Retrouver ce que j’ai fait', duree: '30 s', tab: 'histo', e: [
       'Ouvrez <b>🕘 Historique</b> : vos derniers mouvements (sorties, retours, inventaires) avec la date et l’heure.',
       'Une erreur ? Prévenez la référente : elle peut corriger.'] },
     { id: 'code', ic: '🔑', t: 'Changer mon code', duree: '30 s', tab: 'compte', e: [
-      'Appuyez sur <b>🔑</b> en haut (ou Menu › Mon code).',
+      'Assistantes : <b>Moi › Changer mon code</b>. Référente et responsable : bouton cadenas en haut (ou Menu › Mon code).',
       'Tapez votre code actuel, puis le nouveau deux fois (6 chiffres). Évitez 123456, 000000 ou votre date de naissance.'] },
     { id: 'iphone', ic: '📱', t: 'Mettre l’appli sur l’écran d’accueil du téléphone', duree: '1 min', tab: null, e: [
       '<b>iPhone (Safari)</b> : bouton Partager (carré avec une flèche) › <b>Sur l’écran d’accueil</b> › Ajouter.',
@@ -285,6 +296,9 @@
       E[5] = { tab: 'maison', sel: '.tuile[data-tab="retour"]', t: '↩️ Retour', x: 'Pour rendre à la réserve des boîtes fermées non utilisées.' };
       E[6] = { tab: 'maison', sel: '.tuile[data-tab="inventaire"]', t: '📋 Inventaire', x: 'Pour compter ce qui reste dans votre cabinet. La tuile indique quand l’inventaire du mois est à faire.' };
       E[7] = { tab: 'maison', sel: mob ? '.bnav [data-tab="histo"]' : nav('histo'), t: '🕘 Historique', x: 'Pour retrouver tout ce que vous avez fait, avec la date et l’heure.' };
+      E[3] = { tab: 'sortie', sel: '.a-st', t: 'La quantité', x: 'Appuyez sur + pour chaque unité (ou boîte) prise, ou tapez le nombre. L’article choisi passe en vert. En haut : « Les plus sortis », « Mes favoris » ou « A → Z ».' };
+      E[8] = { tab: 'moi', sel: '.a-li[data-tab="compte"]', t: 'Mon code', x: 'Dans « Moi » : pour changer votre code à 6 chiffres.' };
+      E[9] = { tab: 'moi', sel: '.a-moi-out', t: 'Changer de personne', x: 'À utiliser avant de passer le téléphone à une collègue : l’appli se vide pour elle.' };
       E[10] = { tab: 'maison', sel: mob ? '.bnav [data-tab="aide"]' : nav('aide'), t: '❓ Aide', x: 'Toutes les fiches pas à pas sont ici. Le bouton « Moi » regroupe votre code et « Changer de personne ». Bonne utilisation !' };
     }
     return E;
@@ -326,7 +340,10 @@
     ok: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
     cabinet: '<path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-6h6v6"/>',
     boite: '<path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
-    attente: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 1.5"/>'
+    attente: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 1.5"/>',
+    loupe: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
+    fleche: '<path d="M12 19V5M6 11l6-6 6 6"/>',
+    invok: '<rect x="6" y="4" width="12" height="16" rx="2"/><path d="M9 12l2 2 4-4"/>'
   };
   function ico(n, sz, ep) { return '<svg class="ic" width="' + (sz || 24) + '" height="' + (sz || 24) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (ep || 2) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + SVGI[n] + '</svg>'; }
 
@@ -341,31 +358,243 @@
     var c = S.me.cabinet, d = c && S.dernierInv[c];
     return c && (!d || (Date.now() - new Date(d).getTime()) / 86400000 > 28);
   }
-  function vMaison() {
-    var j = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }), ds = derniereSortie();
-    var mesAtt = (S.recents || []).filter(function (x) { return x.type === 'demande' && x.statut === 'attente' && x.auteur === S.me.id; });
-    var h = '<div class="maison-hd"><h2>Bonjour ' + esc(S.me.nom) + '</h2><p>' + (S.me.cabinet ? 'Cabinet ' + S.me.cabinet + ' · ' : '') + j + '</p></div>';
-    if (S.sortie.ok) h += '';
-    h += '<div class="tuiles">'
-      + '<button class="tuile t1" data-tab="sortie"><span class="ti">' + ico('sortie', 34) + '</span><span class="tt"><b>Sortie</b><span>Prendre dans la réserve</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
-      + '<button class="tuile" data-tab="inventaire"><span class="ti">' + ico('inventaire', 32) + '</span><span class="tt"><b>Inventaire</b><span>Compter mon cabinet</span>' + (inventaireAFaire() ? '<em>À faire ce mois-ci</em>' : '') + '</span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
-      + '<button class="tuile" data-tab="retour"><span class="ti">' + ico('retour', 32) + '</span><span class="tt"><b>Retour</b><span>Rendre des boîtes fermées</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button></div>';
-    if (ds) h += '<button class="raccourci" data-act="refaire"><span class="ti">' + ico('refaire', 24, 2.2) + '</span><span><b>Refaire ma dernière sortie</b><br>' + ds.l.slice(0, 3).map(function (x) { return esc(S.byId[x.article_id].nom) + ' × ' + fr(x.quantite); }).join(' · ') + (ds.l.length > 3 ? '…' : '') + '</span></button>';
-    if (mesAtt.length) h += '<p class="mu attente-l">' + ico('attente', 18) + ' ' + mesAtt.length + ' demande(s) en attente de validation : ' + mesAtt.slice(0, 3).map(function (x) { var a = S.byId[x.article_id]; return esc(a ? a.nom : '?') + ' × ' + fr(x.quantite); }).join(', ') + '</p>';
-    return h;
-  }
   function refaireSortie() {
     var ds = derniereSortie(); if (!ds) return;
     S.sortie.panier = {}; ds.l.forEach(function (x) { S.sortie.panier[x.article_id] = (S.sortie.panier[x.article_id] || 0) + +x.quantite; });
     S.sortie.cab = ds.cab || S.me.cabinet || 1; S.sortie.voir = true; S.sortie.ok = null; S.tab = 'sortie'; render(); window.scrollTo(0, 0);
   }
-  function vMoi() {
-    return '<div class="moi-hd"><span class="av">' + esc((S.me.nom || '?').charAt(0).toUpperCase()) + '</span><div><h2>' + esc(S.me.nom) + '</h2><p>' + LABEL[S.me.role] + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + ' · identifiant ' + esc(S.me.identifiant) + '</p></div></div>'
-      + '<div class="card liste-moi">'
-      + '<button class="it lrow" data-tab="aide"><span class="ti">' + ico('aide', 20) + '</span><span class="it-n"><b>Aide et visite guidée</b><span>8 fiches pas à pas</span></span><span class="chev">' + ico('suiv', 20) + '</span></button>'
-      + '<button class="it lrow" data-tab="compte"><span class="ti">' + ico('code', 20) + '</span><span class="it-n"><b>Changer mon code</b><span>6 chiffres</span></span><span class="chev">' + ico('suiv', 20) + '</span></button>'
-      + '<button class="it lrow" data-essai="aide" data-gid="iphone"><span class="ti">' + ico('tel', 20) + '</span><span class="it-n"><b>Mettre l’appli sur mon téléphone</b><span>icône sur l’écran d’accueil</span></span><span>›</span></button></div>'
-      + '<button class="btn gros avec-ic" data-act="out">' + ico('changer', 22, 2.2) + 'Changer de personne</button><p class="mu" style="text-align:center;margin:8px 0 0">À utiliser avant de passer le téléphone à une collègue : l’appli se vide pour elle.</p>';
+  // ---------- Appli des assistantes : chaque écran a son propre en-tête bleu, comme la maquette ----------
+  function modeA() { return !!S.me && !gestion(); }
+  var ACC = ['data-act="accueil"', 'Accueil'];
+  function hdA(o) {
+    return '<header class="a-hd' + (o.fixe ? ' fixe' : '') + (o.cls ? ' ' + o.cls : '') + '">'
+      + (o.t ? '<div class="a-hd-row">' + (o.back ? '<button class="a-back" ' + o.back[0] + '>' + ico('prec', 22, 2.4) + o.back[1] + '</button>' : '<span></span>') + '<h1>' + o.t + '</h1>' + (o.cab || '<span></span>') + '</div>' : '')
+      + (o.extra || '') + '</header>';
+  }
+  function cabA(id, cur, avant, label) {
+    return '<label class="a-cab"><select id="' + id + '" aria-label="' + (label || 'Cabinet') + '">' + (avant || '') + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+cur === c && cur !== '' && cur != null ? ' selected' : '') + '>Cabinet ' + c + '</option>'; }).join('') + '</select></label>';
+  }
+  function chercheA(id, v, cls) { return '<label class="a-search' + (cls ? ' ' + cls : '') + '">' + ico('loupe', 20, 2.2) + '<input id="' + id + '" type="search" placeholder="Chercher un article" value="' + esc(v || '') + '" aria-label="Chercher un article" autocomplete="off"></label>'; }
+  function trouve(q) { return function (a) { return norm(a.nom + ' ' + (a.reference || '')).indexOf(q) >= 0; }; }
+  function pl(n, mot) { return mot + (Math.abs(n) > 1 ? 's' : ''); }
+
+  // Accueil : 3 grandes tuiles
+  function vMaison() {
+    var j = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }), ds = derniereSortie();
+    var mesAtt = (S.recents || []).filter(function (x) { return x.type === 'demande' && x.statut === 'attente' && x.auteur === S.me.id; });
+    var h = '<header class="a-hd a-maison"><div class="a-mh-top"><img src="assets/logo-evydent.jpg" alt="Evydent"><span class="grow">Espace dentaire Val d’Yerres</span>' + (C.env === 'dev' ? '<span class="env">TEST</span>' : '') + '</div>'
+      + '<div><h1>Bonjour ' + esc(S.me.nom) + '</h1><p>' + (S.me.cabinet ? 'Cabinet ' + S.me.cabinet + ' · ' : '') + j + '</p>' + (C.env === 'dev' ? '<p class="a-ver">Version ' + esc(C.version || '') + '</p>' : '') + '</div></header>';
+    h += '<div class="a-corps">' + vBienvenue() + '<div class="tuiles">'
+      + '<button class="tuile t1" data-tab="sortie"><span class="ti">' + ico('sortie', 34) + '</span><span class="tt"><b>Sortie</b><span>Prendre dans la réserve</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
+      + '<button class="tuile" data-tab="inventaire"><span class="ti">' + ico('inventaire', 32) + '</span><span class="tt"><b>Inventaire</b><span>Compter mon cabinet</span>' + (inventaireAFaire() ? '<em>À faire ce mois-ci</em>' : '') + '</span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
+      + '<button class="tuile" data-tab="retour"><span class="ti">' + ico('retour', 32) + '</span><span class="tt"><b>Retour</b><span>Rendre des boîtes fermées</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button></div>';
+    if (ds) h += '<button class="raccourci" data-act="refaire"><span class="ti">' + ico('refaire', 24, 2.2) + '</span><span><b>Refaire ma dernière sortie</b><br>' + ds.l.slice(0, 3).map(function (x) { return esc(S.byId[x.article_id].nom) + ' × ' + fr(x.quantite); }).join(' · ') + (ds.l.length > 3 ? '…' : '') + '</span></button>';
+    if (mesAtt.length) h += '<p class="a-aide">' + mesAtt.length + ' ' + pl(mesAtt.length, 'demande') + ' en attente de validation : ' + mesAtt.slice(0, 3).map(function (x) { var a = S.byId[x.article_id]; return esc(a ? a.nom : '?') + ' × ' + fr(x.quantite); }).join(', ') + '</p>';
+    return h + '</div>';
+  }
+
+  // Sortie
+  function favorisA() { var c = {}; (S.recents || []).concat(S.histo || []).forEach(function (m) { if ((m.type === 'sortie' || m.type === 'demande') && m.auteur === S.me.id) c[m.article_id] = (c[m.article_id] || 0) + 1; }); return c; }
+  function sousSortieA(a, v) {
+    var d = dispoUnites(a), b = enBoite(a), r = 'réserve ' + fr(d) + (b ? ' ' + pl(d, 'boîte') : '');
+    var bas = !a.sans_seuil && +a.seuil > 0 && stockDe(a.id, 0) <= +a.seuil;
+    if (v > d) return '<span class="warn">' + (b ? 'boîte entière' : 'à l’unité') + ' · ' + r + ' · le reste part en demande</span>';
+    return '<span' + (bas ? ' class="warn"' : '') + '>' + (b ? 'boîte entière' : 'à l’unité') + ' · ' + r + (bas ? ' · bientôt vide' : '') + '</span>';
+  }
+  function ligneSortieA(a, s, verif) {
+    var v = s.panier[a.id] || 0, sub;
+    if (verif) sub = '<span>' + (enBoite(a) ? fr(v) + ' ' + pl(v, 'boîte') + ' ' + pl(v, 'entière') : 'à l’unité') + '</span>' + (v > dispoUnites(a) ? '<span class="warn">réserve ' + fr(dispoUnites(a)) + ' : le reste part en demande</span>' : '');
+    else sub = sousSortieA(a, v);
+    return '<div class="a-it' + (v ? ' choisi' : '') + '"><div class="a-it-n"><b>' + esc(a.nom) + '</b>' + sub + '</div>'
+      + '<div class="a-st"><button type="button" data-moins="' + a.id + '" aria-label="Moins un">−</button><input inputmode="decimal" data-qte="' + a.id + '" value="' + (v || '') + '" placeholder="0" aria-label="Quantité en ' + uSortie(a, 2) + '"><button type="button" data-plus="' + a.id + '" aria-label="Plus un">+</button></div></div>';
+  }
+  function vSortieA() {
+    var s = S.sortie, hors = S.me.cabinet && +s.cab !== +S.me.cabinet;
+    if (s.ok) return vSortieOkA();
+    var ids = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; });
+    if (s.voir && ids.length) return vSortieVerifA(ids, hors);
+    var tri = s.tri || 'usage', q = norm(s.q), max = s.max || 30, l;
+    var h = hdA({ back: ACC, t: 'Sortie', cab: cabA('scab', s.cab), extra: chercheA('sq', s.q), fixe: true }) + '<div class="a-corps">';
+    if (!q) h += '<div class="a-chips">' + [['usage', 'Les plus sortis'], ['fav', 'Mes favoris'], ['az', 'A → Z']].map(function (c) { return '<button class="a-ch' + (tri === c[0] ? ' on' : '') + '" data-stri="' + c[0] + '">' + c[1] + '</button>'; }).join('') + '</div>';
+    if (hors) h += '<p class="a-note warn">Ce n’est pas votre cabinet : la sortie sera notée « hors cabinet » (remplacement).</p>';
+    if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
+    if (q) l = S.articles.filter(trouve(q)).sort(parUsage(+s.cab));
+    else if (tri === 'fav') { var f = favorisA(); l = S.articles.filter(function (a) { return f[a.id]; }).sort(function (x, y) { return f[y.id] - f[x.id] || x.nom.localeCompare(y.nom, 'fr'); }); }
+    else if (tri === 'az') l = S.articles.slice().sort(function (x, y) { return x.nom.localeCompare(y.nom, 'fr'); });
+    else l = S.articles.slice().sort(parUsage(+s.cab));
+    if (!l.length) return h + '<p class="a-vide">' + (q ? 'Aucun article trouvé.' : tri === 'fav' ? 'Vos favoris apparaîtront ici : ce sont les articles que vous sortez vous-même le plus souvent.' : 'Aucun article.') + '</p></div>';
+    h += '<div class="a-liste">' + l.slice(0, q ? 40 : max).map(function (a) { return ligneSortieA(a, s); }).join('') + '</div>';
+    if (!q && l.length > max) h += '<button class="a-plus" data-act="splus">Afficher plus d’articles (' + (l.length - max) + ')</button>';
+    return h + '</div>';
+  }
+  function vSortieVerifA(ids, hors) {
+    var s = S.sortie, h = hdA({ back: ['data-act="svoir"', 'Modifier'], t: 'Ma sortie', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
+    h += '<div class="a-pour">' + ico('cabinet', 26) + '<span>Pour le <b>cabinet ' + s.cab + '</b>' + (hors ? ' · <span class="warn-t">remplacement (hors cabinet)</span>' : S.me.cabinet ? ' (le mien)' : '') + '</span></div>';
+    h += '<div class="a-liste">' + ids.map(function (k) { return S.byId[k]; }).filter(Boolean).map(function (a) { return ligneSortieA(a, s, true); }).join('') + '</div>';
+    return h + '<button class="a-ajout" data-act="svoir">+ Ajouter un article</button><p class="a-aide">Si la réserve n’en a pas assez, la quantité en trop part en demande à confirmer par la référente.</p></div>';
+  }
+  function vSortieOkA() {
+    var o = S.sortie.ok;
+    return '<div class="a-ok"><div class="a-ok-c"><span class="a-ok-rond" role="img" aria-label="Validé">' + ico('ok', 64, 2.6) + '</span><h1>' + (o.attente && !o.sorties ? 'Demande envoyée' : 'C’est enregistré') + '</h1>'
+      + '<p>' + (o.sorties ? o.sorties + ' ' + pl(o.sorties, 'article') + ' ' + pl(o.sorties, 'sorti') + ' pour le <b>cabinet ' + o.cab + '</b>' : '') + (o.resume ? '<br>' + o.resume : '') + '</p>'
+      + (o.attente ? '<p class="a-note warn">' + o.attente + ' ' + pl(o.attente, 'article') + ' ' + (o.attente > 1 ? 'dépassent' : 'dépasse') + ' la réserve : demande envoyée à la référente.</p>' : '')
+      + (o.hors ? '<p class="a-aide">Noté « hors cabinet » (remplacement).</p>' : '')
+      + '<p class="a-ok-auto">Retour à l’accueil dans quelques secondes…</p></div>'
+      + '<div class="a-ok-btns"><button class="a-btn navy" data-act="snouv">Nouvelle sortie</button><button class="a-btn blanc" data-act="accueil">Accueil</button></div></div>';
+  }
+  function vBarSortieA() {
+    var s = S.sortie; if (s.ok) return '';
+    var n = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; }).length;
+    if (s.voir && n) return '<div class="bar a-bar"><div class="bar-in"><button class="a-btn navy" data-act="valider"' + (s.busy ? ' disabled' : '') + '>' + (s.busy ? 'Enregistrement…' : 'Valider la sortie') + '</button><button class="a-lien" data-act="vider">Annuler et vider</button></div></div>';
+    if (!n) return '<div class="bar a-bar"><div class="bar-in"><p class="a-indice">Touchez + pour choisir des articles</p></div></div>';
+    return '<div class="bar a-bar"><div class="bar-in"><button class="a-btn gold" data-act="svoir"><span>' + n + ' ' + pl(n, 'article') + ' ' + pl(n, 'choisi') + '</span><span class="avec-ic">Vérifier' + ico('suiv', 20, 2.6) + '</span></button></div></div>';
+  }
+
+  // Retour en réserve
+  function vRetourA() {
+    var s = S.ret, hors = S.me.cabinet && +s.cab !== +S.me.cabinet, q = norm(s.q);
+    var h = hdA({ back: ACC, t: 'Retour', cab: cabA('rcab', s.cab), extra: chercheA('rq', s.q), fixe: true }) + '<div class="a-corps">'
+      + '<div class="a-note warn">' + ico('boite', 22) + '<span>On ne rend que des <b>boîtes fermées</b>. Les unités en vrac restent au cabinet.</span></div>';
+    if (hors) h += '<p class="a-note warn">Ce n’est pas votre cabinet : le retour sera noté « hors cabinet » (remplacement).</p>';
+    if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
+    var liste = q ? S.articles.filter(trouve(q)).slice(0, 40)
+                  : S.articles.filter(function (a) { return s.panier[a.id] > 0 || stockDe(a.id, +s.cab) >= facteur(a); }).sort(parUsage(+s.cab));
+    if (!liste.length) return h + '<p class="a-vide">' + (q ? 'Aucun article trouvé.' : 'Aucune boîte fermée enregistrée dans ce cabinet. Cherchez l’article en haut.') + '</p></div>';
+    h += (q ? '' : '<p class="a-sect">' + (hors || !S.me.cabinet ? 'Présents dans le cabinet ' + s.cab : 'Présents dans mon cabinet') + '</p>');
+    return h + '<div class="a-liste">' + liste.map(function (a) {
+      var v = s.panier[a.id] || 0, f = facteur(a), cab = stockDe(a.id, +s.cab), boite = f > 1 || a.conditionnement === 'BOITE';
+      var n = f > 1 ? Math.floor(cab / f + 1e-9) : cab, trop = v > n;
+      var sub = boite ? fr(n) + ' ' + pl(n, 'boîte') + ' ' + pl(n, 'fermée') + ' au cabinet' : fr(n) + ' au cabinet (à l’unité)';
+      return '<div class="a-it' + (v ? ' choisi' : '') + '"><div class="a-it-n"><b>' + esc(a.nom) + '</b><span' + (trop ? ' class="warn"' : '') + '>' + sub + (trop ? ' · plus que ce qui est enregistré' : '') + '</span></div>'
+        + '<div class="a-st"><button type="button" data-rmoins="' + a.id + '" aria-label="Moins une boîte">−</button><input inputmode="numeric" data-rqte="' + a.id + '" value="' + (v || '') + '" placeholder="0" aria-label="Quantité à rendre"><button type="button" data-rplus="' + a.id + '" aria-label="Plus une boîte">+</button></div></div>';
+    }).join('') + '</div></div>';
+  }
+  function vBarRetourA() {
+    var p = S.ret.panier, ids = Object.keys(p).filter(function (k) { return p[k] > 0; });
+    if (!ids.length) return '<div class="bar a-bar"><div class="bar-in"><p class="a-indice">Touchez + pour chaque boîte à rendre</p></div></div>';
+    var b = ids.reduce(function (t, k) { return t + p[k]; }, 0), boites = ids.every(function (k) { var a = S.byId[k]; return a && (facteur(a) > 1 || a.conditionnement === 'BOITE'); });
+    return '<div class="bar a-bar"><div class="bar-in"><button class="a-btn gold" data-act="rvalider"' + (S.ret.busy ? ' disabled' : '') + '><span>' + b + ' ' + pl(b, boites ? 'boîte' : 'article') + ' à rendre</span><span>' + (S.ret.busy ? 'Enregistrement…' : 'Valider le retour') + '</span></button></div></div>';
+  }
+
+  // Inventaire
+  function vInventaireA() {
+    var I = S.inv;
+    if (I.emp == null && S.me.cabinet) choisirEmp(S.me.cabinet);
+    var emp = I.emp;
+    if (I.recap && emp != null) return vRecapA();
+    var opts = (emp == null ? '<option value="">Choisir</option>' : '') + (peutReserve() ? '<option value="0"' + (emp === 0 ? ' selected' : '') + '>Réserve</option>' : '');
+    var l = emp != null ? listeInv() : [], tot = l.length, faits = l.filter(function (a) { return I.d[a.id] != null && I.d[a.id] !== ''; }).length;
+    var prog = emp != null ? '<div class="a-prog"><div><b>' + faits + ' ' + pl(faits, 'compté') + ' sur ' + tot + '</b><span>gardé sur le téléphone</span></div><i><b style="width:' + (tot ? Math.round(faits * 100 / tot) : 0) + '%"></b></i></div>' : '';
+    var h = hdA({ back: ACC, t: 'Inventaire', cab: cabA('iemp', emp == null ? '' : emp, opts, 'Emplacement à compter'), extra: prog, fixe: true }) + '<div class="a-corps">';
+    if (I.msg) h += '<div class="ban ' + I.msg[0] + '" role="status">' + I.msg[1] + '</div>';
+    if (j0Actif()) h += '<div class="ban j0"><b>Inventaire de départ</b> jusqu’au ' + S.j0.fin.split('-').reverse().slice(0, 2).join('/') + ' : les quantités comptées <b>remplacent</b> le stock.' + (emp != null && j0Premier(emp) ? ' <b>Les articles non comptés passeront à 0.</b>' : '') + '</div>';
+    if (emp > 0 && S.me.cabinet && emp !== S.me.cabinet) h += '<p class="a-note warn">Ce n’est pas votre cabinet : l’inventaire sera noté « hors cabinet » (remplacement).</p>';
+    if (emp == null) return h + '<p class="a-vide">Choisissez le cabinet à compter, en haut à droite.</p></div>';
+    if (emp === 0) h += '<div class="row wrap"><button class="btn l sm" data-act="iexp">⬇️ Fichier de comptage Excel</button><label class="btn l sm" style="display:inline-flex;align-items:center">⬆️ Importer le comptage<input type="file" id="iimpf" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label></div>';
+    var reste = I.reste !== false && !I.cherche;
+    h += '<div class="a-chips"><button class="a-ch' + (reste ? ' on' : '') + '" data-act="ireste">Pas encore comptés · ' + (tot - faits) + '</button><button class="a-ch' + (!reste && !I.cherche ? ' on' : '') + '" data-act="itout">Tous</button><button class="a-ch' + (I.cherche ? ' on' : '') + '" data-act="icherche">Chercher</button></div>';
+    if (I.cherche) h += chercheA('iq', I.q, 'clair');
+    var der = S.dernierInv[emp];
+    if (!der) h += '<p class="a-aide">Premier inventaire de cet emplacement : tous les articles sont listés. Comptez ceux qui sont présents.</p>';
+    else if (emp > 0) h += '<label class="a-aide row"><input type="checkbox" id="itous"' + (I.tous ? ' checked' : '') + ' style="width:20px;height:20px"> Montrer aussi les articles qui ne devraient pas être là</label>';
+    if (reste) l = l.filter(function (a) { return I.d[a.id] == null || I.d[a.id] === ''; });
+    if (!l.length) return h + '<p class="a-vide">' + (reste && tot ? 'Tout est compté. Touchez « J’ai fini de compter » en bas.' : 'Aucun article.') + '</p></div>';
+    var max = I.max || 80;
+    h += '<div class="a-liste">' + l.slice(0, max).map(function (a) {
+      var v = I.d[a.id], fait = v != null && v !== '';
+      return '<div class="a-it' + (fait ? ' choisi' : '') + '"><div class="a-it-n"><b>' + esc(a.nom) + '</b>' + (fait ? '<span class="ok">compté ✓</span>' : '<span>compter en ' + (uInv(a, emp) === 'u.' ? 'unités' : 'boîtes') + '</span>') + '</div>'
+        + '<div class="a-q"><button type="button" data-izero="' + a.id + '" aria-label="Aucun">0</button><input inputmode="decimal" data-iq="' + a.id + '" value="' + esc(fait ? v : '') + '" placeholder="—" aria-label="Quantité comptée"></div></div>';
+    }).join('') + '</div>';
+    if (l.length > max) h += '<button class="a-plus" data-act="iplus">Afficher plus d’articles (' + (l.length - max) + ')</button>';
+    return h + '</div>';
+  }
+  function vRecapA() {
+    var emp = S.inv.emp, E = ecartsInv(), Z = aZero(), motif = emp === 0 && !j0Actif(), cab = emp > 0 && !j0Actif();
+    var n = nbComptes(), util = E.filter(function (e) { return e.apres < e.avant; }).length;
+    var h = hdA({ back: ['data-act="irevenir"', 'Compter'], t: 'Bilan', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    h += '<div class="a-stats"><div><b>' + n + '</b><span>' + pl(n, 'compté') + '</span></div><div><b class="ok">' + (n - E.length) + '</b><span>pas bougé</span></div><div><b class="navy">' + (cab ? util : E.length) + '</b><span>' + (cab ? pl(util, 'utilisé') : pl(E.length, 'changement')) + '</span></div></div>';
+    if (E.length) h += '<h2 class="a-h2">' + (cab ? 'Utilisé au cabinet depuis le dernier inventaire' : 'Ce qui change dans le stock') + '</h2><div class="a-liste">' + E.map(function (e) {
+      var d = e.apres - e.avant, plus = d > 0, u = uInv(e.a, emp) === 'u.' ? '' : ' ' + pl(d, 'boîte');
+      var txt = 'il en restait ' + fr(e.avant) + ' · compté ' + (plus && cab ? fr(e.apres) + ' : ' + fr(d) + ' de plus. Une sortie oubliée ?' : '<strong>' + fr(e.apres) + '</strong>');
+      var droite = cab ? (plus ? '+' + fr(d) + '<small>à vérifier</small>' : fr(-d) + '<small>' + pl(-d, 'utilisé') + '</small>') : (plus ? '+' : '') + fr(d) + '<small>' + (u || 'unités') + '</small>';
+      return '<div class="a-it"><div class="a-it-n"><b>' + esc(e.a.nom) + '</b><span' + (cab && plus ? ' class="warn"' : '') + '>' + txt + '</span>'
+        + (motif ? '<select class="in" data-imotif="' + e.a.id + '"><option value="">Motif…</option>' + MOTIFS.map(function (m) { return '<option' + (S.inv.motifs[e.a.id] === m ? ' selected' : '') + '>' + m + '</option>'; }).join('') + '</select>' : '') + '</div>'
+        + '<span class="a-droite' + (cab && plus ? ' warn' : '') + '">' + droite + '</span></div>';
+    }).join('') + '</div>';
+    else h += '<p class="a-vide">' + (cab ? 'Rien n’a bougé depuis le dernier inventaire.' : 'Le stock correspond à votre comptage.') + '</p>';
+    if (Z.length) h += '<p class="a-note warn">Inventaire de départ : ' + Z.length + ' ' + pl(Z.length, 'article') + ' non ' + pl(Z.length, 'compté') + ' passeront à 0 (' + Z.slice(0, 4).map(function (a) { return esc(a.nom); }).join(', ') + (Z.length > 4 ? '…' : '') + ').</p>';
+    return h + '<p class="a-aide">Un chiffre faux ? Touchez « Compter » en haut pour corriger avant de valider.</p></div>';
+  }
+  function vBarInvA() {
+    if (S.inv.recap) return '<div class="bar a-bar"><div class="bar-in"><button class="a-btn navy" data-act="ivalider"' + (S.inv.busy ? ' disabled' : '') + '>' + (S.inv.busy ? 'Enregistrement…' : 'Valider l’inventaire') + '</button></div></div>';
+    var ok = nbComptes() || aZero().length;
+    if (!ok) return '<div class="bar a-bar"><div class="bar-in"><p class="a-indice">Tapez la quantité présente pour chaque article</p></div></div>';
+    return '<div class="bar a-bar"><div class="bar-in"><button class="a-btn gold" data-act="iterminer"><span>J’ai fini de compter</span><span class="avec-ic">Voir le bilan' + ico('suiv', 20, 2.6) + '</span></button></div></div>';
+  }
+
+  // Historique
+  function jourA(d) {
+    var x = new Date(d), t = new Date(), y = new Date(); y.setDate(t.getDate() - 1);
+    if (x.toDateString() === t.toDateString()) return 'Aujourd’hui';
+    if (x.toDateString() === y.toDateString()) return 'Hier';
+    var s = x.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }); return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  function qteA(a, q) { return a && enBoite(a) ? fr(q) + ' ' + pl(q, 'boîte') : fr(q); }
+  function evA(e) {
+    var m = e.m, a = S.byId[m.article_id], nom = esc(a ? a.nom : m.article_nom ? m.article_nom + ' (supprimé)' : '(article)');
+    var hr = new Date(m.cree_le).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), ic = 'histo', cls = '', t, sous, q = '', warn = false;
+    var rempl = m.hors_cabinet ? ' · remplacement' : '';
+    if (e.inv) {
+      ic = 'invok'; t = 'Inventaire ' + (m.emplacement_de === 0 ? 'de la réserve' : 'du cabinet ' + m.emplacement_de);
+      sous = hr + ' · ' + e.n + ' ' + pl(e.n, 'article') + (e.u ? ' · ' + e.u + ' ' + pl(e.u, 'utilisé') : '') + (e.p ? ' · ' + e.p + ' à vérifier' : '') + rempl;
+    } else if (m.type === 'sortie') { ic = 'fleche'; cls = ' fonce'; t = 'Sortie · ' + nom; sous = hr + ' · cabinet ' + m.emplacement_vers + rempl; q = qteA(a, m.quantite); }
+    else if (m.type === 'demande') {
+      ic = 'attente'; cls = ' orange'; t = 'Demande · ' + nom; warn = m.statut === 'attente';
+      sous = hr + ' · ' + (m.statut === 'attente' ? 'en attente de la référente' : m.statut === 'refuse' ? 'refusée' : m.statut === 'ok' ? 'confirmée' : (STAT[m.statut] || ['', m.statut])[1]); q = qteA(a, m.quantite);
+    } else if (m.type === 'retour') { ic = 'retour'; t = 'Retour · ' + nom; sous = hr + ' · cabinet ' + m.emplacement_de + ' → réserve' + rempl; q = m.quantite_reserve != null && +m.quantite_reserve !== +m.quantite ? fr(m.quantite_reserve) + ' ' + pl(m.quantite_reserve, 'boîte') : qteA(a, m.quantite); }
+    else { t = (TYP[m.type] || m.type) + ' · ' + nom; sous = hr; q = fr(m.quantite); }
+    if (!e.inv && m.type !== 'demande' && m.statut && m.statut !== 'ok') sous += ' · ' + (STAT[m.statut] || ['', m.statut])[1];
+    return '<div class="a-ev"><span class="a-evi' + cls + '">' + ico(ic, 20, 2.2) + '</span><div class="a-it-n"><b>' + t + '</b><span' + (warn ? ' class="warn"' : '') + '>' + sous + '</span></div>' + (q ? '<b>' + q + '</b>' : '') + '</div>';
+  }
+  function vHistoA() {
+    var h = hdA({ cls: 'a-simple', extra: '<h1 class="a-t-g">Mon historique</h1><p class="a-sous">Ce que j’ai sorti, rendu et compté</p>' }) + '<div class="a-corps">';
+    if (!S.histo.length) return h + '<p class="a-vide">Aucun mouvement pour l’instant.</p></div>';
+    var ev = [], invs = {};
+    S.histo.forEach(function (m) {
+      if (m.type === 'inventaire') {
+        var k = (m.lot || '') + '|' + m.emplacement_de + '|' + String(m.cree_le).slice(0, 16), e = invs[k];
+        if (!e) { e = invs[k] = { inv: true, m: m, n: 0, u: 0, p: 0 }; ev.push(e); }
+        e.n++; if (+m.ecart < 0) e.u++; else if (+m.ecart > 0) e.p++; return;
+      }
+      ev.push({ m: m });
+    });
+    var jours = [], par = {};
+    ev.forEach(function (e) { var j = jourA(e.m.cree_le); if (!par[j]) { par[j] = []; jours.push(j); } par[j].push(e); });
+    return h + jours.map(function (j) { return '<h2 class="a-jour">' + j + '</h2><div class="a-liste">' + par[j].map(evA).join('') + '</div>'; }).join('') + '</div>';
+  }
+
+  // Moi, mon code, aide
+  function vMoiA() {
+    return '<header class="a-hd a-moi"><span class="a-av">' + esc((S.me.nom || '?').charAt(0).toUpperCase()) + '</span><div><h1>' + esc(S.me.nom) + '</h1><p>' + LABEL[S.me.role] + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + ' · identifiant ' + esc(S.me.identifiant) + '</p></div></header>'
+      + '<div class="a-corps"><div class="a-liste">'
+      + '<button class="a-li" data-tab="aide"><span class="a-lii">' + ico('aide', 20) + '</span><span class="a-it-n"><b>Aide et visite guidée</b><span>' + GUIDES.length + ' fiches pas à pas</span></span></button>'
+      + '<button class="a-li" data-tab="compte"><span class="a-lii">' + ico('code', 20) + '</span><span class="a-it-n"><b>Changer mon code</b><span>6 chiffres</span></span></button>'
+      + '<button class="a-li" data-essai="aide" data-gid="iphone"><span class="a-lii">' + ico('tel', 20) + '</span><span class="a-it-n"><b>Mettre l’appli sur mon téléphone</b><span>icône sur l’écran d’accueil</span></span></button></div>'
+      + '<button class="a-btn navy a-moi-out" data-act="out">' + ico('changer', 22, 2.2) + 'Changer de personne</button>'
+      + '<p class="a-aide" style="text-align:center">À utiliser avant de passer le téléphone à une collègue&nbsp;:<br>l’appli se vide pour elle.</p>'
+      + '<p class="a-aide" style="text-align:center;font-size:12px">Version ' + esc(C.version || '') + (C.env === 'dev' ? ' · site de test' : '') + '</p></div>';
+  }
+  function vCompteA() { return hdA({ back: ['data-tab="moi"', 'Moi'], t: 'Mon code', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">' + vCompte().replace(/^<h2>[^<]*<\/h2>/, '') + '</div>'; }
+  function vAideA() { return hdA({ cls: 'a-simple', extra: '<h1 class="a-t-g">Aide</h1><p class="a-sous">Fiches pas à pas et visite guidée</p>' }) + '<div class="a-corps">' + vAide().replace('<h2>Aide</h2>', '') + '</div>'; }
+
+  function renderA() {
+    var ecr = { maison: vMaison, sortie: vSortieA, retour: vRetourA, inventaire: vInventaireA, histo: vHistoA, moi: vMoiA, compte: vCompteA, aide: vAideA }[S.tab];
+    if (!ecr) { S.tab = 'maison'; ecr = vMaison; }
+    var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
+    h += '<div class="a-app">' + ecr() + '</div>' + vNavMobile();
+    h += S.tab === 'sortie' ? vBarSortieA() : S.tab === 'retour' ? vBarRetourA() : S.tab === 'inventaire' && S.inv.emp != null ? vBarInvA() : '';
+    return h;
   }
 
   // ---------- Navigation téléphone : barre du bas + menu ----------
@@ -453,6 +682,7 @@
       + '<div class="ok-btns"><button class="btn gros" data-act="snouv">Nouvelle sortie</button><button class="btn l gros" data-act="accueil">Accueil</button></div></div>';
   }
   function vBarSortie() {
+    if (modeA()) return vBarSortieA();
     if (S.sortie.ok) return '';
     var n = Object.keys(S.sortie.panier).filter(function (k) { return S.sortie.panier[k] > 0; }).length;
     if (S.sortie.voir && n) return '<div class="bar"><div class="bar-in"><button class="btn gros" data-act="valider"' + (S.sortie.busy ? ' disabled' : '') + '>' + (S.sortie.busy ? 'Enregistrement…' : 'Valider la sortie') + '</button></div></div>';
@@ -483,6 +713,7 @@
     }).join('') + '</div>';
   }
   function vBarRetour() {
+    if (modeA()) return vBarRetourA();
     var n = Object.keys(S.ret.panier).filter(function (k) { return S.ret.panier[k] > 0; }).length;
     if (!n) return '<div class="bar"><div class="bar-in"><span class="grow mu">Touchez + pour chaque boîte à rendre</span></div></div>';
     var b = Object.keys(S.ret.panier).reduce(function (t, k) { return t + (S.ret.panier[k] || 0); }, 0);
@@ -651,7 +882,7 @@
     sb.rpc('regler_j0', { p_actif: on, p_jours: 7 }).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } S.j0 = r.data; S.inv.j0ask = false; toast(on ? '✔ Inventaire de départ lancé pour 7 jours' : '✔ Inventaire de départ terminé'); charger(); });
   }
 
-  function vBarInv() { var n = nbComptes(), ok = n || aZero().length; return '<div class="bar"><div class="bar-in"><button class="btn gold gros verif" data-act="iterminer"' + (ok ? '' : ' disabled') + '>' + (ok ? '<span>J’ai fini de compter</span><span class="avec-ic">Voir le bilan' + ico('suiv', 20, 2.6) + '</span>' : '<span>Comptez au moins un article</span>') + '</button></div></div>'; }
+  function vBarInv() { if (modeA()) return vBarInvA(); var n = nbComptes(), ok = n || aZero().length; return '<div class="bar"><div class="bar-in"><button class="btn gold gros verif" data-act="iterminer"' + (ok ? '' : ' disabled') + '>' + (ok ? '<span>J’ai fini de compter</span><span class="avec-ic">Voir le bilan' + ico('suiv', 20, 2.6) + '</span>' : '<span>Comptez au moins un article</span>') + '</button></div></div>'; }
 
   // ---------- Tableau de bord (gestion) ----------
   var STF = { commander: 'À commander', rupture: 'En rupture', sr: 'Sans référence', sf: 'Sans fournisseur', seuil: 'Sans seuil' };
@@ -1652,7 +1883,7 @@
       + '<p class="mu" style="margin-top:0">Connectée en tant que <b>' + esc(S.me.nom) + '</b> (' + esc(S.me.identifiant) + ').</p><div style="display:flex;flex-direction:column;gap:10px">'
       + champMdp('cm0', r, (r === 'assistante' ? 'Code' : 'Mot de passe') + ' actuel').replace(' autocomplete="new-password"', ' autocomplete="current-password"')
       + champMdp('cm1', r, 'Nouveau ' + quoi) + champMdp('cm2', r, 'Confirmer le nouveau ' + quoi)
-      + '</div><div class="row" style="margin-top:12px"><button class="btn l" data-tab="' + (gestion() ? 'accueil' : 'sortie') + '">Annuler</button><button class="btn" data-act="cmok"' + (S.cmBusy ? ' disabled' : '') + '>Enregistrer</button></div></div>';
+      + '</div><div class="row" style="margin-top:12px"><button class="btn l" data-tab="' + (gestion() ? 'accueil' : 'moi') + '">Annuler</button><button class="btn" data-act="cmok"' + (S.cmBusy ? ' disabled' : '') + '>Enregistrer</button></div></div>';
   }
   function changerMonMdp() {
     var r = S.me.role, a = $('cm0').value, m = $('cm1').value, m2 = $('cm2').value;
@@ -1666,7 +1897,7 @@
       return sb.auth.updateUser({ password: m });
     }).then(function (x) {
       if (x.error) throw x.error;
-      S.cmBusy = false; toast('✔ ' + (r === 'assistante' ? 'Code' : 'Mot de passe') + ' changé'); S.tab = gestion() ? 'accueil' : 'sortie'; render();
+      S.cmBusy = false; toast('✔ ' + (r === 'assistante' ? 'Code' : 'Mot de passe') + ' changé'); S.tab = gestion() ? 'accueil' : 'moi'; render();
     }).catch(function (e) { S.cmBusy = false; toast(msgErr(e)); render(); });
   }
 
@@ -1685,8 +1916,10 @@
     var t = e.target.closest('button'); if (!t || !S.me) return;
     var d = t.dataset;
     if (d.go) { var g = d.go.split(':'); S.tab = g[0]; S.tabChoisi = true; if (g[0] === 'stock') S.stockF = g[1] || ''; if (g[0] === 'inventaire' && g[1] !== undefined) choisirEmp(+g[1]); if (g[0] === 'histo') { S.histTous = true; chargerHisto(); } render(); window.scrollTo(0, 0); return; }
-    if (d.act === 'ireste') { S.inv.reste = true; render(); return; }
-    if (d.act === 'itout') { S.inv.reste = false; render(); return; }
+    if (d.act === 'ireste') { S.inv.reste = true; S.inv.cherche = false; S.inv.q = ''; render(); return; }
+    if (d.act === 'itout') { S.inv.reste = false; S.inv.cherche = false; S.inv.q = ''; render(); return; }
+    if (d.act === 'icherche') { S.inv.cherche = !S.inv.cherche; S.inv.q = ''; render(); var iq = $('iq'); if (iq) iq.focus(); return; }
+    if (d.stri) { S.sortie.tri = d.stri; S.sortie.max = 30; render(); window.scrollTo(0, 0); return; }
     if (d.act === 'refaire') return refaireSortie();
     if (d.act === 'accueil') { S.sortie.ok = null; S.sortie.voir = false; S.tab = gestion() ? 'accueil' : 'maison'; render(); window.scrollTo(0, 0); return; }
     if (d.act === 'snouv') { S.sortie.ok = null; S.tab = 'sortie'; render(); window.scrollTo(0, 0); return; }
