@@ -174,9 +174,11 @@
     h += '<p class="mu" style="text-align:center;font-size:12px;margin:0 0 90px">Version ' + esc(C.version || '') + '</p>';
     h += vNavMobile();
     h += (S.tab === 'sortie' ? vBarSortie() : S.tab === 'retour' ? vBarRetour() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
-    var fq = document.activeElement && document.activeElement.id, pos = fq && document.activeElement.selectionStart;
+    // On remet le curseur dans le champ de saisie en cours, mais jamais sur une liste déroulante :
+    // sur iPhone, redonner le focus à une liste la rouvre une seconde fois.
+    var ae = document.activeElement, fq = ae && ae.id && ae.tagName === 'INPUT' ? ae.id : null, pos = fq && ae.selectionStart;
     app.innerHTML = h;
-    if (fq && $(fq)) { $(fq).focus(); try { $(fq).setSelectionRange(pos, pos); } catch (e) {} }
+    if (fq && $(fq)) { S.refocus = true; $(fq).focus(); try { $(fq).setSelectionRange(pos, pos); } catch (e) {} S.refocus = false; }
     placerTour();
   }
 
@@ -1530,6 +1532,14 @@
   }
 
   // ---------- Événements (délégation) ----------
+  // Quand on revient dans une recherche (après avoir ajouté un article), tout le texte est sélectionné :
+  // il suffit de taper pour chercher autre chose, sans obtenir « gantservi ».
+  var RECHERCHES = ['sq', 'rq', 'iq', 'ncq', 'caq', 'aq', 'fq', 'stq'];
+  document.addEventListener('focusin', function (e) {
+    var t = e.target;
+    if (S.refocus || !t || RECHERCHES.indexOf(t.id) < 0 || !t.value) return;
+    setTimeout(function () { try { t.setSelectionRange(0, t.value.length); } catch (x) { try { t.select(); } catch (y) {} } }, 60);
+  });
   document.addEventListener('toggle', function (e) { var g = e.target && e.target.dataset && e.target.dataset.guide; if (g && e.target.open) { marquerVu(g); S.aideOuverte = g; } }, true);
   window.addEventListener('resize', function () { if (S.tour) placerTour(); });
   document.addEventListener('click', function (e) {
