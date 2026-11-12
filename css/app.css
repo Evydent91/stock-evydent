@@ -386,3 +386,43 @@ p.avec-ic,.ban.avec-ic{display:flex;justify-content:flex-start;gap:10px}
 .bnav.a4 .bi .ic{width:24px;height:24px}
 .bnav.a4 button.on .bi{color:var(--gold)}
 .top .btn.sm{display:inline-flex;align-items:center;justify-content:center}
+
+/* ---------- Connexion sur téléphone : comme la maquette (sans carte, tout tient sur un écran) ---------- */
+@media (max-width:700px){
+  .lg-top{height:calc(6px + env(safe-area-inset-top));border-top:env(safe-area-inset-top) solid var(--ivory);box-sizing:border-box}
+  .lg-in{justify-content:flex-start;padding:22px 22px calc(18px + env(safe-area-inset-bottom));gap:14px}
+  .lg-hd{gap:0}
+  .lg-name,.lg-hd .lg-sub{display:none}
+  .lg-logo{width:76px;height:76px;border-radius:38px}
+  .lg-card{background:none;box-shadow:none;padding:0;max-width:none;gap:14px;border-radius:0}
+  .lg-card h1{font-size:30px;line-height:1.1}
+  .lg-sous{margin:-12px 0 2px;text-align:center;font-size:13px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--mute)}
+  .lg-sous .env{vertical-align:1px;margin-left:4px}
+  .lg-card label{font-size:15px}
+  .lg-card input{height:52px;font-size:18px;font-weight:600}
+  .pin-l{margin-top:2px}
+  .pin-pad{gap:10px}
+  .pk{height:64px;font-size:28px}
+  .pk-ok{font-size:17px}
+  .lg-help{font-size:14px}
+  .lg-alt{font-size:14px}
+  .lg-foot{font-size:12px;margin-top:-4px}
+}
+/* L'écran de connexion n'a pas de bandeau fixe : pas de marge en haut, et il tient sur un écran */
+body.ecran-lg{padding-top:0!important;padding-bottom:0!important}
+@media (max-width:700px){
+  body.ecran-lg .lg{min-height:100dvh}
+  .lg-foot small{display:block}
+}
+@media (max-width:700px) and (max-height:780px){
+  .lg-in{padding-top:14px;gap:10px}
+  .lg-logo{width:58px;height:58px}
+  .lg-card{gap:10px}
+  .lg-card h1{font-size:28px}
+  .lg-sous{margin:-10px 0 0}
+  .lg-card input{height:48px}
+  .pin-pad{gap:8px}
+  .pk{height:54px;font-size:26px}
+  .lg-help{font-size:13px}
+}
+@media (max-width:700px){.pk.pk-x{font-size:15px;font-weight:600;color:var(--mute)}.pk.pk-ok{font-size:17px;font-weight:800}}

@@ -74,7 +74,7 @@
     var pin = S.pin || '', modePin = !S.pwAbc && id.indexOf('@') < 0;
     var h = '<div class="lg"><div class="lg-top"></div><div class="lg-in">'
       + '<div class="lg-hd"><img class="lg-logo" src="assets/logo-evydent.jpg" alt="Logo Evydent Val d’Yerres"><div class="lg-name">Espace dentaire Val d’Yerres</div><div class="lg-sub">Gestion du stock · Espace équipe' + (C.env === 'dev' ? ' · <span class="env">TEST</span>' : '') + '</div></div>'
-      + '<form class="lg-card" id="lform" autocomplete="on"><h1>Bonjour</h1>'
+      + '<form class="lg-card" id="lform" autocomplete="on"><h1>Bonjour</h1><p class="lg-sous m-only">Gestion du stock' + (C.env === 'dev' ? ' <span class="env">TEST</span>' : '') + '</p>'
       + '<label>Identifiant<input id="lid" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Votre identifiant" value="' + esc(id) + '"></label>';
     if (modePin) {
       h += '<div class="pin-l">Mon code</div><div class="pin-pts" aria-label="' + pin.length + ' chiffres sur 6">' + [0, 1, 2, 3, 4, 5].map(function (i) { return '<span class="' + (i < pin.length ? 'on' : '') + '"></span>'; }).join('') + '</div>'
@@ -89,7 +89,7 @@
         + '<button class="btn gold" id="lbtn" type="submit"' + (S.lbusy ? ' disabled' : '') + '>Se connecter</button>'
         + '<button type="button" class="lnk lg-alt" id="labc">Code à 6 chiffres (assistantes)</button>';
     }
-    return h + '<p class="lg-help">Identifiant ou code oublié ? Demandez à la responsable des achats ou à la référente.</p></form>'
+    return h + '<p class="lg-help">Code oublié ? Demandez à la référente.<span class="m-only"><br>On reste connecté : pas besoin de retaper le code.</span></p></form>'
       + '<div class="lg-foot">Accès réservé au personnel du centre · 01 85 12 00 85<br><small>Version ' + esc(C.version || '') + '</small></div></div></div>';
   }
   function bindLogin() {
@@ -172,6 +172,7 @@
   // ---------- Rendu général ----------
   function render() {
     var app = $('app');
+    document.body.classList.toggle('ecran-lg', !S.session);
     if (!S.session) { app.innerHTML = vLogin(); bindLogin(); return; }
     if (S.loading && !S.me) { app.innerHTML = '<p class="chargement">Chargement…</p>'; return; }
     if (!S.me || !S.me.actif) {
