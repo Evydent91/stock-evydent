@@ -278,3 +278,19 @@ html{-webkit-tap-highlight-color:transparent}
 .tiles.stk{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}
 .tiles.stk .tile b{white-space:nowrap}
 @media (max-width:700px){ .tiles.stk{grid-template-columns:minmax(0,1fr) minmax(0,1.8fr)} .tiles.stk .tile b{font-size:21px} }
+
+/* Téléphone : en-tête FIXE (sur iPhone, l'en-tête « collant » pouvait disparaître en faisant défiler) */
+@media (max-width:700px){
+  :root{--top:58px}
+  .top{position:fixed;top:0;left:0;right:0;z-index:7}
+  .top-in{height:var(--top);padding-top:0;padding-bottom:0}
+  body{padding-top:calc(env(safe-area-inset-top) + var(--top))}
+  .card.filtre{top:calc(env(safe-area-inset-top) + var(--top) + 4px)}
+}
+.top-who .ver{display:block;font-size:12px;opacity:.85;line-height:1.2}
+@media (max-width:700px){
+  .top-who b{display:flex;align-items:center;gap:6px;min-width:0}
+  .top-who b .nom{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .top-who b .env{flex:none}
+}
+.top-who b .nom{font-size:inherit;opacity:1}
