@@ -207,7 +207,7 @@
       'Ouvrez <b>📋 Inventaire</b> et choisissez votre cabinet.',
       'Pour chaque article, tapez la quantité <b>réellement présente</b> (en unités). Le bouton <b>0</b> met l’article à zéro en un geste.',
       'Les articles déjà comptés passent en vert. Votre saisie est gardée sur l’appareil même si vous êtes interrompue.',
-      'Appuyez sur <b>Terminer</b> : un récapitulatif montre les écarts. Vérifiez, puis <b>Valider l’inventaire</b>.',
+      'Appuyez sur <b>Terminer</b> : le bilan montre ce qui a été utilisé depuis le dernier inventaire (et ce qui serait en plus, à vérifier). Vérifiez, puis <b>Valider l’inventaire</b>.',
       'La réserve est comptée par la référente ou la responsable (ou par vous si elles vous ont donné l’autorisation).'] },
     { id: 'historique', ic: '🕘', t: 'Retrouver ce que j’ai fait', duree: '30 s', tab: 'histo', e: [
       'Ouvrez <b>🕘 Historique</b> : vos derniers mouvements (sorties, retours, inventaires) avec la date et l’heure.',
@@ -482,14 +482,21 @@
   }
   function vRecap() {
     var emp = S.inv.emp, E = ecartsInv(), Z = aZero(), motif = emp === 0 && !j0Actif();
-    var h = '<div class="card"><b>Récapitulatif · ' + cabTxt(emp) + '</b><p class="mu" style="margin:4px 0 8px">' + nbComptes() + ' article(s) comptés · ' + E.length + ' écart(s)' + (Z.length ? ' · ' + Z.length + ' non comptés passeront à 0' : '') + '</p>';
-    if (!E.length) h += '<p>Aucun écart : le stock correspond à votre comptage.</p>';
+    // Dans un cabinet, ce qui manque a été UTILISÉ pour les soins (ce n'est pas un écart) ; ce qui est en plus est à vérifier.
+    var cab = emp > 0 && !j0Actif(), utilises = E.filter(function (e) { return e.apres < e.avant; }).length, enPlus = E.length - utilises;
+    var h = '<div class="card"><b>' + (cab ? 'Bilan · ' : 'Récapitulatif · ') + cabTxt(emp) + '</b><p class="mu" style="margin:4px 0 8px">' + nbComptes() + ' article(s) comptés · '
+      + (cab ? utilises + ' utilisé(s) depuis le dernier inventaire' + (enPlus ? ' · ' + enPlus + ' en plus, à vérifier' : '') : E.length + ' écart(s)') + (Z.length ? ' · ' + Z.length + ' non comptés passeront à 0' : '') + '</p>';
+    if (!E.length) h += '<p>' + (cab ? 'Rien n’a bougé depuis le dernier inventaire.' : 'Aucun écart : le stock correspond à votre comptage.') + '</p>';
     else h += E.map(function (e) {
-      return '<div class="it"><div class="it-n"><b>' + esc(e.a.nom) + '</b><span>' + fr(e.avant) + ' → <strong>' + fr(e.apres) + '</strong> ' + uInv(e.a, emp) + ' (' + (e.apres > e.avant ? '+' : '') + fr(e.apres - e.avant) + ')</span></div>'
+      var d = e.apres - e.avant, u = uInv(e.a, emp);
+      var txt = cab ? (d < 0 ? 'il en restait ' + fr(e.avant) + ' · compté <strong>' + fr(e.apres) + '</strong> → <strong>' + fr(-d) + ' ' + u + ' utilisé(s)</strong>'
+                             : '<span style="color:var(--warn);font-weight:600">il en restait ' + fr(e.avant) + ' · compté ' + fr(e.apres) + ' : ' + fr(d) + ' de plus. Une sortie oubliée ?</span>')
+                    : fr(e.avant) + ' → <strong>' + fr(e.apres) + '</strong> ' + u + ' (' + (d > 0 ? '+' : '') + fr(d) + ')';
+      return '<div class="it"><div class="it-n"><b>' + esc(e.a.nom) + '</b><span>' + txt + '</span></div>'
         + (motif ? '<select class="in" style="max-width:200px" data-imotif="' + e.a.id + '"><option value="">Motif…</option>' + MOTIFS.map(function (m) { return '<option' + (S.inv.motifs[e.a.id] === m ? ' selected' : '') + '>' + m + '</option>'; }).join('') + '</select>' : '') + '</div>';
     }).join('');
     if (Z.length) h += '<p class="ban warn" style="margin:10px 0 0">Inventaire de départ : ' + Z.length + ' article(s) présents dans le stock mais non comptés passeront à 0' + ' (' + Z.slice(0, 4).map(function (a) { return esc(a.nom); }).join(', ') + (Z.length > 4 ? '…' : '') + ').</p>';
-    if (!motif && emp > 0 && E.length && !j0Actif()) h += '<p class="mu" style="margin:10px 0 0">Les écarts d’un cabinet sont enregistrés comme « utilisé au cabinet ».</p>';
+    if (cab && utilises) h += '<p class="mu" style="margin:10px 0 0">Ce qui a été utilisé pour les soins est enregistré comme consommation du cabinet (ce n’est pas une perte).</p>';
     return h + '<div class="row" style="margin-top:12px"><button class="btn l" data-act="irevenir">Revenir au comptage</button><button class="btn" data-act="ivalider"' + (S.inv.busy ? ' disabled' : '') + '>Valider l’inventaire</button></div></div>';
   }
   function validerInv() {
@@ -1146,9 +1153,11 @@
       + PERIODES.map(function (x) { return '<button class="chip' + (E.p === x[0] ? ' on' : '') + '" data-ecp="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
     if (E.charge || !E.l) return h + '<p class="mu">Chargement…</p></div>';
     if (E.err) return h + '<p class="ban ko">' + esc(E.err) + '</p></div>';
-    var j0 = 0, corr = 0, L = [];
+    var j0 = 0, corr = 0, L = [], conso = 0, consoN = 0;
     E.l.forEach(function (m) {
       if (/^Inventaire de départ/.test(m.motif || '')) { j0++; return; }
+      // Inventaire d'un cabinet : ce qui manque a été utilisé pour les soins, ce n'est pas une perte
+      if (m.type === 'inventaire' && m.emplacement_de > 0 && +m.ecart < 0) { conso += +m.valeur || 0; consoN++; return; }
       if (m.type === 'correction') { corr++; return; }
       L.push(m);
     });
@@ -1161,6 +1170,7 @@
       var mo = m.type === 'sortie' ? 'Sortie au-delà de la réserve' : m.type === 'retour' ? 'Retour (stock cabinet trop bas)' : (m.motif || (m.type === 'inventaire' ? 'Inventaire' : 'Régularisation'));
       var pm = parMotif[mo] = parMotif[mo] || { n: 0, v: 0 }; pm.n++; pm.v += v;
     });
+    if (consoN) h += '<div class="ban ok" style="margin:0 0 10px">🦷 <b>Utilisé dans les cabinets : ' + eur(-conso) + '</b> (' + consoN + ' article(s), d’après les inventaires des cabinets). C’est la consommation normale des soins : elle n’est pas comptée dans les pertes.</div>';
     if (!L.length) h += '<p class="mu">Aucun écart sur cette période.</p>';
     else {
       h += '<div class="tiles" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="tile ko"><b>' + eur(pertes) + '</b><span>Pertes</span></div><div class="tile ok"><b>' + eur(gains) + '</b><span>Gains</span></div><div class="tile ' + (pertes + gains < 0 ? 'warn' : 'ok') + '"><b>' + eur(pertes + gains) + '</b><span>Solde</span><small>' + L.length + ' écart(s)</small></div></div>';
