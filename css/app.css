@@ -294,3 +294,8 @@ html{-webkit-tap-highlight-color:transparent}
   .top-who b .env{flex:none}
 }
 .top-who b .nom{font-size:inherit;opacity:1}
+
+/* iPhone : pas de zoom quand on tape vite deux fois sur +, −, 0 ou un bouton */
+button,input,select,label,a,.it,.stp{touch-action:manipulation}
+input,select,textarea{font-size:16px}
+.stp input{font-size:18px}
