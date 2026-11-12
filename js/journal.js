@@ -1,7 +1,17 @@
 // Journal des versions (affiché dans Plus, pour la référente et la responsable).
 // Types : Majeure (changement profond), Mineure (nouvelle fonction), Correctif (réparation).
 // c = changements visibles ; x = opérations sur les données (pour la responsable).
-window.JOURNAL = [{v:"2.1",t:"Mineure",n:"Confort sur téléphone et listes classées",d:"Novembre 2026 (en test)",
+window.JOURNAL = [{v:"2.2",t:"Mineure",n:"Appli des assistantes simplifiée",d:"Novembre 2026 (en test)",
+ w:"Rendre l’appli des assistantes très simple au téléphone, d’après la maquette validée par la référente.",
+ c:[
+ "Connexion : pavé numérique à grosses touches pour le code à 6 chiffres (le clavier du téléphone ne s’ouvre pas), connexion automatique au 6ᵉ chiffre, identifiant retenu sur l’appareil ; lien « Mot de passe avec lettres » pour la référente et la responsable.",
+ "Accueil des assistantes : 3 grandes tuiles Sortie, Inventaire (avec « À faire ce mois-ci ») et Retour ; raccourci « Refaire ma dernière sortie » ; rappel des demandes en attente.",
+ "En bas, 4 petits boutons : Accueil, Historique, Aide, Moi (code, installation, Changer de personne). Pendant une sortie, un inventaire ou un retour, ces boutons disparaissent : un bouton « ‹ Accueil » en haut et un gros bouton d’action en bas.",
+ "Sortie en 3 temps : choisir les articles, « Vérifier » (cabinet, quantités, ajout ou annulation), puis un écran vert « C’est enregistré » qui revient seul à l’accueil.",
+ "Inventaire : barre de progression (comptés sur total), filtre « Pas encore comptés », bouton « J’ai fini de compter », puis le bilan de ce qui a été utilisé.",
+ "Retour : les articles présents en boîtes fermées dans le cabinet s’affichent directement.",
+ "Référente et responsable : écrans inchangés, sauf la connexion."],x:[]},
+{v:"2.1",t:"Mineure",n:"Confort sur téléphone et listes classées",d:"Novembre 2026 (en test)",
  w:"Rendre l’application plus simple à utiliser d’une main sur téléphone (iPhone et Android), là où elle sert le plus au cabinet.",
  c:[
  "Sur téléphone, les onglets passent en bas de l’écran, à portée de pouce : Accueil, Sortie, Inventaire, Commandes et Menu pour la référente et la responsable ; Sortie, Retour, Inventaire et Historique pour les assistantes.",

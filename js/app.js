@@ -46,47 +46,65 @@
   // ---------- Connexion ----------
   function emailDe(id) { id = String(id || '').trim(); return id.indexOf('@') >= 0 ? id.toLowerCase() : norm(id).replace(/\s+/g, '') + '@' + C.domaine; }
   function connexion(ev) {
-    ev.preventDefault();
-    var id = $('lid').value, pw = $('lpw').value;
-    if (!id.trim() || !pw) { S.err = 'Saisissez l’identifiant et le mot de passe.'; render(); return; }
-    $('lbtn').disabled = true;
+    if (ev) ev.preventDefault();
+    var id = ($('lid').value || '').trim(), pw = $('lpw') ? $('lpw').value : (S.pin || '');
+    if (!id || !pw) { S.err = !id ? 'Tapez d’abord votre identifiant.' : 'Tapez votre code.'; S.pin = ''; render(); return; }
+    S.lbusy = true; S.lid = id; render();
     sb.auth.signInWithPassword({ email: emailDe(id), password: pw }).then(function (r) {
+      S.lbusy = false; S.pin = '';
       if (r.error) { S.err = msgErr(r.error); render(); var p = $('lpw'); if (p) { p.value = ''; p.focus(); } return; }
-      S.err = ''; demarrer(r.data.session);
+      try { localStorage.setItem('evy-dernier-id', id); } catch (e) {}
+      S.err = ''; S.lid = null; window.scrollTo(0, 0); demarrer(r.data.session);
     });
   }
   // À chaque changement de personne : on repart de zéro (cabinet par défaut, panier, inventaire, écrans ouverts)
   function oublierPersonne() {
-    S.session = null; S.me = null; S.tab = 'sortie'; S.tabChoisi = false; S.fiche = null; S.eqEdit = null; S.eqNew = null; S.cmBusy = false; S.histTous = false; S.histo = []; S.menu = false; S.tour = null;
+    S.session = null; S.me = null; S.tab = 'maison'; S.tabChoisi = false; S.fiche = null; S.eqEdit = null; S.eqNew = null; S.cmBusy = false; S.histTous = false; S.histo = []; S.menu = false; S.tour = null;
     S.sortie = { cab: null, q: '', panier: {}, msg: null, busy: false };
     S.ret = { cab: null, q: '', panier: {}, msg: null, busy: false };
     S.inv = { emp: null, d: {}, q: '', tous: false, recap: false, motifs: {}, busy: false, msg: null, max: 80 };
   }
   function deconnexion() { sb.auth.signOut().then(function () { oublierPersonne(); render(); }); }
 
+  // Connexion : pavé numérique pour le code à 6 chiffres (le clavier du téléphone ne s'ouvre pas),
+  // ou mot de passe avec lettres pour la référente et la responsable.
+  function dernierId() { try { return localStorage.getItem('evy-dernier-id') || ''; } catch (e) { return ''; } }
   function vLogin() {
-    var id = ($('lid') && $('lid').value) || '';
-    var numerique = !S.pwAbc && id.indexOf('@') < 0;
-    return '<div class="lg"><div class="lg-top"></div><div class="lg-in">'
+    var id = $('lid') ? $('lid').value : (S.lid != null ? S.lid : dernierId());
+    var pin = S.pin || '', modePin = !S.pwAbc && id.indexOf('@') < 0;
+    var h = '<div class="lg"><div class="lg-top"></div><div class="lg-in">'
       + '<div class="lg-hd"><img class="lg-logo" src="assets/logo-evydent.jpg" alt="Logo Evydent Val d’Yerres"><div class="lg-name">Espace dentaire Val d’Yerres</div><div class="lg-sub">Gestion du stock · Espace équipe' + (C.env === 'dev' ? ' · <span class="env">TEST</span>' : '') + '</div></div>'
       + '<form class="lg-card" id="lform" autocomplete="on"><h1>Bonjour</h1>'
-      + '<label>Identifiant<input id="lid" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Votre identifiant" value="' + esc(id) + '"></label>'
-      + '<label>Mot de passe ou code<span class="lg-pw"><input id="lpw" name="password" type="password" autocomplete="current-password" placeholder="••••••" ' + (numerique ? 'inputmode="numeric"' : '') + '>'
-      + '<button type="button" class="btn l sm" id="labc" aria-label="Changer de clavier">' + (numerique ? 'ABC' : '123') + '</button></span></label>'
-      + (S.err ? '<p class="lg-err" role="alert">' + esc(S.err) + '</p>' : '')
-      + '<button class="btn gold" id="lbtn" type="submit">Se connecter</button>'
-      + '<p class="lg-help">Identifiant ou code oublié ? Demandez à la responsable des achats ou à la référente.</p></form>'
+      + '<label>Identifiant<input id="lid" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Votre identifiant" value="' + esc(id) + '"></label>';
+    if (modePin) {
+      h += '<div class="pin-l">Mon code</div><div class="pin-pts" aria-label="' + pin.length + ' chiffres sur 6">' + [0, 1, 2, 3, 4, 5].map(function (i) { return '<span class="' + (i < pin.length ? 'on' : '') + '"></span>'; }).join('') + '</div>'
+        + (S.err ? '<p class="lg-err" role="alert">' + esc(S.err) + '</p>' : '')
+        + '<div class="pin-pad">' + ['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(function (k) { return '<button type="button" class="pk" data-k="' + k + '">' + k + '</button>'; }).join('')
+        + '<button type="button" class="pk pk-x" data-k="x" aria-label="Effacer le dernier chiffre">Effacer</button><button type="button" class="pk" data-k="0">0</button>'
+        + '<button type="submit" class="pk pk-ok" id="lbtn"' + (pin.length < 6 || S.lbusy ? ' disabled' : '') + '>' + (S.lbusy ? '…' : 'Entrer') + '</button></div>'
+        + '<button type="button" class="lnk lg-alt" id="labc">Mot de passe avec lettres (référente, responsable)</button>';
+    } else {
+      h += '<label>Mot de passe<span class="lg-pw"><input id="lpw" name="password" type="password" autocomplete="current-password" placeholder="Votre mot de passe"></span></label>'
+        + (S.err ? '<p class="lg-err" role="alert">' + esc(S.err) + '</p>' : '')
+        + '<button class="btn gold" id="lbtn" type="submit"' + (S.lbusy ? ' disabled' : '') + '>Se connecter</button>'
+        + '<button type="button" class="lnk lg-alt" id="labc">Code à 6 chiffres (assistantes)</button>';
+    }
+    return h + '<p class="lg-help">Identifiant ou code oublié ? Demandez à la responsable des achats ou à la référente.</p></form>'
       + '<div class="lg-foot">Accès réservé au personnel du centre · 01 85 12 00 85<br><small>Version ' + esc(C.version || '') + '</small></div></div></div>';
   }
   function bindLogin() {
     $('lform').addEventListener('submit', connexion);
-    $('labc').addEventListener('click', function () { S.pwAbc = !S.pwAbc; var v = $('lpw').value; render(); $('lpw').value = v; $('lpw').focus(); });
-    $('lid').addEventListener('input', function () {
-      var num = !S.pwAbc && this.value.indexOf('@') < 0;
-      if (num) $('lpw').setAttribute('inputmode', 'numeric'); else $('lpw').removeAttribute('inputmode');
-      $('labc').textContent = num ? 'ABC' : '123';
+    $('labc').addEventListener('click', function () { S.lid = $('lid').value; S.pwAbc = !S.pwAbc; S.pin = ''; S.err = ''; render(); var p = $('lpw'); if (p) p.focus(); });
+    $('lid').addEventListener('input', function () { S.lid = this.value; });
+    $('lform').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-k]'); if (!b || S.lbusy) return;
+      S.lid = $('lid').value; S.err = '';
+      var k = b.dataset.k, p = S.pin || '';
+      S.pin = k === 'x' ? p.slice(0, -1) : (p.length < 6 ? p + k : p);
+      render();
+      if (S.pin.length === 6 && k !== 'x') connexion();
     });
-    if (!$('lid').value) $('lid').focus(); else $('lpw').focus();
+    if (!$('lid').value) $('lid').focus(); else if ($('lpw')) $('lpw').focus();
   }
 
   // ---------- Chargement des données ----------
@@ -98,7 +116,7 @@
       if (!S.me || !S.me.actif) { S.loading = false; render(); return; }
       if (S.sortie.cab == null) S.sortie.cab = S.me.cabinet || 1;
       if (S.ret.cab == null) S.ret.cab = S.me.cabinet || 1;
-      if (!gestion() && ['sortie', 'retour', 'inventaire', 'histo', 'compte', 'aide'].indexOf(S.tab) < 0) S.tab = 'sortie';
+      if (!gestion() && ['maison', 'sortie', 'retour', 'inventaire', 'histo', 'compte', 'aide', 'moi'].indexOf(S.tab) < 0) S.tab = 'maison';
       if (S.inv.emp == null && S.me.cabinet) choisirEmp(S.me.cabinet);
       if (gestion() && !S.tabChoisi) S.tab = 'accueil';
       S.histTous = gestion();
@@ -124,7 +142,7 @@
       sb.from('mouvements').select('*').eq('statut', 'attente').order('cree_le').then(function (r) { if (r.error) throw r.error; return r.data; }),
       sb.from('parametres').select('cle,valeur').in('cle', ['j0', 'alias_refs', 'derniere_sauvegarde']).then(function (r) { if (r.error) throw r.error; return r.data; }),
       sb.from('inventaires').select('emplacement,date_inv,j0').order('date_inv', { ascending: false }).limit(500).then(function (r) { if (r.error) throw r.error; return r.data; }),
-      sb.from('mouvements').select('*').order('cree_le', { ascending: false }).limit(30).then(function (r) { if (r.error) throw r.error; return r.data; }),
+      (gestion() ? sb.from('mouvements').select('*') : sb.from('mouvements').select('*').eq('auteur', S.me.id)).order('cree_le', { ascending: false }).limit(30).then(function (r) { if (r.error) throw r.error; return r.data; }),
       toutLire('article_fournisseurs', 'article_id,fournisseur_id,prix,reference,rang'),
       sb.rpc('classement_sorties', { p_jours: 365 }).then(function (r) { return r.error ? [] : r.data || []; }, function () { return []; }),
       gestion() ? chargerCommandes() : Promise.resolve()
@@ -160,7 +178,7 @@
       app.innerHTML = '<div class="lg"><div class="lg-top"></div><div class="lg-in"><div class="lg-card"><h1>Compte non activé</h1><p>Votre connexion fonctionne, mais votre compte n’a pas encore de profil actif dans l’application. Demandez à la responsable des achats ou à la référente de l’activer.</p><button class="btn l" id="bout">Se déconnecter</button></div></div></div>';
       $('bout').onclick = deconnexion; return;
     }
-    var tabs = gestion() ? [['accueil', 'Accueil'], ['sortie', 'Sortie'], ['retour', 'Retour'], ['inventaire', 'Inventaire']] : [['sortie', 'Sortie'], ['retour', 'Retour'], ['inventaire', 'Inventaire']];
+    var tabs = gestion() ? [['accueil', 'Accueil'], ['sortie', 'Sortie'], ['retour', 'Retour'], ['inventaire', 'Inventaire']] : [['maison', 'Accueil'], ['sortie', 'Sortie'], ['retour', 'Retour'], ['inventaire', 'Inventaire']];
     if (gestion()) tabs.push(['demandes', 'Demandes' + (S.attente.length ? '<span class="badge">' + S.attente.length + '</span>' : '')], ['stock', 'Stock'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs']);
     tabs.push(['histo', 'Historique']);
     if (gestion()) tabs.push(['equipe', 'Équipe'], ['plus', 'Plus']);
@@ -170,7 +188,7 @@
       + '<button class="btn l sm" data-tab="compte" title="Changer mon code" aria-label="Changer mon code">🔑</button><button class="btn l sm" data-act="out" aria-label="Changer de personne"><span class="m-hide">Changer de personne</span><span class="m-only">👤 Changer</span></button></div>'
       + '<nav class="tabs" aria-label="Menu">' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav></header>';
     if (S.nouvelleVersion) h += '<div class="ban ok" style="max-width:1100px;margin:10px auto 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1">Une nouvelle version de l’application est disponible (' + esc(S.nouvelleVersion) + ').</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>';
-    h += '<main>' + vBienvenue() + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour, plus: vPlus, aide: vAide }[S.tab] || vSortie)() + '</main>';
+    h += '<main>' + vBienvenue() + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour, plus: vPlus, aide: vAide, maison: vMaison, moi: vMoi }[S.tab] || vSortie)() + '</main>';
     h += '<p class="mu" style="text-align:center;font-size:12px;margin:0 0 90px">Version ' + esc(C.version || '') + '</p>';
     h += vNavMobile();
     h += (S.tab === 'sortie' ? vBarSortie() : S.tab === 'retour' ? vBarRetour() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
@@ -179,6 +197,7 @@
     var ae = document.activeElement, fq = ae && ae.id && ae.tagName === 'INPUT' ? ae.id : null, pos = fq && ae.selectionStart;
     app.innerHTML = h;
     if (fq && $(fq)) { S.refocus = true; $(fq).focus(); try { $(fq).setSelectionRange(pos, pos); } catch (e) {} S.refocus = false; }
+    document.body.classList.toggle('sans-nav', !!S.me && enTache());
     placerTour();
   }
 
@@ -186,15 +205,15 @@
   // Fiches pas à pas (écran « Aide ») + visite guidée qui montre chaque bouton à l'écran.
   var GUIDES = [
     { id: 'connexion', ic: '🔐', t: 'Se connecter et changer de personne', duree: '1 min', tab: null, e: [
-      'Tapez votre <b>identifiant</b> (ex. : sarah), puis votre <b>code à 6 chiffres</b>. Sur téléphone, le clavier à chiffres s’ouvre tout seul.',
+      'Tapez votre <b>identifiant</b> (ex. : sarah), puis votre <b>code à 6 chiffres</b> sur le pavé à grosses touches : la connexion se fait toute seule au 6ᵉ chiffre. L’identifiant est retenu sur le téléphone.',
       'Vous restez connectée : pas besoin de retaper votre code à chaque fois.',
       'Sur un appareil partagé, appuyez sur <b>👤 Changer</b> (en haut) avant de passer la main : l’appli se vide pour la personne suivante.',
       'Code oublié ? Demandez à la référente ou à la responsable : elles vous en donnent un nouveau.'] },
     { id: 'sortie', ic: '📤', t: 'Faire une sortie (prendre dans la réserve)', duree: '2 min', tab: 'sortie', e: [
-      'Ouvrez <b>📤 Sortie</b>. Votre cabinet est déjà choisi (★ = le vôtre).',
+      'Sur l’accueil, touchez la grande tuile <b>📤 Sortie</b>. Votre cabinet est déjà choisi (★ = le vôtre).',
       'Les articles que votre cabinet sort le plus sont <b>en haut de la liste</b>. Sinon, tapez quelques lettres dans <b>🔍</b>.',
       'Appuyez sur <b>+</b> pour chaque unité prise (ou tapez directement le nombre). L’article passe en vert.',
-      'Le bouton <b>🧺</b> en bas montre votre panier. Vérifiez puis appuyez sur <b>Valider la sortie</b>.',
+      'Appuyez sur le gros bouton doré <b>Vérifier</b> : votre sortie s’affiche. Corrigez si besoin, puis <b>Valider la sortie</b>. Un écran vert confirme, puis l’appli revient à l’accueil.',
       'Si la réserve n’en a pas assez, la quantité en trop part en <b>demande à confirmer</b> par la référente : c’est normal.'] },
     { id: 'remplacement', ic: '🔄', t: 'Remplacer une collègue dans un autre cabinet', duree: '1 min', tab: 'sortie', e: [
       'Dans Sortie, Retour ou Inventaire, changez le cabinet dans la liste en haut (ex. : Cab. 6).',
@@ -258,6 +277,15 @@
       { tab: null, sel: '.top [data-act="out"]', t: '👤 Changer de personne', x: 'À utiliser avant de passer l’appareil à une collègue : l’appli se vide pour elle.' },
       { tab: 'aide', sel: mob ? '.bnav [data-act="menu"]' : nav('aide'), t: '❓ Aide', x: 'Toutes les fiches pas à pas sont ici' + (mob ? ', dans le Menu' : '') + '. Bonne utilisation !' }
     ];
+    if (!gestion()) {
+      // Assistantes : l'accueil à 3 tuiles remplace les onglets Sortie / Inventaire / Retour
+      E[0] = { tab: 'maison', sel: '.tuile.t1', t: '📤 Sortie', x: 'Pour prendre des articles dans la réserve. C’est la tuile que vous utiliserez le plus.' };
+      E[4] = { tab: 'sortie', sel: '.bar', t: 'Vérifier puis valider', x: 'Quand vos articles sont choisis, le gros bouton doré « Vérifier » affiche votre sortie ; un dernier bouton la valide. Un écran vert confirme.' };
+      E[5] = { tab: 'maison', sel: '.tuile[data-tab="retour"]', t: '↩️ Retour', x: 'Pour rendre à la réserve des boîtes fermées non utilisées.' };
+      E[6] = { tab: 'maison', sel: '.tuile[data-tab="inventaire"]', t: '📋 Inventaire', x: 'Pour compter ce qui reste dans votre cabinet. La tuile indique quand l’inventaire du mois est à faire.' };
+      E[7] = { tab: 'maison', sel: mob ? '.bnav [data-tab="histo"]' : nav('histo'), t: '🕘 Historique', x: 'Pour retrouver tout ce que vous avez fait, avec la date et l’heure.' };
+      E[10] = { tab: 'maison', sel: mob ? '.bnav [data-tab="aide"]' : nav('aide'), t: '❓ Aide', x: 'Toutes les fiches pas à pas sont ici. Le bouton « Moi » regroupe votre code et « Changer de personne ». Bonne utilisation !' };
+    }
     return E;
   }
   function lancerTour() { S.tour = { i: 0 }; marquerVu('bienvenue'); allerEtape(); }
@@ -280,11 +308,58 @@
     document.body.appendChild(d);
   }
 
+  // ---------- Accueil des assistantes : 3 grandes tuiles ----------
+  function derniereSortie() {
+    var m = (S.recents || []).filter(function (x) { return x.type === 'sortie' && x.statut === 'ok' && x.auteur === S.me.id; });
+    if (!m.length) return null;
+    var lot = m[0].lot, l = m.filter(function (x) { return x.lot === lot && S.byId[x.article_id]; });
+    return l.length ? { cab: l[0].emplacement_vers, l: l } : null;
+  }
+  function inventaireAFaire() {
+    var c = S.me.cabinet, d = c && S.dernierInv[c];
+    return c && (!d || (Date.now() - new Date(d).getTime()) / 86400000 > 28);
+  }
+  function vMaison() {
+    var j = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }), ds = derniereSortie();
+    var mesAtt = (S.recents || []).filter(function (x) { return x.type === 'demande' && x.statut === 'attente' && x.auteur === S.me.id; });
+    var h = '<div class="maison-hd"><h2>Bonjour ' + esc(S.me.nom) + '</h2><p>' + (S.me.cabinet ? 'Cabinet ' + S.me.cabinet + ' · ' : '') + j + '</p></div>';
+    if (S.sortie.ok) h += '';
+    h += '<div class="tuiles">'
+      + '<button class="tuile t1" data-tab="sortie"><span class="ti">📤</span><span class="tt"><b>Sortie</b><span>Prendre dans la réserve</span></span><span class="tc">›</span></button>'
+      + '<button class="tuile" data-tab="inventaire"><span class="ti">📋</span><span class="tt"><b>Inventaire</b><span>Compter mon cabinet</span>' + (inventaireAFaire() ? '<em>À faire ce mois-ci</em>' : '') + '</span><span class="tc">›</span></button>'
+      + '<button class="tuile" data-tab="retour"><span class="ti">↩️</span><span class="tt"><b>Retour</b><span>Rendre des boîtes fermées</span></span><span class="tc">›</span></button></div>';
+    if (ds) h += '<button class="raccourci" data-act="refaire"><span class="ti">🔁</span><span><b>Refaire ma dernière sortie</b><br>' + ds.l.slice(0, 3).map(function (x) { return esc(S.byId[x.article_id].nom) + ' × ' + fr(x.quantite); }).join(' · ') + (ds.l.length > 3 ? '…' : '') + '</span></button>';
+    if (mesAtt.length) h += '<p class="mu" style="margin:10px 4px 0">⏳ ' + mesAtt.length + ' demande(s) en attente de validation : ' + mesAtt.slice(0, 3).map(function (x) { var a = S.byId[x.article_id]; return esc(a ? a.nom : '?') + ' × ' + fr(x.quantite); }).join(', ') + '</p>';
+    return h;
+  }
+  function refaireSortie() {
+    var ds = derniereSortie(); if (!ds) return;
+    S.sortie.panier = {}; ds.l.forEach(function (x) { S.sortie.panier[x.article_id] = (S.sortie.panier[x.article_id] || 0) + +x.quantite; });
+    S.sortie.cab = ds.cab || S.me.cabinet || 1; S.sortie.voir = true; S.sortie.ok = null; S.tab = 'sortie'; render(); window.scrollTo(0, 0);
+  }
+  function vMoi() {
+    return '<div class="moi-hd"><span class="av">' + esc((S.me.nom || '?').charAt(0).toUpperCase()) + '</span><div><h2>' + esc(S.me.nom) + '</h2><p>' + LABEL[S.me.role] + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + ' · identifiant ' + esc(S.me.identifiant) + '</p></div></div>'
+      + '<div class="card liste-moi">'
+      + '<button class="it lrow" data-tab="aide"><span class="ti">❓</span><span class="it-n"><b>Aide et visite guidée</b><span>8 fiches pas à pas</span></span><span>›</span></button>'
+      + '<button class="it lrow" data-tab="compte"><span class="ti">🔑</span><span class="it-n"><b>Changer mon code</b><span>6 chiffres</span></span><span>›</span></button>'
+      + '<button class="it lrow" data-essai="aide" data-gid="iphone"><span class="ti">📱</span><span class="it-n"><b>Mettre l’appli sur mon téléphone</b><span>icône sur l’écran d’accueil</span></span><span>›</span></button></div>'
+      + '<button class="btn gros" data-act="out">👤 Changer de personne</button><p class="mu" style="text-align:center;margin:8px 0 0">À utiliser avant de passer le téléphone à une collègue : l’appli se vide pour elle.</p>';
+  }
+
   // ---------- Navigation téléphone : barre du bas + menu ----------
-  var ICO = { accueil: '🏠', sortie: '📤', retour: '↩️', inventaire: '📋', demandes: '⏳', stock: '📦', commandes: '🛒', articles: '🏷️', fournisseurs: '🚚', histo: '🕘', equipe: '👥', plus: '⚙️', compte: '🔑', aide: '❓' };
-  var NOMS = { accueil: 'Accueil', sortie: 'Sortie', retour: 'Retour', inventaire: 'Inventaire', demandes: 'Demandes', stock: 'Stock', commandes: 'Commandes', articles: 'Articles', fournisseurs: 'Fournisseurs', histo: 'Historique', equipe: 'Équipe', plus: 'Plus', compte: 'Mon code', aide: 'Aide' };
+  var ICO = { accueil: '🏠', sortie: '📤', retour: '↩️', inventaire: '📋', demandes: '⏳', stock: '📦', commandes: '🛒', articles: '🏷️', fournisseurs: '🚚', histo: '🕘', equipe: '👥', plus: '⚙️', compte: '🔑', aide: '❓', maison: '🏠', moi: '👤' };
+  var NOMS = { accueil: 'Accueil', sortie: 'Sortie', retour: 'Retour', inventaire: 'Inventaire', demandes: 'Demandes', stock: 'Stock', commandes: 'Commandes', articles: 'Articles', fournisseurs: 'Fournisseurs', histo: 'Historique', equipe: 'Équipe', plus: 'Plus', compte: 'Mon code', aide: 'Aide', maison: 'Accueil', moi: 'Moi' };
+  function retourAcc(titre) { return '<div class="tache-hd">' + (!gestion() ? '<button class="retour-acc" data-act="accueil">‹ Accueil</button>' : '') + '<h2>' + titre + '</h2></div>'; }
+  function enTache() { return !gestion() && ['sortie', 'retour', 'inventaire'].indexOf(S.tab) >= 0; }
   function vNavMobile() {
-    var bas = gestion() ? ['accueil', 'sortie', 'inventaire', 'commandes'] : ['sortie', 'retour', 'inventaire', 'histo'];
+    if (!gestion()) {
+      if (enTache()) return '';
+      var cur = S.tab === 'compte' ? 'moi' : S.tab;
+      return '<nav class="bnav a4" aria-label="Menu principal">' + ['maison', 'histo', 'aide', 'moi'].map(function (t) {
+        return '<button data-tab="' + t + '" class="' + (cur === t ? 'on' : '') + '"><span class="bi">' + ICO[t] + '</span><span>' + NOMS[t] + '</span></button>';
+      }).join('') + '</nav>';
+    }
+    var bas = ['accueil', 'sortie', 'inventaire', 'commandes'];
     var menu = gestion() ? ['demandes', 'retour', 'stock', 'articles', 'fournisseurs', 'histo', 'equipe', 'plus', 'aide', 'compte'] : ['aide', 'compte'];
     var att = gestion() ? S.attente.length : 0, dansMenu = menu.indexOf(S.tab) >= 0;
     var h = '<nav class="bnav" aria-label="Menu principal">' + bas.map(function (t) {
@@ -316,7 +391,10 @@
   }
   function vSortie() {
     var s = S.sortie, hors = S.me.cabinet && +s.cab !== +S.me.cabinet;
-    var h = '<h2>Nouvelle sortie</h2>';
+    if (s.ok) return vSortieOk();
+    var ids0 = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; });
+    if (s.voir && ids0.length) return vSortieVerif();
+    var h = retourAcc('Sortie');
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
     h += '<div class="card filtre"><div class="frow"><label class="mu fcab"><span class="m-hide">Cabinet</span><select class="in" id="scab" aria-label="Cabinet">'
       + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+s.cab === c ? ' selected' : '') + '>Cab. ' + c + (S.me.cabinet === c ? ' ★' : '') + '</option>'; }).join('')
@@ -333,26 +411,48 @@
     if (autres.length > max) h += '<button class="btn l plus" data-act="splus">Afficher plus d’articles (' + (autres.length - max) + ' restants)</button>';
     return h;
   }
+  function vSortieVerif() {
+    var s = S.sortie, ids = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; }), hors = S.me.cabinet && +s.cab !== +S.me.cabinet;
+    var h = '<div class="tache-hd"><button class="retour-acc" data-act="svoir">‹ Modifier</button><h2>Ma sortie</h2></div>';
+    if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
+    h += '<div class="card pour">🏠 Pour le <b>cabinet ' + s.cab + '</b>' + (hors ? ' <span class="pill warn">hors cabinet · remplacement</span>' : ' (le mien)') + '</div>';
+    h += '<div class="card liste">' + ids.map(function (k) { return S.byId[k]; }).filter(Boolean).map(function (a) { return ligneSortie(a, s); }).join('') + '</div>';
+    h += '<button class="btn l ajout" data-act="svoir">+ Ajouter un article</button>';
+    if (ids.some(function (k) { var a = S.byId[k]; return a && s.panier[k] > dispoUnites(a); })) h += '<p class="ban warn">Certaines quantités dépassent la réserve : la partie en trop partira en demande à confirmer par la référente.</p>';
+    return h + '<button class="lnk annul" data-act="vider">Annuler et vider</button>';
+  }
+  function vSortieOk() {
+    var o = S.sortie.ok;
+    return '<div class="ok-ecran"><span class="ok-rond" role="img" aria-label="Validé">✓</span><h2>' + (o.attente && !o.sorties ? 'Demande envoyée' : 'C’est enregistré') + '</h2>'
+      + '<p>' + (o.sorties ? o.sorties + ' article(s) sorti(s) pour le <b>cabinet ' + o.cab + '</b>' : '') + (o.resume ? '<br>' + o.resume : '') + '</p>'
+      + (o.attente ? '<p class="ban warn">⏳ ' + o.attente + ' article(s) dépassent la réserve : demande envoyée à la référente.</p>' : '')
+      + (o.hors ? '<p class="mu">Enregistré « hors cabinet » (remplacement).</p>' : '')
+      + (!gestion() ? '<p class="ok-auto">Retour à l’accueil dans quelques secondes…</p>' : '')
+      + '<div class="ok-btns"><button class="btn gros" data-act="snouv">Nouvelle sortie</button><button class="btn l gros" data-act="accueil">Accueil</button></div></div>';
+  }
   function vBarSortie() {
+    if (S.sortie.ok) return '';
     var n = Object.keys(S.sortie.panier).filter(function (k) { return S.sortie.panier[k] > 0; }).length;
-    return '<div class="bar"><div class="bar-in">' + (n ? '<button class="btn l panier" data-act="svoir">🧺 ' + n + '<span class="m-hide"> article(s) · voir</span></button><span class="grow"></span>' : '<span class="grow mu">Panier vide</span>')
-      + (n ? '<button class="btn l" data-act="vider">Vider</button>' : '') + '<button class="btn" data-act="valider"' + (n && !S.sortie.busy ? '' : ' disabled') + '>Valider la sortie</button></div></div>';
+    if (S.sortie.voir && n) return '<div class="bar"><div class="bar-in"><button class="btn gros" data-act="valider"' + (S.sortie.busy ? ' disabled' : '') + '>' + (S.sortie.busy ? 'Enregistrement…' : 'Valider la sortie') + '</button></div></div>';
+    if (!n) return '<div class="bar"><div class="bar-in"><span class="grow mu">Touchez + pour choisir des articles</span></div></div>';
+    return '<div class="bar"><div class="bar-in"><button class="btn gold gros verif" data-act="svoir"><span>🧺 ' + n + ' article(s) choisi(s)</span><span>Vérifier ›</span></button></div></div>';
   }
   // ---------- Retour d'un cabinet vers la réserve (tout le monde) ----------
   // Saisie dans l'unité de la réserve, en entiers : boîtes fermées pour un article rangé en boîte.
   function vRetour() {
     var s = S.ret, hors = S.me.cabinet && +s.cab !== +S.me.cabinet;
-    var h = '<h2>Retour en réserve</h2><p class="mu" style="margin-top:-6px">Articles non utilisés qui repartent du cabinet vers la réserve. Pour un article rangé en boîte, seules les <b>boîtes fermées</b> reviennent ; les unités en vrac restent au cabinet.</p>';
+    var h = retourAcc('Retour en réserve') + '<p class="ban warn" style="margin:0 0 10px">📦 On ne rend que des <b>boîtes fermées</b>. Les unités en vrac restent au cabinet.</p>';
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
-    h += '<div class="card"><div class="g2"><label class="mu">Depuis le cabinet<select class="in" id="rcab">'
-      + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+s.cab === c ? ' selected' : '') + '>Cabinet ' + c + (S.me.cabinet === c ? ' (le mien)' : '') + '</option>'; }).join('')
-      + '</select></label><label class="mu">Rechercher un article<input class="in" id="rq" type="search" placeholder="Nom ou référence" value="' + esc(s.q) + '"></label></div>'
+    h += '<div class="card filtre"><div class="frow"><label class="mu fcab"><span class="m-hide">Depuis le cabinet</span><select class="in" id="rcab" aria-label="Depuis le cabinet">'
+      + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+s.cab === c ? ' selected' : '') + '>Cab. ' + c + (S.me.cabinet === c ? ' ★' : '') + '</option>'; }).join('')
+      + '</select></label><label class="mu fq"><span class="m-hide">Rechercher un article</span><input class="in" id="rq" type="search" placeholder="🔍 Nom ou référence" value="' + esc(s.q) + '" aria-label="Rechercher un article"></label></div>'
       + (hors ? '<p class="ban warn" style="margin:10px 0 0">Ce n’est pas votre cabinet : le retour sera enregistré « hors cabinet » (remplacement).</p>' : '') + '</div>';
     var q = norm(s.q), ids = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; });
+    // Sans recherche : les articles dont le cabinet a au moins une boîte fermée (ou une unité), plus ceux déjà choisis
     var liste = q ? S.articles.filter(function (a) { return norm(a.nom + ' ' + (a.reference || '')).indexOf(q) >= 0; }).slice(0, 40)
-                  : ids.map(function (k) { return S.byId[k]; }).filter(Boolean);
-    if (!liste.length) return h + '<p class="mu">' + (q ? 'Aucun article trouvé.' : 'Tapez le nom d’un article pour l’ajouter au retour.') + '</p>';
-    return h + '<div class="card">' + liste.map(function (a) {
+                  : S.articles.filter(function (a) { return s.panier[a.id] > 0 || stockDe(a.id, +s.cab) >= facteur(a); }).sort(parUsage(+s.cab));
+    if (!liste.length) return h + '<p class="mu">' + (q ? 'Aucun article trouvé.' : 'Aucune boîte fermée enregistrée dans ce cabinet. Cherchez l’article avec 🔍.') + '</p>';
+    return h + (q ? '' : '<div class="sect">📦 Présents dans le cabinet ' + s.cab + '</div>') + '<div class="card liste">' + liste.map(function (a) {
       var v = s.panier[a.id] || 0, f = facteur(a), cab = stockDe(a.id, +s.cab), boites = f > 1 ? Math.floor(cab / f + 1e-9) : null, trop = f > 1 ? v > boites : v > cab;
       return '<div class="it"><div class="it-n"><b>' + esc(a.nom) + (a.reference && a.reference !== 'SR' ? '<span class="ref">' + esc(a.reference) + '</span>' : '') + '</b>'
         + '<span class="' + (trop ? 'pill warn' : '') + '">Au cabinet ' + s.cab + ' : ' + fr(cab) + ' u.' + (f > 1 ? ' (' + boites + ' boîte(s) entière(s) de ' + fr(a.qte_par_boite) + ')' : '') + (trop ? ' · plus que le stock enregistré' : '') + '</span>'
@@ -362,8 +462,9 @@
   }
   function vBarRetour() {
     var n = Object.keys(S.ret.panier).filter(function (k) { return S.ret.panier[k] > 0; }).length;
-    return '<div class="bar"><div class="bar-in"><span class="grow mu">' + (n ? n + ' article(s) · depuis le cabinet ' + S.ret.cab : 'Aucun article') + '</span>'
-      + (n ? '<button class="btn l" data-act="rvider">Vider</button>' : '') + '<button class="btn" data-act="rvalider"' + (n && !S.ret.busy ? '' : ' disabled') + '>Valider le retour</button></div></div>';
+    if (!n) return '<div class="bar"><div class="bar-in"><span class="grow mu">Touchez + pour chaque boîte à rendre</span></div></div>';
+    var b = Object.keys(S.ret.panier).reduce(function (t, k) { return t + (S.ret.panier[k] || 0); }, 0);
+    return '<div class="bar"><div class="bar-in"><button class="btn l" data-act="rvider" aria-label="Vider">✕</button><button class="btn gold gros verif" data-act="rvalider"' + (S.ret.busy ? ' disabled' : '') + '><span>' + b + ' à rendre</span><span>Valider le retour</span></button></div></div>';
   }
   function setRet(id, v) { v = Math.max(0, Math.floor(nb(String(v).replace(',', '.')) || 0)); if (v) S.ret.panier[id] = v; else delete S.ret.panier[id]; }
   function validerRetour() {
@@ -393,8 +494,11 @@
       if (d.sorties) m.push('✔ ' + d.sorties + ' article(s) sorti(s) pour le cabinet ' + s.cab + '.');
       if (d.en_attente) m.push('⏳ ' + d.en_attente + ' article(s) dépassent la réserve : demande envoyée à la responsable, voyez-la pour confirmer.');
       if (d.hors_cabinet) m.push('Enregistré « hors cabinet ».');
-      s.msg = [d.en_attente ? 'warn' : 'ok', m.join(' ')]; s.panier = {}; s.q = ''; s.voir = false; s.max = 30;
-      charger();
+      var resume = lignes.slice(0, 4).map(function (l) { var a = S.byId[l.article_id]; return esc(a ? a.nom : '?') + ' × ' + fr(l.quantite); }).join(' · ') + (lignes.length > 4 ? '…' : '');
+      s.ok = { sorties: d.sorties || 0, attente: d.en_attente || 0, hors: d.hors_cabinet, cab: s.cab, resume: resume };
+      s.msg = null; s.panier = {}; s.q = ''; s.voir = false; s.max = 30;
+      window.scrollTo(0, 0); charger();
+      if (!gestion()) { var t0 = s.ok; setTimeout(function () { if (S.sortie.ok === t0 && S.tab === 'sortie') { S.sortie.ok = null; S.tab = 'maison'; render(); } }, 6000); }
     });
   }
 
@@ -442,7 +546,7 @@
   }
   function nbComptes() { return Object.keys(S.inv.d).filter(function (k) { return S.inv.d[k] !== '' && S.inv.d[k] != null && S.byId[k]; }).length; }
   function vInventaire() {
-    var I = S.inv, emp = I.emp, h = '<h2>Inventaire</h2>';
+    var I = S.inv, emp = I.emp, h = retourAcc('Inventaire');
     if (I.msg) h += '<div class="ban ' + I.msg[0] + '" role="status">' + I.msg[1] + '</div>';
     if (j0Actif()) h += '<div class="ban j0">🚩 <b>Inventaire de départ (J0)</b> jusqu’au ' + S.j0.fin.split('-').reverse().slice(0, 2).join('/') + ' : les quantités comptées <b>remplacent</b> le stock, sans perte ni gain.' + (emp != null && j0Premier(emp) ? ' <b>Les articles non comptés de cet emplacement passeront à 0.</b>' : '') + (gestion() ? ' <button class="lnk" data-act="j0off">Terminer le J0</button>' : '') + '</div>';
     else if (gestion()) h += (I.j0ask ? '<div class="ban j0"><b>Lancer l’inventaire de départ (J0) ?</b><br>Pendant 7 jours, chaque inventaire remplacera directement le stock : aucune perte, aucun gain, aucun motif. Au premier comptage de chaque emplacement, les articles non comptés passeront à 0.<div class="row" style="margin-top:10px"><button class="btn l sm" data-act="j0non">Non</button><button class="btn sm" data-act="j0oui">Oui, lancer le J0</button></div></div>' : '<button class="btn l sm" style="margin-bottom:12px" data-act="j0ask">🚩 Lancer l’inventaire de départ (J0)</button>');
@@ -457,7 +561,10 @@
     var der = S.dernierInv[emp];
     h += '<p class="mu">' + (der ? 'Dernier inventaire : ' + new Date(der).toLocaleDateString('fr-FR') : 'Premier inventaire de cet emplacement : tous les articles sont listés, saisissez ceux qui sont présents.') + ' Votre saisie est gardée sur cet appareil jusqu’à la validation.</p>';
     if (emp > 0 && der) h += '<label class="row" style="margin:0 0 10px"><input type="checkbox" id="itous"' + (I.tous ? ' checked' : '') + ' style="width:20px;height:20px"> Afficher tous les articles (produit trouvé qui n’était pas prévu)</label>';
-    var l = listeInv(), max = I.max || 80;
+    var l = listeInv(), max = I.max || 80, tot = l.length, faits = l.filter(function (a) { return I.d[a.id] != null && I.d[a.id] !== ''; }).length;
+    h += '<div class="prog"><div class="row"><b class="grow">' + faits + ' compté(s) sur ' + tot + '</b><span class="mu">gardé sur cet appareil</span></div><div class="prog-b"><i style="width:' + (tot ? Math.round(faits * 100 / tot) : 0) + '%"></i></div>'
+      + '<div class="chips"><button class="chip' + (I.reste ? ' on' : '') + '" data-act="ireste">Pas encore comptés · ' + (tot - faits) + '</button><button class="chip' + (!I.reste ? ' on' : '') + '" data-act="itout">Tous</button></div></div>';
+    if (I.reste) l = l.filter(function (a) { return I.d[a.id] == null || I.d[a.id] === ''; });
     if (!l.length) h += '<p class="mu">Aucun article.</p>';
     else h += '<div class="sect">' + (emp ? '⭐ Les plus sortis du cabinet ' + emp + ' en premier' : '⭐ Les plus sortis du centre en premier') + ' · ' + nbComptes() + ' compté(s)</div><div class="card liste">' + l.slice(0, max).map(function (a) {
       var v = I.d[a.id];
@@ -522,7 +629,7 @@
     sb.rpc('regler_j0', { p_actif: on, p_jours: 7 }).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } S.j0 = r.data; S.inv.j0ask = false; toast(on ? '✔ Inventaire de départ lancé pour 7 jours' : '✔ Inventaire de départ terminé'); charger(); });
   }
 
-  function vBarInv() { var n = nbComptes(); return '<div class="bar"><div class="bar-in"><span class="grow mu">' + n + ' article(s) comptés · ' + cabTxt(S.inv.emp) + '</span><button class="btn" data-act="iterminer"' + (n || aZero().length ? '' : ' disabled') + '>Terminer</button></div></div>'; }
+  function vBarInv() { var n = nbComptes(), ok = n || aZero().length; return '<div class="bar"><div class="bar-in"><button class="btn gold gros verif" data-act="iterminer"' + (ok ? '' : ' disabled') + '>' + (ok ? '<span>J’ai fini de compter</span><span>Voir le bilan ›</span>' : '<span>Comptez au moins un article</span>') + '</button></div></div>'; }
 
   // ---------- Tableau de bord (gestion) ----------
   var STF = { commander: 'À commander', rupture: 'En rupture', sr: 'Sans référence', sf: 'Sans fournisseur', seuil: 'Sans seuil' };
@@ -1556,6 +1663,11 @@
     var t = e.target.closest('button'); if (!t || !S.me) return;
     var d = t.dataset;
     if (d.go) { var g = d.go.split(':'); S.tab = g[0]; S.tabChoisi = true; if (g[0] === 'stock') S.stockF = g[1] || ''; if (g[0] === 'inventaire' && g[1] !== undefined) choisirEmp(+g[1]); if (g[0] === 'histo') { S.histTous = true; chargerHisto(); } render(); window.scrollTo(0, 0); return; }
+    if (d.act === 'ireste') { S.inv.reste = true; render(); return; }
+    if (d.act === 'itout') { S.inv.reste = false; render(); return; }
+    if (d.act === 'refaire') return refaireSortie();
+    if (d.act === 'accueil') { S.sortie.ok = null; S.sortie.voir = false; S.tab = gestion() ? 'accueil' : 'maison'; render(); window.scrollTo(0, 0); return; }
+    if (d.act === 'snouv') { S.sortie.ok = null; S.tab = 'sortie'; render(); window.scrollTo(0, 0); return; }
     if (d.act === 'tour') { lancerTour(); return; }
     if (d.act === 'toursuiv') { if (S.tour.i >= etapesTour().length - 1) { S.tour = null; marquerVu('visite'); render(); toast('✔ Visite terminée — les fiches restent dans Aide'); } else { S.tour.i++; allerEtape(); } return; }
     if (d.act === 'tourprec') { S.tour.i = Math.max(0, S.tour.i - 1); allerEtape(); return; }
@@ -1563,7 +1675,7 @@
     if (d.act === 'bvno') { marquerVu('bienvenue'); render(); return; }
     if (d.essai) { marquerVu(d.gid); S.aideOuverte = d.gid; S.tab = d.essai; S.tabChoisi = true; if (d.essai === 'histo') chargerHisto(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'menu') { S.menu = !S.menu; render(); return; }
-    if (d.tab) { S.menu = false; S.fiche = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); if (d.tab === 'plus') chargerEcarts(); render(); window.scrollTo(0, 0); return; }
+    if (d.tab) { S.menu = false; S.fiche = null; if (d.tab === 'sortie') S.sortie.ok = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); if (d.tab === 'plus') chargerEcarts(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'out') { if (confirm('Changer de personne ? La personne suivante devra se connecter avec son identifiant et son code.')) deconnexion(); return; }
     if (d.act === 'maj') return mettreAJour();
     if (d.ecp) { S.ecarts = S.ecarts || {}; S.ecarts.p = d.ecp; chargerEcarts(); render(); return; }
