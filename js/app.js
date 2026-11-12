@@ -185,7 +185,7 @@
     tabs.push(['aide', '❓ Aide']);
     var h = '<header class="top"><div class="top-in"><img src="assets/logo-evydent.jpg" alt="">'
       + '<div class="top-who"><b><span class="nom">' + esc(S.me.nom) + '</span>' + (C.env === 'dev' ? ' <span class="env">TEST</span>' : '') + '</b>' + (C.env === 'dev' ? '<small class="ver">Version ' + esc(C.version || '') + '</small>' : '') + '<span>' + LABEL[S.me.role] + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + '</span></div>'
-      + '<button class="btn l sm" data-tab="compte" title="Changer mon code" aria-label="Changer mon code">🔑</button><button class="btn l sm" data-act="out" aria-label="Changer de personne"><span class="m-hide">Changer de personne</span><span class="m-only">👤 Changer</span></button></div>'
+      + '<button class="btn l sm" data-tab="compte" title="Changer mon code" aria-label="Changer mon code">' + ico('code', 20, 2.2) + '</button><button class="btn l sm" data-act="out" aria-label="Changer de personne"><span class="m-hide">Changer de personne</span><span class="m-only avec-ic">' + ico('changer', 18, 2.2) + 'Changer</span></button></div>'
       + '<nav class="tabs" aria-label="Menu">' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav></header>';
     if (S.nouvelleVersion) h += '<div class="ban ok" style="max-width:1100px;margin:10px auto 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1">Une nouvelle version de l’application est disponible (' + esc(S.nouvelleVersion) + ').</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>';
     h += '<main>' + vBienvenue() + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour, plus: vPlus, aide: vAide, maison: vMaison, moi: vMoi }[S.tab] || vSortie)() + '</main>';
@@ -308,6 +308,27 @@
     document.body.appendChild(d);
   }
 
+  // ---------- Icônes dessinées (les mêmes que la maquette) ----------
+  var SVGI = {
+    sortie: '<path d="M3 13h5l1 3h6l1-3h5v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M12 3v9M8 7l4-4 4 4"/>',
+    inventaire: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12l2 2 4-4M9 17h6"/>',
+    retour: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
+    maison: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+    histo: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    aide: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14M12 17.5v.01"/>',
+    moi: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+    refaire: '<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/>',
+    code: '<rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+    tel: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>',
+    changer: '<path d="M16 3l4 4-4 4M20 7H9M8 21l-4-4 4-4M4 17h11"/>',
+    suiv: '<path d="M9 6l6 6-6 6"/>', prec: '<path d="M15 6l-6 6 6 6"/>',
+    ok: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    cabinet: '<path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-6h6v6"/>',
+    boite: '<path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
+    attente: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 1.5"/>'
+  };
+  function ico(n, sz, ep) { return '<svg class="ic" width="' + (sz || 24) + '" height="' + (sz || 24) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (ep || 2) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + SVGI[n] + '</svg>'; }
+
   // ---------- Accueil des assistantes : 3 grandes tuiles ----------
   function derniereSortie() {
     var m = (S.recents || []).filter(function (x) { return x.type === 'sortie' && x.statut === 'ok' && x.auteur === S.me.id; });
@@ -325,11 +346,11 @@
     var h = '<div class="maison-hd"><h2>Bonjour ' + esc(S.me.nom) + '</h2><p>' + (S.me.cabinet ? 'Cabinet ' + S.me.cabinet + ' · ' : '') + j + '</p></div>';
     if (S.sortie.ok) h += '';
     h += '<div class="tuiles">'
-      + '<button class="tuile t1" data-tab="sortie"><span class="ti">📤</span><span class="tt"><b>Sortie</b><span>Prendre dans la réserve</span></span><span class="tc">›</span></button>'
-      + '<button class="tuile" data-tab="inventaire"><span class="ti">📋</span><span class="tt"><b>Inventaire</b><span>Compter mon cabinet</span>' + (inventaireAFaire() ? '<em>À faire ce mois-ci</em>' : '') + '</span><span class="tc">›</span></button>'
-      + '<button class="tuile" data-tab="retour"><span class="ti">↩️</span><span class="tt"><b>Retour</b><span>Rendre des boîtes fermées</span></span><span class="tc">›</span></button></div>';
-    if (ds) h += '<button class="raccourci" data-act="refaire"><span class="ti">🔁</span><span><b>Refaire ma dernière sortie</b><br>' + ds.l.slice(0, 3).map(function (x) { return esc(S.byId[x.article_id].nom) + ' × ' + fr(x.quantite); }).join(' · ') + (ds.l.length > 3 ? '…' : '') + '</span></button>';
-    if (mesAtt.length) h += '<p class="mu" style="margin:10px 4px 0">⏳ ' + mesAtt.length + ' demande(s) en attente de validation : ' + mesAtt.slice(0, 3).map(function (x) { var a = S.byId[x.article_id]; return esc(a ? a.nom : '?') + ' × ' + fr(x.quantite); }).join(', ') + '</p>';
+      + '<button class="tuile t1" data-tab="sortie"><span class="ti">' + ico('sortie', 34) + '</span><span class="tt"><b>Sortie</b><span>Prendre dans la réserve</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
+      + '<button class="tuile" data-tab="inventaire"><span class="ti">' + ico('inventaire', 32) + '</span><span class="tt"><b>Inventaire</b><span>Compter mon cabinet</span>' + (inventaireAFaire() ? '<em>À faire ce mois-ci</em>' : '') + '</span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
+      + '<button class="tuile" data-tab="retour"><span class="ti">' + ico('retour', 32) + '</span><span class="tt"><b>Retour</b><span>Rendre des boîtes fermées</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button></div>';
+    if (ds) h += '<button class="raccourci" data-act="refaire"><span class="ti">' + ico('refaire', 24, 2.2) + '</span><span><b>Refaire ma dernière sortie</b><br>' + ds.l.slice(0, 3).map(function (x) { return esc(S.byId[x.article_id].nom) + ' × ' + fr(x.quantite); }).join(' · ') + (ds.l.length > 3 ? '…' : '') + '</span></button>';
+    if (mesAtt.length) h += '<p class="mu attente-l">' + ico('attente', 18) + ' ' + mesAtt.length + ' demande(s) en attente de validation : ' + mesAtt.slice(0, 3).map(function (x) { var a = S.byId[x.article_id]; return esc(a ? a.nom : '?') + ' × ' + fr(x.quantite); }).join(', ') + '</p>';
     return h;
   }
   function refaireSortie() {
@@ -340,23 +361,23 @@
   function vMoi() {
     return '<div class="moi-hd"><span class="av">' + esc((S.me.nom || '?').charAt(0).toUpperCase()) + '</span><div><h2>' + esc(S.me.nom) + '</h2><p>' + LABEL[S.me.role] + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + ' · identifiant ' + esc(S.me.identifiant) + '</p></div></div>'
       + '<div class="card liste-moi">'
-      + '<button class="it lrow" data-tab="aide"><span class="ti">❓</span><span class="it-n"><b>Aide et visite guidée</b><span>8 fiches pas à pas</span></span><span>›</span></button>'
-      + '<button class="it lrow" data-tab="compte"><span class="ti">🔑</span><span class="it-n"><b>Changer mon code</b><span>6 chiffres</span></span><span>›</span></button>'
-      + '<button class="it lrow" data-essai="aide" data-gid="iphone"><span class="ti">📱</span><span class="it-n"><b>Mettre l’appli sur mon téléphone</b><span>icône sur l’écran d’accueil</span></span><span>›</span></button></div>'
-      + '<button class="btn gros" data-act="out">👤 Changer de personne</button><p class="mu" style="text-align:center;margin:8px 0 0">À utiliser avant de passer le téléphone à une collègue : l’appli se vide pour elle.</p>';
+      + '<button class="it lrow" data-tab="aide"><span class="ti">' + ico('aide', 20) + '</span><span class="it-n"><b>Aide et visite guidée</b><span>8 fiches pas à pas</span></span><span class="chev">' + ico('suiv', 20) + '</span></button>'
+      + '<button class="it lrow" data-tab="compte"><span class="ti">' + ico('code', 20) + '</span><span class="it-n"><b>Changer mon code</b><span>6 chiffres</span></span><span class="chev">' + ico('suiv', 20) + '</span></button>'
+      + '<button class="it lrow" data-essai="aide" data-gid="iphone"><span class="ti">' + ico('tel', 20) + '</span><span class="it-n"><b>Mettre l’appli sur mon téléphone</b><span>icône sur l’écran d’accueil</span></span><span>›</span></button></div>'
+      + '<button class="btn gros avec-ic" data-act="out">' + ico('changer', 22, 2.2) + 'Changer de personne</button><p class="mu" style="text-align:center;margin:8px 0 0">À utiliser avant de passer le téléphone à une collègue : l’appli se vide pour elle.</p>';
   }
 
   // ---------- Navigation téléphone : barre du bas + menu ----------
   var ICO = { accueil: '🏠', sortie: '📤', retour: '↩️', inventaire: '📋', demandes: '⏳', stock: '📦', commandes: '🛒', articles: '🏷️', fournisseurs: '🚚', histo: '🕘', equipe: '👥', plus: '⚙️', compte: '🔑', aide: '❓', maison: '🏠', moi: '👤' };
   var NOMS = { accueil: 'Accueil', sortie: 'Sortie', retour: 'Retour', inventaire: 'Inventaire', demandes: 'Demandes', stock: 'Stock', commandes: 'Commandes', articles: 'Articles', fournisseurs: 'Fournisseurs', histo: 'Historique', equipe: 'Équipe', plus: 'Plus', compte: 'Mon code', aide: 'Aide', maison: 'Accueil', moi: 'Moi' };
-  function retourAcc(titre) { return '<div class="tache-hd">' + (!gestion() ? '<button class="retour-acc" data-act="accueil">‹ Accueil</button>' : '') + '<h2>' + titre + '</h2></div>'; }
+  function retourAcc(titre) { return '<div class="tache-hd">' + (!gestion() ? '<button class="retour-acc" data-act="accueil">' + ico('prec', 18, 2.6) + 'Accueil</button>' : '') + '<h2>' + titre + '</h2></div>'; }
   function enTache() { return !gestion() && ['sortie', 'retour', 'inventaire'].indexOf(S.tab) >= 0; }
   function vNavMobile() {
     if (!gestion()) {
       if (enTache()) return '';
       var cur = S.tab === 'compte' ? 'moi' : S.tab;
       return '<nav class="bnav a4" aria-label="Menu principal">' + ['maison', 'histo', 'aide', 'moi'].map(function (t) {
-        return '<button data-tab="' + t + '" class="' + (cur === t ? 'on' : '') + '"><span class="bi">' + ICO[t] + '</span><span>' + NOMS[t] + '</span></button>';
+        return '<button data-tab="' + t + '" class="' + (cur === t ? 'on' : '') + '"><span class="bi">' + ico(t, 24) + '</span><span>' + NOMS[t] + '</span></button>';
       }).join('') + '</nav>';
     }
     var bas = ['accueil', 'sortie', 'inventaire', 'commandes'];
@@ -413,9 +434,9 @@
   }
   function vSortieVerif() {
     var s = S.sortie, ids = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; }), hors = S.me.cabinet && +s.cab !== +S.me.cabinet;
-    var h = '<div class="tache-hd"><button class="retour-acc" data-act="svoir">‹ Modifier</button><h2>Ma sortie</h2></div>';
+    var h = '<div class="tache-hd"><button class="retour-acc" data-act="svoir">' + ico('prec', 18, 2.6) + 'Modifier</button><h2>Ma sortie</h2></div>';
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
-    h += '<div class="card pour">🏠 Pour le <b>cabinet ' + s.cab + '</b>' + (hors ? ' <span class="pill warn">hors cabinet · remplacement</span>' : ' (le mien)') + '</div>';
+    h += '<div class="card pour">' + ico('cabinet', 24) + '<span>Pour le <b>cabinet ' + s.cab + '</b>' + (hors ? ' <span class="pill warn">hors cabinet · remplacement</span>' : ' (le mien)') + '</span></div>';
     h += '<div class="card liste">' + ids.map(function (k) { return S.byId[k]; }).filter(Boolean).map(function (a) { return ligneSortie(a, s); }).join('') + '</div>';
     h += '<button class="btn l ajout" data-act="svoir">+ Ajouter un article</button>';
     if (ids.some(function (k) { var a = S.byId[k]; return a && s.panier[k] > dispoUnites(a); })) h += '<p class="ban warn">Certaines quantités dépassent la réserve : la partie en trop partira en demande à confirmer par la référente.</p>';
@@ -423,7 +444,7 @@
   }
   function vSortieOk() {
     var o = S.sortie.ok;
-    return '<div class="ok-ecran"><span class="ok-rond" role="img" aria-label="Validé">✓</span><h2>' + (o.attente && !o.sorties ? 'Demande envoyée' : 'C’est enregistré') + '</h2>'
+    return '<div class="ok-ecran"><span class="ok-rond" role="img" aria-label="Validé">' + ico('ok', 60, 2.6) + '</span><h2>' + (o.attente && !o.sorties ? 'Demande envoyée' : 'C’est enregistré') + '</h2>'
       + '<p>' + (o.sorties ? o.sorties + ' article(s) sorti(s) pour le <b>cabinet ' + o.cab + '</b>' : '') + (o.resume ? '<br>' + o.resume : '') + '</p>'
       + (o.attente ? '<p class="ban warn">⏳ ' + o.attente + ' article(s) dépassent la réserve : demande envoyée à la référente.</p>' : '')
       + (o.hors ? '<p class="mu">Enregistré « hors cabinet » (remplacement).</p>' : '')
@@ -435,13 +456,13 @@
     var n = Object.keys(S.sortie.panier).filter(function (k) { return S.sortie.panier[k] > 0; }).length;
     if (S.sortie.voir && n) return '<div class="bar"><div class="bar-in"><button class="btn gros" data-act="valider"' + (S.sortie.busy ? ' disabled' : '') + '>' + (S.sortie.busy ? 'Enregistrement…' : 'Valider la sortie') + '</button></div></div>';
     if (!n) return '<div class="bar"><div class="bar-in"><span class="grow mu">Touchez + pour choisir des articles</span></div></div>';
-    return '<div class="bar"><div class="bar-in"><button class="btn gold gros verif" data-act="svoir"><span>🧺 ' + n + ' article(s) choisi(s)</span><span>Vérifier ›</span></button></div></div>';
+    return '<div class="bar"><div class="bar-in"><button class="btn gold gros verif" data-act="svoir"><span>' + n + ' article(s) choisi(s)</span><span class="avec-ic">Vérifier' + ico('suiv', 20, 2.6) + '</span></button></div></div>';
   }
   // ---------- Retour d'un cabinet vers la réserve (tout le monde) ----------
   // Saisie dans l'unité de la réserve, en entiers : boîtes fermées pour un article rangé en boîte.
   function vRetour() {
     var s = S.ret, hors = S.me.cabinet && +s.cab !== +S.me.cabinet;
-    var h = retourAcc('Retour en réserve') + '<p class="ban warn" style="margin:0 0 10px">📦 On ne rend que des <b>boîtes fermées</b>. Les unités en vrac restent au cabinet.</p>';
+    var h = retourAcc('Retour en réserve') + '<p class="ban warn avec-ic" style="margin:0 0 10px">' + ico('boite', 22) + '<span>On ne rend que des <b>boîtes fermées</b>. Les unités en vrac restent au cabinet.</span></p>';
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
     h += '<div class="card filtre"><div class="frow"><label class="mu fcab"><span class="m-hide">Depuis le cabinet</span><select class="in" id="rcab" aria-label="Depuis le cabinet">'
       + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+s.cab === c ? ' selected' : '') + '>Cab. ' + c + (S.me.cabinet === c ? ' ★' : '') + '</option>'; }).join('')
@@ -629,7 +650,7 @@
     sb.rpc('regler_j0', { p_actif: on, p_jours: 7 }).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } S.j0 = r.data; S.inv.j0ask = false; toast(on ? '✔ Inventaire de départ lancé pour 7 jours' : '✔ Inventaire de départ terminé'); charger(); });
   }
 
-  function vBarInv() { var n = nbComptes(), ok = n || aZero().length; return '<div class="bar"><div class="bar-in"><button class="btn gold gros verif" data-act="iterminer"' + (ok ? '' : ' disabled') + '>' + (ok ? '<span>J’ai fini de compter</span><span>Voir le bilan ›</span>' : '<span>Comptez au moins un article</span>') + '</button></div></div>'; }
+  function vBarInv() { var n = nbComptes(), ok = n || aZero().length; return '<div class="bar"><div class="bar-in"><button class="btn gold gros verif" data-act="iterminer"' + (ok ? '' : ' disabled') + '>' + (ok ? '<span>J’ai fini de compter</span><span class="avec-ic">Voir le bilan' + ico('suiv', 20, 2.6) + '</span>' : '<span>Comptez au moins un article</span>') + '</button></div></div>'; }
 
   // ---------- Tableau de bord (gestion) ----------
   var STF = { commander: 'À commander', rupture: 'En rupture', sr: 'Sans référence', sf: 'Sans fournisseur', seuil: 'Sans seuil' };

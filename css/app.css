@@ -366,3 +366,23 @@ input,select,textarea{font-size:16px}
   body.sans-nav main{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
   body.sans-nav .toast{bottom:calc(90px + env(safe-area-inset-bottom))}
 }
+
+/* ---------- Icônes dessinées (comme la maquette) ---------- */
+.ic{flex:none;display:block}
+.tuile .ti{color:var(--navy)}
+.tuile.t1 .ti{color:var(--ink)}
+.tuile .tc{display:flex;align-items:center}
+.raccourci .ti{color:var(--ok);display:flex}
+.liste-moi .ti{color:var(--navy)}
+.liste-moi .chev{color:var(--mute);display:flex}
+.retour-acc{display:inline-flex;align-items:center;gap:4px}
+.avec-ic{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+p.avec-ic,.ban.avec-ic{display:flex;justify-content:flex-start;gap:10px}
+.pour{display:flex;align-items:center;gap:12px;color:var(--ink)}
+.pour .ic{color:var(--navy)}
+.ok-rond .ic{color:#fff}
+.attente-l{display:flex;align-items:center;gap:6px;margin:10px 4px 0}
+.bnav.a4 .bi{display:flex;justify-content:center}
+.bnav.a4 .bi .ic{width:24px;height:24px}
+.bnav.a4 button.on .bi{color:var(--gold)}
+.top .btn.sm{display:inline-flex;align-items:center;justify-content:center}
