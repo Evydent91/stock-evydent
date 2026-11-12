@@ -15,7 +15,11 @@ window.JOURNAL = [{v:"2.2",t:"Mineure",n:"Appli des assistantes simplifiée",d:"
  "Sortie : filtres « Les plus sortis », « Mes favoris » (les articles que l’on sort soi-même le plus souvent) et « A → Z » ; chaque article indique simplement « à l’unité » ou « boîte entière », la réserve et « bientôt vide » sous le seuil.",
  "Inventaire : filtres « Pas encore comptés » (par défaut), « Tous » et « Chercher » ; « compté ✓ » en vert ; bilan avec 3 compteurs (comptés, pas bougé, utilisés).",
  "Historique regroupé par jour avec une icône par type (sortie, demande en attente, retour, inventaire) ; Moi avec la pastille du prénom.",
- "Référente et responsable : écrans inchangés, sauf la connexion."],x:[]},
+ "Lieux d’utilisation des articles : Lieu 1 « Cabinets » (n’importe quel cabinet) et Lieu 2 « La Sté », un article pouvant avoir les deux ; case « Type de soins » (texte libre en attendant la liste fixe). Dans la fiche article, dans l’export / import Excel des articles (3 nouvelles colonnes) et en filtres « La Sté » et « Sans lieu » dans Articles.",
+ "Nouvel emplacement « La Sté » : sorties de la réserve vers la Sté et inventaire de la Sté, comme un cabinet (pas de retour). Dans Sortie et Inventaire, le bouton du cabinet propose « La Sté » en dernier.",
+ "Les listes de Sortie et d’Inventaire ne montrent que les articles du lieu choisi (cabinets ou Sté) ; la recherche trouve toujours tous les articles. L’inventaire montre aussi tout article qui a du stock à cet endroit.",
+ "Tableau de bord, Stock, fiche article, correction de quantités et sauvegarde Excel : la Sté apparaît à côté des cabinets.",
+ "Référente et responsable : écrans inchangés, sauf la connexion et les ajouts ci-dessus."],x:["Mise à jour 008 de la base : 3 colonnes sur les articles (Cabinets = oui et Sté = non pour les articles existants, type de soins vide) et emplacement n° 9 « La Sté » accepté pour les sorties et l’inventaire (pas pour les retours). Aucune donnée existante modifiée."]},
 {v:"2.1",t:"Mineure",n:"Confort sur téléphone et listes classées",d:"Novembre 2026 (en test)",
  w:"Rendre l’application plus simple à utiliser d’une main sur téléphone (iPhone et Android), là où elle sert le plus au cabinet.",
  c:[

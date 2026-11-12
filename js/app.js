@@ -31,7 +31,13 @@
   function dispoUnites(a) { return nb(stockDe(a.id, 0) * facteur(a)); }
   function uRes(a) { return a.conditionnement === 'BOITE' ? 'boîte(s)' : 'u.'; }
   function quand(d) { var x = new Date(d); return x.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + ' ' + x.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
-  function cabTxt(e) { return e === 0 ? 'Réserve' : 'Cab. ' + e; }
+  function cabTxt(e) { return e === 0 ? 'Réserve' : e === 9 ? 'La Sté' : 'Cab. ' + e; }
+  // Emplacement 9 = « La Sté » (stérilisation) : sorties et inventaire comme un cabinet, sans retour.
+  function lieuTxt(e) { return +e === 9 ? 'la Sté' : 'cabinet ' + e; }
+  function pourTxt(e) { return +e === 9 ? '<b>la Sté</b>' : 'le <b>cabinet ' + e + '</b>'; }
+  // L'article est-il utilisé à cet emplacement ? (Lieu 1 = cabinets, Lieu 2 = la Sté ; la réserve voit tout)
+  function pourLieu(a, e) { e = +e; return e === 9 ? a.lieu_ste === true : e >= 1 && e <= 8 ? a.lieu_cabinets !== false : true; }
+  function horsCab(e) { e = +e; return !!S.me.cabinet && e >= 1 && e <= 8 && e !== +S.me.cabinet; }
   var tt;
   function toast(m) { var t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(function () { t.classList.remove('on'); }, 3200); }
   function msgErr(e) {
@@ -135,7 +141,7 @@
   }
   function charger() {
     var ps = [
-      toutLire('articles', 'id,code,nom,reference,fournisseur_id,conditionnement,qte_par_boite,consommation,conso_verifiee,seuil,sans_seuil,cout_moyen,prix,archive', function (q) { return q.order('nom'); }),
+      toutLire('articles', '*', function (q) { return q.order('nom'); }),
       toutLire('stocks', 'article_id,emplacement,quantite'),
       toutLire('fournisseurs', '*', function (q) { return q.order('nom'); }),
       sb.from('profils').select('*').order('nom').then(function (r) { if (r.error) throw r.error; return r.data; }),
@@ -202,7 +208,7 @@
       + '<button class="btn l sm" data-tab="compte" title="Changer mon code" aria-label="Changer mon code">' + ico('code', 20, 2.2) + '</button><button class="btn l sm" data-act="out" aria-label="Changer de personne"><span class="m-hide">Changer de personne</span><span class="m-only avec-ic">' + ico('changer', 18, 2.2) + 'Changer</span></button></div>'
       + '<nav class="tabs" aria-label="Menu">' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav></header>';
     if (S.nouvelleVersion) h += '<div class="ban ok" style="max-width:1100px;margin:10px auto 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1">Une nouvelle version de l’application est disponible (' + esc(S.nouvelleVersion) + ').</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>';
-    h += '<main>' + vBienvenue() + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour, plus: vPlus, aide: vAide, maison: vMaison, moi: vMoi }[S.tab] || vSortie)() + '</main>';
+    h += '<main>' + vBienvenue() + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour, plus: vPlus, aide: vAide, maison: vMaison, moi: vMoiA }[S.tab] || vSortie)() + '</main>';
     h += '<p class="mu" style="text-align:center;font-size:12px;margin:0 0 90px">Version ' + esc(C.version || '') + '</p>';
     h += vNavMobile();
     h += (S.tab === 'sortie' ? vBarSortie() : S.tab === 'retour' ? vBarRetour() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
@@ -226,7 +232,8 @@
       'Les articles que votre cabinet sort le plus sont <b>en haut de la liste</b>. « Mes favoris » montre ceux que vous sortez vous-même, « A → Z » l’ordre alphabétique. Sinon, tapez quelques lettres dans <b>Chercher un article</b>.',
       'Appuyez sur <b>+</b> pour chaque unité prise (ou tapez directement le nombre). L’article passe en vert.',
       'Appuyez sur le gros bouton doré <b>Vérifier</b> : votre sortie s’affiche. Corrigez si besoin, puis <b>Valider la sortie</b>. Un écran vert confirme, puis l’appli revient à l’accueil.',
-      'Si la réserve n’en a pas assez, la quantité en trop part en <b>demande à confirmer</b> par la référente : c’est normal.'] },
+      'Si la réserve n’en a pas assez, la quantité en trop part en <b>demande à confirmer</b> par la référente : c’est normal.',
+      'Pour la stérilisation, choisissez <b>La Sté</b> à la place du cabinet (bouton doré en haut) : seuls les articles de la Sté s’affichent. Même chose pour l’inventaire de la Sté.'] },
     { id: 'remplacement', ic: '🔄', t: 'Remplacer une collègue dans un autre cabinet', duree: '1 min', tab: 'sortie', e: [
       'Dans Sortie, Retour ou Inventaire, changez le cabinet dans la liste en haut (ex. : Cab. 6).',
       'Un bandeau orange rappelle que ce n’est pas votre cabinet : l’opération sera notée « hors cabinet ». Rien d’autre à faire.'] },
@@ -371,8 +378,8 @@
       + (o.t ? '<div class="a-hd-row">' + (o.back ? '<button class="a-back" ' + o.back[0] + '>' + ico('prec', 22, 2.4) + o.back[1] + '</button>' : '<span></span>') + '<h1>' + o.t + '</h1>' + (o.cab || '<span></span>') + '</div>' : '')
       + (o.extra || '') + '</header>';
   }
-  function cabA(id, cur, avant, label) {
-    return '<label class="a-cab"><select id="' + id + '" aria-label="' + (label || 'Cabinet') + '">' + (avant || '') + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+cur === c && cur !== '' && cur != null ? ' selected' : '') + '>Cabinet ' + c + '</option>'; }).join('') + '</select></label>';
+  function cabA(id, cur, avant, label, ste) {
+    return '<label class="a-cab"><select id="' + id + '" aria-label="' + (label || 'Cabinet') + '">' + (avant || '') + (ste ? [1, 2, 3, 4, 5, 6, 7, 8, 9] : [1, 2, 3, 4, 5, 6, 7, 8]).map(function (c) { return '<option value="' + c + '"' + (+cur === c && cur !== '' && cur != null ? ' selected' : '') + '>' + (c === 9 ? 'La Sté' : 'Cabinet ' + c) + '</option>'; }).join('') + '</select></label>';
   }
   function chercheA(id, v, cls) { return '<label class="a-search' + (cls ? ' ' + cls : '') + '">' + ico('loupe', 20, 2.2) + '<input id="' + id + '" type="search" placeholder="Chercher un article" value="' + esc(v || '') + '" aria-label="Chercher un article" autocomplete="off"></label>'; }
   function trouve(q) { return function (a) { return norm(a.nom + ' ' + (a.reference || '')).indexOf(q) >= 0; }; }
@@ -409,20 +416,20 @@
       + '<div class="a-st"><button type="button" data-moins="' + a.id + '" aria-label="Moins un">−</button><input inputmode="decimal" data-qte="' + a.id + '" value="' + (v || '') + '" placeholder="0" aria-label="Quantité en ' + uSortie(a, 2) + '"><button type="button" data-plus="' + a.id + '" aria-label="Plus un">+</button></div></div>';
   }
   function vSortieA() {
-    var s = S.sortie, hors = S.me.cabinet && +s.cab !== +S.me.cabinet;
+    var s = S.sortie, hors = horsCab(s.cab);
     if (s.ok) return vSortieOkA();
     var ids = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; });
     if (s.voir && ids.length) return vSortieVerifA(ids, hors);
     var tri = s.tri || 'usage', q = norm(s.q), max = s.max || 30, l;
-    var h = hdA({ back: ACC, t: 'Sortie', cab: cabA('scab', s.cab), extra: chercheA('sq', s.q), fixe: true }) + '<div class="a-corps">';
+    var h = hdA({ back: ACC, t: 'Sortie', cab: cabA('scab', s.cab, '', 'Cabinet ou Sté', true), extra: chercheA('sq', s.q), fixe: true }) + '<div class="a-corps">';
     if (!q) h += '<div class="a-chips">' + [['usage', 'Les plus sortis'], ['fav', 'Mes favoris'], ['az', 'A → Z']].map(function (c) { return '<button class="a-ch' + (tri === c[0] ? ' on' : '') + '" data-stri="' + c[0] + '">' + c[1] + '</button>'; }).join('') + '</div>';
     if (hors) h += '<p class="a-note warn">Ce n’est pas votre cabinet : la sortie sera notée « hors cabinet » (remplacement).</p>';
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
     if (q) l = S.articles.filter(trouve(q)).sort(parUsage(+s.cab));
-    else if (tri === 'fav') { var f = favorisA(); l = S.articles.filter(function (a) { return f[a.id]; }).sort(function (x, y) { return f[y.id] - f[x.id] || x.nom.localeCompare(y.nom, 'fr'); }); }
-    else if (tri === 'az') l = S.articles.slice().sort(function (x, y) { return x.nom.localeCompare(y.nom, 'fr'); });
-    else l = S.articles.slice().sort(parUsage(+s.cab));
-    if (!l.length) return h + '<p class="a-vide">' + (q ? 'Aucun article trouvé.' : tri === 'fav' ? 'Vos favoris apparaîtront ici : ce sont les articles que vous sortez vous-même le plus souvent.' : 'Aucun article.') + '</p></div>';
+    else if (tri === 'fav') { var f = favorisA(); l = S.articles.filter(function (a) { return f[a.id] && pourLieu(a, s.cab); }).sort(function (x, y) { return f[y.id] - f[x.id] || x.nom.localeCompare(y.nom, 'fr'); }); }
+    else if (tri === 'az') l = S.articles.filter(function (a) { return pourLieu(a, s.cab); }).sort(function (x, y) { return x.nom.localeCompare(y.nom, 'fr'); });
+    else l = S.articles.filter(function (a) { return pourLieu(a, s.cab); }).sort(parUsage(+s.cab));
+    if (!l.length) return h + '<p class="a-vide">' + (q ? 'Aucun article trouvé.' : tri === 'fav' ? 'Vos favoris apparaîtront ici : ce sont les articles que vous sortez vous-même le plus souvent.' : +s.cab === 9 ? 'Aucun article n’est encore indiqué pour la Sté (fiche article, « Lieu 2 : La Sté »). Cherchez l’article en haut.' : 'Aucun article.') + '</p></div>';
     h += '<div class="a-liste">' + l.slice(0, q ? 40 : max).map(function (a) { return ligneSortieA(a, s); }).join('') + '</div>';
     if (!q && l.length > max) h += '<button class="a-plus" data-act="splus">Afficher plus d’articles (' + (l.length - max) + ')</button>';
     return h + '</div>';
@@ -430,14 +437,14 @@
   function vSortieVerifA(ids, hors) {
     var s = S.sortie, h = hdA({ back: ['data-act="svoir"', 'Modifier'], t: 'Ma sortie', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
-    h += '<div class="a-pour">' + ico('cabinet', 26) + '<span>Pour le <b>cabinet ' + s.cab + '</b>' + (hors ? ' · <span class="warn-t">remplacement (hors cabinet)</span>' : S.me.cabinet ? ' (le mien)' : '') + '</span></div>';
+    h += '<div class="a-pour">' + ico('cabinet', 26) + '<span>Pour ' + pourTxt(s.cab) + (hors ? ' · <span class="warn-t">remplacement (hors cabinet)</span>' : S.me.cabinet && +s.cab === +S.me.cabinet ? ' (le mien)' : '') + '</span></div>';
     h += '<div class="a-liste">' + ids.map(function (k) { return S.byId[k]; }).filter(Boolean).map(function (a) { return ligneSortieA(a, s, true); }).join('') + '</div>';
     return h + '<button class="a-ajout" data-act="svoir">+ Ajouter un article</button><p class="a-aide">Si la réserve n’en a pas assez, la quantité en trop part en demande à confirmer par la référente.</p></div>';
   }
   function vSortieOkA() {
     var o = S.sortie.ok;
     return '<div class="a-ok"><div class="a-ok-c"><span class="a-ok-rond" role="img" aria-label="Validé">' + ico('ok', 64, 2.6) + '</span><h1>' + (o.attente && !o.sorties ? 'Demande envoyée' : 'C’est enregistré') + '</h1>'
-      + '<p>' + (o.sorties ? o.sorties + ' ' + pl(o.sorties, 'article') + ' ' + pl(o.sorties, 'sorti') + ' pour le <b>cabinet ' + o.cab + '</b>' : '') + (o.resume ? '<br>' + o.resume : '') + '</p>'
+      + '<p>' + (o.sorties ? o.sorties + ' ' + pl(o.sorties, 'article') + ' ' + pl(o.sorties, 'sorti') + ' pour ' + pourTxt(o.cab) : '') + (o.resume ? '<br>' + o.resume : '') + '</p>'
       + (o.attente ? '<p class="a-note warn">' + o.attente + ' ' + pl(o.attente, 'article') + ' ' + (o.attente > 1 ? 'dépassent' : 'dépasse') + ' la réserve : demande envoyée à la référente.</p>' : '')
       + (o.hors ? '<p class="a-aide">Noté « hors cabinet » (remplacement).</p>' : '')
       + '<p class="a-ok-auto">Retour à l’accueil dans quelques secondes…</p></div>'
@@ -453,7 +460,7 @@
 
   // Retour en réserve
   function vRetourA() {
-    var s = S.ret, hors = S.me.cabinet && +s.cab !== +S.me.cabinet, q = norm(s.q);
+    var s = S.ret, hors = horsCab(s.cab), q = norm(s.q);
     var h = hdA({ back: ACC, t: 'Retour', cab: cabA('rcab', s.cab), extra: chercheA('rq', s.q), fixe: true }) + '<div class="a-corps">'
       + '<div class="a-note warn">' + ico('boite', 22) + '<span>On ne rend que des <b>boîtes fermées</b>. Les unités en vrac restent au cabinet.</span></div>';
     if (hors) h += '<p class="a-note warn">Ce n’est pas votre cabinet : le retour sera noté « hors cabinet » (remplacement).</p>';
@@ -486,11 +493,11 @@
     var opts = (emp == null ? '<option value="">Choisir</option>' : '') + (peutReserve() ? '<option value="0"' + (emp === 0 ? ' selected' : '') + '>Réserve</option>' : '');
     var l = emp != null ? listeInv() : [], tot = l.length, faits = l.filter(function (a) { return I.d[a.id] != null && I.d[a.id] !== ''; }).length;
     var prog = emp != null ? '<div class="a-prog"><div><b>' + faits + ' ' + pl(faits, 'compté') + ' sur ' + tot + '</b><span>gardé sur le téléphone</span></div><i><b style="width:' + (tot ? Math.round(faits * 100 / tot) : 0) + '%"></b></i></div>' : '';
-    var h = hdA({ back: ACC, t: 'Inventaire', cab: cabA('iemp', emp == null ? '' : emp, opts, 'Emplacement à compter'), extra: prog, fixe: true }) + '<div class="a-corps">';
+    var h = hdA({ back: ACC, t: 'Inventaire', cab: cabA('iemp', emp == null ? '' : emp, opts, 'Emplacement à compter', true), extra: prog, fixe: true }) + '<div class="a-corps">';
     if (I.msg) h += '<div class="ban ' + I.msg[0] + '" role="status">' + I.msg[1] + '</div>';
     if (j0Actif()) h += '<div class="ban j0"><b>Inventaire de départ</b> jusqu’au ' + S.j0.fin.split('-').reverse().slice(0, 2).join('/') + ' : les quantités comptées <b>remplacent</b> le stock.' + (emp != null && j0Premier(emp) ? ' <b>Les articles non comptés passeront à 0.</b>' : '') + '</div>';
-    if (emp > 0 && S.me.cabinet && emp !== S.me.cabinet) h += '<p class="a-note warn">Ce n’est pas votre cabinet : l’inventaire sera noté « hors cabinet » (remplacement).</p>';
-    if (emp == null) return h + '<p class="a-vide">Choisissez le cabinet à compter, en haut à droite.</p></div>';
+    if (horsCab(emp)) h += '<p class="a-note warn">Ce n’est pas votre cabinet : l’inventaire sera noté « hors cabinet » (remplacement).</p>';
+    if (emp == null) return h + '<p class="a-vide">Choisissez le cabinet (ou la Sté) à compter, en haut à droite.</p></div>';
     if (emp === 0) h += '<div class="row wrap"><button class="btn l sm" data-act="iexp">⬇️ Fichier de comptage Excel</button><label class="btn l sm" style="display:inline-flex;align-items:center">⬆️ Importer le comptage<input type="file" id="iimpf" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label></div>';
     var reste = I.reste !== false && !I.cherche;
     h += '<div class="a-chips"><button class="a-ch' + (reste ? ' on' : '') + '" data-act="ireste">Pas encore comptés · ' + (tot - faits) + '</button><button class="a-ch' + (!reste && !I.cherche ? ' on' : '') + '" data-act="itout">Tous</button><button class="a-ch' + (I.cherche ? ' on' : '') + '" data-act="icherche">Chercher</button></div>';
@@ -514,7 +521,7 @@
     var n = nbComptes(), util = E.filter(function (e) { return e.apres < e.avant; }).length;
     var h = hdA({ back: ['data-act="irevenir"', 'Compter'], t: 'Bilan', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
     h += '<div class="a-stats"><div><b>' + n + '</b><span>' + pl(n, 'compté') + '</span></div><div><b class="ok">' + (n - E.length) + '</b><span>pas bougé</span></div><div><b class="navy">' + (cab ? util : E.length) + '</b><span>' + (cab ? pl(util, 'utilisé') : pl(E.length, 'changement')) + '</span></div></div>';
-    if (E.length) h += '<h2 class="a-h2">' + (cab ? 'Utilisé au cabinet depuis le dernier inventaire' : 'Ce qui change dans le stock') + '</h2><div class="a-liste">' + E.map(function (e) {
+    if (E.length) h += '<h2 class="a-h2">' + (cab ? 'Utilisé ' + (emp === 9 ? 'à la Sté' : 'au cabinet') + ' depuis le dernier inventaire' : 'Ce qui change dans le stock') + '</h2><div class="a-liste">' + E.map(function (e) {
       var d = e.apres - e.avant, plus = d > 0, u = uInv(e.a, emp) === 'u.' ? '' : ' ' + pl(d, 'boîte');
       var txt = 'il en restait ' + fr(e.avant) + ' · compté ' + (plus && cab ? fr(e.apres) + ' : ' + fr(d) + ' de plus. Une sortie oubliée ?' : '<strong>' + fr(e.apres) + '</strong>');
       var droite = cab ? (plus ? '+' + fr(d) + '<small>à vérifier</small>' : fr(-d) + '<small>' + pl(-d, 'utilisé') + '</small>') : (plus ? '+' : '') + fr(d) + '<small>' + (u || 'unités') + '</small>';
@@ -546,9 +553,9 @@
     var hr = new Date(m.cree_le).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), ic = 'histo', cls = '', t, sous, q = '', warn = false;
     var rempl = m.hors_cabinet ? ' · remplacement' : '';
     if (e.inv) {
-      ic = 'invok'; t = 'Inventaire ' + (m.emplacement_de === 0 ? 'de la réserve' : 'du cabinet ' + m.emplacement_de);
+      ic = 'invok'; t = 'Inventaire ' + (m.emplacement_de === 0 ? 'de la réserve' : m.emplacement_de === 9 ? 'de la Sté' : 'du cabinet ' + m.emplacement_de);
       sous = hr + ' · ' + e.n + ' ' + pl(e.n, 'article') + (e.u ? ' · ' + e.u + ' ' + pl(e.u, 'utilisé') : '') + (e.p ? ' · ' + e.p + ' à vérifier' : '') + rempl;
-    } else if (m.type === 'sortie') { ic = 'fleche'; cls = ' fonce'; t = 'Sortie · ' + nom; sous = hr + ' · cabinet ' + m.emplacement_vers + rempl; q = qteA(a, m.quantite); }
+    } else if (m.type === 'sortie') { ic = 'fleche'; cls = ' fonce'; t = 'Sortie · ' + nom; sous = hr + ' · ' + lieuTxt(m.emplacement_vers) + rempl; q = qteA(a, m.quantite); }
     else if (m.type === 'demande') {
       ic = 'attente'; cls = ' orange'; t = 'Demande · ' + nom; warn = m.statut === 'attente';
       sous = hr + ' · ' + (m.statut === 'attente' ? 'en attente de la référente' : m.statut === 'refuse' ? 'refusée' : m.statut === 'ok' ? 'confirmée' : (STAT[m.statut] || ['', m.statut])[1]); q = qteA(a, m.quantite);
@@ -641,14 +648,14 @@
       + '<div class="stpw"><div class="stp"><button type="button" data-moins="' + a.id + '" aria-label="Moins un">−</button><input inputmode="decimal" data-qte="' + a.id + '" value="' + (v || '') + '" placeholder="0" aria-label="Quantité en ' + uSortie(a, 2) + '"><button type="button" data-plus="' + a.id + '" aria-label="Plus un">+</button></div><small class="stpu ' + (enBoite(a) ? 'boite' : 'unite') + '">en ' + uSortie(a, 2) + '</small></div></div>';
   }
   function vSortie() {
-    var s = S.sortie, hors = S.me.cabinet && +s.cab !== +S.me.cabinet;
+    var s = S.sortie, hors = horsCab(s.cab);
     if (s.ok) return vSortieOk();
     var ids0 = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; });
     if (s.voir && ids0.length) return vSortieVerif();
     var h = retourAcc('Sortie');
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
     h += '<div class="card filtre"><div class="frow"><label class="mu fcab"><span class="m-hide">Cabinet</span><select class="in" id="scab" aria-label="Cabinet">'
-      + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+s.cab === c ? ' selected' : '') + '>Cab. ' + c + (S.me.cabinet === c ? ' ★' : '') + '</option>'; }).join('')
+      + [1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (c) { return '<option value="' + c + '"' + (+s.cab === c ? ' selected' : '') + '>' + cabTxt(c) + (S.me.cabinet === c ? ' ★' : '') + '</option>'; }).join('')
       + '</select></label><label class="mu fq"><span class="m-hide">Rechercher un article</span><input class="in" id="sq" type="search" placeholder="🔍 Nom ou référence" value="' + esc(s.q) + '" aria-label="Rechercher un article"></label></div>'
       + (hors ? '<p class="ban warn" style="margin:10px 0 0">Ce n’est pas votre cabinet : la sortie sera enregistrée « hors cabinet » (remplacement).</p>' : '') + '</div>';
     var q = norm(s.q), ids = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; }), tri = parUsage(+s.cab);
@@ -657,16 +664,16 @@
       return h + (trouves.length ? '<div class="card liste">' + trouves.map(function (a) { return ligneSortie(a, s); }).join('') + '</div>' : '<p class="mu">Aucun article trouvé.</p>');
     }
     if (s.voir && ids.length) return h + '<div class="sect row"><span class="grow">🧺 Dans la sortie · ' + ids.length + ' article(s)</span><button class="lnk" data-act="svoir">← Tous les articles</button></div><div class="card liste">' + ids.map(function (k) { return S.byId[k]; }).filter(Boolean).map(function (a) { return ligneSortie(a, s); }).join('') + '</div>';
-    var autres = S.articles.slice().sort(tri), max = s.max || 30;
-    h += '<div class="sect">⭐ Les plus sortis · cabinet ' + s.cab + '</div><div class="card liste">' + autres.slice(0, max).map(function (a) { return ligneSortie(a, s); }).join('') + '</div>';
+    var autres = S.articles.filter(function (a) { return pourLieu(a, s.cab); }).sort(tri), max = s.max || 30;
+    h += '<div class="sect">⭐ Les plus sortis · ' + lieuTxt(s.cab) + '</div><div class="card liste">' + autres.slice(0, max).map(function (a) { return ligneSortie(a, s); }).join('') + '</div>';
     if (autres.length > max) h += '<button class="btn l plus" data-act="splus">Afficher plus d’articles (' + (autres.length - max) + ' restants)</button>';
     return h;
   }
   function vSortieVerif() {
-    var s = S.sortie, ids = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; }), hors = S.me.cabinet && +s.cab !== +S.me.cabinet;
+    var s = S.sortie, ids = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; }), hors = horsCab(s.cab);
     var h = '<div class="tache-hd"><button class="retour-acc" data-act="svoir">' + ico('prec', 18, 2.6) + 'Modifier</button><h2>Ma sortie</h2></div>';
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
-    h += '<div class="card pour">' + ico('cabinet', 24) + '<span>Pour le <b>cabinet ' + s.cab + '</b>' + (hors ? ' <span class="pill warn">hors cabinet · remplacement</span>' : ' (le mien)') + '</span></div>';
+    h += '<div class="card pour">' + ico('cabinet', 24) + '<span>Pour ' + pourTxt(s.cab) + (hors ? ' <span class="pill warn">hors cabinet · remplacement</span>' : S.me.cabinet && +s.cab === +S.me.cabinet ? ' (le mien)' : '') + '</span></div>';
     h += '<div class="card liste">' + ids.map(function (k) { return S.byId[k]; }).filter(Boolean).map(function (a) { return ligneSortie(a, s); }).join('') + '</div>';
     h += '<button class="btn l ajout" data-act="svoir">+ Ajouter un article</button>';
     if (ids.some(function (k) { var a = S.byId[k]; return a && s.panier[k] > dispoUnites(a); })) h += '<p class="ban warn">Certaines quantités dépassent la réserve : la partie en trop partira en demande à confirmer par la référente.</p>';
@@ -675,7 +682,7 @@
   function vSortieOk() {
     var o = S.sortie.ok;
     return '<div class="ok-ecran"><span class="ok-rond" role="img" aria-label="Validé">' + ico('ok', 60, 2.6) + '</span><h2>' + (o.attente && !o.sorties ? 'Demande envoyée' : 'C’est enregistré') + '</h2>'
-      + '<p>' + (o.sorties ? o.sorties + ' article(s) sorti(s) pour le <b>cabinet ' + o.cab + '</b>' : '') + (o.resume ? '<br>' + o.resume : '') + '</p>'
+      + '<p>' + (o.sorties ? o.sorties + ' article(s) sorti(s) pour ' + pourTxt(o.cab) : '') + (o.resume ? '<br>' + o.resume : '') + '</p>'
       + (o.attente ? '<p class="ban warn">⏳ ' + o.attente + ' article(s) dépassent la réserve : demande envoyée à la référente.</p>' : '')
       + (o.hors ? '<p class="mu">Enregistré « hors cabinet » (remplacement).</p>' : '')
       + (!gestion() ? '<p class="ok-auto">Retour à l’accueil dans quelques secondes…</p>' : '')
@@ -692,7 +699,7 @@
   // ---------- Retour d'un cabinet vers la réserve (tout le monde) ----------
   // Saisie dans l'unité de la réserve, en entiers : boîtes fermées pour un article rangé en boîte.
   function vRetour() {
-    var s = S.ret, hors = S.me.cabinet && +s.cab !== +S.me.cabinet;
+    var s = S.ret, hors = horsCab(s.cab);
     var h = retourAcc('Retour en réserve') + '<p class="ban warn avec-ic" style="margin:0 0 10px">' + ico('boite', 22) + '<span>On ne rend que des <b>boîtes fermées</b>. Les unités en vrac restent au cabinet.</span></p>';
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
     h += '<div class="card filtre"><div class="frow"><label class="mu fcab"><span class="m-hide">Depuis le cabinet</span><select class="in" id="rcab" aria-label="Depuis le cabinet">'
@@ -744,7 +751,7 @@
       s.busy = false;
       if (r.error) { s.msg = ['ko', esc(msgErr(r.error))]; render(); return; }
       var d = r.data || {}, m = [];
-      if (d.sorties) m.push('✔ ' + d.sorties + ' article(s) sorti(s) pour le cabinet ' + s.cab + '.');
+      if (d.sorties) m.push('✔ ' + d.sorties + ' article(s) sorti(s) pour ' + (+s.cab === 9 ? 'la Sté' : 'le cabinet ' + s.cab) + '.');
       if (d.en_attente) m.push('⏳ ' + d.en_attente + ' article(s) dépassent la réserve : demande envoyée à la responsable, voyez-la pour confirmer.');
       if (d.hors_cabinet) m.push('Enregistré « hors cabinet ».');
       var resume = lignes.slice(0, 4).map(function (l) { var a = S.byId[l.article_id]; return esc(a ? a.nom : '?') + ' × ' + fr(l.quantite); }).join(' · ') + (lignes.length > 4 ? '…' : '');
@@ -794,6 +801,7 @@
     var tous = emp === 0 || S.inv.tous || !S.dernierInv[emp];
     return S.articles.filter(function (a) {
       if (!tous && !(stockDe(a.id, emp) > 0) && d[a.id] == null) return false;
+      if (!q && !pourLieu(a, emp) && !(stockDe(a.id, emp) > 0) && d[a.id] == null) return false;
       return !q || norm(a.nom + ' ' + (a.reference || '')).indexOf(q) >= 0;
     }).sort(parUsage(emp || null));
   }
@@ -803,10 +811,10 @@
     if (I.msg) h += '<div class="ban ' + I.msg[0] + '" role="status">' + I.msg[1] + '</div>';
     if (j0Actif()) h += '<div class="ban j0">🚩 <b>Inventaire de départ (J0)</b> jusqu’au ' + S.j0.fin.split('-').reverse().slice(0, 2).join('/') + ' : les quantités comptées <b>remplacent</b> le stock, sans perte ni gain.' + (emp != null && j0Premier(emp) ? ' <b>Les articles non comptés de cet emplacement passeront à 0.</b>' : '') + (gestion() ? ' <button class="lnk" data-act="j0off">Terminer le J0</button>' : '') + '</div>';
     else if (gestion()) h += (I.j0ask ? '<div class="ban j0"><b>Lancer l’inventaire de départ (J0) ?</b><br>Pendant 7 jours, chaque inventaire remplacera directement le stock : aucune perte, aucun gain, aucun motif. Au premier comptage de chaque emplacement, les articles non comptés passeront à 0.<div class="row" style="margin-top:10px"><button class="btn l sm" data-act="j0non">Non</button><button class="btn sm" data-act="j0oui">Oui, lancer le J0</button></div></div>' : '<button class="btn l sm" style="margin-bottom:12px" data-act="j0ask">🚩 Lancer l’inventaire de départ (J0)</button>');
-    var opts = (peutReserve() ? '<option value="0"' + (emp === 0 ? ' selected' : '') + '>Réserve</option>' : '') + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (emp === c ? ' selected' : '') + '>Cabinet ' + c + (S.me.cabinet === c ? ' (le mien)' : '') + '</option>'; }).join('');
+    var opts = (peutReserve() ? '<option value="0"' + (emp === 0 ? ' selected' : '') + '>Réserve</option>' : '') + [1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (c) { return '<option value="' + c + '"' + (emp === c ? ' selected' : '') + '>' + (c === 9 ? 'La Sté' : 'Cabinet ' + c + (S.me.cabinet === c ? ' (le mien)' : '')) + '</option>'; }).join('');
     h += '<div class="card' + (emp != null ? ' filtre' : '') + '"><div class="' + (emp != null ? 'frow' : 'g2') + '"><label class="mu fcab"><span class="m-hide">Emplacement à compter</span><select class="in" id="iemp" aria-label="Emplacement à compter"><option value="">— Choisir —</option>' + opts.replace(/>Cabinet (\d)( \(le mien\))?</g, function (m0, c, mien) { return '>Cab. ' + c + (mien ? ' ★' : '') + '<'; }) + '</select></label>'
       + (emp != null ? '<label class="mu fq"><span class="m-hide">Rechercher</span><input class="in" id="iq" type="search" placeholder="🔍 Nom ou référence" value="' + esc(I.q) + '" aria-label="Rechercher"></label>' : '') + '</div>'
-      + (emp != null && emp > 0 && S.me.cabinet && emp !== S.me.cabinet ? '<p class="ban warn" style="margin:10px 0 0">Ce n’est pas votre cabinet : l’inventaire sera enregistré « hors cabinet » (remplacement).</p>' : '')
+      + (emp != null && horsCab(emp) ? '<p class="ban warn" style="margin:10px 0 0">Ce n’est pas votre cabinet : l’inventaire sera enregistré « hors cabinet » (remplacement).</p>' : '')
       + (!peutReserve() ? '<p class="mu" style="margin:8px 0 0">L’inventaire de la réserve est fait par la responsable ou la référente (ou sur autorisation).</p>' : '') + '</div>';
     if (emp == null) return h + (peutReserve() ? '<p class="mu">💡 Pour compter la réserve avec un fichier Excel, choisissez <b>Réserve</b> : les boutons « Fichier de comptage Excel » et « Importer le comptage » apparaissent.</p>' : '');
     if (emp === 0 && !I.recap && peutReserve()) h += '<div class="row wrap" style="margin:0 0 10px"><button class="btn l sm" data-act="iexp">⬇️ Fichier de comptage Excel</button><label class="btn l sm" style="display:inline-flex;align-items:center">⬆️ Importer le comptage<input type="file" id="iimpf" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label></div>';
@@ -912,7 +920,7 @@
     var A = S.articles, cnt = {};
     Object.keys(STF).forEach(function (f) { cnt[f] = A.filter(function (a) { return filtreStock(a, f); }).length; });
     var valR = 0, valC = 0;
-    A.forEach(function (a) { var cm = +a.cout_moyen || 0, f = facteur(a); valR += stockDe(a.id, 0) * cm; for (var c = 1; c <= 8; c++) valC += stockDe(a.id, c) / f * cm; });
+    A.forEach(function (a) { var cm = +a.cout_moyen || 0, f = facteur(a); valR += stockDe(a.id, 0) * cm; for (var c = 1; c <= 9; c++) valC += stockDe(a.id, c) / f * cm; });
     var heure = new Date().getHours(), bj = heure < 18 ? 'Bonjour' : 'Bonsoir';
     var h = '<h2>' + bj + ' ' + esc(S.me.nom) + '</h2>';
     if (sauvegardeEnRetard()) h += '<div class="ban warn row wrap"><span class="grow">💾 ' + (S.sauv && S.sauv.date ? 'Dernière sauvegarde il y a ' + joursDepuis(S.sauv.date) + ' jours : pensez à la sauvegarde du mois.' : 'Aucune sauvegarde téléchargée pour l’instant.') + '</span><button class="btn sm" data-act="sauver"' + (S.sauvBusy ? ' disabled' : '') + '>' + (S.sauvBusy ? 'Préparation…' : 'Télécharger la sauvegarde') + '</button></div>';
@@ -925,7 +933,7 @@
       + tuile(eur(valR), 'valeur de la réserve', '', 'stock:', 'Cabinets : ' + eur(valC))
       + '</div>';
     // inventaires
-    var emps = [0, 1, 2, 3, 4, 5, 6, 7, 8].map(function (e) { var s = etatInventaire(e); s.emp = e; return s; });
+    var emps = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (e) { var s = etatInventaire(e); s.emp = e; return s; });
     var aFaire = emps.filter(function (s) { return s.cls !== 'ok'; }).sort(function (a, b) { return a.ordre - b.ordre || a.emp - b.emp; });
     h += '<div class="card"><div class="row wrap" style="margin-bottom:6px"><b class="grow">🗓️ Inventaires mensuels</b><span class="mu">' + (aFaire.length ? aFaire.length + ' à faire' : 'tout est à jour') + '</span></div><div class="invs">'
       + emps.map(function (s) { return '<button class="inv ' + s.cls + '" data-go="inventaire:' + s.emp + '" title="' + (s.der ? 'Dernier : ' + new Date(s.der).toLocaleDateString('fr-FR') : 'Jamais compté') + '"><b>' + cabTxt(s.emp) + '</b>' + s.txt + '</button>'; }).join('') + '</div></div>';
@@ -964,7 +972,7 @@
     h += '<div class="scroll"><table class="tbl tbl-s"><thead><tr><th>Article</th><th class="n">Réserve</th><th class="n">Cabinets</th><th>État</th></tr></thead><tbody>';
     h += l.slice(0, 300).map(function (a) {
       var r = stockDe(a.id, 0), cabs = 0, det = [];
-      for (var c = 1; c <= 8; c++) { var v = stockDe(a.id, c); if (v) { cabs += v; det.push(c + ':' + fr(v)); } }
+      for (var c = 1; c <= 9; c++) { var v = stockDe(a.id, c); if (v) { cabs += v; det.push((c === 9 ? 'Sté' : c) + ':' + fr(v)); } }
       var etat = a.sans_seuil ? '<span class="pill">sans seuil</span>' : !(+a.seuil > 0) ? '<span class="pill">seuil ?</span>' : r <= 0 ? '<span class="pill ko">rupture</span>' : r <= +a.seuil ? '<span class="pill warn">à commander</span>' : '<span class="pill ok">ok</span>';
       return '<tr><td>' + esc(a.nom) + '<span class="ref">' + esc(a.reference || '') + '</span><br><span class="mu" style="font-size:13px">' + esc(S.fournisseurs[a.fournisseur_id] || 'SF') + '</span></td><td class="n" data-l="Réserve">' + fr(r) + ' ' + uRes(a) + '</td><td class="n" data-l="Cabinets" title="' + esc(det.join(' · ')) + '">' + (cabs ? fr(cabs) + ' u.' : '—') + '</td><td>' + etat + '</td></tr>';
     }).join('') + '</tbody></table></div>';
@@ -987,27 +995,28 @@
   }
 
   // ---------- Articles (gestion) ----------
-  var AF = { tous: 'Tous', sr: 'Sans référence', sf: 'Sans fournisseur', seuil: 'Sans seuil', archive: 'Archivés' };
+  var AF = { tous: 'Tous', sr: 'Sans référence', sf: 'Sans fournisseur', seuil: 'Sans seuil', ste: 'La Sté', nolieu: 'Sans lieu', archive: 'Archivés' };
   function vArticles() {
     if (S.fiche && S.fiche.type === 'article') return vFicheArticle();
     var q = norm(S.artQ), f = S.artF || 'tous';
     var base = f === 'archive' ? S.archives : S.articles;
-    var l = base.filter(function (a) { return (f === 'tous' || f === 'archive' || filtreStock(a, f)) && (!q || norm(a.nom + ' ' + (a.reference || '') + ' ' + (S.fournisseurs[a.fournisseur_id] || '')).indexOf(q) >= 0); });
+    var l = base.filter(function (a) { return (f === 'tous' || f === 'archive' || (f === 'ste' ? a.lieu_ste === true : f === 'nolieu' ? a.lieu_cabinets === false && a.lieu_ste !== true : filtreStock(a, f))) && (!q || norm(a.nom + ' ' + (a.reference || '') + ' ' + (S.fournisseurs[a.fournisseur_id] || '')).indexOf(q) >= 0); });
     var h = '<h2>Articles</h2><div class="card row wrap"><input class="in grow" id="aq" type="search" placeholder="Rechercher un article, une référence, un fournisseur" value="' + esc(S.artQ) + '"><button class="btn" data-act="anew">+ Nouvel article</button></div>'
       + '<div class="chips" style="margin:0 0 10px">' + Object.keys(AF).map(function (k) { return '<button class="chip' + (f === k ? ' on' : '') + '" data-af="' + k + '">' + AF[k] + '</button>'; }).join('') + '</div>'
       + '<div class="row wrap" style="margin:0 0 10px"><button class="btn l sm" data-act="aexp">⬇️ Exporter Excel</button><label class="btn l sm" style="display:inline-flex;align-items:center">⬆️ Importer Excel<input type="file" id="aimpf" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label><span class="mu">Modifier les fiches en masse</span></div>'
       + (S.artImp ? vImportArticles() : '')
       + '<p class="mu">' + l.length + ' article(s)</p>';
     h += '<div class="card">' + l.slice(0, S.artMax || 100).map(function (a) {
-      return '<button class="it lrow" data-aopen="' + a.id + '"><span class="it-n"><b>' + esc(a.nom) + (a.reference && !estSR(a) ? '<span class="ref">' + esc(a.reference) + '</span>' : ' <span class="pill warn">SR</span>') + '</b><span>' + esc(S.fournisseurs[a.fournisseur_id] || 'SF') + ' · ' + condTxt(a) + ' · réserve ' + fr(stockDe(a.id, 0)) + ' ' + uRes(a) + '</span></span><span aria-hidden="true">›</span></button>';
+      return '<button class="it lrow" data-aopen="' + a.id + '"><span class="it-n"><b>' + esc(a.nom) + (a.reference && !estSR(a) ? '<span class="ref">' + esc(a.reference) + '</span>' : ' <span class="pill warn">SR</span>') + '</b><span>' + esc(S.fournisseurs[a.fournisseur_id] || 'SF') + ' · ' + condTxt(a) + ' · réserve ' + fr(stockDe(a.id, 0)) + ' ' + uRes(a) + (a.lieu_ste === true ? ' · ' + (a.lieu_cabinets !== false ? 'cabinets + Sté' : 'Sté') : a.lieu_cabinets === false ? ' · <span class="pill warn">sans lieu</span>' : '') + (a.type_soins ? ' · ' + esc(a.type_soins) : '') + '</span></span><span aria-hidden="true">›</span></button>';
     }).join('') + '</div>';
     if (l.length > (S.artMax || 100)) h += '<button class="btn l" style="width:100%" data-act="amore">Afficher plus</button>';
     return h;
   }
+  function lieuxTxt(a) { var l = []; if (a.lieu_cabinets !== false) l.push('Cabinets'); if (a.lieu_ste === true) l.push('La Sté'); return l.length ? l.join(' + ') : '<span class="pill warn">aucun : l’article n’apparaît dans aucune liste</span>'; }
   function condTxt(a) { return a.conditionnement === 'BOITE' ? 'boîte de ' + fr(a.qte_par_boite) + (a.consommation === 'Unité' && +a.qte_par_boite > 1 ? ', sortie à l’unité' : ', sortie à la boîte') : 'à l’unité'; }
   function ouvrirArticle(id) {
     S.fiche = { type: 'article', id: id, edit: id === 'new', d: null, fo: [], hist: [], cor: null };
-    if (id === 'new') { S.fiche.d = { nom: '', reference: 'SR', conditionnement: 'Unité', qte_par_boite: 1, consommation: 'Unité', conso_verifiee: false, seuil: 0, sans_seuil: false, cout_moyen: 0, prix: 0 }; render(); return; }
+    if (id === 'new') { S.fiche.d = { nom: '', reference: 'SR', conditionnement: 'Unité', qte_par_boite: 1, consommation: 'Unité', conso_verifiee: false, seuil: 0, sans_seuil: false, cout_moyen: 0, prix: 0, lieu_cabinets: true, lieu_ste: false, type_soins: '' }; render(); return; }
     render();
     Promise.all([
       sb.from('articles').select('*').eq('id', id).maybeSingle(),
@@ -1022,11 +1031,11 @@
   function optFo(sel, vide) { return (vide ? '<option value="">' + vide + '</option>' : '') + S.fournListe.filter(function (f) { return !f.archive || String(f.id) === String(sel); }).map(function (f) { return '<option value="' + f.id + '"' + (String(f.id) === String(sel) ? ' selected' : '') + '>' + esc(f.nom) + '</option>'; }).join(''); }
   // Synthèse : y a-t-il du stock de cet article quelque part ?
   function synthStock(a) {
-    var f = facteur(a), r = stockDe(a.id, 0), cabs = [1, 2, 3, 4, 5, 6, 7, 8].filter(function (c) { return Math.abs(stockDe(a.id, c)) > 1e-9; });
-    if (Math.abs(r) < 1e-9 && !cabs.length) return '<div class="ban ok">📦 <b>Aucun stock</b> : réserve et cabinets à 0.</div>';
+    var f = facteur(a), r = stockDe(a.id, 0), cabs = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(function (c) { return Math.abs(stockDe(a.id, c)) > 1e-9; });
+    if (Math.abs(r) < 1e-9 && !cabs.length) return '<div class="ban ok">📦 <b>Aucun stock</b> : réserve, cabinets et Sté à 0.</div>';
     var uc = cabs.reduce(function (t, c) { return t + stockDe(a.id, c); }, 0), cm = +a.cout_moyen || 0, val = r * cm + uc / f * cm, parts = [];
     if (Math.abs(r) > 1e-9) parts.push(fr(r) + ' ' + uRes(a) + ' en réserve');
-    if (cabs.length) parts.push(fr(uc) + ' u. dans ' + cabs.length + ' cabinet' + (cabs.length > 1 ? 's' : '') + ' (' + cabs.map(function (c) { return c; }).join(', ') + ')');
+    if (cabs.length) parts.push(fr(uc) + ' u. dans ' + cabs.length + ' cabinet' + (cabs.length > 1 ? 's' : '') + ' (' + cabs.map(function (c) { return c === 9 ? 'Sté' : c; }).join(', ') + ')');
     return '<div class="ban warn">📦 <b>En stock</b> : ' + parts.join(' + ') + (cm ? ' · valeur ≈ ' + eur(val) : '') + '.</div>';
   }
   function vFicheArticle() {
@@ -1034,13 +1043,15 @@
     var h = '<button class="lnk" data-act="fclose">← Tous les articles</button>';
     if (!a) return h + '<p class="mu">Chargement…</p>';
     if (F.edit) return h + synthStock(a) + vEditArticle();
-    var f = facteur(a), cabs = [1, 2, 3, 4, 5, 6, 7, 8].filter(function (c) { return stockDe(a.id, c); });
+    var f = facteur(a), cabs = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(function (c) { return stockDe(a.id, c); });
     h += '<div class="card"><div class="row wrap"><div class="grow"><h2 style="margin:0">' + esc(a.nom) + '</h2><span class="mu">Réf. ' + (a.reference && !estSR(a) ? esc(a.reference) : '<span class="pill warn">SR</span>') + ' · ' + esc(S.fournisseurs[a.fournisseur_id] || 'SF') + (a.archive ? ' · <span class="pill ko">archivé</span>' : '') + '</span></div><button class="btn" data-act="aedit">✏️ Modifier</button></div></div>';
     h += synthStock(a);
     h += '<div class="card"><b>📦 Conditionnement et stock</b><dl class="dl">'
       + '<dt>Conditionnement</dt><dd>' + condTxt(a) + (a.conditionnement === 'BOITE' && +a.qte_par_boite > 1 && !a.conso_verifiee ? ' <span class="pill warn">consommation à vérifier</span>' : '') + '</dd>'
       + '<dt>Réserve</dt><dd>' + fr(stockDe(a.id, 0)) + ' ' + uRes(a) + (f > 1 ? ' (' + fr(stockDe(a.id, 0) * f) + ' u.)' : '') + '</dd>'
-      + '<dt>Cabinets</dt><dd>' + (cabs.length ? cabs.map(function (c) { return 'cab. ' + c + ' : ' + fr(stockDe(a.id, c)) + ' u.'; }).join(' · ') : 'aucun') + '</dd>'
+      + '<dt>Cabinets</dt><dd>' + (cabs.length ? cabs.map(function (c) { return (c === 9 ? 'Sté' : 'cab. ' + c) + ' : ' + fr(stockDe(a.id, c)) + ' u.'; }).join(' · ') : 'aucun') + '</dd>'
+      + '<dt>Lieux d’utilisation</dt><dd>' + lieuxTxt(a) + '</dd>'
+      + '<dt>Type de soins</dt><dd>' + (a.type_soins ? esc(a.type_soins) : '<span class="mu">—</span>') + '</dd>'
       + '<dt>Seuil d’alerte</dt><dd>' + (a.sans_seuil ? 'aucun (voulu)' : +a.seuil > 0 ? fr(a.seuil) + ' ' + uRes(a) : '<span class="pill warn">à renseigner</span>') + '</dd>'
       + '<dt>Coût moyen</dt><dd>' + eur(a.cout_moyen) + ' / ' + (a.conditionnement === 'BOITE' ? 'boîte' : 'unité') + '</dd></dl>'
       + (F.cor ? vCorrection() : '<button class="btn l sm" data-act="cor">🛠 Corriger les quantités sans impact financier</button>') + '</div>';
@@ -1060,7 +1071,11 @@
       + '<label class="mu">Sortie au cabinet<select class="in" data-af-f="consommation"><option value="Unité"' + (a.consommation === 'Unité' ? ' selected' : '') + '>À l’unité</option><option value="BOITE"' + (a.consommation === 'BOITE' ? ' selected' : '') + '>À la boîte entière</option></select></label>'
       + '<label class="mu">Seuil d’alerte de la réserve<input class="in" inputmode="decimal" data-af-f="seuil" value="' + esc(a.seuil) + '"' + (a.sans_seuil ? ' disabled' : '') + '></label>'
       + '</div><label class="row" style="margin-top:10px"><input type="checkbox" data-af-f="sans_seuil"' + (a.sans_seuil ? ' checked' : '') + ' style="width:20px;height:20px"> Article sans seuil (pas d’alerte même à zéro)</label>'
-      + '<label class="row" style="margin-top:6px"><input type="checkbox" data-af-f="conso_verifiee"' + (a.conso_verifiee ? ' checked' : '') + ' style="width:20px;height:20px"> Consommation vérifiée</label></div>';
+      + '<label class="row" style="margin-top:6px"><input type="checkbox" data-af-f="conso_verifiee"' + (a.conso_verifiee ? ' checked' : '') + ' style="width:20px;height:20px"> Consommation vérifiée</label></div>'
+      + '<div class="card"><b>📍 Lieux d’utilisation</b> <span class="mu">(l’article n’apparaît que dans les listes de ces lieux ; la recherche trouve tout)</span>'
+      + '<label class="row" style="margin-top:8px"><input type="checkbox" data-af-f="lieu_cabinets"' + (a.lieu_cabinets !== false ? ' checked' : '') + ' style="width:20px;height:20px"> Lieu 1 : Cabinets (n’importe quel cabinet)</label>'
+      + '<label class="row" style="margin-top:6px"><input type="checkbox" data-af-f="lieu_ste"' + (a.lieu_ste === true ? ' checked' : '') + ' style="width:20px;height:20px"> Lieu 2 : La Sté</label>'
+      + '<label class="mu" style="display:block;margin-top:10px">Type de soins<input class="in" data-af-f="type_soins" value="' + esc(a.type_soins || '') + '" placeholder="ex. Endo, Chirurgie…"></label></div>';
     h += '<div class="card"><b>🚚 Fournisseurs</b> <span class="mu">(★ le premier = principal)</span>' + F.foEdit.map(function (x, i) {
       return '<div class="row wrap forow" style="margin-top:8px"><span style="width:18px">' + (i === 0 ? '★' : '') + '</span><select class="in grow" data-fo-i="' + i + '" data-fo-k="fournisseur_id">' + optFo(x.fournisseur_id, 'Choisir…') + '</select>'
         + '<input class="in" style="width:110px" inputmode="decimal" placeholder="Prix €" data-fo-i="' + i + '" data-fo-k="prix" value="' + esc(x.prix || '') + '"><input class="in" style="width:130px" placeholder="Réf." data-fo-i="' + i + '" data-fo-k="reference" value="' + esc(x.reference || '') + '">'
@@ -1071,7 +1086,8 @@
   function sauverArticle() {
     var F = S.fiche, a = F.d, nouv = F.id === 'new';
     var o = { nom: String(a.nom || '').trim(), reference: String(a.reference || '').trim() || 'SR', conditionnement: a.conditionnement, qte_par_boite: Math.max(1, nb(a.qte_par_boite) || 1),
-      consommation: a.consommation, seuil: a.sans_seuil ? 0 : Math.max(0, nb(a.seuil)), sans_seuil: !!a.sans_seuil, conso_verifiee: !!a.conso_verifiee };
+      consommation: a.consommation, seuil: a.sans_seuil ? 0 : Math.max(0, nb(a.seuil)), sans_seuil: !!a.sans_seuil, conso_verifiee: !!a.conso_verifiee,
+      lieu_cabinets: a.lieu_cabinets !== false, lieu_ste: a.lieu_ste === true, type_soins: String(a.type_soins || '').trim() || null };
     if (!o.nom) { toast('Le nom est obligatoire'); return; }
     var fo = F.foEdit.filter(function (x) { return x.fournisseur_id; });
     var vus = {}; fo = fo.filter(function (x) { if (vus[x.fournisseur_id]) return false; vus[x.fournisseur_id] = 1; return true; });
@@ -1098,7 +1114,7 @@
       toast(nouv ? '✔ Article créé' : '✔ Article enregistré'); S.fiche.busy = false; charger().then(function () { ouvrirArticle(id); });
     }).catch(function (e) { F.busy = false; toast(msgErr(e)); render(); });
   }
-  function stockPartout(id) { var t = []; for (var e = 0; e <= 8; e++) { var q = stockDe(id, e); if (Math.abs(q) > 1e-9) t.push(cabTxt(e) + ' : ' + fr(q)); } return t; }
+  function stockPartout(id) { var t = []; for (var e = 0; e <= 9; e++) { var q = stockDe(id, e); if (Math.abs(q) > 1e-9) t.push(cabTxt(e) + ' : ' + fr(q)); } return t; }
   function supprimerArticle() {
     var a = S.byId[S.fiche.id] || S.fiche.d, st = stockPartout(a.id);
     if (st.length) { toast('Suppression impossible : il reste du stock (' + st.join(', ') + '). Mettez-le à 0 par un inventaire ou une correction.'); return; }
@@ -1125,10 +1141,10 @@
         + '<div class="row" style="margin-top:10px"><button class="btn l sm" data-act="cor1">Non, revenir</button><button class="btn ko sm" data-act="corgo">Oui, corriger</button></div></div>';
     }
     return '<div class="card" style="border:2px dashed #b45309;margin-top:10px"><b>🛠 Correction sans impact financier</b><p class="mu" style="margin:4px 0 8px">Pour rectifier une erreur de saisie. Réserve en ' + (f > 1 ? 'boîtes' : uRes(a)) + ', cabinets en unités.</p><div class="g4">'
-      + [0, 1, 2, 3, 4, 5, 6, 7, 8].map(function (e) { return '<label class="mu">' + cabTxt(e) + '<input class="in" inputmode="decimal" data-cor="' + e + '" value="' + esc(c.v[e]) + '"></label>'; }).join('')
+      + [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (e) { return '<label class="mu">' + cabTxt(e) + '<input class="in" inputmode="decimal" data-cor="' + e + '" value="' + esc(c.v[e]) + '"></label>'; }).join('')
       + '</div><div class="row" style="margin-top:10px"><button class="btn l sm" data-act="corx">Annuler</button><button class="btn sm" data-act="cor2">Enregistrer la correction</button></div></div>';
   }
-  function corChanges() { var a = S.fiche.d, c = S.fiche.cor, out = []; for (var e = 0; e <= 8; e++) { var v = Math.max(0, nb(String(c.v[e]).replace(',', '.'))), s = stockDe(a.id, e); if (Math.abs(v - s) > 1e-9) out.push({ emp: e, avant: s, apres: v }); } return out; }
+  function corChanges() { var a = S.fiche.d, c = S.fiche.cor, out = []; for (var e = 0; e <= 9; e++) { var v = Math.max(0, nb(String(c.v[e]).replace(',', '.'))), s = stockDe(a.id, e); if (Math.abs(v - s) > 1e-9) out.push({ emp: e, avant: s, apres: v }); } return out; }
   function corGo() {
     var a = S.fiche.d, ch = corChanges();
     Promise.all(ch.map(function (x) { return sb.rpc('fixer_stock', { p_article: a.id, p_emplacement: x.emp, p_quantite: x.apres, p_type: 'correction', p_motif: 'Correction sans impact financier' }); })).then(function (rs) {
@@ -1530,7 +1546,7 @@
       var mo = m.type === 'sortie' ? 'Sortie au-delà de la réserve' : m.type === 'retour' ? 'Retour (stock cabinet trop bas)' : (m.motif || (m.type === 'inventaire' ? 'Inventaire' : 'Régularisation'));
       var pm = parMotif[mo] = parMotif[mo] || { n: 0, v: 0 }; pm.n++; pm.v += v;
     });
-    if (consoN) h += '<div class="ban ok" style="margin:0 0 10px">🦷 <b>Utilisé dans les cabinets : ' + eur(-conso) + '</b> (' + consoN + ' article(s), d’après les inventaires des cabinets). C’est la consommation normale des soins : elle n’est pas comptée dans les pertes.</div>';
+    if (consoN) h += '<div class="ban ok" style="margin:0 0 10px">🦷 <b>Utilisé dans les cabinets et à la Sté : ' + eur(-conso) + '</b> (' + consoN + ' article(s), d’après les inventaires des cabinets). C’est la consommation normale des soins : elle n’est pas comptée dans les pertes.</div>';
     if (!L.length) h += '<p class="mu">Aucun écart sur cette période.</p>';
     else {
       h += '<div class="tiles" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="tile ko"><b>' + eur(pertes) + '</b><span>Pertes</span></div><div class="tile ok"><b>' + eur(gains) + '</b><span>Gains</span></div><div class="tile ' + (pertes + gains < 0 ? 'warn' : 'ok') + '"><b>' + eur(pertes + gains) + '</b><span>Solde</span><small>' + L.length + ' écart(s)</small></div></div>';
@@ -1577,10 +1593,10 @@
       var nomA = {}, nomF = {}; D.articles.forEach(function (a) { nomA[a.id] = a.nom; }); D.fournisseurs.forEach(function (f) { nomF[f.id] = f.nom; });
       // feuille lisible : stock par emplacement
       var st = {}; D.stocks.forEach(function (s) { (st[s.article_id] = st[s.article_id] || {})[s.emplacement] = +s.quantite; });
-      var stock = { nom: 'Stock', colonnes: ['Article', 'Référence', 'Fournisseur', 'Unité réserve', 'Réserve', 'Cab. 1', 'Cab. 2', 'Cab. 3', 'Cab. 4', 'Cab. 5', 'Cab. 6', 'Cab. 7', 'Cab. 8', 'Coût moyen TTC', 'Valeur réserve TTC', 'Archivé'],
+      var stock = { nom: 'Stock', colonnes: ['Article', 'Référence', 'Fournisseur', 'Unité réserve', 'Réserve', 'Cab. 1', 'Cab. 2', 'Cab. 3', 'Cab. 4', 'Cab. 5', 'Cab. 6', 'Cab. 7', 'Cab. 8', 'La Sté', 'Coût moyen TTC', 'Valeur réserve TTC', 'Archivé'],
         lignes: D.articles.slice().sort(function (a, b) { return a.nom.localeCompare(b.nom); }).map(function (a) {
           var s = st[a.id] || {}, r = s[0] || 0;
-          return [a.nom, a.reference, nomF[a.fournisseur_id] || 'SF', a.conditionnement === 'BOITE' ? 'boîte de ' + a.qte_par_boite : 'unité', r].concat([1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return s[c] || 0; })).concat([+a.cout_moyen, Math.round(r * a.cout_moyen * 100) / 100, a.archive]);
+          return [a.nom, a.reference, nomF[a.fournisseur_id] || 'SF', a.conditionnement === 'BOITE' ? 'boîte de ' + a.qte_par_boite : 'unité', r].concat([1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (c) { return s[c] || 0; })).concat([+a.cout_moyen, Math.round(r * a.cout_moyen * 100) / 100, a.archive]);
         }) };
       // feuilles brutes (toutes les colonnes) + nom de l'article / du fournisseur pour la lecture
       function brut(nom, rows) {
@@ -1623,18 +1639,20 @@
 
   // --- Articles : export / import des fiches ---
   var COLS_A = [['N°', 'id'], ['Nom', 'nom'], ['Référence', 'reference'], ['Fournisseur principal', 'fournisseur'], ['Prix TTC', 'prix'], ['Réf. chez le fournisseur', 'ref_fo'],
-    ['Livré', 'conditionnement'], ['Unités par boîte', 'qte_par_boite'], ['Sortie au cabinet', 'consommation'], ['Seuil', 'seuil'], ['Sans seuil', 'sans_seuil'], ['Conso. vérifiée', 'conso_verifiee'], ['Archivé', 'archive'], ['Supprimer', 'supprimer']];
+    ['Livré', 'conditionnement'], ['Unités par boîte', 'qte_par_boite'], ['Sortie au cabinet', 'consommation'], ['Seuil', 'seuil'], ['Sans seuil', 'sans_seuil'], ['Conso. vérifiée', 'conso_verifiee'],
+    ['Lieu 1 : Cabinets', 'lieu_cabinets'], ['Lieu 2 : La Sté', 'lieu_ste'], ['Type de soins', 'type_soins'], ['Archivé', 'archive'], ['Supprimer', 'supprimer']];
   function afPrincipal(a) { return a.fournisseur_id ? (S.afPrix[a.id] || []).filter(function (p) { return p.fournisseur_id === a.fournisseur_id; })[0] || null : null; }
   function exporterArticles() {
     var tous = S.articles.concat(S.archives).sort(function (a, b) { return a.nom.localeCompare(b.nom); });
     var lignes = tous.map(function (a) {
       var p = afPrincipal(a);
       return [a.id, a.nom, a.reference || 'SR', S.fournisseurs[a.fournisseur_id] || 'SF', p ? +p.prix : +a.prix || 0, p && p.reference || '', a.conditionnement === 'BOITE' ? 'Boîte' : 'Unité', +a.qte_par_boite,
-        a.consommation === 'BOITE' ? 'Boîte' : 'Unité', +a.seuil, a.sans_seuil ? 'oui' : 'non', a.conso_verifiee ? 'oui' : 'non', a.archive ? 'oui' : 'non', null, fr(stockDe(a.id, 0)) + ' ' + uRes(a), +a.cout_moyen];
+        a.consommation === 'BOITE' ? 'Boîte' : 'Unité', +a.seuil, a.sans_seuil ? 'oui' : 'non', a.conso_verifiee ? 'oui' : 'non', a.lieu_cabinets !== false ? 'oui' : 'non', a.lieu_ste === true ? 'oui' : 'non', a.type_soins || '', a.archive ? 'oui' : 'non', null, fr(stockDe(a.id, 0)) + ' ' + uRes(a), +a.cout_moyen];
     });
     var aide = [['Modifiez les cases à changer, puis importez le fichier avec « Importer Excel » dans l’onglet Articles.'], ['Une case laissée VIDE garde la valeur actuelle de la fiche.'], ['Ne modifiez pas la colonne N° : elle relie la ligne à la fiche.'],
       ['Nouvel article : ajoutez une ligne en bas SANS N°, avec au moins le Nom.'], ['Fournisseur principal : nom exact d’un fournisseur de la feuille Fournisseurs, ou SF pour « sans fournisseur ».'], ['Référence : SR pour « sans référence ».'],
-      ['Livré / Sortie au cabinet : Boîte ou Unité.  Sans seuil, Conso. vérifiée, Archivé : oui ou non.'], ['Prix TTC : prix chez le fournisseur principal (le dernier prix connu).'], ['Les colonnes « (info) » ne sont pas importées : la réserve se met à jour par l’inventaire.'], ['Supprimer une fiche : écrivez oui dans la colonne « Supprimer ». Effacer une ligne du fichier ne supprime rien. Une fiche qui a encore du stock (réserve ou cabinets) ou qui est attendue dans une commande en cours ne peut pas être supprimée.']];
+      ['Livré / Sortie au cabinet : Boîte ou Unité.  Sans seuil, Conso. vérifiée, Archivé : oui ou non.'],
+      ['Lieu 1 : Cabinets / Lieu 2 : La Sté : oui ou non. Un article peut avoir les deux. Il n’apparaît dans les listes de Sortie et d’Inventaire que pour ses lieux (la recherche trouve tout).'], ['Type de soins : texte libre pour l’instant (une liste fixe sera créée à partir de ce que vous écrivez). Écrivez un tiret « - » pour vider la case.'], ['Prix TTC : prix chez le fournisseur principal (le dernier prix connu).'], ['Les colonnes « (info) » ne sont pas importées : la réserve se met à jour par l’inventaire.'], ['Supprimer une fiche : écrivez oui dans la colonne « Supprimer ». Effacer une ligne du fichier ne supprime rien. Une fiche qui a encore du stock (réserve ou cabinets) ou qui est attendue dans une commande en cours ne peut pas être supprimée.']];
     XLSX_EVY.creer([
       { nom: 'Articles', colonnes: COLS_A.map(function (c) { return c[0]; }).concat(['Réserve (info)', 'Coût moyen (info)']), lignes: lignes },
       { nom: 'Fournisseurs', colonnes: ['Fournisseurs connus'], lignes: S.fournListe.filter(function (f) { return !f.archive; }).map(function (f) { return [f.nom]; }) },
@@ -1648,7 +1666,7 @@
       var rows = feuilleDe(cl, 'Articles'), idx = colonnes(rows[0], COLS_A), R = { modifs: [], nouveaux: [], suppr: [], erreurs: [], nb: 0 };
       if (idx.nom == null && idx.id == null) throw new Error('Colonnes « N° » et « Nom » introuvables : utilisez le fichier exporté depuis l’onglet Articles');
       var parFo = {}; S.fournListe.forEach(function (f) { parFo[norm(f.nom).trim()] = f; });
-      var CH = { nom: 'Nom', reference: 'Référence', fournisseur_id: 'Fournisseur', prix: 'Prix TTC', ref_fo: 'Réf. fournisseur', conditionnement: 'Livré', qte_par_boite: 'Unités par boîte', consommation: 'Sortie au cabinet', seuil: 'Seuil', sans_seuil: 'Sans seuil', conso_verifiee: 'Conso. vérifiée', archive: 'Archivé' };
+      var CH = { nom: 'Nom', reference: 'Référence', fournisseur_id: 'Fournisseur', prix: 'Prix TTC', ref_fo: 'Réf. fournisseur', conditionnement: 'Livré', qte_par_boite: 'Unités par boîte', consommation: 'Sortie au cabinet', seuil: 'Seuil', sans_seuil: 'Sans seuil', conso_verifiee: 'Conso. vérifiée', archive: 'Archivé', lieu_cabinets: 'Lieu 1 : Cabinets', lieu_ste: 'Lieu 2 : La Sté', type_soins: 'Type de soins' };
       rows.slice(1).forEach(function (r, i) {
         if (!r || r.every(vide)) return;
         var n = i + 2, cell = function (k) { return idx[k] == null ? null : r[idx[k]]; }, v = {}, err = [];
@@ -1671,11 +1689,12 @@
         ['conditionnement', 'consommation'].forEach(function (k) { if (!vide(cell(k))) { var t = norm(String(cell(k))).trim(); if (t.indexOf('boi') === 0) v[k] = 'BOITE'; else if (t.indexOf('uni') === 0) v[k] = 'Unité'; else err.push(CH[k] + ' : Boîte ou Unité'); } });
         if (!vide(cell('qte_par_boite'))) { var q = nombre(cell('qte_par_boite')); if (!(q > 0)) err.push('unités par boîte invalides'); else v.qte_par_boite = q; }
         if (!vide(cell('seuil'))) { var s = nombre(cell('seuil')); if (s == null || s < 0) err.push('seuil invalide'); else v.seuil = s; }
-        ['sans_seuil', 'conso_verifiee', 'archive'].forEach(function (k) { if (!vide(cell(k))) { var b = ouiNon(cell(k)); if (b == null) err.push(CH[k] + ' : oui ou non'); else v[k] = b; } });
+        if (!vide(cell('type_soins'))) { var ts = String(cell('type_soins')).trim(); v.type_soins = /^[-–—]$/.test(ts) ? '' : ts; }
+        ['sans_seuil', 'conso_verifiee', 'archive', 'lieu_cabinets', 'lieu_ste'].forEach(function (k) { if (!vide(cell(k))) { var b = ouiNon(cell(k)); if (b == null) err.push(CH[k] + ' : oui ou non'); else v[k] = b; } });
         if (err.length) { R.erreurs.push('Ligne ' + n + (a ? ' (' + a.nom + ')' : '') + ' : ' + err.join(', ')); return; }
         R.nb++;
         if (!a) { if (!v.nom) { R.erreurs.push('Ligne ' + n + ' : nouvel article sans nom'); return; } R.nouveaux.push({ ligne: n, v: v }); return; }
-        var pr = afPrincipal(a), act = { nom: a.nom, reference: a.reference || 'SR', fournisseur_id: a.fournisseur_id || null, prix: pr ? +pr.prix : +a.prix || 0, ref_fo: pr && pr.reference || '', conditionnement: a.conditionnement, qte_par_boite: +a.qte_par_boite, consommation: a.consommation, seuil: +a.seuil, sans_seuil: !!a.sans_seuil, conso_verifiee: !!a.conso_verifiee, archive: !!a.archive };
+        var pr = afPrincipal(a), act = { nom: a.nom, reference: a.reference || 'SR', fournisseur_id: a.fournisseur_id || null, prix: pr ? +pr.prix : +a.prix || 0, ref_fo: pr && pr.reference || '', conditionnement: a.conditionnement, qte_par_boite: +a.qte_par_boite, consommation: a.consommation, seuil: +a.seuil, sans_seuil: !!a.sans_seuil, conso_verifiee: !!a.conso_verifiee, archive: !!a.archive, lieu_cabinets: a.lieu_cabinets !== false, lieu_ste: a.lieu_ste === true, type_soins: a.type_soins || '' };
         var diffs = Object.keys(v).filter(function (k) { return typeof v[k] === 'number' ? Math.abs(v[k] - act[k]) > 1e-9 : v[k] !== act[k]; });
         if (diffs.length) R.modifs.push({ a: a, v: v, act: act, diffs: diffs });
       });
@@ -1710,7 +1729,8 @@
   }
   function enregistrerFiche(a, v) {
     // a = fiche existante (ou null pour une nouvelle), v = valeurs du fichier
-    var upd = {}; ['nom', 'reference', 'conditionnement', 'qte_par_boite', 'consommation', 'seuil', 'sans_seuil', 'conso_verifiee', 'archive'].forEach(function (k) { if (k in v) upd[k] = v[k]; });
+    var upd = {}; ['nom', 'reference', 'conditionnement', 'qte_par_boite', 'consommation', 'seuil', 'sans_seuil', 'conso_verifiee', 'archive', 'lieu_cabinets', 'lieu_ste', 'type_soins'].forEach(function (k) { if (k in v) upd[k] = v[k]; });
+    if ('type_soins' in upd) upd.type_soins = upd.type_soins || null;
     if (upd.sans_seuil) upd.seuil = 0;
     if ('fournisseur_id' in v) upd.fournisseur_id = v.fournisseur_id;
     if ('prix' in v) upd.prix = v.prix;
@@ -1993,7 +2013,7 @@
     if (d.act === 'foadd') { S.fiche.foEdit.push({ fournisseur_id: '', prix: '', reference: '' }); render(); return; }
     if (d.fodel) { S.fiche.foEdit.splice(+d.fodel, 1); render(); return; }
     if (d.fotop) { var x0 = S.fiche.foEdit.splice(+d.fotop, 1)[0]; S.fiche.foEdit.unshift(x0); render(); return; }
-    if (d.act === 'cor') { var a0 = S.fiche.d, v0 = {}; for (var e0 = 0; e0 <= 8; e0++) v0[e0] = fr(stockDe(a0.id, e0)); S.fiche.cor = { etape: 1, v: v0 }; render(); return; }
+    if (d.act === 'cor') { var a0 = S.fiche.d, v0 = {}; for (var e0 = 0; e0 <= 9; e0++) v0[e0] = fr(stockDe(a0.id, e0)); S.fiche.cor = { etape: 1, v: v0 }; render(); return; }
     if (d.act === 'corx') { S.fiche.cor = null; render(); return; }
     if (d.act === 'cor2') { if (!corChanges().length) { toast('Aucune quantité modifiée'); return; } S.fiche.cor.etape = 2; render(); return; }
     if (d.act === 'cor1') { S.fiche.cor.etape = 1; render(); return; }
