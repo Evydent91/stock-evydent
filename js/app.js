@@ -1113,7 +1113,8 @@
     return (JOUR_CACHE[iso] = out);
   }
   function caseCalc(p, iso, demi) { var o = jourCalc(iso)[p.id]; return o ? o[demi] : caseBase(p, iso, demi); }
-  function caseEff(p, iso, demi) { var r = (S.pl && S.pl.rows || {})[cleCase(p.id, iso, demi)]; return r ? { a: r.aff, de: hm(r.debut), fi: hm(r.fin), h: r.heures != null ? +r.heures : null } : caseCalc(p, iso, demi); }
+  function caseEff(p, iso, demi) { var r = (S.pl && S.pl.rows || {})[cleCase(p.id, iso, demi)]; if (r && r.aff === 'OFF' && ferie(iso)) return { a: 'FERIE', h: r.heures != null ? +r.heures : null };   // férié importé « OFF » : compté comme férié
+    return r ? { a: r.aff, de: hm(r.debut), fi: hm(r.fin), h: r.heures != null ? +r.heures : null } : caseCalc(p, iso, demi); }
   function travailleHabituellement(p, iso, demi) { var t = ((p.trame || {})[jourSem(iso)] || {})[demi === 'AM' ? 'am' : 'pm']; return !!(t && t.a && t.a !== 'OFF'); }
   function heuresDemi(p, iso, demi, c) {
     c = c || caseEff(p, iso, demi);
