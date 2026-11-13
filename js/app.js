@@ -352,6 +352,8 @@
 
   // ---------- Icônes dessinées (les mêmes que la maquette) ----------
   var SVGI = {
+    crayon: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+    poubelle: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
     sortie: '<path d="M3 13h5l1 3h6l1-3h5v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M12 3v9M8 7l4-4 4 4"/>',
     inventaire: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12l2 2 4-4M9 17h6"/>',
     retour: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
@@ -977,18 +979,20 @@
       var plus = '';
       if (estDent && c.statut === 'accepte') { var as = assistantesDe(id), noms = {}; Object.keys(as).forEach(function (j) { as[j].forEach(function (x) { noms[x] = 1; }); }); if (Object.keys(noms).length) plus = '<span>' + Object.keys(noms).map(esc).join(', ') + ' ' + (Object.keys(noms).length > 1 ? 'seront disponibles' : 'sera disponible') + ' pour un autre dentiste</span>'; }
       var quoi = formation ? (c.mot ? '<b class="h-fi">' + esc(c.mot) + '</b> · ' : '') : (c.type !== 'CP' ? typeTxt(c.type) + ' · ' : '');
-      return '<div class="a-li' + (passe ? ' passe' : '') + '"><span class="a-it-n"><b>' + periode(c.du, c.au) + ' ' + st + '</b><span>' + quoi + n + ' ' + pl(n, 'jour') + (estDent ? ' de présence' : ' de travail') + (!formation && c.mot ? ' · « ' + esc(c.mot) + ' »' : '') + '</span>' + plus + '</span>'
-        + (c.statut === 'attente' ? '<span class="h-mini"><button class="btn l sm" data-crefus="' + c.id + '">Refuser</button><button class="btn sm" data-cok="' + c.id + '">Accepter</button></span>' : '<span class="h-mini col"><button class="btn l sm" data-cmodif="' + c.id + '" data-cle="' + cle + '"' + (formation ? ' data-cform="1"' : '') + '>Modifier</button><button class="btn l sm" data-csuppr="' + c.id + '" aria-label="Supprimer">Supprimer</button></span>') + '</div>';
+      var txt = '<span class="a-it-n"><b>' + periode(c.du, c.au) + ' ' + st + '</b><span>' + quoi + n + ' ' + pl(n, 'jour') + (estDent ? ' de présence' : ' de travail') + (!formation && c.mot ? ' · « ' + esc(c.mot) + ' »' : '') + '</span>' + plus + '</span>';
+      if (c.statut === 'attente') return '<div class="a-li' + (passe ? ' passe' : '') + '">' + txt + '<span class="h-mini"><button class="btn l sm" data-crefus="' + c.id + '">Refuser</button><button class="btn sm" data-cok="' + c.id + '">Accepter</button></span></div>';
+      return '<button class="a-li h-cgl' + (passe ? ' passe' : '') + '" data-cmodif="' + c.id + '" data-cle="' + cle + '"' + (formation ? ' data-cform="1"' : '') + ' aria-label="Modifier">' + txt + '<span class="h-crayon">' + ico('crayon', 18, 2) + '</span></button>';
     }).join('');
     if (A && !A.id) h += formConges(A, estDent, formation);
     else if (!A) h += '<button class="a-li h-lien" data-cadd="' + cle + '"' + (formation ? ' data-cform="1"' : '') + '>' + (formation ? '+ Ajouter une formation' : '+ Ajouter des congés') + '</button>';
     return h + '</div>';
   }
   function formConges(A, estDent, formation) {
-    return '<div class="a-li h-cadd"><div class="h-g2" style="width:100%"><label class="mu">Du<input class="in" type="date" id="cadu" value="' + esc(A.du || '') + '"></label><label class="mu">Au (inclus)<input class="in" type="date" id="caau" value="' + esc(A.au || '') + '"></label>'
+    return '<div class="a-li h-cadd">' + (A.id ? '<b class="h-ctit">' + (formation ? 'Modifier la formation' : 'Modifier les congés') + '</b>' : '') + '<div class="h-g2" style="width:100%"><label class="mu">Du<input class="in" type="date" id="cadu" value="' + esc(A.du || '') + '"></label><label class="mu">Au (inclus)<input class="in" type="date" id="caau" value="' + esc(A.au || '') + '"></label>'
       + (formation ? '<label class="mu" style="grid-column:1/-1">Intitulé de la formation (facultatif)<input class="in" id="caint" value="' + esc(A.mot || '') + '" placeholder="Ex. : radioprotection, AFGSU…"></label>'
         : estDent ? '' : '<label class="mu">Type<select class="in" id="catype">' + TYPES_C.filter(function (t) { return t[0] !== 'FORMATION'; }).map(function (t) { return '<option value="' + t[0] + '"' + (A.type === t[0] ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('') + '</select></label>')
-      + '<div class="row" style="align-self:end"><button class="btn l" data-act="caannule">Annuler</button><button class="btn" data-act="caok">' + (A.id ? 'Enregistrer' : 'Ajouter') + '</button></div></div></div>';
+      + '</div><div class="h-cpied">' + (A.id ? '<button class="h-csup" data-csuppr="' + A.id + '">' + ico('poubelle', 18, 2) + 'Supprimer</button>' : '<span></span>')
+      + '<span class="row"><button class="btn l" data-act="caannule">Annuler</button><button class="btn" data-act="caok">' + (A.id ? 'Enregistrer' : 'Ajouter') + '</button></span></div></div>';
   }
   function ajouterConges() {
     var A = S.cAjout, du = $('cadu').value, au = $('caau').value || du, ty = A.formation ? 'FORMATION' : $('catype') ? $('catype').value : 'CP';
@@ -1004,8 +1008,9 @@
     sb.from('conges').insert(o).then(function (r) { if (r.error) throw r.error; S.cAjout = null; toast(A.formation ? '✔ Formation ajoutée' : '✔ Congés ajoutés'); chargerPlan(); }).catch(function (e) { toast(msgErr(e)); });
   }
   function supprimerConges(id) {
-    if (!confirm('Supprimer ces congés ?')) return;
-    sb.from('conges').delete().eq('id', +id).then(function (r) { if (r.error) throw r.error; toast('Congés supprimés'); chargerPlan(); }).catch(function (e) { toast(msgErr(e)); });
+    var fo = S.cAjout && S.cAjout.formation;
+    if (!confirm(fo ? 'Supprimer cette formation ?' : 'Supprimer ces congés ?')) return;
+    sb.from('conges').delete().eq('id', +id).then(function (r) { if (r.error) throw r.error; S.cAjout = null; toast(fo ? 'Formation supprimée' : 'Congés supprimés'); chargerPlan(); }).catch(function (e) { toast(msgErr(e)); });
   }
 
   // Assistante : mes congés et demande
