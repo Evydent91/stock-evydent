@@ -984,7 +984,7 @@ button.pt-l:hover,.pt-sc:hover{background:var(--ivory)}
 .tuile-pt b{font-size:20px}
 .tuile-pt .tt span{font-size:15px;color:var(--ink2)}
 .tuile-pt .tc{color:var(--navy);flex:none}
-.tuile-pt.fait{background:#fff}
+.tuile-pt.fait{background:#fff;cursor:default}
 .tuile-pt.fait .ti{background:var(--okbg);color:var(--ok)}
 body.scan-ouvert{overflow:hidden}
 .scan{position:fixed;inset:0;z-index:200;background:#0f171d;color:#fff;display:flex;flex-direction:column;align-items:center;gap:14px;padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 20px)}

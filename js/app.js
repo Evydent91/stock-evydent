@@ -1517,7 +1517,7 @@
     var r = S.monPt, t, sous;
     if (!r || !r.arrivee) { t = 'Pointer mon arrivée'; sous = 'Scannez le QR code du centre'; }
     else if (!r.sortie) { t = 'Pointer ma sortie'; sous = 'Arrivée à ' + hTs(r.arrivee); }
-    else { t = 'Journée pointée'; sous = hTs(r.arrivee) + ' → ' + hTs(r.sortie) + ' · touchez pour repointer la sortie'; }
+    else return '<div class="tuile-pt fait"><span class="ti">' + ico('ok', 34, 2.4) + '</span><span class="tt"><b>Journée pointée</b><span>Arrivée ' + hTs(r.arrivee) + ' · sortie ' + hTs(r.sortie) + '</span></span></div>';
     return '<button class="tuile-pt' + (r && r.sortie ? ' fait' : '') + '" data-act="scan"><span class="ti">' + ico('qr', 34) + '</span><span class="tt"><b>' + t + '</b><span>' + sous + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>';
   }
   var SCAN = null;
