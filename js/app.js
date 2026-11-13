@@ -1381,7 +1381,7 @@
   }
   // ---------- Export du planning par mois, sur la matrice Excel du centre ----------
   // Une feuille par mois choisi ; un bloc « AD » par semaine (comme le planning Excel) : matin / après-midi colorés
-  // par dentiste ou poste, horaires dessous, heures de la semaine et reliquat à droite. Le fichier se réimporte.
+  // par dentiste ou poste, horaires dessous, heures de la semaine à droite (pas de reliquat). Le fichier se réimporte.
   var COUL_XL = { joao: 'F2AA84', angela: 'EEEB5E', jordan: 'FFC000', jeremy: 'B4E5A2', sacha: 'B6F8E8', eyal: ['084F6B', 'FFFFFF'], bruno: '4E95D9', nathan: 'D86ECC', david: 'A6CAEC', johanna: 'A9CBAB', katia: 'DF9999', anastasia: 'F7AFF5',
     STE: 'C04F15', ADMIN: 'DCEAF7', ADMIN_ORTHO: 'DCEAF7', ACCUEIL: 'CAEEFB', RANGEMENT: 'E2EFDA', NETTOYAGE: 'E2EFDA', ECOLE: 'C9A4E4', FORMATION: 'FF9B9B', CP: ['0070C0', 'FFFFFF'], ARRET: ['595959', 'FFFFFF'], OFF: ['595959', 'FFFFFF'], FERIE: ['595959', 'FFFFFF'] };
   var COUL_AUTRES = ['F6ACC8', 'C6E0B4', 'FFE699', 'BDD7EE', 'F8CBAD', 'D9D2E9'];
@@ -1411,7 +1411,7 @@
     var E = S.plExp, ms = moisPropose();
     return '<div class="pl-modal" role="dialog" aria-modal="true" aria-label="Exporter le planning"><button class="pl-fond" data-act="plexpfermer" aria-label="Fermer"></button><div class="pl-fen">'
       + '<div class="pl-ft"><span class="a-av p">' + ico('sortie', 20) + '</span><div><b>Exporter le planning</b><span class="mu">Fichier Excel sur la matrice du centre</span></div><button class="h-rond gris" data-act="plexpfermer" aria-label="Fermer">' + ico('croix', 20, 2.4) + '</button></div>'
-      + '<p class="mu" style="margin:0">Choisissez un ou plusieurs mois. Chaque mois est une feuille, avec une semaine par bloc (matin et après-midi, horaires, heures de la semaine et reliquat).</p>'
+      + '<p class="mu" style="margin:0">Choisissez un ou plusieurs mois. Chaque mois est une feuille, avec une semaine par bloc (matin et après-midi, horaires, heures de la semaine).</p>'
       + '<div class="pl-mois">' + ms.map(function (m) { var on = E.mois.indexOf(m) >= 0; return '<button type="button" class="h-ex-j pl-mo' + (on ? ' on' : '') + '" data-plmois="' + m + '" aria-pressed="' + on + '">' + nomMois(m).replace(/^./, function (c) { return c.toUpperCase(); }) + '</button>'; }).join('') + '</div>'
       + '<div class="pl-btns"><button class="a-btn blanc" data-act="plexpfermer">Annuler</button><button class="a-btn navy" data-act="plexpok"' + (E.busy || !E.mois.length ? ' disabled' : '') + '>' + (E.busy ? 'Préparation…' : 'Exporter' + (E.mois.length > 1 ? ' (' + E.mois.length + ' mois)' : '')) + '</button></div>'
       + '</div></div>';
@@ -1447,8 +1447,8 @@
         fz(r, 1 + 4 * k, r, 4 + 4 * k);
         ['AM', 'PM'].forEach(function (dm, j) { put(r + 1, 1 + 4 * k + 2 * j, dm, B); put(r + 1, 2 + 4 * k + 2 * j, null, B); fz(r + 1, 1 + 4 * k + 2 * j, r + 1, 2 + 4 * k + 2 * j); });
       }
-      put(r, 21, 'HEURES HEBDO', { gras: true, bord: 'moyen', retour: true }); put(r, 22, 'RELIQUAT', { gras: true, bord: 'moyen' });
-      put(r + 1, 0, null, B); put(r + 1, 21, 'semaine / contrat', { bord: 'fin', taille: 9, coul: '595959' }); put(r + 1, 22, 'fin de semaine', { bord: 'fin', taille: 9, coul: '595959' });
+      put(r, 21, 'HEURES HEBDO', { gras: true, bord: 'moyen', retour: true });
+      put(r + 1, 0, null, B); put(r + 1, 21, 'semaine / contrat', { bord: 'fin', taille: 9, coul: '595959' });
       haut[r] = 20; r += 2;
       ps.forEach(function (p) {
         put(r, 0, p.type === 'interimaire' ? 'INTERIMAIRE' : majSansAccent(p.prenom), { gras: true, bord: 'moyen' }); put(r + 1, 0, null, { bord: 'moyen' }); fz(r, 0, r + 1, 0);
@@ -1461,10 +1461,8 @@
             put(r + 1, col0, de != null ? { h: de / 60 } : null, TF); put(r + 1, col0 + 1, fi != null ? { h: fi / 60 } : null, TF);
           });
         }
-        var hs = heuresSem(p, L), cth = +p.contrat_h || 0, rel = cth ? reliquatAvant(p, L) + hs - cth : 0;
+        var hs = heuresSem(p, L), cth = +p.contrat_h || 0;
         put(r, 21, { h: hs }, { gras: true, bord: 'moyen', fmt: '[h]:mm' }); put(r + 1, 21, cth ? 'contrat ' + fh(cth) : '', { bord: 'moyen', taille: 9, coul: '595959' }); 
-        put(r, 22, cth ? (Math.abs(rel) < 0.01 ? 'à jour' : relTxt(rel)) : '', { gras: true, bord: 'moyen', coul: rel > 0.01 ? 'C00000' : rel < -0.01 ? '0070C0' : '00703C' });
-        put(r + 1, 22, cth && Math.abs(rel) >= 0.01 ? (rel > 0 ? 'à alléger' : 'à rattraper') : '', { bord: 'moyen', taille: 9, coul: '595959' });
         haut[r] = 18; haut[r + 1] = 15; r += 2;
       });
       // Dentistes présents sans assistante
@@ -1476,7 +1474,7 @@
       }
       haut[r] = 26; r += 2;
     });
-    var larg = [14]; for (var i = 0; i < 20; i++) larg.push(8.7); larg.push(13, 13);
+    var larg = [14]; for (var i = 0; i < 20; i++) larg.push(8.7); larg.push(13);
     return { nom: MOIS_XL[+x[1] - 1] + ' ' + x[0], cases: cases, fusions: fus, larg: larg, haut: haut, figer: true, paysage: true };
   }
   function importerPlanning(file) {
