@@ -41,6 +41,7 @@ x:["Mise à jour 012 de la base : colonne « heures » du planning pour les heur
  "Nouvel emplacement « La Sté » : sorties de la réserve vers la Sté et inventaire de la Sté, comme un cabinet (pas de retour). Dans Sortie et Inventaire, le bouton du cabinet propose « La Sté » en dernier.",
  "Les listes de Sortie et d’Inventaire ne montrent que les articles du lieu choisi (cabinets ou Sté) ; la recherche trouve toujours tous les articles. L’inventaire montre aussi tout article qui a du stock à cet endroit.",
  "Tableau de bord, Stock, fiche article, correction de quantités et sauvegarde Excel : la Sté apparaît à côté des cabinets.",
+ "Numéro de version en haut à droite du bandeau, sur tous les écrans (« Bêta test » devant sur le site de test) ; il remplace les mentions TEST et Version dans les en-têtes.",
  "Référente et responsable : écrans inchangés, sauf la connexion et les ajouts ci-dessus."],x:["Mise à jour 008 de la base : 3 colonnes sur les articles (Cabinets = oui et Sté = non pour les articles existants, type de soins vide) et emplacement n° 9 « La Sté » accepté pour les sorties et l’inventaire (pas pour les retours). Aucune donnée existante modifiée."]},
 {v:"2.1",t:"Mineure",n:"Confort sur téléphone et listes classées",d:"Novembre 2026 (en test)",
  w:"Rendre l’application plus simple à utiliser d’une main sur téléphone (iPhone et Android), là où elle sert le plus au cabinet.",

@@ -751,3 +751,13 @@ body.mode-h .bnav{display:none}
 .pl-hh label{display:flex;align-items:center;gap:10px}
 .pl-hh small{font-size:12px}
 .pl-c.abs span{font-size:11px;font-weight:700}
+
+/* Numéro de version en haut à droite du bandeau */
+#ver-coin{position:fixed;top:calc(env(safe-area-inset-top) + 4px);right:8px;z-index:90;font-size:11px;font-weight:700;line-height:16px;padding:0 8px;border-radius:999px;background:var(--gold);color:var(--ink);pointer-events:none;white-space:nowrap}
+body.coin .a-hd{padding-top:calc(26px + env(safe-area-inset-top))}
+body.coin .top-in{padding-top:22px}
+@media (max-width:700px){
+  :root{--top:72px}
+  body.coin .top-in{padding-top:14px;box-sizing:border-box}
+}
+body.ecran-ok #ver-coin{background:var(--okbg);color:var(--ok)}

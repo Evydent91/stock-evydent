@@ -182,8 +182,15 @@
     app.innerHTML = h;
     if (fq && $(fq)) { S.refocus = true; $(fq).focus(); try { $(fq).setSelectionRange(pos, pos); } catch (e) {} S.refocus = false; }
   }
+  // Numéro de version en haut à droite du bandeau (avec « Bêta test » sur le site de test)
+  function coinVersion() {
+    var e = document.getElementById('ver-coin');
+    if (!e) { e = document.createElement('div'); e.id = 'ver-coin'; e.setAttribute('aria-label', 'Version de l’application'); document.body.appendChild(e); document.body.classList.add('coin'); }
+    e.textContent = (C.env === 'dev' ? 'Bêta test · ' : '') + 'v' + (C.version || '');
+  }
   function render() {
     JOUR_CACHE = {};
+    coinVersion();
     var app = $('app');
     document.body.classList.toggle('ecran-lg', !S.session);
     if (!S.session) { app.innerHTML = vLogin(); bindLogin(); return; }
@@ -212,7 +219,7 @@
     if (gestion()) tabs.push(['plus', 'Plus']);
     tabs.push(['aide', '❓ Aide']);
     var h = '<header class="top"><div class="top-in">' + (gestion() ? '<button class="btn l sm top-menu" data-tab="hub" aria-label="Menu principal">' + ico('maison', 18, 2.2) + '<span class="m-hide">Menu</span></button>' : '') + '<img src="assets/logo-evydent.jpg" alt="">'
-      + '<div class="top-who"><b><span class="nom">' + esc(S.me.nom) + '</span>' + (C.env === 'dev' ? ' <span class="env">TEST</span>' : '') + '</b>' + (C.env === 'dev' ? '<small class="ver">Version ' + esc(C.version || '') + '</small>' : '') + '<span>' + LABEL[S.me.role] + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + '</span></div>'
+      + '<div class="top-who"><b><span class="nom">' + esc(S.me.nom) + '</span></b><span>' + LABEL[S.me.role] + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + '</span></div>'
       + '<button class="btn l sm" data-tab="compte" title="Changer mon code" aria-label="Changer mon code">' + ico('code', 20, 2.2) + '</button><button class="btn l sm" data-act="out" aria-label="Changer de personne"><span class="m-hide">Changer de personne</span><span class="m-only avec-ic">' + ico('changer', 18, 2.2) + 'Changer</span></button></div>'
       + '<nav class="tabs" aria-label="Menu">' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav></header>';
     if (S.nouvelleVersion) h += '<div class="ban ok" style="max-width:1100px;margin:10px auto 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1">Une nouvelle version de l’application est disponible (' + esc(S.nouvelleVersion) + ').</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>';
@@ -408,8 +415,8 @@
   function vMaison() {
     var j = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }), ds = derniereSortie();
     var mesAtt = (S.recents || []).filter(function (x) { return x.type === 'demande' && x.statut === 'attente' && x.auteur === S.me.id; });
-    var h = '<header class="a-hd a-maison"><div class="a-mh-top"><img src="assets/logo-evydent.jpg" alt="Evydent"><span class="grow">Espace dentaire Val d’Yerres</span>' + (C.env === 'dev' ? '<span class="env">TEST</span>' : '') + '</div>'
-      + '<div><h1>Bonjour ' + esc(S.me.nom) + '</h1><p>' + (S.me.cabinet ? 'Cabinet ' + S.me.cabinet + ' · ' : '') + j + '</p>' + (C.env === 'dev' ? '<p class="a-ver">Version ' + esc(C.version || '') + '</p>' : '') + '</div></header>';
+    var h = '<header class="a-hd a-maison"><div class="a-mh-top"><img src="assets/logo-evydent.jpg" alt="Evydent"><span class="grow">Espace dentaire Val d’Yerres</span></div>'
+      + '<div><h1>Bonjour ' + esc(S.me.nom) + '</h1><p>' + (S.me.cabinet ? 'Cabinet ' + S.me.cabinet + ' · ' : '') + j + '</p></div></header>';
     h += '<div class="a-corps">' + vBienvenue() + '<div class="tuiles">'
       + '<button class="tuile t1" data-tab="sortie"><span class="ti">' + ico('sortie', 34) + '</span><span class="tt"><b>Sortie</b><span>Prendre dans la réserve</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
       + '<button class="tuile" data-tab="inventaire"><span class="ti">' + ico('inventaire', 32) + '</span><span class="tt"><b>Inventaire</b><span>Compter mon cabinet</span>' + (inventaireAFaire() ? '<em>À faire ce mois-ci</em>' : '') + '</span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
@@ -652,9 +659,9 @@
     var att = S.attente.length, cmd = nbACommander(), sous = [];
     if (att) sous.push(att + ' ' + pl(att, 'demande') + ' à valider');
     if (cmd) sous.push(cmd + ' à commander');
-    var h = '<header class="a-hd a-maison h-hd"><div class="a-mh-top"><img src="assets/logo-evydent.jpg" alt="Evydent"><span class="grow">Espace dentaire Val d’Yerres</span>' + (C.env === 'dev' ? '<span class="env">TEST</span>' : '')
+    var h = '<header class="a-hd a-maison h-hd"><div class="a-mh-top"><img src="assets/logo-evydent.jpg" alt="Evydent"><span class="grow">Espace dentaire Val d’Yerres</span>'
       + '<button class="h-rond" data-tab="reglages" aria-label="Réglages">' + ico('reglage', 22) + '</button></div>'
-      + '<div><h1>Bonjour ' + esc(S.me.nom) + '</h1><p>' + LABEL[S.me.role] + ' · ' + j + '</p>' + (C.env === 'dev' ? '<p class="a-ver">Version ' + esc(C.version || '') + '</p>' : '') + '</div></header>';
+      + '<div><h1>Bonjour ' + esc(S.me.nom) + '</h1><p>' + LABEL[S.me.role] + ' · ' + j + '</p></div></header>';
     var ca = congesAttente().length;
     h += '<div class="a-corps h-corps">' + vBienvenue()
       + (ca ? '<button class="h-alerte" data-tab="pconges">' + ico('attente', 22) + '<span><b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à valider</span>' + ico('suiv', 20, 2.4) + '</button>' : '')
