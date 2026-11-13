@@ -10,5 +10,5 @@
     : { env: 'prod', url: 'https://jpvfhkotenlylekkvigc.supabase.co', key: 'sb_publishable_vI_EjQrTCYIhcrDEiQmwPg_bm-r5_U8' };
   // Domaine technique ajouté à un identifiant sans « @ » (aucun email n'est envoyé)
   window.CONFIG.domaine = 'espace-dentaire-val-d-yerres.fr';
-  window.CONFIG.version = '2.3.0-dev.26';
+  window.CONFIG.version = '2.3.0-dev.27';
 })();

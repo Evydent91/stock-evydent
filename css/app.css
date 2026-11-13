@@ -948,3 +948,5 @@ button.hr-l:hover{background:var(--ivory)}
 @media (min-width:701px){.cgm{--cgm-nom:130px;--cgm-j:26px}.cgm-c{height:26px}}
 /* Page Congés sur PC : pleine largeur, cases plus grandes */
 @media (min-width:1000px){.h-app.tres-large .cgm{--cgm-nom:150px;--cgm-j:34px}.h-app.tres-large .cgm-c{height:30px}.h-app.tres-large .cgm-h{font-size:13.5px}.h-app.tres-large .cgm-n{font-size:15px}.h-app.tres-large .h-cg{max-width:760px}}
+.cgm-c.pr,.cgm-leg .pr{background:#cfe6d8}
+.cgm-c.np,.cgm-leg .np{background:repeating-linear-gradient(135deg,#eef1f4 0 3px,#fff 3px 6px);box-shadow:inset 0 0 0 1px #e3e7eb}
