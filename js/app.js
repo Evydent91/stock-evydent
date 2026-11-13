@@ -1131,7 +1131,8 @@
     var k = demi === 'AM' ? 'am' : 'pm', t = ((p.trame || {})[j] || {})[k];
     // Jour en plus d'un dentiste : son assistante attitrée le suit toute la journée (sauf école), avec ses horaires habituels auprès de lui
     var at = attitre(p), da = at && dentById(at);
-    if (da && dentExtra(da, iso) && dentPresent(da, iso) && !(t && t.a === 'ECOLE')) {
+    var jt = (p.trame || {})[j] || {}, dejaAvec = ['am', 'pm'].some(function (z) { return jt[z] && jt[z].a === 'D:' + at; });
+    if (da && !dejaAvec && dentExtra(da, iso) && dentPresent(da, iso) && !(t && t.a === 'ECOLE')) {
       var hab = horairesAvec(p, 'D:' + at, k);
       return { a: 'D:' + at, de: hab.de, fi: hab.fi, v: 1 };
     }
@@ -1152,7 +1153,8 @@
   // un dentiste présent sans assistante (en priorité ceux qui n'ont personne dans les semaines types ce jour-là,
   // comme Dr Angela le lundi et le jeudi), sinon elle bascule en Sté. Seulement pour les cases non saisies.
   var JOUR_CACHE = {};
-  function dentExtra(d, iso) { return !!(d && Array.isArray(d.extra) && d.extra.indexOf(iso) >= 0); }   // jour en plus (ponctuel)
+  // Jour en plus (ponctuel) : seulement un jour où le dentiste ne vient pas d'habitude
+  function dentExtra(d, iso) { return !!(d && Array.isArray(d.extra) && d.extra.indexOf(iso) >= 0 && !(d.jours && d.jours[jourSem(iso)])); }
   function dentPresent(d, iso) { var j = jourSem(iso); return !!(d && d.actif && (d.jours && d.jours[j] || dentExtra(d, iso)) && !dentAbsent(d.id, iso)); }
   function jourCalc(iso) {
     if (JOUR_CACHE[iso]) return JOUR_CACHE[iso];
