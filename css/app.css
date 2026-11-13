@@ -747,3 +747,7 @@ body.mode-h .bnav{display:none}
 .h-sw:checked::after{left:23px}
 .h-sw:disabled{opacity:.5;cursor:default}
 .h-sw:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.pl-hh{flex-direction:column;align-items:flex-start!important;gap:2px!important}
+.pl-hh label{display:flex;align-items:center;gap:10px}
+.pl-hh small{font-size:12px}
+.pl-c.abs span{font-size:11px;font-weight:700}
