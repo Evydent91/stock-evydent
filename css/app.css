@@ -563,3 +563,56 @@ body.mode-a .toast{bottom:calc(110px + env(safe-area-inset-bottom))}
   body.mode-a .tuile .tc{display:flex}
 }
 .a-hd-row h1{font-size:24px;white-space:nowrap}
+
+/* ================= Accueil référente / responsable (2 tuiles), Réglages, Équipe, Dentistes ================= */
+body.mode-h{padding-top:0!important}
+body.mode-h .bnav{display:none}
+.h-app{max-width:760px}
+.h-app.large{max-width:1120px}
+.h-hd .h-rond{width:44px;height:44px;border-radius:22px;border:1.5px solid var(--gold);color:var(--gold);background:none;display:flex;align-items:center;justify-content:center;flex:none;padding:0}
+.h-corps{gap:14px}
+.h-tuiles{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:701px){.h-tuiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.h-tuile{min-height:200px}}
+.h-tuile{display:flex;align-items:center;gap:16px;padding:22px 20px;min-height:150px;border-radius:22px;border:none;background:#fff;color:var(--ink);text-align:left;box-shadow:0 1px 3px rgba(31,42,51,.08);width:100%}
+.h-tuile.fonce{background:var(--navy);color:#fff}
+.h-tuile .ti{width:64px;height:64px;border-radius:18px;background:var(--soft);color:var(--navy);display:flex;align-items:center;justify-content:center;flex:none}
+.h-tuile.fonce .ti{background:rgba(201,185,122,.18);color:var(--gold)}
+.h-tuile .tt{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0}
+.h-tuile .tt b{font-size:24px}
+.h-tuile .tt span{font-size:15px;color:var(--mute)}
+.h-tuile.fonce .tt span{color:#fff;opacity:.85}
+.h-tuile .tt em{align-self:flex-start;margin-top:2px;font-style:normal;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#6b5d24;background:#f1ead2;border-radius:999px;padding:3px 10px}
+.h-tuile .tc{color:var(--navy);display:flex}
+.h-tuile.fonce .tc{color:var(--gold)}
+.h-ligne{display:flex;align-items:center;gap:14px;padding:0 18px;min-height:64px;border-radius:18px;background:#fff;border:none;color:var(--ink);text-align:left;box-shadow:0 1px 3px rgba(31,42,51,.08);width:100%}
+.h-ligne .ic:last-child{color:var(--mute)}
+.h-bas{display:flex;gap:10px;margin-top:4px}
+.h-bas .a-btn{height:52px;font-size:16px;font-weight:700}
+.a-li .a-av{width:40px;height:40px;border-radius:20px;font-size:18px}
+.a-li .a-av.d{border-radius:12px;background:var(--navy);color:var(--gold)}
+.a-li > .ic:last-child{color:var(--mute);flex:none}
+.a-li .warn{color:var(--warn);font-weight:600}
+.h-plie{margin:0}
+.h-plie summary{cursor:pointer;font-weight:700;color:var(--mute);padding:8px 4px;min-height:44px;display:flex;align-items:center}
+.h-plie .a-liste{margin-top:6px}
+.h-fiche .card{margin:0}
+.h-g2{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:600px){.h-g2{grid-template-columns:1fr 1fr}}
+.h-trame{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:700px){.h-trame{grid-template-columns:1fr 1fr}}
+.h-jour{display:flex;flex-direction:column;gap:8px}
+.h-jt{display:flex;justify-content:space-between;align-items:center}
+.h-jt b{font-size:17px}
+.h-demi{display:grid;grid-template-columns:86px minmax(0,1fr);gap:6px 8px;align-items:center}
+.h-demi .h-dl{font-size:14px;color:var(--mute);font-weight:600}
+.h-demi .h-hh{grid-column:2;display:flex;align-items:center;gap:6px}
+.h-demi .h-hh .in{flex:1;min-width:0;padding:0 6px}
+.h-demi .in{height:44px;margin:0}
+.h-total{display:flex;justify-content:space-between;align-items:center;border-radius:14px;padding:12px 14px;font-size:16px}
+.h-total.ok{background:var(--okbg);color:#14532d}
+.h-total.warn{background:var(--warnbg);color:#5a2b06}
+.h-total b{font-size:19px}
+.h-jours{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:6px}
+.h-jbtn{height:46px;border-radius:12px;border:1.5px solid var(--line);background:#fff;color:var(--mute);font-weight:600;font-size:15px}
+.h-jbtn.on{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:700}
+.top-menu{display:inline-flex;align-items:center;gap:6px;margin-right:8px}

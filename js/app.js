@@ -124,7 +124,7 @@
       if (S.ret.cab == null) S.ret.cab = S.me.cabinet || 1;
       if (!gestion() && ['maison', 'sortie', 'retour', 'inventaire', 'histo', 'compte', 'aide', 'moi'].indexOf(S.tab) < 0) S.tab = 'maison';
       if (S.inv.emp == null && S.me.cabinet) choisirEmp(S.me.cabinet);
-      if (!S.tabChoisi) S.tab = gestion() ? 'accueil' : 'maison';
+      if (!S.tabChoisi) S.tab = gestion() ? 'hub' : 'maison';
       S.histTous = gestion();
       return charger();
     });
@@ -166,6 +166,7 @@
       S.rang = {}; (x[9] || []).forEach(function (r) { var o = S.rang[r.article_id] = S.rang[r.article_id] || { t: 0, c: {} }; o.t += +r.total; o.c[r.cabinet] = +r.total; });
       S.afPrix = {}; (x[8] || []).forEach(function (p) { (S.afPrix[p.article_id] = S.afPrix[p.article_id] || []).push(p); });
       S.loading = false; render();
+      if (gestion()) chargerPlan();
       if (S.tab === 'histo') chargerHisto();
     }).catch(function (e) { S.loading = false; toast(msgErr(e)); render(); });
   }
@@ -190,6 +191,12 @@
       app.innerHTML = '<div class="lg"><div class="lg-top"></div><div class="lg-in"><div class="lg-card"><h1>Compte non activé</h1><p>Votre connexion fonctionne, mais votre compte n’a pas encore de profil actif dans l’application. Demandez à la responsable des achats ou à la référente de l’activer.</p><button class="btn l" id="bout">Se déconnecter</button></div></div></div>';
       $('bout').onclick = deconnexion; return;
     }
+    if (gestion() && HUB.indexOf(S.tab) >= 0) {
+      poser(app, renderH());
+      document.body.classList.remove('mode-a', 'ecran-ok', 'sans-nav'); document.body.classList.add('mode-h');
+      placerTour(); return;
+    }
+    document.body.classList.remove('mode-h');
     if (modeA()) {
       poser(app, renderA());
       document.body.classList.add('mode-a');
@@ -201,9 +208,9 @@
     var tabs = gestion() ? [['accueil', 'Accueil'], ['sortie', 'Sortie'], ['retour', 'Retour'], ['inventaire', 'Inventaire']] : [['maison', 'Accueil'], ['sortie', 'Sortie'], ['retour', 'Retour'], ['inventaire', 'Inventaire']];
     if (gestion()) tabs.push(['demandes', 'Demandes' + (S.attente.length ? '<span class="badge">' + S.attente.length + '</span>' : '')], ['stock', 'Stock'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs']);
     tabs.push(['histo', 'Historique']);
-    if (gestion()) tabs.push(['equipe', 'Équipe'], ['plus', 'Plus']);
+    if (gestion()) tabs.push(['plus', 'Plus']);
     tabs.push(['aide', '❓ Aide']);
-    var h = '<header class="top"><div class="top-in"><img src="assets/logo-evydent.jpg" alt="">'
+    var h = '<header class="top"><div class="top-in">' + (gestion() ? '<button class="btn l sm top-menu" data-tab="hub" aria-label="Menu principal">' + ico('maison', 18, 2.2) + '<span class="m-hide">Menu</span></button>' : '') + '<img src="assets/logo-evydent.jpg" alt="">'
       + '<div class="top-who"><b><span class="nom">' + esc(S.me.nom) + '</span>' + (C.env === 'dev' ? ' <span class="env">TEST</span>' : '') + '</b>' + (C.env === 'dev' ? '<small class="ver">Version ' + esc(C.version || '') + '</small>' : '') + '<span>' + LABEL[S.me.role] + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + '</span></div>'
       + '<button class="btn l sm" data-tab="compte" title="Changer mon code" aria-label="Changer mon code">' + ico('code', 20, 2.2) + '</button><button class="btn l sm" data-act="out" aria-label="Changer de personne"><span class="m-hide">Changer de personne</span><span class="m-only avec-ic">' + ico('changer', 18, 2.2) + 'Changer</span></button></div>'
       + '<nav class="tabs" aria-label="Menu">' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav></header>';
@@ -349,6 +356,10 @@
     boite: '<path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
     attente: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 1.5"/>',
     loupe: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
+    reglage: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68 1.65 1.65 0 0 0 10 3.17V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+    agenda: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7 14h3M14 14h3M7 17.5h3"/>',
+    equipe: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2.2.6 3.5 2.4 3.5 5.2"/>',
+    dent: '<path d="M7.5 3.5c-2.5 0-4 2-4 4.5 0 3 1.2 4.5 1.8 7.5.5 2.5 1 5 2.4 5 1.6 0 1.6-4.5 4.3-4.5s2.7 4.5 4.3 4.5c1.4 0 1.9-2.5 2.4-5 .6-3 1.8-4.5 1.8-7.5 0-2.5-1.5-4.5-4-4.5-1.8 0-2.8 1-4.5 1s-2.7-1-4.5-1z"/>',
     fleche: '<path d="M12 19V5M6 11l6-6 6 6"/>',
     invok: '<rect x="6" y="4" width="12" height="16" rx="2"/><path d="M9 12l2 2 4-4"/>'
   };
@@ -604,9 +615,267 @@
     return h;
   }
 
+  // ---------- Accueil de la référente et de la responsable (2 tuiles), Réglages, Équipe, Dentistes ----------
+  // Écrans de la maquette « Accueil référente et responsable ». Chaque écran a son en-tête bleu.
+  var HUB = ['hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche'];
+  var JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'], JC = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
+  // Affectations possibles d'une demi-journée (en plus des dentistes)
+  var CODES = [['ADMIN', 'Admin'], ['STE', 'Sté'], ['ACCUEIL', 'Accueil'], ['ADMIN_ORTHO', 'Admin ortho'], ['RANGEMENT', 'Rangement'], ['NETTOYAGE', 'Nettoyage cab.'], ['ECOLE', 'École'], ['OFF', 'Ne travaille pas']];
+  var ACC_H = ['data-tab="hub"', 'Accueil'];
+  function dentById(id) { return (S.dentistes || []).filter(function (d) { return String(d.id) === String(id); })[0]; }
+  function affTxt(a) {
+    if (!a) return '—';
+    if (a.slice(0, 2) === 'D:') { var d = dentById(a.slice(2)); return d ? 'Dr ' + d.prenom : 'Dr ?'; }
+    var c = CODES.filter(function (x) { return x[0] === a; })[0]; return c ? c[1] : a;
+  }
+  function enMin(t) { var m = /^(\d{1,2}):(\d{2})/.exec(t || ''); return m ? +m[1] * 60 + +m[2] : null; }
+  function dureeDemi(c) { if (!c || !c.a || c.a === 'OFF') return 0; var a = enMin(c.de), b = enMin(c.fi); return a != null && b != null && b > a ? (b - a) / 60 : 0; }
+  function heuresJour(t, j) { var x = (t || {})[j] || {}; return dureeDemi(x.am) + dureeDemi(x.pm); }
+  function heuresTrame(t) { var s = 0; for (var j = 1; j <= 5; j++) s += heuresJour(t, j); return s; }
+  function fh(h) { var e = Math.floor(h + 1e-9), m = Math.round((h - e) * 60); return e + ' h' + (m ? ' ' + (m < 10 ? '0' : '') + m : ''); }
+  function initiale(n) { return esc(String(n || '?').replace(/^Dr\s+/i, '').charAt(0).toUpperCase()); }
+  function planPret() { return !!S.equipe; }
+  function nbACommander() { try { return S.articles.filter(function (a) { return filtreStock(a, 'commander'); }).length; } catch (e) { return 0; } }
+
+  function vHub() {
+    var j = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    var att = S.attente.length, cmd = nbACommander(), sous = [];
+    if (att) sous.push(att + ' ' + pl(att, 'demande') + ' à valider');
+    if (cmd) sous.push(cmd + ' à commander');
+    var h = '<header class="a-hd a-maison h-hd"><div class="a-mh-top"><img src="assets/logo-evydent.jpg" alt="Evydent"><span class="grow">Espace dentaire Val d’Yerres</span>' + (C.env === 'dev' ? '<span class="env">TEST</span>' : '')
+      + '<button class="h-rond" data-tab="reglages" aria-label="Réglages">' + ico('reglage', 22) + '</button></div>'
+      + '<div><h1>Bonjour ' + esc(S.me.nom) + '</h1><p>' + LABEL[S.me.role] + ' · ' + j + '</p>' + (C.env === 'dev' ? '<p class="a-ver">Version ' + esc(C.version || '') + '</p>' : '') + '</div></header>';
+    h += '<div class="a-corps h-corps">' + vBienvenue() + '<div class="h-tuiles">'
+      + '<button class="h-tuile fonce" data-tab="accueil"><span class="ti">' + ico('boite', 34) + '</span><span class="tt"><b>Gestion de stock</b><span>' + (sous.length ? sous.join(' · ') : 'Sorties, inventaires, commandes') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
+      + '<button class="h-tuile" data-act="planbientot"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span>Qui travaille, où et quand</span><em>Bientôt</em></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button></div>'
+      + '<button class="h-ligne" data-tab="reglages"><span class="a-lii">' + ico('equipe', 20) + '</span><span class="a-it-n"><b>Réglages</b><span>L’équipe et les dentistes</span></span>' + ico('suiv', 20, 2.2) + '</button>'
+      + '<div class="h-bas"><button class="a-btn blanc" data-tab="compte">' + ico('code', 20) + 'Mot de passe</button><button class="a-btn navy" data-act="out">' + ico('changer', 20, 2.2) + 'Changer</button></div>'
+      + '</div>';
+    return h;
+  }
+
+  function vReglages() {
+    var n = (S.equipe || []).filter(function (p) { return p.actif; }).length, nd = (S.dentistes || []).filter(function (d) { return d.actif; }).length;
+    var h = hdA({ back: ACC_H, t: 'Réglages', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    if (!planPret()) h += '<div class="ban warn">La mise à jour 009 de la base n’est pas encore faite : l’équipe et les dentistes ne peuvent pas s’afficher.</div>';
+    h += '<div class="a-liste">'
+      + '<button class="a-li" data-tab="pequipe"><span class="a-lii">' + ico('equipe', 22) + '</span><span class="a-it-n"><b>L’équipe</b><span>' + (planPret() ? n + ' ' + pl(n, 'personne') + ' · ' : '') + 'comptes, jours, horaires</span></span>' + ico('suiv', 20, 2.2) + '</button>'
+      + '<button class="a-li" data-tab="pdent"><span class="a-lii">' + ico('dent', 22) + '</span><span class="a-it-n"><b>Les dentistes</b><span>' + (planPret() ? nd + ' ' + pl(nd, 'dentiste') + ' · ' : '') + 'jours de présence, congés</span></span>' + ico('suiv', 20, 2.2) + '</button>'
+      + '<button class="a-li" data-act="planbientot"><span class="a-lii">' + ico('histo', 22) + '</span><span class="a-it-n"><b>Règles des heures</b><span>Heures comptées pour congés, maladie, école, férié · bientôt</span></span>' + ico('suiv', 20, 2.2) + '</button></div>'
+      + '<h2 class="a-jour">Ce que voient les assistantes</h2><div class="a-liste">'
+      + '<div class="a-li"><span class="a-it-n"><b>Leur planning</b><span>jours, dentiste, horaires</span></span><span class="pill">Coupé</span></div>'
+      + '<div class="a-li" style="opacity:.6"><span class="a-it-n"><b>Leur reliquat d’heures</b><span>possible seulement si le planning est affiché</span></span><span class="pill">Coupé</span></div></div>'
+      + '<p class="a-aide">Pour l’instant le planning n’est visible que par la référente et la responsable. Ces interrupteurs fonctionneront avec l’étape du planning.</p>'
+      + '<p class="a-aide">Réservé à la référente et à la responsable. Ces fiches servent à la fois à la gestion de stock et au planning.</p></div>';
+    return h;
+  }
+
+  // --- L'équipe ---
+  function resumeTrame(p) {
+    if (p.type === 'interimaire') return 'Intérimaire · selon les besoins';
+    var parts = [];
+    for (var j = 1; j <= 5; j++) {
+      var x = (p.trame || {})[j] || {}, a = x.am && x.am.a, b = x.pm && x.pm.a;
+      var v = a && a !== 'OFF' ? a : b && b !== 'OFF' ? b : 'OFF';
+      if (v !== 'OFF' && v !== 'ECOLE') parts.push(JC[j].toLowerCase() + ' ' + affTxt(v).replace(/^Dr /, ''));
+    }
+    return (p.statut === 'apprentie' ? 'Apprentie' : 'Qualifiée') + (p.ecole_jour ? ' · école le ' + JOURS[p.ecole_jour].toLowerCase() : '') + (parts.length ? ' · ' + parts.join(', ') : '');
+  }
+  function lignePers(p) {
+    var h = heuresTrame(p.trame), c = +p.contrat_h || 0, ecart = p.type !== 'interimaire' && c && Math.abs(h - c) > 0.01;
+    return '<button class="a-li" data-pf="' + p.id + '"><span class="a-av p">' + initiale(p.prenom) + '</span><span class="a-it-n"><b>' + esc(p.prenom) + (p.profil_id ? '' : '') + '</b><span>' + esc(resumeTrame(p)) + '</span>'
+      + (ecart ? '<span class="warn">Semaine type : ' + fh(h) + ' pour un contrat de ' + fh(c) + '</span>' : '') + '</span>' + ico('suiv', 20, 2.2) + '</button>';
+  }
+  function vPEquipe() {
+    var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'L’équipe', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    if (!planPret()) return h + '<div class="ban warn">La mise à jour 009 de la base n’est pas encore faite.</div></div>';
+    var tri = function (a, b) { return (a.ordre - b.ordre) || a.prenom.localeCompare(b.prenom); };
+    var act = S.equipe.filter(function (p) { return p.actif; }).sort(tri), anc = S.equipe.filter(function (p) { return !p.actif; }).sort(tri);
+    h += act.length ? '<div class="a-liste">' + act.map(lignePers).join('') + '</div>' : '<p class="a-vide">Personne pour l’instant.</p>';
+    h += '<button class="a-plus" data-act="pfnew">+ Ajouter une personne</button>';
+    if (anc.length) h += '<details class="h-plie"><summary>Anciennes et anciens · ' + anc.length + '</summary><div class="a-liste">' + anc.map(lignePers).join('') + '</div></details>';
+    var lies = {}; S.equipe.forEach(function (p) { if (p.profil_id) lies[p.profil_id] = 1; });
+    var seuls = S.profils.filter(function (p) { return !lies[p.id]; });
+    if (seuls.length) h += '<h2 class="a-jour">Comptes sans fiche planning</h2><p class="a-aide">Ces personnes se connectent à l’appli mais n’apparaissent pas dans le planning (ex. la responsable).</p>'
+      + seuls.map(carteProfil).join('');
+    if (S.eqNew && !S.eqNew.lierA) h += vEqNew();
+    else if (!S.eqNew) h += '<button class="a-plus" data-act="eqnew">+ Créer un compte de connexion sans fiche planning</button>';
+    return h + '</div>';
+  }
+
+  // --- Fiche d'une personne ---
+  function nouvellePers() { return { prenom: '', type: 'assistante', statut: 'qualifiee', contrat_h: 39, ecole_jour: null, actif: true, trame: {}, consigne: '' }; }
+  function ouvrirPers(id) {
+    var p = id === 'new' ? nouvellePers() : S.equipe.filter(function (x) { return String(x.id) === String(id); })[0];
+    if (!p) return;
+    S.pf = { id: id, d: JSON.parse(JSON.stringify(p)) }; S.eqNew = null; S.eqEdit = null; S.tab = 'pfiche'; render(); window.scrollTo(0, 0);
+  }
+  function optAff(cur) {
+    var ds = (S.dentistes || []).filter(function (d) { return d.actif || 'D:' + d.id === cur; }).sort(function (a, b) { return a.ordre - b.ordre; });
+    return '<option value="">—</option><optgroup label="Dentistes">' + ds.map(function (d) { var v = 'D:' + d.id; return '<option value="' + v + '"' + (cur === v ? ' selected' : '') + '>Dr ' + esc(d.prenom) + '</option>'; }).join('') + '</optgroup>'
+      + '<optgroup label="Autres">' + CODES.map(function (c) { return '<option value="' + c[0] + '"' + (cur === c[0] ? ' selected' : '') + '>' + c[1] + '</option>'; }).join('') + '</optgroup>';
+  }
+  function demiEdit(j, k, c) {
+    c = c || {}; var off = !c.a || c.a === 'OFF';
+    return '<div class="h-demi"><span class="h-dl">' + (k === 'am' ? 'Matin' : 'Après-midi') + '</span><select class="in" data-tr="' + j + '.' + k + '.a" aria-label="' + JOURS[j] + ' ' + (k === 'am' ? 'matin' : 'après-midi') + '">' + optAff(c.a) + '</select>'
+      + '<span class="h-hh"><input class="in" type="time" data-tr="' + j + '.' + k + '.de" value="' + esc(off ? '' : c.de || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Arrivée"><span>–</span><input class="in" type="time" data-tr="' + j + '.' + k + '.fi" value="' + esc(off ? '' : c.fi || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Départ"></span></div>';
+  }
+  function vPFiche() {
+    var F = S.pf; if (!F) { S.tab = 'pequipe'; return vPEquipe(); }
+    var p = F.d, nouv = F.id === 'new', t = p.trame || {}, tot = heuresTrame(t), c = +p.contrat_h || 0;
+    var prof = p.profil_id ? S.profils.filter(function (x) { return x.id === p.profil_id; })[0] : null;
+    var h = '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" data-tab="pequipe">' + ico('prec', 22, 2.4) + 'L’équipe</button><h1>' + (nouv ? 'Nouvelle fiche' : esc(p.prenom || '…')) + '</h1><span class="a-cale"></span></div></header><div class="a-corps h-fiche">';
+    h += '<h2 class="a-jour">Identité</h2><div class="card h-g2">'
+      + '<label class="mu">Prénom<input class="in" data-pff="prenom" value="' + esc(p.prenom) + '"></label>'
+      + '<label class="mu">Type<select class="in" data-pff="type"><option value="assistante"' + (p.type === 'assistante' ? ' selected' : '') + '>Assistante / assistant</option><option value="interimaire"' + (p.type === 'interimaire' ? ' selected' : '') + '>Intérimaire</option></select></label>'
+      + '<label class="mu">Statut<select class="in" data-pff="statut"><option value="qualifiee"' + (p.statut === 'qualifiee' ? ' selected' : '') + '>Qualifiée / qualifié</option><option value="apprentie"' + (p.statut === 'apprentie' ? ' selected' : '') + '>Apprentie / apprenti</option></select></label>'
+      + '<label class="mu">Heures du contrat par semaine<input class="in" inputmode="decimal" data-pff="contrat_h" value="' + esc(fr(p.contrat_h)) + '"></label>'
+      + (p.statut === 'apprentie' ? '<label class="mu">Jour d’école par défaut<select class="in" data-pff="ecole_jour"><option value="">—</option>' + [1, 2, 3, 4, 5].map(function (j) { return '<option value="' + j + '"' + (+p.ecole_jour === j ? ' selected' : '') + '>' + JOURS[j] + '</option>'; }).join('') + '</select></label>' : '')
+      + '<label class="row" style="grid-column:1/-1"><input type="checkbox" data-pff="actif"' + (p.actif ? ' checked' : '') + ' style="width:20px;height:20px;flex:none"><span>Fait partie de l’équipe <span class="mu">(décocher pour une ancienne : elle reste dans l’historique)</span></span></label></div>';
+    h += '<h2 class="a-jour">Semaine type (pour le planning)</h2><p class="a-aide">Dentiste ou poste du matin et de l’après-midi, avec les horaires. Le planning de chaque semaine partira de là.</p><div class="h-trame">'
+      + [1, 2, 3, 4, 5].map(function (j) { var x = t[j] || {}, hj = heuresJour(t, j); return '<div class="card h-jour"><div class="h-jt"><b>' + JOURS[j] + '</b><span class="mu">' + (hj ? fh(hj) : 'ne travaille pas') + '</span></div>' + demiEdit(j, 'am', x.am) + demiEdit(j, 'pm', x.pm) + '</div>'; }).join('')
+      + '</div><div class="h-total ' + (c && Math.abs(tot - c) > 0.01 ? 'warn' : 'ok') + '"><span>Total de la semaine type</span><b>' + fh(tot) + (c ? ' / ' + fh(c) : '') + '</b></div>';
+    h += '<h2 class="a-jour">Consigne</h2><div class="card"><textarea class="in" rows="2" data-pff="consigne" placeholder="Ex. : pas de samedi, finit à 17 h le mardi…">' + esc(p.consigne || '') + '</textarea></div>';
+    h += '<h2 class="a-jour">Congés</h2><div class="card"><p class="mu" style="margin:0">Les congés arrivent avec l’étape suivante (demande depuis le téléphone, validation par la référente ou la responsable).</p></div>';
+    h += '<h2 class="a-jour">Compte de connexion</h2>';
+    if (nouv) h += '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche, puis vous pourrez lui créer un compte.</p></div>';
+    else if (prof) h += carteProfil(prof) + '<button class="a-lien" data-act="pfdelier">Détacher ce compte de la fiche</button>';
+    else {
+      var lies = {}; S.equipe.forEach(function (x) { if (x.profil_id) lies[x.profil_id] = 1; });
+      var libres = S.profils.filter(function (x) { return !lies[x.id]; });
+      h += '<div class="card"><p class="mu" style="margin-top:0">' + esc(p.prenom) + ' n’a pas de compte : elle apparaît dans le planning mais ne se connecte pas à l’appli.</p>'
+        + (S.eqNew && String(S.eqNew.lierA) === String(F.id) ? '' : '<button class="btn" data-act="pfcompte">+ Créer son compte de connexion</button>')
+        + (libres.length ? '<label class="mu" style="display:block;margin-top:12px">Ou relier un compte qui existe déjà<select class="in" id="pflier"><option value="">Choisir…</option>' + libres.map(function (x) { return '<option value="' + x.id + '">' + esc(x.nom) + ' (' + esc(x.identifiant) + ')</option>'; }).join('') + '</select></label>' : '') + '</div>';
+      if (S.eqNew && String(S.eqNew.lierA) === String(F.id)) h += vEqNew();
+    }
+    return h + '</div>';
+  }
+  function vBarPFiche() {
+    var F = S.pf; if (!F) return '';
+    return '<div class="bar a-bar"><div class="bar-in"><button class="a-btn navy" data-act="pfsave"' + (F.busy ? ' disabled' : '') + '>' + (F.busy ? 'Enregistrement…' : 'Enregistrer') + '</button></div></div>';
+  }
+  function majPers(el) {
+    var F = S.pf; if (!F) return;
+    if (el.dataset.pff) {
+      var k = el.dataset.pff, v = el.type === 'checkbox' ? el.checked : el.value;
+      if (k === 'contrat_h') v = Math.max(0, nb(String(v).replace(',', '.')));
+      if (k === 'ecole_jour') v = v ? +v : null;
+      F.d[k] = v;
+    } else if (el.dataset.tr) {
+      var p = el.dataset.tr.split('.'), t = F.d.trame = F.d.trame || {}, j = t[p[0]] = t[p[0]] || {}, c = j[p[1]] = j[p[1]] || {};
+      c[p[2]] = el.value;
+      if (p[2] === 'a') {
+        if (!el.value || el.value === 'OFF') { delete c.de; delete c.fi; if (!el.value) delete j[p[1]]; }
+        else if (!c.de) { c.de = p[1] === 'am' ? '09:00' : '14:00'; c.fi = p[1] === 'am' ? '13:00' : '19:00'; }
+      }
+    }
+  }
+  function sauverPers() {
+    var F = S.pf, p = F.d;
+    if (!String(p.prenom || '').trim()) { toast('Le prénom est obligatoire'); return; }
+    if (p.statut !== 'apprentie') p.ecole_jour = null;
+    var o = { prenom: String(p.prenom).trim(), type: p.type, statut: p.statut, contrat_h: +p.contrat_h || 0, ecole_jour: p.ecole_jour || null, actif: !!p.actif, trame: p.trame || {}, consigne: String(p.consigne || '').trim() || null };
+    if (F.id === 'new') o.ordre = S.equipe.reduce(function (m, x) { return Math.max(m, x.ordre || 0); }, 0) + 1;
+    F.busy = true; render();
+    (F.id === 'new' ? sb.from('equipe').insert(o).select().single() : sb.from('equipe').update(o).eq('id', F.id).select().single()).then(function (r) {
+      if (r.error) throw r.error;
+      var x = r.data || Object.assign({ id: F.id }, F.d, o);
+      F.busy = false; F.id = x.id; F.d = JSON.parse(JSON.stringify(x)); toast('✔ Fiche de ' + x.prenom + ' enregistrée'); chargerPlan();
+    }).catch(function (e) { F.busy = false; toast(msgErr(e)); render(); });
+  }
+  function lierCompte(fid, pid) {
+    return sb.from('equipe').update({ profil_id: pid || null }).eq('id', fid).select().single().then(function (r) {
+      if (r.error) throw r.error; if (S.pf && String(S.pf.id) === String(fid)) S.pf.d.profil_id = r.data.profil_id; return chargerPlan();
+    }).catch(function (e) { toast(msgErr(e)); });
+  }
+
+  // --- Dentistes ---
+  function assistantesDe(did) {
+    var r = {}, k = 'D:' + did;
+    (S.equipe || []).forEach(function (p) {
+      if (!p.actif) return;
+      for (var j = 1; j <= 5; j++) { var x = (p.trame || {})[j] || {}; if ((x.am && x.am.a === k) || (x.pm && x.pm.a === k)) (r[j] = r[j] || []).push(p.prenom); }
+    });
+    return r;
+  }
+  function ligneDent(d) {
+    var as = assistantesDe(d.id), jours = [1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j]; });
+    var seul = d.actif ? jours.filter(function (j) { return !as[j]; }) : [];
+    var noms = {}; jours.forEach(function (j) { (as[j] || []).forEach(function (n) { noms[n] = 1; }); });
+    return '<button class="a-li" data-dent="' + d.id + '"><span class="a-av d">' + initiale(d.prenom) + '</span><span class="a-it-n"><b>Dr ' + esc(d.prenom) + '</b><span>' + (jours.length ? jours.map(function (j) { return JC[j].toLowerCase(); }).join(' ') : 'jours à renseigner') + (Object.keys(noms).length ? ' · avec ' + Object.keys(noms).map(esc).join(', ') : '') + '</span>'
+      + (seul.length ? '<span class="warn">Sans assistante le ' + seul.map(function (j) { return JOURS[j].toLowerCase(); }).join(', ') + ' (semaine type)</span>' : '') + '</span>' + ico('suiv', 20, 2.2) + '</button>';
+  }
+  function vPDent() {
+    var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'Les dentistes', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    if (!planPret()) return h + '<div class="ban warn">La mise à jour 009 de la base n’est pas encore faite.</div></div>';
+    var tri = function (a, b) { return (a.ordre - b.ordre) || a.prenom.localeCompare(b.prenom); };
+    var act = S.dentistes.filter(function (d) { return d.actif; }).sort(tri), anc = S.dentistes.filter(function (d) { return !d.actif; }).sort(tri);
+    h += act.length ? '<div class="a-liste">' + act.map(ligneDent).join('') + '</div>' : '<p class="a-vide">Aucun dentiste pour l’instant.</p>';
+    h += '<p class="a-aide">Les assistantes de chaque dentiste viennent de leur semaine type (fiche de l’assistante) : elles s’affichent ici automatiquement.</p>';
+    h += '<button class="a-plus" data-act="dfnew">+ Ajouter un dentiste</button>';
+    if (anc.length) h += '<details class="h-plie"><summary>Anciens dentistes · ' + anc.length + '</summary><div class="a-liste">' + anc.map(ligneDent).join('') + '</div></details>';
+    return h + '</div>';
+  }
+  function ouvrirDent(id) {
+    var d = id === 'new' ? { prenom: '', jours: {}, note: '', actif: true } : S.dentistes.filter(function (x) { return String(x.id) === String(id); })[0];
+    if (!d) return;
+    S.df = { id: id, d: JSON.parse(JSON.stringify(d)) }; S.tab = 'dfiche'; render(); window.scrollTo(0, 0);
+  }
+  function vDFiche() {
+    var F = S.df; if (!F) { S.tab = 'pdent'; return vPDent(); }
+    var d = F.d, nouv = F.id === 'new', as = nouv ? {} : assistantesDe(F.id);
+    var h = '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" data-tab="pdent">' + ico('prec', 22, 2.4) + 'Dentistes</button><h1>' + (nouv ? 'Nouveau' : 'Dr ' + esc(d.prenom || '…')) + '</h1><span class="a-cale"></span></div></header><div class="a-corps h-fiche">';
+    h += '<div class="card" style="display:flex;flex-direction:column;gap:12px">'
+      + '<label class="mu">Prénom (affiché « Dr … »)<input class="in" data-dff="prenom" value="' + esc(d.prenom) + '"></label>'
+      + '<div><span class="mu">Jours de présence habituels</span><div class="h-jours">' + [1, 2, 3, 4, 5].map(function (j) { return '<button type="button" class="h-jbtn' + (d.jours && d.jours[j] ? ' on' : '') + '" data-djour="' + j + '" aria-pressed="' + !!(d.jours && d.jours[j]) + '">' + JC[j] + '</button>'; }).join('') + '</div></div>'
+      + '<label class="mu">Spécificités<textarea class="in" rows="2" data-dff="note" placeholder="Ex. : + 1 mercredi par mois">' + esc(d.note || '') + '</textarea></label>'
+      + '<label class="row"><input type="checkbox" data-dff="actif"' + (d.actif ? ' checked' : '') + ' style="width:20px;height:20px;flex:none"><span>Travaille au centre <span class="mu">(décocher pour un ancien dentiste)</span></span></label></div>';
+    if (!nouv) h += '<h2 class="a-jour">Assistantes (semaine type)</h2><div class="a-liste">' + [1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j] || as[j]; }).map(function (j) {
+      return '<div class="a-li"><span class="a-it-n"><b>' + JOURS[j] + '</b>' + (as[j] ? '<span>' + as[j].map(esc).join(', ') + '</span>' : '<span class="warn">pas d’assistante</span>') + '</span></div>';
+    }).join('') + '</div><p class="a-aide">Pour changer, modifiez la semaine type de l’assistante (Réglages › L’équipe).</p>';
+    h += '<h2 class="a-jour">Congés</h2><div class="card"><p class="mu" style="margin:0">Les congés arrivent avec l’étape suivante.</p></div>';
+    return h + '</div>';
+  }
+  function vBarDFiche() {
+    var F = S.df; if (!F) return '';
+    return '<div class="bar a-bar"><div class="bar-in"><button class="a-btn navy" data-act="dfsave"' + (F.busy ? ' disabled' : '') + '>' + (F.busy ? 'Enregistrement…' : 'Enregistrer') + '</button></div></div>';
+  }
+  function sauverDent() {
+    var F = S.df, d = F.d;
+    if (!String(d.prenom || '').trim()) { toast('Le prénom est obligatoire'); return; }
+    var o = { prenom: String(d.prenom).trim().replace(/^Dr\.?\s+/i, ''), jours: d.jours || {}, note: String(d.note || '').trim() || null, actif: !!d.actif };
+    if (F.id === 'new') o.ordre = S.dentistes.reduce(function (m, x) { return Math.max(m, x.ordre || 0); }, 0) + 1;
+    F.busy = true; render();
+    (F.id === 'new' ? sb.from('dentistes').insert(o).select().single() : sb.from('dentistes').update(o).eq('id', F.id).select().single()).then(function (r) {
+      if (r.error) throw r.error;
+      var x = r.data || Object.assign({ id: F.id }, F.d, o);
+      F.busy = false; F.id = x.id; F.d = JSON.parse(JSON.stringify(x)); toast('✔ Dr ' + x.prenom + ' enregistré'); chargerPlan();
+    }).catch(function (e) { F.busy = false; toast(msgErr(e)); render(); });
+  }
+
+  function chargerPlan() {
+    if (!gestion()) return Promise.resolve();
+    return Promise.all([
+      sb.from('equipe').select('*').order('ordre'),
+      sb.from('dentistes').select('*').order('ordre')
+    ]).then(function (r) {
+      if (r[0].error || r[1].error) { S.equipe = null; S.dentistes = null; } else { S.equipe = r[0].data; S.dentistes = r[1].data; }
+      render();
+    }, function () { S.equipe = null; S.dentistes = null; render(); });
+  }
+
+  function renderH() {
+    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche }[S.tab] || vHub;
+    var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
+    h += '<div class="a-app h-app' + (S.tab === 'hub' ? ' large' : '') + '">' + ecr() + '</div>';
+    if (S.tab === 'pfiche') h += vBarPFiche();
+    if (S.tab === 'dfiche') h += vBarDFiche();
+    return h;
+  }
+
   // ---------- Navigation téléphone : barre du bas + menu ----------
-  var ICO = { accueil: '🏠', sortie: '📤', retour: '↩️', inventaire: '📋', demandes: '⏳', stock: '📦', commandes: '🛒', articles: '🏷️', fournisseurs: '🚚', histo: '🕘', equipe: '👥', plus: '⚙️', compte: '🔑', aide: '❓', maison: '🏠', moi: '👤' };
-  var NOMS = { accueil: 'Accueil', sortie: 'Sortie', retour: 'Retour', inventaire: 'Inventaire', demandes: 'Demandes', stock: 'Stock', commandes: 'Commandes', articles: 'Articles', fournisseurs: 'Fournisseurs', histo: 'Historique', equipe: 'Équipe', plus: 'Plus', compte: 'Mon code', aide: 'Aide', maison: 'Accueil', moi: 'Moi' };
+  var ICO = { accueil: '🏠', sortie: '📤', retour: '↩️', inventaire: '📋', demandes: '⏳', stock: '📦', commandes: '🛒', articles: '🏷️', fournisseurs: '🚚', histo: '🕘', equipe: '👥', hub: '🏠', plus: '⚙️', compte: '🔑', aide: '❓', maison: '🏠', moi: '👤' };
+  var NOMS = { accueil: 'Accueil', sortie: 'Sortie', retour: 'Retour', inventaire: 'Inventaire', demandes: 'Demandes', stock: 'Stock', commandes: 'Commandes', articles: 'Articles', fournisseurs: 'Fournisseurs', histo: 'Historique', equipe: 'Équipe', hub: 'Menu principal', plus: 'Plus', compte: 'Mon code', aide: 'Aide', maison: 'Accueil', moi: 'Moi' };
   function retourAcc(titre) { return '<div class="tache-hd">' + (!gestion() ? '<button class="retour-acc" data-act="accueil">' + ico('prec', 18, 2.6) + 'Accueil</button>' : '') + '<h2>' + titre + '</h2></div>'; }
   function enTache() { return !gestion() && ['sortie', 'retour', 'inventaire'].indexOf(S.tab) >= 0; }
   function vNavMobile() {
@@ -618,7 +887,7 @@
       }).join('') + '</nav>';
     }
     var bas = ['accueil', 'sortie', 'inventaire', 'commandes'];
-    var menu = gestion() ? ['demandes', 'retour', 'stock', 'articles', 'fournisseurs', 'histo', 'equipe', 'plus', 'aide', 'compte'] : ['aide', 'compte'];
+    var menu = gestion() ? ['hub', 'demandes', 'retour', 'stock', 'articles', 'fournisseurs', 'histo', 'plus', 'aide', 'compte'] : ['aide', 'compte'];
     var att = gestion() ? S.attente.length : 0, dansMenu = menu.indexOf(S.tab) >= 0;
     var h = '<nav class="bnav" aria-label="Menu principal">' + bas.map(function (t) {
       return '<button data-tab="' + t + '" class="' + (S.tab === t && !S.menu ? 'on' : '') + '"><span class="bi">' + ICO[t] + '</span><span>' + NOMS[t] + '</span></button>';
@@ -1828,9 +2097,13 @@
   function vEquipe() {
     var h = '<h2>Équipe</h2><div class="row wrap" style="margin-bottom:10px"><p class="mu grow" style="margin:0">Comptes, rôles, cabinet par défaut et autorisation temporaire d’inventaire de la réserve. Un compte désactivé ne peut plus se connecter ; son historique est conservé.</p>'
       + (S.eqNew ? '' : '<button class="btn" data-act="eqnew">+ Nouveau compte</button>') + '</div>';
-    if (S.eqNew) {
+    if (S.eqNew && !S.eqNew.lierA) h += vEqNew();
+    var ps = S.profils.slice().sort(function (a, b) { return (b.actif - a.actif) || a.nom.localeCompare(b.nom); });
+    return h + ps.map(carteProfil).join('');
+  }
+  function vEqNew() {
       var N = S.eqNew;
-      h += '<div class="card" style="border:2px solid var(--gold)"><b>Nouveau compte</b><div class="g2" style="margin-top:8px">'
+      return '<div class="card" style="border:2px solid var(--gold)"><b>Nouveau compte</b><div class="g2" style="margin-top:8px">'
         + '<label class="mu">Identifiant de connexion<input class="in" id="nid" autocomplete="off" autocapitalize="none" value="' + esc(N.identifiant) + '" placeholder="ex. sarah"></label>'
         + '<label class="mu">Prénom affiché<input class="in" id="nnom" value="' + esc(N.nom) + '"></label>'
         + '<label class="mu">Rôle<select class="in" id="nrole">' + ['assistante', 'referente', 'responsable'].map(function (r) { return '<option value="' + r + '"' + (N.role === r ? ' selected' : '') + '>' + LABEL[r] + '</option>'; }).join('') + '</select></label>'
@@ -1838,9 +2111,8 @@
         + champMdp('nmdp', N.role, N.role === 'assistante' ? 'Code' : 'Mot de passe') + champMdp('nmdp2', N.role, 'Confirmer')
         + '</div><p class="mu" style="margin:10px 0">Notez le code et donnez-le à la personne : il ne sera plus affiché ensuite.</p>'
         + '<div class="row"><button class="btn l" data-act="eqnewno">Annuler</button><button class="btn" data-act="eqnewok"' + (N.busy ? ' disabled' : '') + '>Créer le compte</button></div></div>';
-    }
-    var ps = S.profils.slice().sort(function (a, b) { return (b.actif - a.actif) || a.nom.localeCompare(b.nom); });
-    return h + ps.map(function (p) {
+  }
+  function carteProfil(p) {
       if (S.eqEdit === p.id) {
         return '<div class="card"><div class="g2">'
           + '<label class="mu">Identifiant de connexion<input class="in" id="eid" autocomplete="off" autocapitalize="none" value="' + esc(p.identifiant) + '"></label>'
@@ -1856,8 +2128,7 @@
       var res = p.reserve_jusquau && p.reserve_jusquau >= new Date().toISOString().slice(0, 10);
       return '<div class="card row wrap"' + (p.actif ? '' : ' style="opacity:.65"') + '><div class="grow"><b>' + esc(p.nom) + '</b> <span class="mu">(' + esc(p.identifiant) + ')</span>' + (p.actif ? '' : ' <span class="pill ko">désactivé</span>') + '<br><span class="mu">' + LABEL[p.role] + (p.cabinet ? ' · cabinet ' + p.cabinet : '') + (res ? ' · réserve autorisée jusqu’au ' + p.reserve_jusquau.split('-').reverse().join('/') : '') + '</span></div>'
         + '<button class="btn l sm" data-eedit="' + p.id + '">Modifier</button></div>';
-    }).join('');
-  }
+    }
   function creerCompte() {
     var N = S.eqNew, m = $('nmdp').value, m2 = $('nmdp2').value;
     N.identifiant = norm($('nid').value).replace(/\s+/g, ''); N.nom = $('nnom').value.trim();
@@ -1866,6 +2137,10 @@
     if (m !== m2) { toast('Les deux saisies ne correspondent pas'); return; }
     N.busy = true; render();
     equipe({ action: 'creer', identifiant: N.identifiant, nom: N.nom, role: N.role, cabinet: N.cabinet ? +N.cabinet : null, mdp: m }).then(function (r) {
+      if (!N.lierA) return r;
+      // Compte créé depuis une fiche du planning : on relie la fiche au compte
+      return sb.from('profils').select('id').eq('identifiant', r.identifiant).maybeSingle().then(function (x) { return x.data ? lierCompte(N.lierA, x.data.id).then(function () { return r; }) : r; });
+    }).then(function (r) {
       S.eqNew = null; toast('✔ Compte créé · identifiant : ' + r.identifiant); charger();
     }).catch(function (e) { N.busy = false; toast(e.message); render(); });
   }
@@ -1903,7 +2178,7 @@
       + '<p class="mu" style="margin-top:0">Connectée en tant que <b>' + esc(S.me.nom) + '</b> (' + esc(S.me.identifiant) + ').</p><div style="display:flex;flex-direction:column;gap:10px">'
       + champMdp('cm0', r, (r === 'assistante' ? 'Code' : 'Mot de passe') + ' actuel').replace(' autocomplete="new-password"', ' autocomplete="current-password"')
       + champMdp('cm1', r, 'Nouveau ' + quoi) + champMdp('cm2', r, 'Confirmer le nouveau ' + quoi)
-      + '</div><div class="row" style="margin-top:12px"><button class="btn l" data-tab="' + (gestion() ? 'accueil' : 'moi') + '">Annuler</button><button class="btn" data-act="cmok"' + (S.cmBusy ? ' disabled' : '') + '>Enregistrer</button></div></div>';
+      + '</div><div class="row" style="margin-top:12px"><button class="btn l" data-tab="' + (gestion() ? 'hub' : 'moi') + '">Annuler</button><button class="btn" data-act="cmok"' + (S.cmBusy ? ' disabled' : '') + '>Enregistrer</button></div></div>';
   }
   function changerMonMdp() {
     var r = S.me.role, a = $('cm0').value, m = $('cm1').value, m2 = $('cm2').value;
@@ -1917,7 +2192,7 @@
       return sb.auth.updateUser({ password: m });
     }).then(function (x) {
       if (x.error) throw x.error;
-      S.cmBusy = false; toast('✔ ' + (r === 'assistante' ? 'Code' : 'Mot de passe') + ' changé'); S.tab = gestion() ? 'accueil' : 'moi'; render();
+      S.cmBusy = false; toast('✔ ' + (r === 'assistante' ? 'Code' : 'Mot de passe') + ' changé'); S.tab = gestion() ? 'hub' : 'moi'; render();
     }).catch(function (e) { S.cmBusy = false; toast(msgErr(e)); render(); });
   }
 
@@ -1932,6 +2207,11 @@
   });
   document.addEventListener('toggle', function (e) { var g = e.target && e.target.dataset && e.target.dataset.guide; if (g && e.target.open) { marquerVu(g); S.aideOuverte = g; } }, true);
   window.addEventListener('resize', function () { if (S.tour) placerTour(); });
+  // Fiche d'une personne : les totaux d'heures se recalculent quand on quitte un horaire ou la case du contrat
+  document.addEventListener('focusout', function (e) {
+    var t = e.target; if (!S.pf || !t || !t.dataset || !(t.dataset.tr || t.dataset.pff === 'contrat_h')) return;
+    setTimeout(function () { var a = document.activeElement; if (a && a.dataset && (a.dataset.tr || a.dataset.pff)) return; if (S.tab === 'pfiche') render(); }, 0);
+  });
   document.addEventListener('click', function (e) {
     var t = e.target.closest('button'); if (!t || !S.me) return;
     var d = t.dataset;
@@ -2029,6 +2309,16 @@
     if (d.act === 'eannule') { S.eqEdit = null; render(); return; }
     if (d.esave) return sauverProfil(d.esave);
     if (d.ereinit) return reinitMdp(d.ereinit);
+    if (d.pf) return ouvrirPers(d.pf);
+    if (d.dent) return ouvrirDent(d.dent);
+    if (d.act === 'pfnew') return ouvrirPers('new');
+    if (d.act === 'dfnew') return ouvrirDent('new');
+    if (d.act === 'pfsave') return sauverPers();
+    if (d.act === 'dfsave') return sauverDent();
+    if (d.djour && S.df) { var dj = S.df.d.jours = S.df.d.jours || {}; if (dj[d.djour]) delete dj[d.djour]; else dj[d.djour] = true; render(); return; }
+    if (d.act === 'pfcompte' && S.pf) { var pr = S.pf.d.prenom || ''; S.eqNew = { identifiant: norm(pr).replace(/[^a-z0-9]/g, ''), nom: pr, role: 'assistante', cabinet: '', lierA: S.pf.id }; S.eqEdit = null; render(); return; }
+    if (d.act === 'pfdelier' && S.pf) { if (confirm('Détacher le compte de connexion de cette fiche ? Le compte reste actif, il n’est simplement plus relié au planning.')) lierCompte(S.pf.id, null); return; }
+    if (d.act === 'planbientot') { toast('Arrive à l’étape du planning'); return; }
     if (d.act === 'eqnew') { S.eqNew = { identifiant: '', nom: '', role: 'assistante', cabinet: '' }; S.eqEdit = null; render(); return; }
     if (d.act === 'eqnewno') { S.eqNew = null; render(); return; }
     if (d.act === 'eqnewok') return creerCompte();
@@ -2057,9 +2347,14 @@
     else if (t.id === 'iq') { S.inv.q = t.value; S.inv.max = 80; render(); }
     else if (t.dataset && t.dataset.iq) { S.inv.d[t.dataset.iq] = t.value.trim(); ecrireBrouillon(); var b2 = document.querySelector('.bar'); if (b2) b2.outerHTML = vBarInv(); }
     else if (t.dataset && t.dataset.qte) { setQte(t.dataset.qte, t.value); var b = document.querySelector('.bar'); if (b) b.outerHTML = vBarSortie(); }
+    else if (t.dataset && (t.dataset.pff || t.dataset.tr) && S.pf && t.tagName !== 'SELECT' && t.type !== 'checkbox') majPers(t);
+    else if (t.dataset && t.dataset.dff && S.df && t.type !== 'checkbox') S.df.d[t.dataset.dff] = t.value;
   });
   document.addEventListener('change', function (e) {
     var t = e.target; if (!S.me) return;
+    if (t.dataset && (t.dataset.pff || t.dataset.tr) && S.pf) { majPers(t); if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); return; }
+    if (t.dataset && t.dataset.dff && S.df) { S.df.d[t.dataset.dff] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox') render(); return; }
+    if (t.id === 'pflier' && S.pf && t.value) { if (confirm('Relier ce compte de connexion à la fiche de ' + S.pf.d.prenom + ' ?')) lierCompte(S.pf.id, t.value); else t.value = ''; return; }
     if (t.id === 'nrole' && S.eqNew) { S.eqNew.role = t.value; S.eqNew.identifiant = $('nid').value; S.eqNew.nom = $('nnom').value; render(); }
     else if (t.id === 'ncab' && S.eqNew) { S.eqNew.cabinet = t.value; }
     else if (t.id === 'aimpf') { var fa = t.files && t.files[0]; t.value = ''; importerArticles(fa); }

@@ -1,7 +1,15 @@
 // Journal des versions (affiché dans Plus, pour la référente et la responsable).
 // Types : Majeure (changement profond), Mineure (nouvelle fonction), Correctif (réparation).
 // c = changements visibles ; x = opérations sur les données (pour la responsable).
-window.JOURNAL = [{v:"2.2",t:"Mineure",n:"Appli des assistantes simplifiée",d:"Novembre 2026 (en test)",
+window.JOURNAL = [{v:"2.3",t:"Mineure",n:"Accueil à deux tuiles, équipe et dentistes (préparation du planning)",d:"Novembre 2026 (en test)",
+c:["Référente et responsable : après la connexion, nouvel accueil avec deux grandes tuiles, « Gestion de stock » et « Planning » (bientôt), et un bouton Réglages (roue dentée).",
+ "Dans la gestion de stock, le bouton « Menu » (maison) en haut ramène à cet accueil. L’onglet Équipe quitte la gestion de stock : il est maintenant dans Réglages.",
+ "Réglages › L’équipe : une fiche par personne du planning (assistantes, assistants, intérimaire, anciennes) avec statut qualifiée / apprentie, heures du contrat, jour d’école, consigne et semaine type : pour chaque jour, le dentiste ou le poste (Admin, Sté, Accueil, Admin ortho, Rangement, Nettoyage, École) du matin et de l’après-midi avec les horaires. Le total de la semaine type est comparé au contrat.",
+ "La fiche peut être reliée à un compte de connexion (créer, relier ou détacher) ; la gestion des comptes (identifiant, rôle, cabinet, code, désactivation) reste la même. Les comptes sans fiche planning (ex. la responsable) restent listés.",
+ "Réglages › Les dentistes : jours de présence, spécificités, anciens dentistes. Les assistantes de chaque dentiste viennent des semaines types ; un dentiste sans assistante un jour de présence est signalé en orange.",
+ "Congés, règles des heures et planning : écrans prévus, actifs aux étapes suivantes."],
+x:["Mise à jour 009 de la base : 4 nouvelles tables (equipe, dentistes, conges, planning), lisibles et modifiables par la référente et la responsable seulement. Rien n’est modifié dans le stock.","Pré-remplissage de l’équipe et des dentistes d’après le rapport d’organisation 2026 : fichier SQL à part, hors dépôt GitHub."]},
+{v:"2.2",t:"Mineure",n:"Appli des assistantes simplifiée",d:"Novembre 2026 (en test)",
  w:"Rendre l’appli des assistantes très simple au téléphone, d’après la maquette validée par la référente.",
  c:[
  "Connexion : pavé numérique à grosses touches pour le code à 6 chiffres (le clavier du téléphone ne s’ouvre pas), connexion automatique au 6ᵉ chiffre, identifiant retenu sur l’appareil ; lien « Mot de passe avec lettres » pour la référente et la responsable.",
