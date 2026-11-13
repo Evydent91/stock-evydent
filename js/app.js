@@ -651,6 +651,9 @@
   function dureeDemi(c) { if (!c || !c.a || c.a === 'OFF') return 0; var a = enMin(c.de), b = enMin(c.fi); return a != null && b != null && b > a ? (b - a) / 60 : 0; }
   function heuresJour(t, j) { var x = (t || {})[j] || {}; return dureeDemi(x.am) + dureeDemi(x.pm); }
   function heuresTrame(t) { var s = 0; for (var j = 1; j <= 5; j++) s += heuresJour(t, j); return s; }
+  // Heures en « 3h30 » pour les champs ; on accepte aussi 3:30, 3 h 30, 3,5 ou 3
+  function hIn(h) { if (h == null || h === '') return ''; var e = Math.floor(+h + 1e-9), m = Math.round((+h - e) * 60); if (m === 60) { e++; m = 0; } return e + 'h' + (m ? (m < 10 ? '0' : '') + m : ''); }
+  function hLire(v) { v = String(v).trim().toLowerCase(); if (v === '') return null; var m = v.match(/^(\d{1,2})\s*(?:h|:)\s*(\d{1,2})?\s*(?:min)?$/); if (m) return +m[1] + (m[2] ? Math.min(59, +m[2]) / 60 : 0); var n = parseFloat(v.replace(',', '.')); return isNaN(n) ? null : Math.max(0, n); }
   function fh(h) { var e = Math.floor(h + 1e-9), m = Math.round((h - e) * 60); return e + ' h' + (m ? ' ' + (m < 10 ? '0' : '') + m : ''); }
   function initiale(n) { return esc(String(n || '?').replace(/^Dr\s+/i, '').charAt(0).toUpperCase()); }
   function planPret() { return !!S.equipe; }
@@ -1299,7 +1302,7 @@
     // Interrupteur « Journée complète » : un seul choix pour le matin et l'après-midi (horaires gardés par demi-journée)
     var abs = function (c) { return ABS.indexOf(c.a) >= 0; };
     var champH = function (cle, val, regle, lib) {
-      return '<span class="h-hh pl-hh"><label class="mu">' + lib + '<span class="h-hval"><input class="in" inputmode="decimal" data-plk="' + cle + '" value="' + (val != null && val !== '' ? esc(fr(val)) : '') + '" placeholder="' + fr(regle) + '"> h</span></label><small class="mu">vide = règle (' + fh(regle) + ')</small></span>';
+      return '<span class="h-hh pl-hh"><label class="mu">' + lib + '<span class="h-hval"><input class="in" inputmode="text" data-plk="' + cle + '" value="' + esc(hIn(val)) + '" placeholder="' + hIn(regle) + '" aria-label="' + lib + ' (ex. 3h30)"></span></label><small class="mu">vide = règle (' + fh(regle) + ')</small></span>';
     };
     var dem = function (d) {
       var c = K[d], off = !c.a || c.a === 'OFF' || ABS.indexOf(c.a) >= 0;
@@ -1328,10 +1331,10 @@
   }
   function majCase(el) {
     var K = S.pl.cas, x = el.dataset.plk.split('.');
-    if (x[0] === 'J' && x[1] === 'h') { var vh = String(el.value).trim(); ['AM', 'PM'].forEach(function (d) { K[d].h = vh === '' ? null : Math.max(0, nb(vh.replace(',', '.'))) / 2; }); return; }
+    if (x[0] === 'J' && x[1] === 'h') { var vh = hLire(el.value); ['AM', 'PM'].forEach(function (d) { K[d].h = vh == null ? null : vh / 2; }); return; }
     if (x[0] === 'J') { ['AM', 'PM'].forEach(function (d) { majCase({ value: el.value, dataset: { plk: d + '.a' } }); }); return; }
     var c = K[x[0]];
-    if (x[1] === 'h') { var v1 = String(el.value).trim(); c.h = v1 === '' ? null : Math.max(0, nb(v1.replace(',', '.'))); return; }
+    if (x[1] === 'h') { c.h = hLire(el.value); return; }
     c[x[1]] = el.value || null;
     if (x[1] === 'a') c.h = null;
     if (x[1] === 'a') {
