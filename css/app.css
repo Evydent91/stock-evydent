@@ -996,3 +996,13 @@ body.scan-ouvert{overflow:hidden}
 .scan-msg{margin:0;max-width:520px;text-align:center;font-size:17px;color:#e8edf1}
 .scan-msg.ko{color:#ffd6a8}
 .scan-annuler{margin-top:auto;width:100%;max-width:520px;height:54px;border-radius:14px;border:1.5px solid rgba(255,255,255,.4);background:none;color:#fff;font:inherit;font-weight:700;font-size:17px;cursor:pointer}
+/* Pointage : choix arrivée / sortie, simulation (site de test) */
+.pt-res .pt-ic.ch{background:#e9f1fa;color:#1d5fa0}
+.pt-res .a-btn.blanc{width:100%;margin-top:0}
+.pt-ann{border:none;background:none;color:var(--mute);font:inherit;font-weight:600;padding:10px;cursor:pointer}
+.sim{display:flex;flex-direction:column;gap:8px;margin:0 0 14px;padding:12px 14px;border:2px dashed var(--gold2);border-radius:14px;background:#fffdf6}
+.sim b{color:#7a6a2a}
+.sim .mu{font-size:14px}
+.sim-l{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sim-l .in{width:auto;flex:1 1 140px;height:44px}
+.sim .btn{align-self:flex-start}

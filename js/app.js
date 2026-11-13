@@ -1019,9 +1019,9 @@
       sb.from('equipe').select('*').order('ordre'),
       sb.from('dentistes').select('*').order('ordre'),
       sb.from('conges').select('*').gte('au', dIso(new Date(Date.now() - 120 * 864e5))).order('du'),
-      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible'])
+      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'simulation_pointage'])
     ]).then(function (r) {
-      if (r[3] && !r[3].error) (r[3].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else S.visible = x.valeur; });
+      if (r[3] && !r[3].error) (r[3].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else S.visible = x.valeur; });
       if (r[0].error || r[1].error) { S.equipe = null; S.dentistes = null; } else { S.equipe = r[0].data; S.dentistes = r[1].data; }
       S.conges = r[2] && !r[2].error ? r[2].data : [];
       render();
@@ -1484,21 +1484,50 @@
   // ---------- Pointage journalier (QR code) ----------
   var JETON_QR = null;
   function pointagePret() { return (S.equipe || []).some(function (e) { return 'pointage' in e; }); }
+  // Scan lu (caméra de l'appli ou appareil photo du téléphone) : premier scan de la journée fait l'après-midi
+  // (après le milieu de sa journée prévue) → on demande « arrivée ou sortie ? »
   function pointerQR() {
     var j = JETON_QR; JETON_QR = null; try { sessionStorage.removeItem('evy-pointer'); } catch (e) {}
     if (!j) return;
+    if (CONFIG.env === 'dev') try { localStorage.setItem('evy-jeton-test', j); } catch (e) {}
+    if (gestion()) return envoyerPointage(j, null);
     S.ptRes = { busy: true }; render();
-    sb.rpc('pointer', { p_jeton: j }).then(function (r) {
+    (S.moiEq ? Promise.resolve() : chargerMesConges()).then(function () { return chargerMonPointage(); }).then(function () {
+      var r = S.monPt, q = maintenantPt(), m = q.getHours() * 60 + q.getMinutes();
+      if (!(r && (r.arrivee || r.sortie)) && m >= milieuJournee(S.moiEq, dIso(q))) { S.ptRes = { choix: j }; render(); return; }
+      envoyerPointage(j, null);
+    });
+  }
+  function envoyerPointage(j, sens) {
+    S.ptRes = { busy: true }; render();
+    var a = { p_jeton: j }; if (sens) a.p_sens = sens; var sim = simPt(); if (sim) a.p_quand = sim.toISOString();
+    sb.rpc('pointer', a).then(function (r) {
       if (r.error) throw r.error; S.ptRes = r.data || { etat: 'erreur' }; render();
       if (!gestion() && S.moiEq) chargerMonPointage();
     }).catch(function (e) { S.ptRes = { etat: 'erreur', msg: msgErr(e) }; render(); });
   }
+  function milieuJournee(p, iso) {
+    var t = (p && p.trame || {})[jourSem(iso)] || {}, ok = function (c) { return c && c.a && c.a !== 'OFF' && c.de && c.fi; };
+    var d = ok(t.am) ? enMin(t.am.de) : ok(t.pm) ? enMin(t.pm.de) : null, f = ok(t.pm) ? enMin(t.pm.fi) : ok(t.am) ? enMin(t.am.fi) : null;
+    return d != null && f != null && f > d ? Math.round((d + f) / 2) : 13 * 60;
+  }
+  // Simulation (site de test seulement) : jour et heure choisis par l'assistante pour tester sans attendre
+  function simPt() {
+    if (CONFIG.env !== 'dev') return null;
+    if (S.sim === undefined) try { S.sim = JSON.parse(sessionStorage.getItem('evy-sim') || 'null'); } catch (e) { S.sim = null; }
+    if (!S.sim || !S.sim.jour || !S.sim.heure) return null;
+    var x = S.sim.heure.split(':'), d = dDe(S.sim.jour); d.setHours(+x[0], +x[1], 0, 0); return d;
+  }
+  function maintenantPt() { return simPt() || new Date(); }
   function hTs(ts) { if (!ts) return ''; var d = new Date(ts); return d.getHours() + ' h ' + ('0' + d.getMinutes()).slice(-2); }
   function vResultatPointage() {
     var R = S.ptRes, ok = R.etat === 'arrivee' || R.etat === 'sortie', t, g, sous = '';
+    if (R.choix) return '<div class="pt-res"><div class="pt-res-in"><span class="pt-ic ch">' + ico('attente', 44, 2.4) + '</span><h1>Arrivée ou sortie ?</h1><p>C’est votre premier pointage aujourd’hui et il est ' + hTs(maintenantPt().toISOString()) + '. Vous arrivez, ou vous partez ?</p>'
+      + '<button class="a-btn navy" data-ptsens="arrivee">J’arrive</button><button class="a-btn blanc" data-ptsens="sortie">Je pars (j’ai oublié de pointer mon arrivée)</button><button class="pt-ann" data-act="ptok">Annuler</button></div></div>';
     if (R.busy) { t = 'Pointage…'; g = ''; }
     else if (R.etat === 'arrivee') { t = 'Arrivée enregistrée'; g = hTs(R.heure); sous = 'Bonne journée' + (R.prenom ? ', ' + esc(R.prenom) : '') + ' ! Scannez le même QR code en partant.'; }
-    else if (R.etat === 'sortie') { t = 'Sortie enregistrée'; g = hTs(R.heure); sous = 'Arrivée à ' + hTs(R.arrivee) + '. Bonne soirée' + (R.prenom ? ', ' + esc(R.prenom) : '') + ' !'; }
+    else if (R.etat === 'sortie') { t = 'Sortie enregistrée'; g = hTs(R.heure); sous = (R.sans_arrivee ? 'Votre arrivée n’a pas été pointée : la référente la complètera.' : 'Arrivée à ' + hTs(R.arrivee) + '.') + ' Bonne soirée' + (R.prenom ? ', ' + esc(R.prenom) : '') + ' !'; }
+    else if (R.etat === 'simulation_coupee') { t = 'Simulation coupée'; g = ''; sous = 'L’heure simulée n’est pas autorisée. La référente peut l’activer dans Pointage (site de test).'; }
     else if (R.etat === 'doublon') { t = 'Déjà enregistré'; g = ''; sous = 'Votre pointage vient d’être pris en compte, inutile de scanner deux fois.' + (R.arrivee ? ' Arrivée : ' + hTs(R.arrivee) + (R.sortie ? ', sortie : ' + hTs(R.sortie) : '') + '.' : ''); }
     else if (R.etat === 'qr_perime') { t = 'QR code périmé'; g = ''; sous = 'Ce QR code n’est plus valable. Scannez celui affiché au centre.'; }
     else if (R.etat === 'non_soumis') { t = 'Pas de pointage pour vous'; g = ''; sous = 'Votre fiche n’est pas soumise au pointage journalier.'; }
@@ -1509,16 +1538,24 @@
   }
   // Assistante : tuile « Pointer » et scanner intégré (appareil photo du téléphone)
   function chargerMonPointage() {
-    if (!S.moiEq) return;
-    sb.from('pointages').select('*').eq('equipe_id', S.moiEq.id).eq('jour', dIso(new Date())).maybeSingle().then(function (r) { S.monPt = r.error ? null : r.data; render(); });
+    if (!S.moiEq) return Promise.resolve();
+    return sb.from('pointages').select('*').eq('equipe_id', S.moiEq.id).eq('jour', dIso(maintenantPt())).maybeSingle().then(function (r) { S.monPt = r.error ? null : r.data; render(); }, function () {});
   }
   function tuilePointer() {
     if (!S.moiEq || !S.moiEq.pointage) return '';
     var r = S.monPt, t, sous;
-    if (!r || !r.arrivee) { t = 'Pointer mon arrivée'; sous = 'Scannez le QR code du centre'; }
+    if ((!r || !r.arrivee) && !(r && r.sortie)) { t = 'Pointer mon arrivée'; sous = 'Scannez le QR code du centre'; }
     else if (!r.sortie) { t = 'Pointer ma sortie'; sous = 'Arrivée à ' + hTs(r.arrivee); }
-    else return '<div class="tuile-pt fait"><span class="ti">' + ico('ok', 34, 2.4) + '</span><span class="tt"><b>Journée pointée</b><span>Arrivée ' + hTs(r.arrivee) + ' · sortie ' + hTs(r.sortie) + '</span></span></div>';
-    return '<button class="tuile-pt' + (r && r.sortie ? ' fait' : '') + '" data-act="scan"><span class="ti">' + ico('qr', 34) + '</span><span class="tt"><b>' + t + '</b><span>' + sous + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>';
+    else return '<div class="tuile-pt fait"><span class="ti">' + ico('ok', 34, 2.4) + '</span><span class="tt"><b>Journée pointée</b><span>' + (r.arrivee ? 'Arrivée ' + hTs(r.arrivee) : 'Arrivée non pointée (la référente la complètera)') + ' · sortie ' + hTs(r.sortie) + '</span></span></div>' + vSimA();
+    return vSimA() + '<button class="tuile-pt' + (r && r.sortie ? ' fait' : '') + '" data-act="scan"><span class="ti">' + ico('qr', 34) + '</span><span class="tt"><b>' + t + '</b><span>' + sous + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>';
+  }
+  function vSimA() {
+    if (CONFIG.env !== 'dev') return '';
+    simPt(); var Z = S.sim || {}, jt = ''; try { jt = localStorage.getItem('evy-jeton-test') || ''; } catch (e) {}
+    return '<div class="sim"><b>Simulation (site de test)</b><span class="mu">Choisissez un jour et une heure, puis pointez : c’est cette heure qui est enregistrée. Laissez vide pour l’heure réelle.</span>'
+      + '<div class="sim-l"><input class="in" type="date" id="simj" value="' + esc(Z.jour || '') + '" aria-label="Jour simulé"><input class="in" type="time" id="simh" value="' + esc(Z.heure || '') + '" aria-label="Heure simulée">'
+      + (Z.jour || Z.heure ? '<button class="btn l sm" data-act="simraz">Heure réelle</button>' : '') + '</div>'
+      + (jt ? '<button class="btn sm" data-act="simscan">Pointer sans caméra (QR déjà scanné)</button>' : '<span class="mu" style="font-size:13px">Après un premier scan avec la caméra, un bouton « Pointer sans caméra » apparaîtra ici.</span>') + '</div>';
   }
   var SCAN = null;
   function chargerJsQR() {
@@ -1609,6 +1646,7 @@
   function etatPointage(p, iso, r, c) {
     var auj = dIso(new Date()), maintenant = new Date().getHours() * 60 + new Date().getMinutes();
     if (r && r.arrivee && r.sortie) return null;
+    if (r && r.sortie && !r.arrivee) return { t: 'Arrivée manquante', k: 'ko' };
     if (r && r.arrivee) return iso < auj ? { t: 'Sortie manquante', k: 'ko' } : iso === auj ? { t: 'Sur place', k: 'on' } : null;
     if (!c.travaille) return null;
     if (iso > auj) return null;
@@ -1628,6 +1666,7 @@
     var ps = (S.equipe || []).filter(function (e) { return e.actif && e.pointage; }).sort(function (a, b) { return (a.type === 'interimaire') - (b.type === 'interimaire') || a.ordre - b.ordre; });
     if (!ps.length) return h + '<div class="card"><b>Personne n’est soumis au pointage pour l’instant.</b><p class="mu" style="margin:6px 0 0">Cochez « Soumise au pointage journalier » dans la fiche de chaque assistante concernée (Réglages › L’équipe).</p></div></div>' + (S.ptQR ? vQR() : '');
     h += G.mode === 'jour' ? vPointageJour(ps, J) : vPointageSemaine(ps, L);
+    if (CONFIG.env === 'dev') h += '<div class="sim"><b>Simulation (site de test uniquement)</b><span class="mu">Autorise les assistantes à pointer avec un jour et une heure choisis (encadré « Simulation » sous leur tuile Pointer), pour tester sans attendre le lendemain. N’existe pas sur le vrai site.</span><button class="btn sm' + (S.simOn ? ' l' : '') + '" data-act="simgestion" aria-pressed="' + !!S.simOn + '">' + (S.simOn ? 'Heure simulée autorisée · Couper' : 'Autoriser l’heure simulée') + '</button></div>';
     return h + '<p class="a-aide">Temps effectif = sortie − arrivée, moins la coupure de midi prévue au planning ce jour-là (seulement la partie passée entre l’arrivée et la sortie). Écart de la semaine : sur les journées pointées en entier. Touchez une ligne ou une case pour corriger un oubli : la correction est signée.</p></div>' + (S.ptEd ? vPtEdit() : '') + (S.ptQR ? vQR() : '');
   }
   function vPointageJour(ps, J) {
@@ -1684,6 +1723,10 @@
     q.then(function (x) { if (x.error) throw x.error; S.ptEd = null; toast(supprimer ? 'Pointage effacé' : '✔ Pointage corrigé'); chargerPointages(true); }).catch(function (e) { toast(msgErr(e)); });
   }
   // QR code du centre : affichage, impression, régénération
+  function basculerSimulation() {
+    var v = !S.simOn;
+    sb.from('parametres').upsert({ cle: 'simulation_pointage', valeur: v }, { onConflict: 'cle' }).then(function (r) { if (r.error) throw r.error; S.simOn = v; toast(v ? 'Simulation autorisée' : 'Simulation coupée'); render(); }).catch(function (e) { toast(msgErr(e)); render(); });
+  }
   function chargerQR() {
     if (window.QRCodeEVY) return Promise.resolve();
     return new Promise(function (ok, ko) { var sc = document.createElement('script'); sc.src = 'js/vendor/qrcode.js?v=1'; sc.onload = ok; sc.onerror = function () { ko(new Error('Module QR code introuvable')); }; document.head.appendChild(sc); });
@@ -3593,6 +3636,10 @@
     if (d.plc) return ouvrirCase(d.plc);
     if (d.act === 'ptok') { S.ptRes = null; render(); return; }
     if (d.act === 'scan') return ouvrirScanner();
+    if (d.ptsens && S.ptRes && S.ptRes.choix) return envoyerPointage(S.ptRes.choix, d.ptsens);
+    if (d.act === 'simraz') { S.sim = null; try { sessionStorage.removeItem('evy-sim'); } catch (e) {} chargerMonPointage(); render(); return; }
+    if (d.act === 'simscan') { var jt0 = ''; try { jt0 = localStorage.getItem('evy-jeton-test') || ''; } catch (e) {} if (jt0) { JETON_QR = jt0; pointerQR(); } return; }
+    if (d.act === 'simgestion') return basculerSimulation();
     if (d.act === 'ptqr') return ouvrirQR();
     if (d.act === 'ptqrfermer') { S.ptQR = null; render(); return; }
     if (d.act === 'ptimprimer') return imprimerQR();
@@ -3671,6 +3718,7 @@
     if (t.dataset && (t.dataset.pff || t.dataset.tr) && S.pf) { majPers(t); if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); return; }
     if (t.dataset && t.dataset.dff && S.df) { S.df.d[t.dataset.dff] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox') render(); return; }
     if (t.dataset && t.dataset.ddep && S.df) { var jj = S.df.d.jours = S.df.d.jours || {}; jj[t.dataset.ddep] = t.value ? t.value : true; render(); return; }
+    if ((t.id === 'simj' || t.id === 'simh') && CONFIG.env === 'dev') { S.sim = S.sim || {}; S.sim[t.id === 'simj' ? 'jour' : 'heure'] = t.value; if (S.sim.jour && !S.sim.heure) S.sim.heure = '08:30'; if (S.sim.heure && !S.sim.jour) S.sim.jour = dIso(new Date()); try { sessionStorage.setItem('evy-sim', JSON.stringify(S.sim)); } catch (e) {} chargerMonPointage(); render(); return; }
     if ((t.id === 'offdu' || t.id === 'offau') && S.offEd) { S.offEd[t.id === 'offdu' ? 'du' : 'au'] = t.value; render(); return; }
     if (t.id === 'plcal' && S.pl && t.value) { S.pl.lundi = lundiDe(t.value); S.pl.cas = null; if (gestion()) chargerSemaine(); else S.pl.de = null; render(); return; }
     if (t.dataset && t.dataset.pljc && S.pl && S.pl.cas) {
