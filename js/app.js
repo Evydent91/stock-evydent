@@ -352,6 +352,7 @@
 
   // ---------- Icônes dessinées (les mêmes que la maquette) ----------
   var SVGI = {
+    graph: '<path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/>',
     crayon: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
     poubelle: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
     sortie: '<path d="M3 13h5l1 3h6l1-3h5v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M12 3v9M8 7l4-4 4 4"/>',
@@ -636,7 +637,7 @@
 
   // ---------- Accueil de la référente et de la responsable (2 tuiles), Réglages, Équipe, Dentistes ----------
   // Écrans de la maquette « Accueil référente et responsable ». Chaque écran a son en-tête bleu.
-  var HUB = ['hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles'];
+  var HUB = ['hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures'];
   var JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'], JC = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
   // Affectations possibles d'une demi-journée (en plus des dentistes)
   var CODES = [['ADMIN', 'Admin'], ['STE', 'Sté'], ['ACCUEIL', 'Accueil'], ['ADMIN_ORTHO', 'Admin ortho'], ['RANGEMENT', 'Rangement'], ['NETTOYAGE', 'Nettoyage cab.'], ['ECOLE', 'École'], ['OFF', 'Ne travaille pas']];
@@ -1014,9 +1015,9 @@
   }
 
   function renderH() {
-    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles }[S.tab] || vHub;
+    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures }[S.tab] || vHub;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
-    h += '<div class="a-app h-app' + (S.tab === 'hub' ? ' large' : S.tab === 'planning' ? ' tres-large' : '') + '">' + ecr() + '</div>';
+    h += '<div class="a-app h-app' + (S.tab === 'hub' ? ' large' : S.tab === 'planning' || S.tab === 'heures' ? ' tres-large' : '') + '">' + ecr() + '</div>';
     if (S.tab === 'pfiche') h += vBarPFiche();
     if (S.tab === 'dfiche') h += vBarDFiche();
     return h;
@@ -1311,6 +1312,115 @@
     }).catch(function (e) { P.charge = false; P.err = true; toast(msgErr(e)); render(); });
   }
 
+  // ---------- Tableau de bord des heures ----------
+  // Période : une semaine, un mois (les semaines dont le jeudi tombe dans le mois) ou depuis la date de départ du reliquat.
+  function hrSemaines(H) {
+    var dep = lundiDe(regles().depuis || '2026-11-02'), auj = lundiDe(dIso(new Date())), l = [];
+    if (H.mode === 'semaine') return [H.lundi];
+    if (H.mode === 'depuis') { for (var L = dep; L <= auj && l.length < 260; L = addJ(L, 7)) l.push(L); return l.length ? l : [auj]; }
+    var x = H.mois.split('-'), d1 = H.mois + '-01', dn = dIso(new Date(+x[0], +x[1], 0));
+    for (var L2 = lundiDe(addJ(d1, -3)); L2 <= dn; L2 = addJ(L2, 7)) { var jeu = addJ(L2, 3); if (jeu.slice(0, 7) === H.mois) l.push(L2); }
+    return l;
+  }
+  function assurerPlage(a) {   // lignes du planning de la date de départ jusqu'à « a »
+    var P = S.pl = S.pl || { lundi: lundiDe(dIso(new Date())), rows: {} }, de = lundiDe(regles().depuis || a);
+    if (P.de && P.de <= de && P.a >= a) return null;
+    if (P.chargeH) return null;
+    var fin = [a, P.a || a].sort()[1]; P.chargeH = true;
+    toutLire('planning', '*', function (q) { return q.gte('jour', de).lte('jour', fin).order('jour'); }).then(function (rows) {
+      P.rows = P.rows || {}; rows.forEach(function (r) { P.rows[cleCase(r.equipe_id, String(r.jour).slice(0, 10), r.demi)] = r; });
+      P.de = de; P.a = fin; P.chargeH = false; JOUR_CACHE = {}; render();
+    }).catch(function (e) { P.chargeH = false; toast(msgErr(e)); render(); });
+    return true;
+  }
+  function hrPersonne(p, W) {
+    var c = +p.contrat_h || 0, sem = W.map(function (L) { return heuresSem(p, L); }), fait = sem.reduce(function (a, b) { return a + b; }, 0);
+    var der = W[W.length - 1], rel = c ? reliquatAvant(p, der) + sem[sem.length - 1] - c : null, abs = {}, rep = { fauteuil: 0, postes: 0, abs: 0 };
+    W.forEach(function (L) { for (var k = 0; k < 5; k++) { var iso = addJ(L, k); ['AM', 'PM'].forEach(function (dm) {
+      var cz = caseEff(p, iso, dm), hh = heuresDemi(p, iso, dm, cz); if (!hh) return;
+      if (ABS.indexOf(cz.a) >= 0) { abs[cz.a] = (abs[cz.a] || 0) + hh; rep.abs += hh; } else if (cz.a.slice(0, 2) === 'D:') rep.fauteuil += hh; else rep.postes += hh;
+    }); } });
+    return { p: p, c: c, contrat: c * W.length, fait: fait, ecart: c ? fait - c * W.length : null, rel: rel, sem: sem, abs: abs, rep: rep };
+  }
+  function hrCouleur(v) { return v == null || Math.abs(v) < 0.01 ? 'ok' : v > 0 ? 'plus' : 'moins'; }
+  function hrResumeSem(p, L) {   // « École jeu. · Congés lun. » pour une semaine
+    var l = [];
+    for (var k = 0; k < 5; k++) { var iso = addJ(L, k), am = caseEff(p, iso, 'AM'), pm = caseEff(p, iso, 'PM'), j = JC[jourSem(iso)].toLowerCase() + '.';
+      [am, pm].forEach(function (c, i) { var t = ABS.indexOf(c.a) >= 0 ? ABS_TXT[c.a] : c.off ? 'Jour off' : null; if (!t) return; if (i === 1 && am.a === pm.a && !!am.off === !!pm.off) return; l.push(t + ' ' + j + (am.a === pm.a && !!am.off === !!pm.off ? '' : i ? ' ap.-midi' : ' matin')); }); }
+    return l.join(' · ') || 'Semaine type';
+  }
+  function vHeures() {
+    var H = S.hr = S.hr || { mode: 'mois', mois: addJ(lundiDe(dIso(new Date())), 3).slice(0, 7), lundi: lundiDe(dIso(new Date())), sel: null };
+    var W = hrSemaines(H), der = W[W.length - 1], titre, sous;
+    if (H.mode === 'semaine') { titre = 'Semaine du ' + periode(H.lundi, addJ(H.lundi, 4)).replace(/^du /, ''); sous = ''; }
+    else if (H.mode === 'mois') { titre = nomMois(H.mois).replace(/^./, function (c) { return c.toUpperCase(); }); sous = W.length + ' semaine' + (W.length > 1 ? 's' : '') + ' · ' + periode(W[0], addJ(der, 4)); }
+    else { titre = 'Depuis le ' + dateCourte(regles().depuis || '2026-11-02'); sous = W.length + ' semaine' + (W.length > 1 ? 's' : '') + ' · jusqu’à cette semaine'; }
+    var nav = H.mode === 'depuis' ? '<span class="hr-titre"><b>' + titre + '</b></span>'
+      : '<button class="h-rond" data-hrnav="-1" aria-label="Précédent">' + ico('prec', 20, 2.4) + '</button><span class="hr-titre"><b>' + titre + '</b></span><button class="h-rond" data-hrnav="1" aria-label="Suivant">' + ico('suiv', 20, 2.4) + '</button>';
+    var h = '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" data-' + (H.sel ? 'hrsel=""' : 'tab="planning"') + '>' + ico('prec', 22, 2.4) + (H.sel ? 'Heures' : 'Planning') + '</button><h1>' + (H.sel ? esc((persById(H.sel) || {}).prenom || 'Heures') : 'Heures') + '</h1><span class="hr-vide"></span></div>'
+      + '<div class="hr-nav"><div class="hr-seg" role="group" aria-label="Période">' + [['semaine', 'Semaine'], ['mois', 'Mois'], ['depuis', 'Depuis le début']].map(function (m) { return '<button data-hrmode="' + m[0] + '" aria-pressed="' + (H.mode === m[0]) + '"' + (H.mode === m[0] ? ' class="on"' : '') + '>' + m[1] + '</button>'; }).join('') + '</div>'
+      + '<div class="hr-per">' + nav + '</div></div>' + (sous ? '<p class="hr-sous">' + sous + '</p>' : '') + '</header>';
+    h += '<div class="a-corps hr-corps">';
+    if (!planPret()) return h + '<div class="ban warn">Les mises à jour de la base ne sont pas encore faites.</div></div>';
+    if (assurerPlage(addJ(der, 4)) || S.pl.chargeH) return h + '<p class="a-vide">Calcul des heures…</p></div>';
+    var ps = persPlanning(), R = ps.map(function (p) { return hrPersonne(p, W); });
+    if (H.sel) { var x = R.filter(function (r) { return String(r.p.id) === String(H.sel); })[0]; if (x) return h + vHeuresDetail(x, W) + '</div>'; H.sel = null; }
+    var avec = R.filter(function (r) { return r.c; }), tf = 0, tc = 0, plus = [], moins = [], absT = {};
+    avec.forEach(function (r) { tf += r.fait; tc += r.contrat; if (r.rel > 0.01) plus.push(r); else if (r.rel < -0.01) moins.push(r); });
+    R.forEach(function (r) { Object.keys(r.abs).forEach(function (k) { absT[k] = (absT[k] || 0) + r.abs[k]; }); });
+    var absTot = Object.keys(absT).reduce(function (a, k) { return a + absT[k]; }, 0), absTop = ABS.filter(function (k) { return absT[k]; }).sort(function (a, b) { return absT[b] - absT[a]; });
+    var sumR = function (l) { return l.reduce(function (a, r) { return a + r.rel; }, 0); }, noms = function (l) { return l.map(function (r) { return r.p.prenom; }).join(', '); };
+    h += '<section class="hr-kpis" aria-label="Résumé">'
+      + '<div class="hr-kpi"><span class="hr-k">Heures faites · équipe</span><b>' + fh(tf) + '</b><span>pour ' + fh(tc) + ' de contrat (' + avec.length + ' ' + pl(avec.length, 'personne') + ')</span></div>'
+      + '<div class="hr-kpi"><span class="hr-k">À alléger</span><b class="plus">' + (plus.length ? plus.length + ' ' + pl(plus.length, 'personne') : 'Aucune') + '</b><span>' + (plus.length ? relTxt(sumR(plus)) + ' au total · ' + esc(noms(plus)) : 'personne au-dessus du contrat') + '</span></div>'
+      + '<div class="hr-kpi"><span class="hr-k">À rattraper</span><b class="moins">' + (moins.length ? moins.length + ' ' + pl(moins.length, 'personne') : 'Aucune') + '</b><span>' + (moins.length ? relTxt(sumR(moins)) + ' au total · ' + esc(noms(moins)) : 'personne en dessous du contrat') + '</span></div>'
+      + '<div class="hr-kpi"><span class="hr-k">Absences comptées</span><b>' + fh(absTot) + '</b><span>' + (absTop.length ? absTop.slice(0, 3).map(function (k) { return ABS_TXT[k].toLowerCase() + ' ' + fh(absT[k]); }).join(' · ') : 'aucune') + '</span></div></section>';
+    // Tableau par personne
+    var maxR = Math.max(4, Math.max.apply(null, avec.map(function (r) { return Math.abs(r.rel || 0); })));
+    h += '<div class="hr-cols"><section class="hr-carte hr-tab" aria-labelledby="hr-t1"><div class="hr-ct"><h2 id="hr-t1">Par personne</h2><span class="mu">Touchez une ligne pour le détail</span></div><div class="hr-scroll"><div class="hr-grille">'
+      + '<div class="hr-l hr-tete"><span>Personne</span><span>Contrat</span><span>Fait</span><span>Écart</span><span class="c">Reliquat cumulé</span><span>' + (W.length > 1 ? W.length + ' semaines' : 'Semaine') + '</span></div>';
+    R.forEach(function (r) {
+      var pct = r.rel == null ? 0 : Math.min(50, Math.abs(r.rel) / maxR * 50), cl = hrCouleur(r.rel), wsem = W.length > 12 ? r.sem.slice(-12) : r.sem;
+      h += '<button class="hr-l" data-hrsel="' + r.p.id + '"><span class="hr-p"><span class="a-av">' + esc((r.p.prenom || '?')[0]) + '</span><span><b>' + esc(r.p.type === 'interimaire' ? 'Intérimaire' : r.p.prenom) + '</b><small>' + (r.p.statut === 'apprentie' ? 'Apprentie' : r.p.type === 'interimaire' ? 'Sans contrat' : 'Assistante') + (r.c ? ' · ' + fh(r.c) : '') + '</small></span></span>'
+        + '<span>' + (r.c ? fh(r.contrat) : '—') + '</span><b>' + fh(r.fait) + '</b><b class="' + hrCouleur(r.ecart) + '">' + (r.ecart == null ? '—' : Math.abs(r.ecart) < 0.01 ? '0 h' : relTxt(r.ecart)) + '</b>'
+        + '<span class="hr-rel"><span class="hr-barre"><i class="hr-zero"></i>' + (r.rel != null && Math.abs(r.rel) >= 0.01 ? '<i class="hr-v ' + cl + '" style="' + (r.rel > 0 ? 'left' : 'right') + ':50%;width:' + pct.toFixed(1) + '%"></i>' : '') + '</span><small class="' + cl + '">' + (r.rel == null ? 'pas de contrat' : Math.abs(r.rel) < 0.01 ? 'à jour' : relTxt(r.rel) + (r.rel > 0 ? ' · à alléger' : ' · à rattraper')) + '</small></span>'
+        + '<span class="hr-mini" role="img" aria-label="' + esc(wsem.map(fh).join(', ')) + '">' + (r.c ? '<i class="hr-ligne"></i>' : '') + wsem.map(function (v) { var ht = Math.max(3, Math.round(v / (r.c || 39) * 30)); return '<i class="' + (!v ? 'z' : !r.c || Math.abs(v - r.c) < 0.01 ? '' : v > r.c ? 'plus' : 'moins') + '" style="height:' + Math.min(40, ht) + 'px"></i>'; }).join('') + '</span></button>';
+    });
+    h += '</div></div><p class="a-aide">Ligne pointillée : le contrat de la semaine. Reliquat à gauche : heures à rattraper ; à droite : heures à alléger (cumulé depuis le ' + dateCourte(regles().depuis || '2026-11-02') + ', Réglages › Heures).</p></section>';
+    // À surveiller + absences
+    var al = R.filter(function (r) { return r.rel != null && Math.abs(r.rel) >= 0.25; }).sort(function (a, b) { return Math.abs(b.rel) - Math.abs(a.rel); });
+    var seulsN = 0, parD = {};
+    W.forEach(function (L) { for (var k = 0; k < 5; k++) { var iso = addJ(L, k); if (ferie(iso)) continue; dentistesSeuls(iso).seuls.forEach(function (q) { var n = q.quand ? 1 : 2; seulsN += n; parD[q.d.prenom] = (parD[q.d.prenom] || 0) + n; }); } });
+    var topD = Object.keys(parD).sort(function (a, b) { return parD[b] - parD[a]; }).slice(0, 2);
+    h += '<aside class="hr-cote"><section class="hr-carte" aria-labelledby="hr-t2"><h2 id="hr-t2">À surveiller</h2>'
+      + (al.length ? al.map(function (r) {
+        var au = r.sem.filter(function (v) { return v > r.c + 0.01; }).length, en = r.sem.filter(function (v) { return v < r.c - 0.01; }).length;
+        return '<button class="hr-al ' + hrCouleur(r.rel) + '" data-hrsel="' + r.p.id + '"><b>' + esc(r.p.prenom) + ' · ' + relTxt(r.rel) + (r.rel > 0 ? ' à alléger' : ' à rattraper') + '</b><span>' + (W.length > 1 ? (au ? au + ' ' + pl(au, 'semaine') + ' au-dessus de ' + fh(r.c) : '') + (au && en ? ' · ' : '') + (en ? en + ' ' + pl(en, 'semaine') + ' en dessous' : '') || 'Semaines au contrat, écart venu d’avant' : 'Cette semaine : ' + fh(r.sem[0])) + '</span></button>';
+      }).join('') : '<p class="mu">Tout le monde est à jour.</p>')
+      + '<div class="hr-al neutre"><b>Dentistes seuls · ' + seulsN + ' ' + pl(seulsN, 'demi-journée') + '</b><span>' + (topD.length ? 'Surtout Dr ' + topD.map(esc).join(' et Dr ') : 'Tous les dentistes présents ont été assistés') + '</span></div></section>'
+      + '<section class="hr-carte" aria-labelledby="hr-t3"><h2 id="hr-t3">Absences ' + (H.mode === 'semaine' ? 'de la semaine' : H.mode === 'mois' ? 'du mois' : 'depuis le début') + '</h2>';
+    var maxA = Math.max.apply(null, ABS.map(function (k) { return absT[k] || 0; }).concat([1]));
+    h += ABS.map(function (k) {
+      var qui = R.filter(function (r) { return r.abs[k]; }).map(function (r) { return r.p.prenom; });
+      return '<div class="hr-abs"><span><span>' + ABS_TXT[k] + '</span><b>' + fh(absT[k] || 0) + '</b></span><span class="hr-abar"><i class="ab-' + k + '" style="width:' + Math.round((absT[k] || 0) / maxA * 100) + '%"></i></span><small>' + (qui.length ? esc(qui.join(', ')) : 'Aucune') + '</small></div>';
+    }).join('') + '<p class="a-aide">Comptées selon Réglages › Heures. Les jours off comptent 0 h.</p></section></aside></div>';
+    return h + '</div>';
+  }
+  function vHeuresDetail(r, W) {
+    var p = r.p, cl = hrCouleur(r.rel), mx = Math.max.apply(null, r.sem.concat([r.c || 39])) || 39, ws = W.length > 12 ? W.slice(-12) : W, vs = W.length > 12 ? r.sem.slice(-12) : r.sem;
+    var h = '<div class="hr-det"><div class="hr-carte hr-big ' + cl + '"><span class="hr-k">Reliquat au ' + dateCourte(addJ(W[W.length - 1], 4)) + '</span><b>' + (r.rel == null ? '—' : Math.abs(r.rel) < 0.01 ? 'à jour' : relTxt(r.rel)) + '</b><span>' + (r.rel == null ? 'Pas de contrat' : (Math.abs(r.rel) < 0.01 ? '' : (r.rel > 0 ? 'à alléger · ' : 'à rattraper · ')) + fh(r.fait) + ' faites pour ' + fh(r.contrat)) + '</span></div>';
+    h += '<section class="hr-carte" aria-labelledby="hr-d1"><h2 id="hr-d1">Semaine par semaine</h2>' + (r.c ? '<p class="mu" style="margin:0">Pointillés : le contrat, ' + fh(r.c) + '</p>' : '') + '<div class="hr-gros" role="img" aria-label="' + esc(vs.map(fh).join(', ')) + '">' + (r.c ? '<i class="hr-ligne" style="bottom:' + Math.round(r.c / mx * 120) + 'px"></i>' : '')
+      + vs.map(function (v, i) { return '<span><b>' + fh(v) + '</b><i class="' + (!r.c || Math.abs(v - r.c) < 0.01 ? '' : v > r.c ? 'plus' : 'moins') + '" style="height:' + Math.max(4, Math.round(v / mx * 120)) + 'px"></i><small>' + dDe(ws[i]).getDate() + ' ' + ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'][dDe(ws[i]).getMonth()] + '</small></span>'; }).join('') + '</div></section>';
+    h += '<section class="hr-carte hr-liste" aria-labelledby="hr-d2"><h2 id="hr-d2">Détail</h2>' + W.slice().reverse().map(function (L) {
+      var v = r.sem[W.indexOf(L)], e = r.c ? v - r.c : null;
+      return '<button class="hr-li" data-hrouvrir="' + L + '"><span><b>Semaine du ' + dateCourte(L) + '</b><small>' + esc(hrResumeSem(p, L)) + '</small></span><span class="d"><b>' + fh(v) + '</b><small class="' + hrCouleur(e) + '">' + (e == null ? '' : Math.abs(e) < 0.01 ? 'au contrat' : relTxt(e)) + '</small></span></button>';
+    }).join('') + '</section>';
+    var t = r.rep.fauteuil + r.rep.postes + r.rep.abs || 1;
+    h += '<section class="hr-carte" aria-labelledby="hr-d3"><h2 id="hr-d3">Répartition</h2><div class="hr-rep" role="img" aria-label="Au fauteuil ' + fh(r.rep.fauteuil) + ', autres postes ' + fh(r.rep.postes) + ', absences ' + fh(r.rep.abs) + '"><i class="f" style="flex:' + r.rep.fauteuil + '"></i><i class="p" style="flex:' + r.rep.postes + '"></i><i class="a" style="flex:' + r.rep.abs + '"></i></div>'
+      + '<div class="hr-leg"><span><i class="f"></i>Au fauteuil<b>' + fh(r.rep.fauteuil) + '</b></span><span><i class="p"></i>Sté, admin, accueil…<b>' + fh(r.rep.postes) + '</b></span><span><i class="a"></i>Absences comptées<b>' + fh(r.rep.abs) + '</b></span></div></section>';
+    h += '<button class="btn hr-ouvrir" data-hrouvrir="' + W[W.length - 1] + '">Ouvrir sa semaine dans le planning</button></div>';
+    return h;
+  }
   function celluleJour(p, iso) {
     var am = caseEff(p, iso, 'AM'), pm = caseEff(p, iso, 'PM'), ab = function (c) { return ABS.indexOf(c.a) >= 0; };
     var cls = 'pl-c', h;
@@ -1346,7 +1456,7 @@
     var P = S.pl, L = P.lundi, ps = persPlanning(), auj = dIso(new Date());
     var fin = addJ(L, 4), titre = 'Semaine du ' + periode(L, fin).replace(/^du /, '');
     var h = '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" data-tab="hub">' + ico('prec', 22, 2.4) + 'Accueil</button><h1>Planning</h1>'
-      + '<span class="pl-hbtns"><button class="pl-imp" data-act="plexp">' + ico('sortie', 18) + '<span class="m-hide">Exporter</span></button><label class="pl-imp">' + ico('boite', 18) + '<span class="m-hide">Importer l’Excel</span><input type="file" id="plimpf" accept=".xlsm,.xlsx" hidden></label></span></div>'
+      + '<span class="pl-hbtns"><button class="pl-imp" data-tab="heures">' + ico('graph', 18, 2.2) + '<span class="m-hide">Heures</span></button><button class="pl-imp" data-act="plexp">' + ico('sortie', 18) + '<span class="m-hide">Exporter</span></button><label class="pl-imp">' + ico('boite', 18) + '<span class="m-hide">Importer l’Excel</span><input type="file" id="plimpf" accept=".xlsm,.xlsx" hidden></label></span></div>'
       + '<div class="pl-nav"><span class="pl-g"></span><button class="h-rond" data-plsem="-7" aria-label="Semaine précédente">' + ico('prec', 20, 2.4) + '</button>' + titreCal(titre, L) + '<button class="h-rond" data-plsem="7" aria-label="Semaine suivante">' + ico('suiv', 20, 2.4) + '</button>'
       + '<span class="pl-g d">' + (lundiDe(auj) !== L ? '<button class="pl-auj" data-plsem="0">Cette semaine</button>' : '') + '</span></div></header>';
     h += '<div class="a-corps pl-corps">';
@@ -3178,6 +3288,10 @@
     if (d.act === 'plcal') { var ci = document.getElementById('plcal'); if (ci) { try { if (ci.showPicker) ci.showPicker(); else { ci.focus(); ci.click(); } } catch (er) { ci.focus(); ci.click(); } } return; }
     if (d.plsem != null && S.pl) { S.pl.lundi = d.plsem === '0' ? lundiDe(dIso(new Date())) : addJ(S.pl.lundi, +d.plsem); S.pl.cas = null; if (gestion()) chargerSemaine(); else S.pl.de = null; render(); return; }
     if (d.plc) return ouvrirCase(d.plc);
+    if (d.hrmode && S.hr) { S.hr.mode = d.hrmode; render(); window.scrollTo(0, 0); return; }
+    if (d.hrnav && S.hr) { var Hn = S.hr, sn = +d.hrnav; if (Hn.mode === 'semaine') Hn.lundi = addJ(Hn.lundi, 7 * sn); else { var xm = Hn.mois.split('-'), dm2 = new Date(+xm[0], +xm[1] - 1 + sn, 1); Hn.mois = dm2.getFullYear() + '-' + ('0' + (dm2.getMonth() + 1)).slice(-2); } render(); return; }
+    if (d.hrsel != null && S.hr) { S.hr.sel = d.hrsel || null; render(); window.scrollTo(0, 0); return; }
+    if (d.hrouvrir) { S.pl = S.pl || { rows: {} }; S.pl.lundi = d.hrouvrir; S.tab = 'planning'; render(); window.scrollTo(0, 0); return; }
     if (d.act === 'plexp' && S.pl) { var mw = addJ(S.pl.lundi, 2).slice(0, 7); S.plExp = { mois: [mw] }; render(); return; }
     if (d.act === 'plexpfermer') { S.plExp = null; render(); return; }
     if (d.act === 'plexpok' && S.plExp) return exporterPlanning();
