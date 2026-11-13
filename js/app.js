@@ -65,7 +65,7 @@
   }
   // À chaque changement de personne : on repart de zéro (cabinet par défaut, panier, inventaire, écrans ouverts)
   function oublierPersonne() {
-    S.session = null; S.me = null; S.tab = 'maison'; S.tabChoisi = false; S.fiche = null; S.eqEdit = null; S.eqNew = null; S.cmBusy = false; S.histTous = false; S.histo = []; S.menu = false; S.tour = null;
+    S.session = null; S.me = null; S.tab = 'maison'; S.tabChoisi = false; S.fiche = null; S.eqEdit = null; S.eqNew = null; S.cmBusy = false; S.histTous = false; S.histo = []; S.menu = false; S.tour = null; S.pl = null; S.plImp = null; S.pf = null; S.df = null; S.equipe = null; S.dentistes = null; S.conges = null; S.mesConges = null; S.moiEq = null; S.dm = null; S.rgEdit = null; S.cAjout = null;
     S.sortie = { cab: null, q: '', panier: {}, msg: null, busy: false };
     S.ret = { cab: null, q: '', panier: {}, msg: null, busy: false };
     S.inv = { emp: null, d: {}, q: '', tous: false, recap: false, motifs: {}, busy: false, msg: null, max: 80 };
@@ -604,6 +604,7 @@
     return '<header class="a-hd a-moi"><span class="a-av">' + esc((S.me.nom || '?').charAt(0).toUpperCase()) + '</span><div><h1>' + esc(S.me.nom) + '</h1><p>' + LABEL[S.me.role] + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + ' · identifiant ' + esc(S.me.identifiant) + '</p></div></header>'
       + '<div class="a-corps"><div class="a-liste">'
       + '<button class="a-li" data-tab="aide"><span class="a-lii">' + ico('aide', 20) + '</span><span class="a-it-n"><b>Aide et visite guidée</b><span>' + GUIDES.length + ' fiches pas à pas</span></span></button>'
+      + (S.visible && S.visible.planning && S.moiEq ? '<button class="a-li" data-tab="mplanning"><span class="a-lii">' + ico('histo', 20) + '</span><span class="a-it-n"><b>Mon planning</b><span>mes jours, mon dentiste, mes horaires</span></span></button>' : '')
       + '<button class="a-li" data-tab="mconges"><span class="a-lii">' + ico('agenda', 20) + '</span><span class="a-it-n"><b>Mes congés</b><span>' + ((S.mesConges || []).filter(function (c) { return c.statut === 'attente'; }).length ? 'demande en attente' : 'demander, suivre la réponse') + '</span></span></button>'
       + '<button class="a-li" data-tab="compte"><span class="a-lii">' + ico('code', 20) + '</span><span class="a-it-n"><b>Changer mon code</b><span>6 chiffres</span></span></button>'
       + '<button class="a-li" data-essai="aide" data-gid="iphone"><span class="a-lii">' + ico('tel', 20) + '</span><span class="a-it-n"><b>Mettre l’appli sur mon téléphone</b><span>icône sur l’écran d’accueil</span></span></button></div>'
@@ -615,7 +616,7 @@
   function vAideA() { return hdA({ cls: 'a-simple', extra: '<h1 class="a-t-g">Aide</h1><p class="a-sous">Fiches pas à pas et visite guidée</p>' }) + '<div class="a-corps">' + vAide().replace('<h2>Aide</h2>', '') + '</div>'; }
 
   function renderA() {
-    var ecr = { maison: vMaison, sortie: vSortieA, retour: vRetourA, inventaire: vInventaireA, histo: vHistoA, moi: vMoiA, compte: vCompteA, aide: vAideA, mconges: vMesCongesA, mdemande: vDemandeA }[S.tab];
+    var ecr = { maison: vMaison, sortie: vSortieA, retour: vRetourA, inventaire: vInventaireA, histo: vHistoA, moi: vMoiA, compte: vCompteA, aide: vAideA, mconges: vMesCongesA, mdemande: vDemandeA, mplanning: vMonPlanningA }[S.tab];
     if (!ecr) { S.tab = 'maison'; ecr = vMaison; }
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
     h += '<div class="a-app">' + ecr() + '</div>' + vNavMobile();
@@ -625,7 +626,7 @@
 
   // ---------- Accueil de la référente et de la responsable (2 tuiles), Réglages, Équipe, Dentistes ----------
   // Écrans de la maquette « Accueil référente et responsable ». Chaque écran a son en-tête bleu.
-  var HUB = ['hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges'];
+  var HUB = ['hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles'];
   var JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'], JC = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
   // Affectations possibles d'une demi-journée (en plus des dentistes)
   var CODES = [['ADMIN', 'Admin'], ['STE', 'Sté'], ['ACCUEIL', 'Accueil'], ['ADMIN_ORTHO', 'Admin ortho'], ['RANGEMENT', 'Rangement'], ['NETTOYAGE', 'Nettoyage cab.'], ['ECOLE', 'École'], ['OFF', 'Ne travaille pas']];
@@ -658,7 +659,7 @@
       + (ca ? '<button class="h-alerte" data-tab="pconges">' + ico('attente', 22) + '<span><b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à valider</span>' + ico('suiv', 20, 2.4) + '</button>' : '')
       + '<div class="h-tuiles">'
       + '<button class="h-tuile fonce" data-tab="accueil"><span class="ti">' + ico('boite', 34) + '</span><span class="tt"><b>Gestion de stock</b><span>' + (sous.length ? sous.join(' · ') : 'Sorties, inventaires, commandes') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
-      + '<button class="h-tuile" data-act="planbientot"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span>Qui travaille, où et quand</span><em>Bientôt</em></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button></div>'
+      + '<button class="h-tuile" data-tab="planning"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span>Qui travaille, avec quel dentiste, et les heures</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button></div>'
       + '<button class="h-ligne" data-tab="pconges"><span class="a-lii">' + ico('agenda', 20) + '</span><span class="a-it-n"><b>Congés</b><span>Demandes à valider, prochains congés</span></span>' + ico('suiv', 20, 2.2) + '</button>'
       + '<button class="h-ligne" data-tab="reglages"><span class="a-lii">' + ico('equipe', 20) + '</span><span class="a-it-n"><b>Réglages</b><span>L’équipe et les dentistes</span></span>' + ico('suiv', 20, 2.2) + '</button>'
       + '<div class="h-bas"><button class="a-btn blanc" data-tab="compte">' + ico('code', 20) + 'Mot de passe</button><button class="a-btn navy" data-act="out">' + ico('changer', 20, 2.2) + 'Changer</button></div>'
@@ -673,11 +674,11 @@
     h += '<div class="a-liste">'
       + '<button class="a-li" data-tab="pequipe"><span class="a-lii">' + ico('equipe', 22) + '</span><span class="a-it-n"><b>L’équipe</b><span>' + (planPret() ? n + ' ' + pl(n, 'personne') + ' · ' : '') + 'comptes, jours, horaires</span></span>' + ico('suiv', 20, 2.2) + '</button>'
       + '<button class="a-li" data-tab="pdent"><span class="a-lii">' + ico('dent', 22) + '</span><span class="a-it-n"><b>Les dentistes</b><span>' + (planPret() ? nd + ' ' + pl(nd, 'dentiste') + ' · ' : '') + 'jours de présence, congés</span></span>' + ico('suiv', 20, 2.2) + '</button>'
-      + '<button class="a-li" data-act="planbientot"><span class="a-lii">' + ico('histo', 22) + '</span><span class="a-it-n"><b>Règles des heures</b><span>Heures comptées pour congés, maladie, école, férié · bientôt</span></span>' + ico('suiv', 20, 2.2) + '</button></div>'
+      + '<button class="a-li" data-tab="pregles"><span class="a-lii">' + ico('histo', 22) + '</span><span class="a-it-n"><b>Règles des heures</b><span>Heures comptées pour congés, maladie, école, férié ; consignes par personne</span></span>' + ico('suiv', 20, 2.2) + '</button></div>'
       + '<h2 class="a-jour">Ce que voient les assistantes</h2><div class="a-liste">'
-      + '<div class="a-li"><span class="a-it-n"><b>Leur planning</b><span>jours, dentiste, horaires</span></span><span class="pill">Coupé</span></div>'
-      + '<div class="a-li" style="opacity:.6"><span class="a-it-n"><b>Leur reliquat d’heures</b><span>possible seulement si le planning est affiché</span></span><span class="pill">Coupé</span></div></div>'
-      + '<p class="a-aide">Pour l’instant le planning n’est visible que par la référente et la responsable. Ces interrupteurs fonctionneront avec l’étape du planning.</p>'
+      + (function () { var V = S.visible || {}; return '<label class="a-li"><span class="a-it-n"><b>Leur planning</b><span>jours, dentiste, horaires</span></span><input type="checkbox" role="switch" class="h-sw" data-vis="planning"' + (V.planning ? ' checked' : '') + ' aria-label="Les assistantes voient leur planning"><span class="pill' + (V.planning ? ' ok' : '') + '">' + (V.planning ? 'Activé' : 'Coupé') + '</span></label>'
+        + '<label class="a-li"' + (V.planning ? '' : ' style="opacity:.6"') + '><span class="a-it-n"><b>Leur reliquat d’heures</b><span>possible seulement si le planning est affiché</span></span><input type="checkbox" role="switch" class="h-sw" data-vis="reliquat"' + (V.reliquat ? ' checked' : '') + (V.planning ? '' : ' disabled') + ' aria-label="Les assistantes voient leur reliquat"><span class="pill' + (V.reliquat ? ' ok' : '') + '">' + (V.reliquat ? 'Activé' : 'Coupé') + '</span></label>'; })() + '</div>'
+      + '<p class="a-aide">Tant que c’est coupé, le planning n’est visible que par la référente et la responsable. Les demandes de congés restent toujours possibles pour les assistantes.</p>'
       + '<p class="a-aide">Réservé à la référente et à la responsable. Ces fiches servent à la fois à la gestion de stock et au planning.</p></div>';
     return h;
   }
@@ -870,8 +871,10 @@
     return Promise.all([
       sb.from('equipe').select('*').order('ordre'),
       sb.from('dentistes').select('*').order('ordre'),
-      sb.from('conges').select('*').gte('au', dIso(new Date(Date.now() - 120 * 864e5))).order('du')
+      sb.from('conges').select('*').gte('au', dIso(new Date(Date.now() - 120 * 864e5))).order('du'),
+      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible'])
     ]).then(function (r) {
+      if (r[3] && !r[3].error) (r[3].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else S.visible = x.valeur; });
       if (r[0].error || r[1].error) { S.equipe = null; S.dentistes = null; } else { S.equipe = r[0].data; S.dentistes = r[1].data; }
       S.conges = r[2] && !r[2].error ? r[2].data : [];
       render();
@@ -879,9 +882,9 @@
   }
 
   function renderH() {
-    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges }[S.tab] || vHub;
+    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles }[S.tab] || vHub;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
-    h += '<div class="a-app h-app' + (S.tab === 'hub' ? ' large' : '') + '">' + ecr() + '</div>';
+    h += '<div class="a-app h-app' + (S.tab === 'hub' ? ' large' : S.tab === 'planning' ? ' tres-large' : '') + '">' + ecr() + '</div>';
     if (S.tab === 'pfiche') h += vBarPFiche();
     if (S.tab === 'dfiche') h += vBarDFiche();
     return h;
@@ -986,8 +989,11 @@
   // Assistante : mes congés et demande
   function chargerMesConges() {
     if (gestion() || !S.me) return Promise.resolve();
-    return Promise.all([sb.from('equipe').select('*').eq('profil_id', S.me.id).maybeSingle(), sb.from('conges').select('*').order('du', { ascending: false }).limit(60)]).then(function (r) {
-      S.moiEq = r[0].error ? null : r[0].data; S.mesConges = r[1].error ? [] : r[1].data || []; S.mesCongesOk = !r[0].error; render();
+    return Promise.all([sb.from('equipe').select('*').eq('profil_id', S.me.id).maybeSingle(), sb.from('conges').select('*').order('du', { ascending: false }).limit(60),
+      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible'])]).then(function (r) {
+      S.moiEq = r[0].error ? null : r[0].data; S.mesConges = r[1].error ? [] : r[1].data || []; S.mesCongesOk = !r[0].error;
+      if (r[2] && !r[2].error) (r[2].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else S.visible = x.valeur; });
+      render();
     }, function () { S.moiEq = null; S.mesConges = []; render(); });
   }
   function vMesCongesA() {
@@ -1028,6 +1034,369 @@
     }).catch(function (e) { D.busy = false; toast(msgErr(e)); render(); });
   }
 
+  // ---------- Planning de la semaine ----------
+  // Une case = une personne, un jour, une demi-journée (matin AM / après-midi PM).
+  // Case enregistrée (table planning) sinon case calculée : jour férié > congés acceptés > semaine type.
+  var ABS = ['CP', 'ARRET', 'ECOLE', 'FORMATION', 'FERIE'];
+  var ABS_TXT = { CP: 'Congés', ARRET: 'Maladie', ECOLE: 'École', FORMATION: 'Formation', FERIE: 'Férié' };
+  var REGLES_DEF = { CP: 9, ARRET: 9, ECOLE: 9, FORMATION: 9, FERIE: 9, ferie: 'habituel', depuis: '2026-11-02' };
+  function regles() { return Object.assign({}, REGLES_DEF, S.regles || {}); }
+  function addJ(iso, n) { var d = dDe(iso); d.setDate(d.getDate() + n); return dIso(d); }
+  function lundiDe(iso) { var d = dDe(iso), j = d.getDay() || 7; d.setDate(d.getDate() - j + 1); return dIso(d); }
+  function jourSem(iso) { return dDe(iso).getDay(); }
+  var FERIES = {};
+  function feries(an) {
+    if (FERIES[an]) return FERIES[an];
+    var a = an % 19, b = Math.floor(an / 100), c = an % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3),
+      h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451),
+      mois = Math.floor((h + l - 7 * m + 114) / 31), jour = ((h + l - 7 * m + 114) % 31) + 1, paques = dIso(new Date(an, mois - 1, jour));
+    var s = {};
+    [['01-01', 'Jour de l’an'], ['05-01', 'Fête du travail'], ['05-08', 'Victoire 1945'], ['07-14', 'Fête nationale'], ['08-15', 'Assomption'], ['11-01', 'Toussaint'], ['11-11', 'Armistice'], ['12-25', 'Noël']].forEach(function (x) { s[an + '-' + x[0]] = x[1]; });
+    s[addJ(paques, 1)] = 'Lundi de Pâques'; s[addJ(paques, 39)] = 'Ascension'; s[addJ(paques, 50)] = 'Lundi de Pentecôte';
+    return (FERIES[an] = s);
+  }
+  function ferie(iso) { return feries(+iso.slice(0, 4))[iso] || null; }
+  function congeLe(eid, iso) { return (S.conges || []).filter(function (c) { return String(c.equipe_id) === String(eid) && c.statut === 'accepte' && c.du <= iso && c.au >= iso; })[0]; }
+  function dentAbsent(did, iso) { return (S.conges || []).some(function (c) { return String(c.dentiste_id) === String(did) && c.statut === 'accepte' && c.du <= iso && c.au >= iso; }); }
+  function cleCase(eid, iso, demi) { return eid + '|' + iso + '|' + demi; }
+  function hm(t) { return t ? String(t).slice(0, 5) : null; }
+  function caseCalc(p, iso, demi) {
+    var j = jourSem(iso); if (j < 1 || j > 5) return { a: 'OFF', v: 1 };
+    if (ferie(iso)) return { a: 'FERIE', v: 1 };
+    var c = congeLe(p.id, iso);
+    if (c) return { a: c.type === 'AUTRE' ? 'CP' : c.type, v: 1 };
+    var t = ((p.trame || {})[j] || {})[demi === 'AM' ? 'am' : 'pm'];
+    return t && t.a ? { a: t.a, de: t.de || null, fi: t.fi || null, v: 1 } : { a: 'OFF', v: 1 };
+  }
+  function caseEff(p, iso, demi) { var r = (S.pl && S.pl.rows || {})[cleCase(p.id, iso, demi)]; return r ? { a: r.aff, de: hm(r.debut), fi: hm(r.fin) } : caseCalc(p, iso, demi); }
+  function travailleHabituellement(p, iso, demi) { var t = ((p.trame || {})[jourSem(iso)] || {})[demi === 'AM' ? 'am' : 'pm']; return !!(t && t.a && t.a !== 'OFF'); }
+  function heuresDemi(p, iso, demi, c) {
+    c = c || caseEff(p, iso, demi);
+    if (!c || !c.a || c.a === 'OFF') return 0;
+    if (ABS.indexOf(c.a) >= 0) {
+      var R = regles(), perso = (p.regles || {})[c.a], v = perso != null && perso !== '' ? +perso : +R[c.a];
+      if (c.a === 'FERIE' && R.ferie !== 'tous' && !travailleHabituellement(p, iso, demi)) return 0;
+      return (v || 0) / 2;
+    }
+    return dureeDemi(c);
+  }
+  function heuresJ(p, iso) { return heuresDemi(p, iso, 'AM') + heuresDemi(p, iso, 'PM'); }
+  function heuresSem(p, lundi) { var s = 0; for (var k = 0; k < 5; k++) s += heuresJ(p, addJ(lundi, k)); return s; }
+  // Reliquat avant la semaine affichée : somme des (heures faites − contrat) depuis la date de départ
+  function reliquatAvant(p, lundi) {
+    var c = +p.contrat_h || 0, w = lundiDe(regles().depuis || lundi), s = 0;
+    if (!c) return 0;
+    for (var i = 0; w < lundi && i < 260; i++, w = addJ(w, 7)) s += heuresSem(p, w) - c;
+    return s;
+  }
+  function relTxt(r) { return (r > 0 ? '+' : r < 0 ? '−' : '') + fh(Math.abs(r)); }
+  function ft(t) { if (!t) return ''; var p = t.split(':'); return +p[0] + 'h' + (p[1] !== '00' ? p[1] : ''); }
+  function nomAff(a) { return ABS_TXT[a] || (a === 'OFF' ? '—' : affTxt(a)); }
+  function persPlanning() { return (S.equipe || []).filter(function (p) { return p.actif; }).sort(function (a, b) { return (a.type === 'interimaire') - (b.type === 'interimaire') || (a.ordre - b.ordre); }); }
+
+  function chargerSemaine(force) {
+    var P = S.pl = S.pl || { lundi: lundiDe(dIso(new Date())), rows: {} };
+    var de = [lundiDe(regles().depuis || P.lundi), P.lundi].sort()[0], a = addJ(P.lundi, 4);
+    if (!force && P.de && P.de <= de && P.a >= a) return Promise.resolve();
+    P.charge = true;
+    return toutLire('planning', 'equipe_id,jour,demi,aff,debut,fin', function (q) { return q.gte('jour', de).lte('jour', a).order('jour'); }).then(function (rows) {
+      var o = {}; rows.forEach(function (r) { o[cleCase(r.equipe_id, String(r.jour).slice(0, 10), r.demi)] = r; });
+      P.rows = o; P.de = de; P.a = a; P.charge = false; P.err = false; render();
+    }).catch(function (e) { P.charge = false; P.err = true; toast(msgErr(e)); render(); });
+  }
+
+  function celluleJour(p, iso) {
+    var am = caseEff(p, iso, 'AM'), pm = caseEff(p, iso, 'PM'), ab = function (c) { return ABS.indexOf(c.a) >= 0; };
+    var cls = 'pl-c', h;
+    if (am.a === pm.a && (ab(am) || am.a === 'OFF')) { cls += am.a === 'OFF' ? ' off' : ' abs'; h = '<b>' + nomAff(am.a) + '</b>'; }
+    else if (am.a === pm.a) { cls += ' on'; h = '<b>' + esc(nomAff(am.a)) + '</b><span>' + ft(am.de) + '–' + ft(am.fi) + ' · ' + ft(pm.de) + '–' + ft(pm.fi) + '</span>'; }
+    else {
+      var demi = function (c) { return '<span class="pl-d' + (ab(c) ? ' abs' : c.a === 'OFF' ? ' off' : '') + '"><b>' + esc(nomAff(c.a)) + '</b>' + (c.de ? ' ' + ft(c.de) + '–' + ft(c.fi) : '') + '</span>'; };
+      cls += ' mix'; h = demi(am) + demi(pm);
+    }
+    return '<button class="' + cls + '" data-plc="' + p.id + '|' + iso + '" aria-label="' + esc(p.prenom) + ', ' + JOURS[jourSem(iso)] + '">' + h + '</button>';
+  }
+  function alertesSemaine(lundi) {
+    var out = [], ps = persPlanning();
+    for (var k = 0; k < 5; k++) {
+      var iso = addJ(lundi, k), j = jourSem(iso);
+      if (ferie(iso)) continue;
+      (S.dentistes || []).filter(function (d) { return d.actif && d.jours && d.jours[j] && !dentAbsent(d.id, iso); }).forEach(function (d) {
+        var cle = 'D:' + d.id, ok = ps.some(function (p) { return caseEff(p, iso, 'AM').a === cle || caseEff(p, iso, 'PM').a === cle; });
+        if (!ok) out.push('<b>' + JOURS[j] + '</b> : Dr ' + esc(d.prenom) + ' n’a pas d’assistante');
+      });
+    }
+    return out;
+  }
+  function vPlanning() {
+    if (!S.pl || (!S.pl.de && !S.pl.charge && !S.pl.err)) { chargerSemaine(); if (!S.pl.rows || !S.pl.de) return '<div class="a-corps"><p class="a-vide">Chargement…</p></div>'; }
+    var P = S.pl, L = P.lundi, ps = persPlanning(), auj = dIso(new Date());
+    var fin = addJ(L, 4), titre = 'Semaine du ' + periode(L, fin).replace(/^du /, '');
+    var h = '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" data-tab="hub">' + ico('prec', 22, 2.4) + 'Accueil</button><h1>Planning</h1>'
+      + '<label class="pl-imp">' + ico('boite', 18) + '<span class="m-hide">Importer l’Excel</span><input type="file" id="plimpf" accept=".xlsm,.xlsx" hidden></label></div>'
+      + '<div class="pl-nav"><button class="h-rond" data-plsem="-7" aria-label="Semaine précédente">' + ico('prec', 20, 2.4) + '</button><b>' + titre + '</b><button class="h-rond" data-plsem="7" aria-label="Semaine suivante">' + ico('suiv', 20, 2.4) + '</button>'
+      + (lundiDe(auj) !== L ? '<button class="pl-auj" data-plsem="0">Cette semaine</button>' : '') + '</div></header>';
+    h += '<div class="a-corps pl-corps">';
+    if (!planPret()) return h + '<div class="ban warn">Les mises à jour 009 à 011 de la base ne sont pas encore faites.</div></div>';
+    if (S.plImp) h += vImportPlanning();
+    if (P.charge) h += '<p class="mu">Chargement…</p>';
+    h += '<div class="pl-scroll"><div class="pl-grille"><div class="pl-tete pl-nom">Assistantes</div>';
+    for (var k = 0; k < 5; k++) { var iso = addJ(L, k), fe = ferie(iso); h += '<div class="pl-tete' + (iso === auj ? ' auj' : '') + '"><b>' + JOURS[k + 1] + '</b><span>' + dateCourte(iso) + (fe ? ' · <em>' + fe + '</em>' : '') + '</span></div>'; }
+    h += '<div class="pl-tete pl-h"><b>Heures</b><span>semaine · reliquat</span></div>';
+    ps.forEach(function (p) {
+      h += '<div class="pl-nom"><span class="a-av p">' + initiale(p.prenom) + '</span><span><b>' + esc(p.prenom) + '</b><small>' + (p.type === 'interimaire' ? 'intérimaire' : (p.statut === 'apprentie' ? 'apprentie · ' : '') + fh(+p.contrat_h || 0)) + '</small></span></div>';
+      for (var k2 = 0; k2 < 5; k2++) h += celluleJour(p, addJ(L, k2));
+      var hs = heuresSem(p, L), c = +p.contrat_h || 0;
+      if (!c) h += '<div class="pl-h"><span><b>' + fh(hs) + '</b></span></div>';
+      else {
+        var r = reliquatAvant(p, L) + hs - c;
+        h += '<div class="pl-h"><span><b>' + fh(hs) + '</b> / ' + fh(c) + '</span>' + (Math.abs(r) < 0.01 ? '<span class="ok">à jour</span>' : r < 0 ? '<span class="moins">' + relTxt(r) + ' · à rattraper</span>' : '<span class="plus">' + relTxt(r) + ' · à alléger</span>') + '</div>';
+      }
+    });
+    h += '</div></div>';
+    var al = alertesSemaine(L);
+    h += '<div class="pl-notes"><span class="pl-n vert"><b>Semaine remplie automatiquement</b> d’après les fiches (semaine type, école, congés acceptés, jours fériés) : corrigez seulement les exceptions.</span>'
+      + al.map(function (x) { return '<span class="pl-n orange">' + x + '</span>'; }).join('')
+      + '<span class="pl-n">Touchez une case pour choisir le dentiste et les heures. Reliquat : heures faites moins heures du contrat, cumulées depuis le ' + dateCourte(regles().depuis) + ' (Réglages › Règles des heures).</span></div>';
+    return h + '</div>' + (P.cas ? vCasePlanning() : '');
+  }
+
+  // Fenêtre d'une case (une personne, un jour)
+  function optAffPl(cur) {
+    return optAff(cur).replace('<optgroup label="Autres">', '<optgroup label="Absences">' + ['CP', 'ARRET', 'FORMATION', 'FERIE'].map(function (a) { return '<option value="' + a + '"' + (cur === a ? ' selected' : '') + '>' + ABS_TXT[a] + '</option>'; }).join('') + '</optgroup><optgroup label="Autres">');
+  }
+  function ouvrirCase(v) {
+    var x = v.split('|'), p = persById(x[0]); if (!p) return;
+    var am = caseEff(p, x[1], 'AM'), pm = caseEff(p, x[1], 'PM');
+    S.pl.cas = { eid: p.id, jour: x[1], AM: { a: am.a, de: am.de, fi: am.fi }, PM: { a: pm.a, de: pm.de, fi: pm.fi }, enreg: !!(S.pl.rows[cleCase(p.id, x[1], 'AM')] || S.pl.rows[cleCase(p.id, x[1], 'PM')]) };
+    render();
+  }
+  function vCasePlanning() {
+    var K = S.pl.cas, p = persById(K.eid), iso = K.jour; if (!p) return '';
+    var dem = function (d) {
+      var c = K[d], off = !c.a || c.a === 'OFF' || ABS.indexOf(c.a) >= 0;
+      return '<div class="pl-cd"><span class="h-dl">' + (d === 'AM' ? 'Matin' : 'Après-midi') + '</span><select class="in" data-plk="' + d + '.a">' + optAffPl(c.a) + '</select>'
+        + '<span class="h-hh"><input class="in" type="time" data-plk="' + d + '.de" value="' + esc(off ? '' : c.de || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Arrivée"><span>–</span><input class="in" type="time" data-plk="' + d + '.fi" value="' + esc(off ? '' : c.fi || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Départ"></span></div>';
+    };
+    var hj = heuresDemi(p, iso, 'AM', K.AM) + heuresDemi(p, iso, 'PM', K.PM);
+    var L = lundiDe(iso), avant = 0; for (var k = 0; k < 5; k++) { var d2 = addJ(L, k); avant += d2 === iso ? hj : heuresJ(p, d2); }
+    var c = +p.contrat_h || 0, relA = c ? reliquatAvant(p, L) : 0, relB = relA + avant - c;
+    var fe = ferie(iso);
+    return '<div class="pl-modal" role="dialog" aria-modal="true" aria-label="' + esc(p.prenom) + '"><button class="pl-fond" data-act="plfermer" aria-label="Fermer"></button><div class="pl-fen">'
+      + '<div class="pl-ft"><span class="a-av p">' + initiale(p.prenom) + '</span><div><b>' + esc(p.prenom) + '</b><span class="mu">' + JOURS[jourSem(iso)] + ' ' + dateCourte(iso) + (fe ? ' · ' + fe : '') + '</span></div><button class="h-rond gris" data-act="plfermer" aria-label="Fermer">' + ico('croix', 20, 2.4) + '</button></div>'
+      + (p.consigne ? '<p class="pl-consigne"><b>Consigne :</b> « ' + esc(p.consigne) + ' »</p>' : '')
+      + dem('AM') + dem('PM')
+      + '<div class="pl-vite"><span class="mu">Toute la journée :</span>' + ['CP', 'ARRET', 'ECOLE', 'FORMATION'].map(function (a) { return '<button data-plabs="' + a + '">' + ABS_TXT[a] + '</button>'; }).join('') + '</div>'
+      + '<div class="pl-tot"><span>Heures ce jour</span><b>' + fh(hj) + '</b></div>'
+      + (c ? '<div class="pl-rel"><div><span>Semaine de ' + esc(p.prenom) + '</span><b>' + fh(avant) + ' / ' + fh(c) + '</b></div><div><span>Reliquat des semaines précédentes</span><b>' + relTxt(relA) + '</b></div><div><span>Reliquat après cette semaine</span><b class="' + (relB < -0.01 ? 'moins' : relB > 0.01 ? 'plus' : 'ok') + '">' + relTxt(relB) + (relB < -0.01 ? ' · à rattraper' : relB > 0.01 ? ' · à alléger' : ' · à jour') + '</b></div></div>' : '')
+      + '<div class="pl-btns"><button class="a-btn blanc" data-act="plreset"' + (K.enreg ? '' : ' disabled') + '>Semaine type</button><button class="a-btn navy" data-act="plsave"' + (K.busy ? ' disabled' : '') + '>' + (K.busy ? 'Enregistrement…' : 'Enregistrer') + '</button></div>'
+      + '</div></div>';
+  }
+  function majCase(el) {
+    var K = S.pl.cas, x = el.dataset.plk.split('.'), c = K[x[0]];
+    c[x[1]] = el.value || null;
+    if (x[1] === 'a') {
+      if (!el.value || el.value === 'OFF' || ABS.indexOf(el.value) >= 0) { c.de = null; c.fi = null; }
+      else if (!c.de) { var p = persById(K.eid), t = (((p.trame || {})[jourSem(K.jour)] || {})[x[0] === 'AM' ? 'am' : 'pm']) || {}; c.de = t.de || (x[0] === 'AM' ? '09:00' : '14:00'); c.fi = t.fi || (x[0] === 'AM' ? '13:00' : '19:00'); }
+    }
+  }
+  function sauverCase() {
+    var K = S.pl.cas;
+    var rows = ['AM', 'PM'].map(function (d) { var c = K[d]; return { equipe_id: K.eid, jour: K.jour, demi: d, aff: c.a || 'OFF', debut: c.de || null, fin: c.fi || null, modifie_par: S.me.id, modifie_le: new Date().toISOString() }; });
+    K.busy = true; render();
+    sb.from('planning').upsert(rows, { onConflict: 'equipe_id,jour,demi' }).then(function (r) {
+      if (r.error) throw r.error;
+      rows.forEach(function (x) { S.pl.rows[cleCase(x.equipe_id, x.jour, x.demi)] = x; });
+      S.pl.cas = null; toast('✔ Case enregistrée'); render();
+    }).catch(function (e) { K.busy = false; toast(msgErr(e)); render(); });
+  }
+  function caseSemaineType() {
+    var K = S.pl.cas;
+    if (!confirm('Revenir à la semaine type pour ce jour ? La saisie de ce jour sera effacée.')) return;
+    sb.from('planning').delete().eq('equipe_id', K.eid).eq('jour', K.jour).then(function (r) {
+      if (r.error) throw r.error;
+      delete S.pl.rows[cleCase(K.eid, K.jour, 'AM')]; delete S.pl.rows[cleCase(K.eid, K.jour, 'PM')];
+      S.pl.cas = null; toast('Jour remis selon la semaine type'); render();
+    }).catch(function (e) { toast(msgErr(e)); });
+  }
+
+  // Import de l'Excel du planning (feuilles mensuelles : lignes « AD » avec les dates, matin / après-midi + horaires)
+  var MOIS_N = { janvier: 1, fevrier: 2, mars: 3, avril: 4, mai: 5, juin: 6, juillet: 7, aout: 8, septembre: 9, octobre: 10, novembre: 11, decembre: 12 };
+  var JOUR_N = { dimanche: 0, lundi: 1, mardi: 2, mercredi: 3, jeudi: 4, vendredi: 5, samedi: 6 };
+  var CODE_XL = { off: 'OFF', ecole: 'ECOLE', cp: 'CP', conges: 'CP', arret: 'ARRET', maladie: 'ARRET', admin: 'ADMIN', ste: 'STE', acceuil: 'ACCUEIL', accueil: 'ACCUEIL', adminortho: 'ADMIN_ORTHO', rangement: 'RANGEMENT', nettoyagecab: 'NETTOYAGE', nettoyage: 'NETTOYAGE', formation: 'FORMATION', ferie: 'FERIE' };
+  function cle(s) { return norm(String(s == null ? '' : s)).replace(/[^a-z0-9]/g, ''); }
+  function dateXl(s) {
+    var m = /^\s*(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\s+(\d{1,2})\s+([a-zéèûôç]+)\s+(\d{4})/i.exec(norm(String(s || '')));
+    if (!m) return null;
+    var mo = MOIS_N[cle(m[3])]; if (!mo) return null;
+    var d = new Date(+m[4], mo - 1, +m[2]);
+    if (d.getMonth() !== mo - 1 || d.getDay() !== JOUR_N[m[1]] || d.getDay() < 1 || d.getDay() > 5) return null;
+    return dIso(d);
+  }
+  function heureXl(v) {
+    if (typeof v !== 'number' || !(v > 0) || v >= 1) return null;
+    var m = Math.round(v * 1440); return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2);
+  }
+  function importerPlanning(file) {
+    if (!file) return;
+    S.plImp = { lecture: true }; render();
+    var pers = {}; (S.equipe || []).forEach(function (p) { pers[cle(p.type === 'interimaire' ? 'interimaire' : p.prenom)] = p; });
+    var dents = {}; (S.dentistes || []).forEach(function (d) { dents[cle(d.prenom)] = d; });
+    file.arrayBuffer().then(XLSX_EVY.lire).then(function (cl) {
+      var R = { rows: {}, inconnusN: {}, inconnusA: {}, feuilles: [], doublons: {}, ignorees: [] };
+      Object.keys(cl).forEach(function (nomF) {
+        var rows = cl[nomF] || [], dates = null, src = 0;
+        for (var i = 0; i < rows.length; i++) {
+          var r = rows[i] || [];
+          if (r[0] === 'AD') {
+            // Bloc d'une semaine : le 1er jour doit être un lundi daté ; les 4 suivants doivent concorder (sinon brouillon ignoré)
+            var d0 = dateXl(r[1]);
+            if (!d0 || jourSem(d0) !== 1) { dates = null; continue; }
+            dates = [0, 1, 2, 3, 4].map(function (k) { return addJ(d0, k); });
+            var bon = [1, 5, 9, 13, 17].every(function (c, k) {
+              var v = r[c]; if (v == null || String(v).trim() === '') return true;
+              var m = /^\s*(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)/i.exec(norm(String(v)));
+              if (!m || JOUR_N[m[1].toLowerCase()] !== k + 1) return false;
+              var dd = dateXl(v); return !dd || dd === dates[k];
+            });
+            if (!bon) dates = null;
+            continue;
+          }
+          if (!dates || typeof r[0] !== 'string' || !r[0].trim()) continue;
+          var nom = cle(r[0]), p = pers[nom], tr = rows[i + 1] || [];
+          if (!p) { if (nom && nom !== 'ad') R.inconnusN[r[0].trim()] = 1; continue; }
+          dates.forEach(function (iso, k) {
+            if (!iso) return;
+            [['AM', 1 + 4 * k, 1 + 4 * k, 2 + 4 * k], ['PM', 3 + 4 * k, 3 + 4 * k, 4 + 4 * k]].forEach(function (x) {
+              var v = r[x[1]]; if (v == null || String(v).trim() === '') return;
+              var ck = cle(v), aff = CODE_XL[ck] || (dents[ck] ? 'D:' + dents[ck].id : null);
+              if (!aff) { R.inconnusA[String(v).trim()] = 1; return; }
+              var de = heureXl(tr[x[2]]), fi = heureXl(tr[x[3]]);
+              if (ABS.indexOf(aff) >= 0 || aff === 'OFF') { de = null; fi = null; }
+              var kk = cleCase(p.id, iso, x[0]);
+              if (R.rows[kk] && R.rows[kk].f !== nomF) R.doublons[lundiDe(iso)] = nomF;
+              R.rows[kk] = { equipe_id: p.id, jour: iso, demi: x[0], aff: aff, debut: de, fin: fi, f: nomF }; src++;
+            });
+          });
+        }
+        if (src) R.feuilles.push(nomF);
+      });
+      var l = Object.keys(R.rows).map(function (k) { return R.rows[k]; });
+      if (!l.length) throw new Error('Aucune case de planning reconnue dans ce fichier');
+      var js = l.map(function (x) { return x.jour; }).sort();
+      R.liste = l; R.du = js[0]; R.au = js[js.length - 1];
+      R.nbPers = Object.keys(l.reduce(function (o, x) { o[x.equipe_id] = 1; return o; }, {})).length;
+      R.nbSem = Object.keys(l.reduce(function (o, x) { o[lundiDe(x.jour)] = 1; return o; }, {})).length;
+      S.plImp = R; render(); window.scrollTo(0, 0);
+    }).catch(function (e) { S.plImp = null; toast('Lecture du fichier impossible : ' + (e && e.message || e)); render(); });
+  }
+  function vImportPlanning() {
+    var R = S.plImp;
+    if (R.lecture) return '<div class="card"><b>Lecture du fichier…</b></div>';
+    var inN = Object.keys(R.inconnusN), inA = Object.keys(R.inconnusA), dbl = Object.keys(R.doublons).sort();
+    return '<div class="card pl-impc"><b>Import du planning Excel</b><p style="margin:6px 0">' + R.liste.length + ' demi-journées · ' + R.nbPers + ' ' + pl(R.nbPers, 'personne') + ' · ' + R.nbSem + ' semaines, ' + periode(R.du, R.au) + '.</p>'
+      + '<p class="mu" style="margin:0 0 6px">Feuilles lues : ' + R.feuilles.map(esc).join(', ') + '. Les feuilles sans dates valides (brouillons, pointage) sont ignorées. Les adresses e-mail et la feuille « Horodatage » ne sont pas importées.</p>'
+      + (dbl.length ? '<p class="warn-t" style="margin:0 0 6px">Semaines présentes dans deux feuilles (la dernière feuille est gardée) : ' + dbl.map(function (w) { return dateCourte(w) + ' (' + esc(R.doublons[w]) + ')'; }).join(', ') + '.</p>' : '')
+      + (inN.length ? '<p class="warn-t" style="margin:0 0 6px">Lignes ignorées (personne inconnue) : ' + inN.map(esc).join(', ') + '.</p>' : '')
+      + (inA.length ? '<p class="warn-t" style="margin:0 0 6px">Cases ignorées (affectation inconnue) : ' + inA.map(esc).join(', ') + '.</p>' : '')
+      + '<p style="margin:0 0 10px">Pour ces jours et ces personnes, le contenu de l’appli sera <b>remplacé</b> par celui du fichier. Rien n’est enregistré avant « Importer ».</p>'
+      + (R.busy ? '<p><b>Import en cours… ' + (R.fait || 0) + ' / ' + R.liste.length + '</b></p>' : '<div class="row"><button class="btn l" data-act="plimpno">Annuler</button><button class="btn" data-act="plimpok">Importer ' + R.liste.length + ' demi-journées</button></div>') + '</div>';
+  }
+  function appliquerImportPlanning() {
+    var R = S.plImp, l = R.liste.map(function (x) { return { equipe_id: x.equipe_id, jour: x.jour, demi: x.demi, aff: x.aff, debut: x.debut, fin: x.fin, modifie_par: S.me.id }; }), i = 0;
+    R.busy = true; R.fait = 0; render();
+    function suite() {
+      if (i >= l.length) return Promise.resolve();
+      var lot = l.slice(i, i + 400); i += 400;
+      return sb.from('planning').upsert(lot, { onConflict: 'equipe_id,jour,demi' }).then(function (r) { if (r.error) throw r.error; R.fait = Math.min(i, l.length); render(); return suite(); });
+    }
+    suite().then(function () { S.plImp = null; toast('✔ Planning importé : ' + l.length + ' demi-journées'); S.pl.de = null; chargerSemaine(true); })
+      .catch(function (e) { R.busy = false; toast('Import interrompu : ' + msgErr(e)); render(); });
+  }
+
+  // Réglages › Règles des heures
+  function vPRegles() {
+    var R = regles(), E = S.rgEdit;
+    var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'Heures', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    h += '<p class="a-aide">Heures comptées dans la semaine quand la personne ne travaille pas ce jour-là (journée entière ; une demi-journée compte la moitié) :</p><div class="a-liste">'
+      + [['CP', 'Congés'], ['ARRET', 'Maladie'], ['ECOLE', 'École (apprentie)'], ['FORMATION', 'Formation'], ['FERIE', 'Jour férié']].map(function (x) {
+        return '<label class="a-li"><span class="a-it-n"><b>' + x[1] + '</b></span><span class="h-hval"><input class="in" inputmode="decimal" data-rg="' + x[0] + '" value="' + esc(fr(R[x[0]])) + '" aria-label="Heures pour ' + x[1] + '"> h</span></label>';
+      }).join('') + '</div>';
+    h += '<h2 class="a-jour">Jour férié</h2><div class="a-liste">'
+      + '<label class="a-li"><input type="radio" name="rgferie" data-rgf="habituel"' + (R.ferie !== 'tous' ? ' checked' : '') + '><span class="a-it-n"><b>Compte seulement si elle travaille ce jour-là d’habitude</b></span></label>'
+      + '<label class="a-li"><input type="radio" name="rgferie" data-rgf="tous"' + (R.ferie === 'tous' ? ' checked' : '') + '><span class="a-it-n"><b>Compte pour tout le monde</b></span></label></div>';
+    h += '<h2 class="a-jour">Reliquat</h2><div class="a-liste"><label class="a-li"><span class="a-it-n"><b>Compté à partir du</b><span>les semaines d’avant ne comptent pas</span></span><input class="in" type="date" data-rg="depuis" value="' + esc(R.depuis || '') + '" style="max-width:170px"></label></div>';
+    h += '<button class="a-btn navy" data-act="rgsave">Enregistrer les règles générales</button>';
+    h += '<h2 class="a-jour">Règles et consignes par personne</h2><div class="a-liste">' + persPlanning().map(function (p) {
+      var rg = p.regles || {}, k = Object.keys(rg).filter(function (x) { return rg[x] !== '' && rg[x] != null; });
+      if (E && String(E.id) === String(p.id)) {
+        return '<div class="a-li h-cadd"><b>' + esc(p.prenom) + '</b><p class="mu" style="margin:4px 0 8px">Laissez vide pour garder la règle générale.</p><div class="h-g2">'
+          + ['CP', 'ARRET', 'ECOLE', 'FORMATION', 'FERIE'].map(function (a) { return '<label class="mu">' + ABS_TXT[a] + ' (h)<input class="in" inputmode="decimal" data-rgp="' + a + '" value="' + esc(E.r[a] != null ? fr(E.r[a]) : '') + '" placeholder="' + fr(R[a]) + '"></label>'; }).join('')
+          + '</div><label class="mu" style="display:block;margin-top:8px">Consigne<textarea class="in" rows="2" id="rgcons">' + esc(E.consigne || '') + '</textarea></label>'
+          + '<div class="row" style="margin-top:10px"><button class="btn l" data-act="rgpno">Annuler</button><button class="btn" data-act="rgpok">Enregistrer</button></div></div>';
+      }
+      return '<button class="a-li" data-rgp-ouvrir="' + p.id + '"><span class="a-av p">' + initiale(p.prenom) + '</span><span class="a-it-n"><b>' + esc(p.prenom) + '</b><span>' + (k.length ? k.map(function (a) { return ABS_TXT[a] + ' ' + fh(+rg[a]); }).join(' · ') : 'règle générale') + '</span>' + (p.consigne ? '<span class="h-cons">« ' + esc(p.consigne) + ' »</span>' : '') + '</span>' + ico('suiv', 20, 2.2) + '</button>';
+    }).join('') + '</div><p class="a-aide">Une règle par personne remplace la règle générale pour elle seule. La consigne s’affiche dans le planning quand vous touchez une de ses cases.</p>';
+    return h + '</div>';
+  }
+  function sauverRegles() {
+    var R = regles(), o = {};
+    ['CP', 'ARRET', 'ECOLE', 'FORMATION', 'FERIE'].forEach(function (a) { var el = document.querySelector('[data-rg="' + a + '"]'); var v = el ? nb(String(el.value).replace(',', '.')) : R[a]; o[a] = Math.max(0, v || 0); });
+    var f = document.querySelector('[data-rgf="tous"]'); o.ferie = f && f.checked ? 'tous' : 'habituel';
+    var dp = document.querySelector('[data-rg="depuis"]'); o.depuis = dp && dp.value || R.depuis;
+    sb.from('parametres').upsert({ cle: 'regles_heures', valeur: o }, { onConflict: 'cle' }).then(function (r) {
+      if (r.error) throw r.error; S.regles = o; if (S.pl) S.pl.de = null; toast('✔ Règles enregistrées'); render();
+    }).catch(function (e) { toast(msgErr(e)); });
+  }
+  function sauverReglePers() {
+    var E = S.rgEdit, r = {};
+    Array.prototype.forEach.call(document.querySelectorAll('[data-rgp]'), function (el) { var v = String(el.value).trim(); if (v !== '') r[el.dataset.rgp] = Math.max(0, nb(v.replace(',', '.'))); });
+    var cons = $('rgcons').value.trim() || null;
+    sb.from('equipe').update({ regles: r, consigne: cons }).eq('id', E.id).then(function (x) {
+      if (x.error) throw x.error; S.rgEdit = null; toast('✔ Règles enregistrées'); chargerPlan();
+    }).catch(function (e) { toast(msgErr(e)); });
+  }
+  function basculerVisible(k, v) {
+    var o = Object.assign({ planning: false, reliquat: false }, S.visible || {}); o[k] = v; if (!o.planning) o.reliquat = false;
+    sb.from('parametres').upsert({ cle: 'planning_visible', valeur: o }, { onConflict: 'cle' }).then(function (r) {
+      if (r.error) throw r.error; S.visible = o; toast(o.planning ? '✔ Les assistantes voient leur planning' + (o.reliquat ? ' et leur reliquat' : '') : 'Planning masqué pour les assistantes'); render();
+    }).catch(function (e) { toast(msgErr(e)); render(); });
+  }
+
+  // Assistante : mon planning (si la référente l'a activé)
+  function chargerMonPlanning() {
+    if (!S.moiEq) return;
+    var P = S.pl = S.pl || { lundi: lundiDe(dIso(new Date())), rows: {} };
+    if (P.charge) return;
+    var de = [lundiDe(regles().depuis || P.lundi), P.lundi].sort()[0], a = addJ(P.lundi, 4);
+    P.charge = true;
+    Promise.all([
+      toutLire('planning', 'equipe_id,jour,demi,aff,debut,fin', function (q) { return q.eq('equipe_id', S.moiEq.id).gte('jour', de).lte('jour', a); }),
+      sb.from('dentistes').select('id,prenom,actif,jours,ordre')
+    ]).then(function (r) {
+      var o = {}; r[0].forEach(function (x) { o[cleCase(x.equipe_id, String(x.jour).slice(0, 10), x.demi)] = x; });
+      P.rows = o; P.de = de; P.a = a; P.charge = false; if (!r[1].error) S.dentistes = r[1].data; S.conges = S.mesConges || []; render();
+    }).catch(function (e) { P.charge = false; toast(msgErr(e)); });
+  }
+  function vMonPlanningA() {
+    var p = S.moiEq, h = hdA({ back: ['data-tab="moi"', 'Moi'], t: 'Mon planning', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    if (!p || !(S.visible && S.visible.planning)) return h + '<p class="a-vide">Le planning n’est pas encore affiché pour les assistantes.</p></div>';
+    if (!S.pl || !S.pl.de) { chargerMonPlanning(); return h + '<p class="a-vide">Chargement…</p></div>'; }
+    var L = S.pl.lundi;
+    h += '<div class="pl-nav clair"><button class="h-rond gris" data-plsem="-7" aria-label="Semaine précédente">' + ico('prec', 20, 2.4) + '</button><b>Semaine du ' + periode(L, addJ(L, 4)).replace(/^du /, '') + '</b><button class="h-rond gris" data-plsem="7" aria-label="Semaine suivante">' + ico('suiv', 20, 2.4) + '</button></div><div class="a-liste">';
+    for (var k = 0; k < 5; k++) {
+      var iso = addJ(L, k), am = caseEff(p, iso, 'AM'), pm = caseEff(p, iso, 'PM'), t;
+      if (am.a === pm.a) t = '<b>' + esc(nomAff(am.a)) + '</b>' + (am.de ? '<span>' + ft(am.de) + '–' + ft(am.fi) + ' · ' + ft(pm.de) + '–' + ft(pm.fi) + '</span>' : '');
+      else t = '<b>' + esc(nomAff(am.a)) + ' · ' + esc(nomAff(pm.a)) + '</b><span>' + (am.de ? 'matin ' + ft(am.de) + '–' + ft(am.fi) : 'matin —') + ' · ' + (pm.de ? 'après-midi ' + ft(pm.de) + '–' + ft(pm.fi) : 'après-midi —') + '</span>';
+      h += '<div class="a-li"><span class="h-jc">' + JC[k + 1] + '<small>' + dDe(iso).getDate() + '</small></span><span class="a-it-n">' + t + '</span></div>';
+    }
+    h += '</div>';
+    var hs = heuresSem(p, L), c = +p.contrat_h || 0;
+    h += '<div class="h-total ok"><span>Heures de la semaine</span><b>' + fh(hs) + (c ? ' / ' + fh(c) : '') + '</b></div>';
+    if (S.visible.reliquat && c) { var r = reliquatAvant(p, L) + hs - c; h += '<div class="h-total ' + (r < -0.01 ? 'warn' : 'ok') + '"><span>Mon reliquat</span><b>' + relTxt(r) + '</b></div>'; }
+    return h + '</div>';
+  }
+
   // ---------- Navigation téléphone : barre du bas + menu ----------
   var ICO = { accueil: '🏠', sortie: '📤', retour: '↩️', inventaire: '📋', demandes: '⏳', stock: '📦', commandes: '🛒', articles: '🏷️', fournisseurs: '🚚', histo: '🕘', equipe: '👥', hub: '🏠', plus: '⚙️', compte: '🔑', aide: '❓', maison: '🏠', moi: '👤' };
   var NOMS = { accueil: 'Accueil', sortie: 'Sortie', retour: 'Retour', inventaire: 'Inventaire', demandes: 'Demandes', stock: 'Stock', commandes: 'Commandes', articles: 'Articles', fournisseurs: 'Fournisseurs', histo: 'Historique', equipe: 'Équipe', hub: 'Menu principal', plus: 'Plus', compte: 'Mon code', aide: 'Aide', maison: 'Accueil', moi: 'Moi' };
@@ -1036,7 +1405,7 @@
   function vNavMobile() {
     if (!gestion()) {
       if (enTache()) return '';
-      var cur = ['compte', 'mconges', 'mdemande'].indexOf(S.tab) >= 0 ? 'moi' : S.tab;
+      var cur = ['compte', 'mconges', 'mdemande', 'mplanning'].indexOf(S.tab) >= 0 ? 'moi' : S.tab;
       return '<nav class="bnav a4" aria-label="Menu principal">' + ['maison', 'histo', 'aide', 'moi'].map(function (t) {
         return '<button data-tab="' + t + '" class="' + (cur === t ? 'on' : '') + '"><span class="bi">' + ico(t, 24) + '</span><span>' + NOMS[t] + '</span></button>';
       }).join('') + '</nav>';
@@ -2364,7 +2733,9 @@
   window.addEventListener('resize', function () { if (S.tour) placerTour(); });
   // Fiche d'une personne : les totaux d'heures se recalculent quand on quitte un horaire ou la case du contrat
   document.addEventListener('focusout', function (e) {
-    var t = e.target; if (!S.pf || !t || !t.dataset || !(t.dataset.tr || t.dataset.pff === 'contrat_h')) return;
+    var t = e.target;
+    if (t && t.dataset && t.dataset.plk && S.pl && S.pl.cas) { setTimeout(function () { var a = document.activeElement; if (a && a.dataset && a.dataset.plk) return; if (S.pl && S.pl.cas) render(); }, 0); return; }
+    if (!S.pf || !t || !t.dataset || !(t.dataset.tr || t.dataset.pff === 'contrat_h')) return;
     setTimeout(function () { var a = document.activeElement; if (a && a.dataset && (a.dataset.tr || a.dataset.pff)) return; if (S.tab === 'pfiche') render(); }, 0);
   });
   document.addEventListener('click', function (e) {
@@ -2473,6 +2844,18 @@
     if (d.djour && S.df) { var dj = S.df.d.jours = S.df.d.jours || {}; if (dj[d.djour]) delete dj[d.djour]; else dj[d.djour] = true; render(); return; }
     if (d.act === 'pfcompte' && S.pf) { var pr = S.pf.d.prenom || ''; S.eqNew = { identifiant: norm(pr).replace(/[^a-z0-9]/g, ''), nom: pr, role: 'assistante', cabinet: '', lierA: S.pf.id }; S.eqEdit = null; render(); return; }
     if (d.act === 'pfdelier' && S.pf) { if (confirm('Détacher le compte de connexion de cette fiche ? Le compte reste actif, il n’est simplement plus relié au planning.')) lierCompte(S.pf.id, null); return; }
+    if (d.plsem != null && S.pl) { S.pl.lundi = d.plsem === '0' ? lundiDe(dIso(new Date())) : addJ(S.pl.lundi, +d.plsem); S.pl.cas = null; if (gestion()) chargerSemaine(); else S.pl.de = null; render(); return; }
+    if (d.plc) return ouvrirCase(d.plc);
+    if (d.act === 'plfermer' && S.pl) { S.pl.cas = null; render(); return; }
+    if (d.plabs && S.pl && S.pl.cas) { ['AM', 'PM'].forEach(function (k) { S.pl.cas[k] = { a: d.plabs, de: null, fi: null }; }); render(); return; }
+    if (d.act === 'plsave') return sauverCase();
+    if (d.act === 'plreset') return caseSemaineType();
+    if (d.act === 'plimpno') { S.plImp = null; render(); return; }
+    if (d.act === 'plimpok') return appliquerImportPlanning();
+    if (d.rgpOuvrir) { var pr2 = persById(d.rgpOuvrir); S.rgEdit = { id: pr2.id, r: Object.assign({}, pr2.regles || {}), consigne: pr2.consigne || '' }; render(); return; }
+    if (d.act === 'rgpno') { S.rgEdit = null; render(); return; }
+    if (d.act === 'rgpok') return sauverReglePers();
+    if (d.act === 'rgsave') return sauverRegles();
     if (d.cok) return repondre(d.cok, true);
     if (d.crefus) return repondre(d.crefus, false);
     if (d.csuppr) return supprimerConges(d.csuppr);
@@ -2513,11 +2896,15 @@
     else if (t.dataset && t.dataset.qte) { setQte(t.dataset.qte, t.value); var b = document.querySelector('.bar'); if (b) b.outerHTML = vBarSortie(); }
     else if (t.dataset && (t.dataset.pff || t.dataset.tr) && S.pf && t.tagName !== 'SELECT' && t.type !== 'checkbox') majPers(t);
     else if (t.dataset && t.dataset.dff && S.df && t.type !== 'checkbox') S.df.d[t.dataset.dff] = t.value;
+    else if (t.dataset && t.dataset.plk && S.pl && S.pl.cas && t.tagName !== 'SELECT') majCase(t);
   });
   document.addEventListener('change', function (e) {
     var t = e.target; if (!S.me) return;
     if (t.dataset && (t.dataset.pff || t.dataset.tr) && S.pf) { majPers(t); if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); return; }
     if (t.dataset && t.dataset.dff && S.df) { S.df.d[t.dataset.dff] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox') render(); return; }
+    if (t.dataset && t.dataset.plk && S.pl && S.pl.cas) { majCase(t); if (t.tagName === 'SELECT') render(); return; }
+    if (t.id === 'plimpf') { var fp = t.files && t.files[0]; t.value = ''; importerPlanning(fp); return; }
+    if (t.dataset && t.dataset.vis) { basculerVisible(t.dataset.vis, t.checked); return; }
     if ((t.id === 'dmdu' || t.id === 'dmau') && S.dm) { S.dm[t.id === 'dmdu' ? 'du' : 'au'] = t.value; if (t.id === 'dmdu' && S.dm.au && S.dm.au < t.value) S.dm.au = t.value; var mm = $('dmmot'); if (mm) S.dm.mot = mm.value; render(); return; }
     if ((t.id === 'cadu' || t.id === 'caau' || t.id === 'catype') && S.cAjout) { S.cAjout[t.id === 'cadu' ? 'du' : t.id === 'caau' ? 'au' : 'type'] = t.value; if (t.id === 'cadu' && !S.cAjout.au) { S.cAjout.au = t.value; render(); } return; }
     if (t.id === 'pflier' && S.pf && t.value) { if (confirm('Relier ce compte de connexion à la fiche de ' + S.pf.d.prenom + ' ?')) lierCompte(S.pf.id, t.value); else t.value = ''; return; }

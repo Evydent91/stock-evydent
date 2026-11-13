@@ -32,3 +32,10 @@ Légende : 🟢 prête à faire · 🟡 à préciser avec Gwen · ⚪ à l’ét
 ## Notes techniques (pour Claude)
 - Fonction Supabase `equipe` : la créer directement sous le nom `equipe` (renommer une fonction ne change pas son adresse), et désactiver « Verify JWT ».
 - Toute évolution de la base = nouvelle migration numérotée (007, 008…), appliquée sur Dev puis sur Prod avant la fusion dev → main.
+
+## Planning (idées pour plus tard)
+- Routine de fin de mois (rapport d'organisation, § 5C) : 5 questions une par une pour préparer le mois suivant (jours fixes des dentistes et mercredi de Dr Sacha, congés des praticiens, exceptions CFA des apprenties, congés des assistantes, jours fériés).
+- Mode dégradé (§ 5B) : en cas d'absence imprévue, proposer d'abord l'assistante en Admin / Sté ce jour-là.
+- Vue mois et impression / PDF du planning.
+- Rapprochement avec le pointage (arrivée / départ réels) si l'appli de pointage est intégrée un jour.
+
