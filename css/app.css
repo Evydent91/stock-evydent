@@ -730,3 +730,10 @@ body.mode-h .bnav{display:none}
 .pl-r{display:block;font-size:10px;color:var(--gold);font-weight:700}
 .pl-c.mix .pl-r{color:#6b5d24}
 .pl-regle{margin:0;background:var(--okbg);color:#14532d;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.35}
+.pl-seul{margin:5px;border-radius:10px;padding:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:1px;background:var(--warnbg);color:#5a2b06;font-size:13px;line-height:1.25;min-height:50px}
+.pl-seul b{font-size:13px}
+.pl-seul small{font-size:11px;opacity:.8}
+.pl-seul.ok{background:var(--okbg);color:#14532d}
+.pl-seul.vide{background:none;color:#9aa3ab}
+.pl-seul-t{background:#fbf7ef!important}
+.pl-seul-t .a-av{width:30px;height:30px;border-radius:9px;background:var(--navy);color:var(--gold);display:flex;align-items:center;justify-content:center}

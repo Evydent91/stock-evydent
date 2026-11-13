@@ -1156,17 +1156,22 @@
     if (rg) { cls += ' reg'; h += '<small class="pl-r">' + esc(affTxt(rg)) + ' absent</small>'; }
     return '<button class="' + cls + '" data-plc="' + p.id + '|' + iso + '" aria-label="' + esc(p.prenom) + ', ' + JOURS[jourSem(iso)] + '">' + h + '</button>';
   }
-  function alertesSemaine(lundi) {
-    var out = [], ps = persPlanning();
-    for (var k = 0; k < 5; k++) {
-      var iso = addJ(lundi, k), j = jourSem(iso);
-      if (ferie(iso)) continue;
-      (S.dentistes || []).filter(function (d) { return d.actif && d.jours && d.jours[j] && !dentAbsent(d.id, iso); }).forEach(function (d) {
-        var cle = 'D:' + d.id, ok = ps.some(function (p) { return caseEff(p, iso, 'AM').a === cle || caseEff(p, iso, 'PM').a === cle; });
-        if (!ok) out.push('<b>' + JOURS[j] + '</b> : Dr ' + esc(d.prenom) + ' n’a pas d’assistante');
-      });
-    }
-    return out;
+  // Dentistes présents qui travaillent sans assistante ce jour-là (journée entière, matin ou après-midi)
+  function dentistesSeuls(iso) {
+    var ps = persPlanning(), j = jourSem(iso), pres = (S.dentistes || []).filter(function (d) { return dentPresent(d, iso); }).sort(function (a, b) { return a.ordre - b.ordre; });
+    var seuls = [];
+    pres.forEach(function (d) {
+      var cle = 'D:' + d.id, am = ps.some(function (p) { return caseEff(p, iso, 'AM').a === cle; }), pm = ps.some(function (p) { return caseEff(p, iso, 'PM').a === cle; });
+      if (!am || !pm) seuls.push({ d: d, quand: !am && !pm ? '' : !am ? 'matin' : 'après-midi' });
+    });
+    return { pres: pres.length, seuls: seuls };
+  }
+  function celluleSeuls(iso) {
+    if (ferie(iso)) return '<div class="pl-seul vide"><span>Férié</span></div>';
+    var x = dentistesSeuls(iso);
+    if (!x.pres) return '<div class="pl-seul vide"><span>Aucun dentiste</span></div>';
+    if (!x.seuls.length) return '<div class="pl-seul ok"><b>Aucun</b><span>' + x.pres + ' ' + pl(x.pres, 'présent') + ' · tous assistés</span></div>';
+    return '<div class="pl-seul"><b>' + x.seuls.length + ' ' + (x.seuls.length > 1 ? 'seuls' : 'seul') + '</b>' + x.seuls.map(function (s2) { return '<span>Dr ' + esc(s2.d.prenom) + (s2.quand ? ' (' + s2.quand + ')' : '') + '</span>'; }).join('') + '<small>' + x.pres + ' ' + pl(x.pres, 'présent') + '</small></div>';
   }
   function vPlanning() {
     if (!S.pl || (!S.pl.de && !S.pl.charge && !S.pl.err)) { chargerSemaine(); if (!S.pl.rows || !S.pl.de) return '<div class="a-corps"><p class="a-vide">Chargement…</p></div>'; }
@@ -1193,10 +1198,11 @@
         h += '<div class="pl-h"><span><b>' + fh(hs) + '</b> / ' + fh(c) + '</span>' + (Math.abs(r) < 0.01 ? '<span class="ok">à jour</span>' : r < 0 ? '<span class="moins">' + relTxt(r) + ' · à rattraper</span>' : '<span class="plus">' + relTxt(r) + ' · à alléger</span>') + '</div>';
       }
     });
+    h += '<div class="pl-nom pl-seul-t"><span class="a-av d">' + ico('dent', 16) + '</span><span><b>Dentistes seuls</b><small>sans assistante</small></span></div>';
+    for (var k3 = 0; k3 < 5; k3++) h += celluleSeuls(addJ(L, k3));
+    h += '<div class="pl-h"></div>';
     h += '</div></div>';
-    var al = alertesSemaine(L);
-    h += '<div class="pl-notes"><span class="pl-n vert"><b>Semaine remplie automatiquement</b> d’après les fiches (semaine type, école, congés acceptés, jours fériés) : corrigez seulement les exceptions.</span>'
-      + al.map(function (x) { return '<span class="pl-n orange">' + x + '</span>'; }).join('')
+    h += '<div class="pl-notes"><span class="pl-n vert"><b>Semaine remplie automatiquement</b> d’après les fiches (semaine type, école, congés acceptés, jours fériés, règle d’or) : corrigez seulement les exceptions.</span>'
       + '<span class="pl-n">Touchez une case pour choisir le dentiste et les heures. Reliquat : heures faites moins heures du contrat, cumulées depuis le ' + dateCourte(regles().depuis) + ' (Réglages › Règles des heures).</span></div>';
     return h + '</div>' + (P.cas ? vCasePlanning() : '');
   }
