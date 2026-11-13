@@ -858,8 +858,40 @@
     if (!nouv) h += '<h2 class="a-jour">Assistantes (semaine type)</h2><div class="a-liste">' + [1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j] || as[j]; }).map(function (j) {
       return '<div class="a-li"><span class="a-it-n"><b>' + JOURS[j] + '</b>' + (as[j] ? '<span>' + as[j].map(esc).join(', ') + '</span>' : '<span class="warn">pas d’assistante</span>') + '</span></div>';
     }).join('') + '</div><p class="a-aide">Pour changer, modifiez la semaine type de l’assistante (Réglages › L’équipe).</p>';
+    if (!nouv) h += blocExtra(d);
     h += '<h2 class="a-jour">Congés</h2>' + (nouv ? '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>' : blocConges(true, F.id, d)) + '<h2 class="a-jour">Formations</h2>' + (nouv ? '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>' : blocConges(true, F.id, d, true));
     return h + '</div>';
+  }
+  // « Jours en plus » : les jours où le dentiste ne vient pas d'habitude, sur 3 mois ; une touche = il vient ce jour-là (enregistré tout de suite)
+  function blocExtra(d) {
+    var ex = Array.isArray(d.extra) ? d.extra : [], auj = dIso(new Date()), t = new Date(), mois = [];
+    if (!d.actif || [1, 2, 3, 4, 5].every(function (j) { return d.jours && d.jours[j]; })) return '';
+    for (var m = 0; m < 3; m++) {
+      var x = new Date(t.getFullYear(), t.getMonth() + m, 1), mo = x.getMonth(), js = [];
+      for (; x.getMonth() === mo; x.setDate(x.getDate() + 1)) { var j = x.getDay(), iso = dIso(x); if (j >= 1 && j <= 5 && !(d.jours && d.jours[j]) && iso >= auj && !ferie(iso)) js.push(iso); }
+      if (js.length) mois.push({ n: MOIS[mo], js: js });
+    }
+    var plusieurs = [1, 2, 3, 4, 5].filter(function (j) { return !(d.jours && d.jours[j]); }).length > 1;
+    var h = '<h2 class="a-jour">Jours en plus</h2><div class="card h-ex"><p class="mu" style="margin:0 0 4px">Touchez un jour où le Dr ' + esc(d.prenom) + ' vient en plus de ses jours habituels. Le planning en tient compte tout de suite.</p>';
+    h += mois.map(function (M) {
+      var choisis = M.js.filter(function (i) { return ex.indexOf(i) >= 0; });
+      var etat = choisis.length ? '<span class="h-ex-ok">✓ ' + choisis.map(function (i) { return (plusieurs ? JOURS[jourSem(i)].toLowerCase() + ' ' : '') + (+i.slice(8)); }).join(', ') + ' ' + M.n + '</span>' : '<span class="h-ex-ko">à choisir</span>';
+      return '<div class="h-ex-m"><div class="h-ex-t"><b>' + M.n.replace(/^./, function (c) { return c.toUpperCase(); }) + '</b>' + etat + '</div><div class="h-ex-js">'
+        + M.js.map(function (i) { var on = ex.indexOf(i) >= 0; return '<button type="button" class="h-ex-j' + (on ? ' on' : '') + '" data-dextra="' + i + '" aria-pressed="' + on + '">' + (plusieurs ? '<small>' + JOURS[jourSem(i)].slice(0, 3) + '</small>' : '') + +i.slice(8) + '</button>'; }).join('') + '</div></div>';
+    }).join('');
+    return h + '</div>';
+  }
+  function basculerExtra(iso) {
+    var F = S.df; if (!F || F.id === 'new' || F.exBusy) return;
+    var ex = (Array.isArray(F.d.extra) ? F.d.extra : []).slice(), i = ex.indexOf(iso), dav = new Date(Date.now() - 864e5 * 31);
+    if (i >= 0) ex.splice(i, 1); else ex.push(iso);
+    ex = ex.filter(function (x) { return x >= dIso(dav); }).sort();   // on ne garde pas les dates de plus d'un mois
+    F.exBusy = true; F.d.extra = ex; render();
+    sb.from('dentistes').update({ extra: ex }).eq('id', F.id).then(function (r) {
+      if (r.error) throw r.error; F.exBusy = false;
+      var dd = dentById(F.id); if (dd) dd.extra = ex; JOUR_CACHE = {};
+      toast(i >= 0 ? 'Jour retiré' : '✔ Dr ' + F.d.prenom + ' présent ' + periode(iso, iso)); render();
+    }).catch(function (e) { F.exBusy = false; F.d.extra = (dentById(F.id) || {}).extra || []; toast(msgErr(e)); render(); });
   }
   function vBarDFiche() {
     var F = S.df; if (!F) return '';
@@ -921,7 +953,7 @@
     for (var i = 0; d <= fin && i < 400; i++) {
       var j = d.getDay();
       if (j >= 1 && j <= 5) {
-        if (dentiste) { if (qui.jours && qui.jours[j]) n++; }
+        if (dentiste) { if (qui.jours && qui.jours[j] || dentExtra(qui, dIso(d))) n++; }
         else { var x = (qui.trame || {})[j] || {}, ok = ['am', 'pm'].some(function (k) { return x[k] && x[k].a && x[k].a !== 'OFF' && x[k].a !== 'ECOLE'; }); if (ok || !qui.trame || !Object.keys(qui.trame).length) n++; }
       }
       d.setDate(d.getDate() + 1);
@@ -1100,7 +1132,8 @@
   // un dentiste présent sans assistante (en priorité ceux qui n'ont personne dans les semaines types ce jour-là,
   // comme Dr Angela le lundi et le jeudi), sinon elle bascule en Sté. Seulement pour les cases non saisies.
   var JOUR_CACHE = {};
-  function dentPresent(d, iso) { var j = jourSem(iso); return !!(d && d.actif && d.jours && d.jours[j] && !dentAbsent(d.id, iso)); }
+  function dentExtra(d, iso) { return !!(d && Array.isArray(d.extra) && d.extra.indexOf(iso) >= 0); }   // jour en plus (ponctuel)
+  function dentPresent(d, iso) { var j = jourSem(iso); return !!(d && d.actif && (d.jours && d.jours[j] || dentExtra(d, iso)) && !dentAbsent(d.id, iso)); }
   function jourCalc(iso) {
     if (JOUR_CACHE[iso]) return JOUR_CACHE[iso];
     var ps = (S.equipe || []).filter(function (p) { return p.actif; }).sort(function (a, b) { return (a.ordre - b.ordre) || (a.id - b.id); }), out = {}, rows = S.pl && S.pl.rows || {}, j = jourSem(iso);
@@ -2927,6 +2960,7 @@
     if (d.act === 'dfnew') return ouvrirDent('new');
     if (d.act === 'pfsave') return sauverPers();
     if (d.act === 'dfsave') return sauverDent();
+    if (d.dextra) return basculerExtra(d.dextra);
     if (d.djour && S.df) { var dj = S.df.d.jours = S.df.d.jours || {}; if (dj[d.djour]) delete dj[d.djour]; else dj[d.djour] = true; render(); return; }
     if (d.act === 'pfcompte' && S.pf) { var pr = S.pf.d.prenom || ''; S.eqNew = { identifiant: norm(pr).replace(/[^a-z0-9]/g, ''), nom: pr, role: 'assistante', cabinet: '', lierA: S.pf.id }; S.eqEdit = null; render(); return; }
     if (d.act === 'pfdelier' && S.pf) { if (confirm('Détacher le compte de connexion de cette fiche ? Le compte reste actif, il n’est simplement plus relié au planning.')) lierCompte(S.pf.id, null); return; }

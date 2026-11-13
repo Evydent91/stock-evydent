@@ -772,3 +772,14 @@ body.ecran-ok #ver-coin{background:var(--okbg);color:var(--ok)}
 .h-ctit{display:block;margin-bottom:10px;font-size:15px}
 .h-cpied{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
 .h-csup{display:inline-flex;align-items:center;gap:6px;border:none;background:none;color:#b3412e;font-weight:600;font-size:15px;padding:8px 4px;cursor:pointer}
+/* Fiche dentiste : jours en plus (présences ponctuelles) */
+.h-ex{display:flex;flex-direction:column;gap:14px}
+.h-ex-m{border-top:1px solid var(--soft);padding-top:12px}
+.h-ex-t{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px}
+.h-ex-ok{color:var(--ok);font-weight:600;font-size:14px}
+.h-ex-ko{color:var(--warn);font-weight:600;font-size:14px}
+.h-ex-js{display:flex;flex-wrap:wrap;gap:8px}
+.h-ex-j{min-width:52px;height:46px;padding:0 10px;border-radius:12px;border:1.5px solid var(--line);background:#fff;color:var(--ink);font-weight:700;font-size:16px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;cursor:pointer}
+.h-ex-j small{font-size:11px;font-weight:600;color:var(--mute)}
+.h-ex-j.on{background:var(--gold);border-color:var(--gold2);color:var(--navy)}
+.h-ex-j.on small{color:var(--navy)}
