@@ -616,3 +616,33 @@ body.mode-h .bnav{display:none}
 .h-jbtn{height:46px;border-radius:12px;border:1.5px solid var(--line);background:#fff;color:var(--mute);font-weight:600;font-size:15px}
 .h-jbtn.on{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:700}
 .top-menu{display:inline-flex;align-items:center;gap:6px;margin-right:8px}
+
+/* ================= Congés ================= */
+.h-alerte{display:flex;align-items:center;gap:12px;padding:0 16px;min-height:56px;border-radius:16px;border:none;background:var(--warnbg);color:#5a2b06;font-size:16px;text-align:left;width:100%}
+.h-alerte .ic{color:var(--warn);flex:none}
+.h-alerte span{flex:1}
+.h-cg{display:flex;flex-direction:column;gap:12px}
+.h-cg-t{display:flex;align-items:center;gap:12px}
+.h-cg-t > div{display:flex;flex-direction:column}
+.h-cg-t b{font-size:17px}
+.h-cg .a-av{width:40px;height:40px;border-radius:20px;font-size:18px;flex:none}
+.h-mot{margin:0;background:var(--soft);border-radius:12px;padding:10px 12px;font-size:15px}
+.h-cg-b{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.h-cg-b .a-btn{height:52px;font-size:16px}
+.a-btn.vert{background:var(--ok);color:#fff}
+.h-qui{font-size:13px;color:var(--ok);font-weight:700;text-align:right;flex:none;max-width:45%}
+.h-mini{display:flex;gap:6px;flex:none}
+.h-lien{color:var(--navy);font-weight:700;min-height:52px}
+.a-li.passe{opacity:.6}
+.a-li .pill{vertical-align:2px;margin-left:4px}
+.h-cadd{display:block;padding:12px 16px}
+.h-cadd .in{height:46px;margin:0}
+.h-choix{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.h-choix button{height:48px;border-radius:14px;border:1.5px solid var(--line);background:#fff;color:var(--ink);font-weight:600;font-size:16px}
+.h-choix button.on{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:700}
+.h-dm{display:flex;flex-direction:column;gap:14px}
+.h-dm .in{height:52px;font-size:18px;font-weight:600;margin:0}
+.h-dm textarea.in{height:auto;font-size:16px;font-weight:400}
+.a-evi.vert{background:var(--okbg);color:var(--ok)}
+.a-it-n .ok{color:var(--ok);font-weight:600}
+.a-btn.gold.h-centre{justify-content:center}

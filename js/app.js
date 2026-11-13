@@ -166,7 +166,7 @@
       S.rang = {}; (x[9] || []).forEach(function (r) { var o = S.rang[r.article_id] = S.rang[r.article_id] || { t: 0, c: {} }; o.t += +r.total; o.c[r.cabinet] = +r.total; });
       S.afPrix = {}; (x[8] || []).forEach(function (p) { (S.afPrix[p.article_id] = S.afPrix[p.article_id] || []).push(p); });
       S.loading = false; render();
-      if (gestion()) chargerPlan();
+      if (gestion()) chargerPlan(); else chargerMesConges();
       if (S.tab === 'histo') chargerHisto();
     }).catch(function (e) { S.loading = false; toast(msgErr(e)); render(); });
   }
@@ -264,7 +264,12 @@
       '<b>iPhone (Safari)</b> : bouton Partager (carré avec une flèche) › <b>Sur l’écran d’accueil</b> › Ajouter.',
       '<b>Android (Chrome)</b> : menu ⋮ › <b>Ajouter à l’écran d’accueil</b> (ou « Installer l’application »).',
       'L’appli s’ouvre ensuite en plein écran avec l’icône Evydent.',
-      'Si un bandeau vert « Nouvelle version disponible » apparaît, appuyez sur <b>Mettre à jour</b>.'] }
+      'Si un bandeau vert « Nouvelle version disponible » apparaît, appuyez sur <b>Mettre à jour</b>.'] },
+    { id: 'conges', ic: '🌴', t: 'Demander des congés', duree: '1 min', tab: 'mconges', e: [
+      'En bas, touchez <b>Moi</b>, puis <b>Mes congés</b>.',
+      'Touchez le bouton doré <b>Demander des congés</b>. Choisissez « Plusieurs jours » ou « Un seul jour », puis les dates. L’appli compte vos jours de travail.',
+      'Ajoutez un petit mot si vous voulez, puis <b>Envoyer la demande</b>.',
+      'La référente ou la responsable répond : la réponse s’affiche dans « Mes congés » (en attente, accepté ou refusé). Tant que c’est en attente, vous pouvez annuler.'] }
   ];
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
@@ -356,6 +361,8 @@
     boite: '<path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
     attente: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 1.5"/>',
     loupe: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    croix: '<path d="M6 6l12 12M18 6L6 18"/>',
     reglage: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68 1.65 1.65 0 0 0 10 3.17V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
     agenda: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7 14h3M14 14h3M7 17.5h3"/>',
     equipe: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2.2.6 3.5 2.4 3.5 5.2"/>',
@@ -597,6 +604,7 @@
     return '<header class="a-hd a-moi"><span class="a-av">' + esc((S.me.nom || '?').charAt(0).toUpperCase()) + '</span><div><h1>' + esc(S.me.nom) + '</h1><p>' + LABEL[S.me.role] + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + ' · identifiant ' + esc(S.me.identifiant) + '</p></div></header>'
       + '<div class="a-corps"><div class="a-liste">'
       + '<button class="a-li" data-tab="aide"><span class="a-lii">' + ico('aide', 20) + '</span><span class="a-it-n"><b>Aide et visite guidée</b><span>' + GUIDES.length + ' fiches pas à pas</span></span></button>'
+      + '<button class="a-li" data-tab="mconges"><span class="a-lii">' + ico('agenda', 20) + '</span><span class="a-it-n"><b>Mes congés</b><span>' + ((S.mesConges || []).filter(function (c) { return c.statut === 'attente'; }).length ? 'demande en attente' : 'demander, suivre la réponse') + '</span></span></button>'
       + '<button class="a-li" data-tab="compte"><span class="a-lii">' + ico('code', 20) + '</span><span class="a-it-n"><b>Changer mon code</b><span>6 chiffres</span></span></button>'
       + '<button class="a-li" data-essai="aide" data-gid="iphone"><span class="a-lii">' + ico('tel', 20) + '</span><span class="a-it-n"><b>Mettre l’appli sur mon téléphone</b><span>icône sur l’écran d’accueil</span></span></button></div>'
       + '<button class="a-btn navy a-moi-out" data-act="out">' + ico('changer', 22, 2.2) + 'Changer de personne</button>'
@@ -607,17 +615,17 @@
   function vAideA() { return hdA({ cls: 'a-simple', extra: '<h1 class="a-t-g">Aide</h1><p class="a-sous">Fiches pas à pas et visite guidée</p>' }) + '<div class="a-corps">' + vAide().replace('<h2>Aide</h2>', '') + '</div>'; }
 
   function renderA() {
-    var ecr = { maison: vMaison, sortie: vSortieA, retour: vRetourA, inventaire: vInventaireA, histo: vHistoA, moi: vMoiA, compte: vCompteA, aide: vAideA }[S.tab];
+    var ecr = { maison: vMaison, sortie: vSortieA, retour: vRetourA, inventaire: vInventaireA, histo: vHistoA, moi: vMoiA, compte: vCompteA, aide: vAideA, mconges: vMesCongesA, mdemande: vDemandeA }[S.tab];
     if (!ecr) { S.tab = 'maison'; ecr = vMaison; }
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
     h += '<div class="a-app">' + ecr() + '</div>' + vNavMobile();
-    h += S.tab === 'sortie' ? vBarSortieA() : S.tab === 'retour' ? vBarRetourA() : S.tab === 'inventaire' && S.inv.emp != null ? vBarInvA() : '';
+    h += S.tab === 'sortie' ? vBarSortieA() : S.tab === 'retour' ? vBarRetourA() : S.tab === 'inventaire' && S.inv.emp != null ? vBarInvA() : S.tab === 'mdemande' ? vBarDemandeA() : '';
     return h;
   }
 
   // ---------- Accueil de la référente et de la responsable (2 tuiles), Réglages, Équipe, Dentistes ----------
   // Écrans de la maquette « Accueil référente et responsable ». Chaque écran a son en-tête bleu.
-  var HUB = ['hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche'];
+  var HUB = ['hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges'];
   var JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'], JC = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
   // Affectations possibles d'une demi-journée (en plus des dentistes)
   var CODES = [['ADMIN', 'Admin'], ['STE', 'Sté'], ['ACCUEIL', 'Accueil'], ['ADMIN_ORTHO', 'Admin ortho'], ['RANGEMENT', 'Rangement'], ['NETTOYAGE', 'Nettoyage cab.'], ['ECOLE', 'École'], ['OFF', 'Ne travaille pas']];
@@ -645,9 +653,13 @@
     var h = '<header class="a-hd a-maison h-hd"><div class="a-mh-top"><img src="assets/logo-evydent.jpg" alt="Evydent"><span class="grow">Espace dentaire Val d’Yerres</span>' + (C.env === 'dev' ? '<span class="env">TEST</span>' : '')
       + '<button class="h-rond" data-tab="reglages" aria-label="Réglages">' + ico('reglage', 22) + '</button></div>'
       + '<div><h1>Bonjour ' + esc(S.me.nom) + '</h1><p>' + LABEL[S.me.role] + ' · ' + j + '</p>' + (C.env === 'dev' ? '<p class="a-ver">Version ' + esc(C.version || '') + '</p>' : '') + '</div></header>';
-    h += '<div class="a-corps h-corps">' + vBienvenue() + '<div class="h-tuiles">'
+    var ca = congesAttente().length;
+    h += '<div class="a-corps h-corps">' + vBienvenue()
+      + (ca ? '<button class="h-alerte" data-tab="pconges">' + ico('attente', 22) + '<span><b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à valider</span>' + ico('suiv', 20, 2.4) + '</button>' : '')
+      + '<div class="h-tuiles">'
       + '<button class="h-tuile fonce" data-tab="accueil"><span class="ti">' + ico('boite', 34) + '</span><span class="tt"><b>Gestion de stock</b><span>' + (sous.length ? sous.join(' · ') : 'Sorties, inventaires, commandes') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
       + '<button class="h-tuile" data-act="planbientot"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span>Qui travaille, où et quand</span><em>Bientôt</em></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button></div>'
+      + '<button class="h-ligne" data-tab="pconges"><span class="a-lii">' + ico('agenda', 20) + '</span><span class="a-it-n"><b>Congés</b><span>Demandes à valider, prochains congés</span></span>' + ico('suiv', 20, 2.2) + '</button>'
       + '<button class="h-ligne" data-tab="reglages"><span class="a-lii">' + ico('equipe', 20) + '</span><span class="a-it-n"><b>Réglages</b><span>L’équipe et les dentistes</span></span>' + ico('suiv', 20, 2.2) + '</button>'
       + '<div class="h-bas"><button class="a-btn blanc" data-tab="compte">' + ico('code', 20) + 'Mot de passe</button><button class="a-btn navy" data-act="out">' + ico('changer', 20, 2.2) + 'Changer</button></div>'
       + '</div>';
@@ -736,7 +748,7 @@
       + [1, 2, 3, 4, 5].map(function (j) { var x = t[j] || {}, hj = heuresJour(t, j); return '<div class="card h-jour"><div class="h-jt"><b>' + JOURS[j] + '</b><span class="mu">' + (hj ? fh(hj) : 'ne travaille pas') + '</span></div>' + demiEdit(j, 'am', x.am) + demiEdit(j, 'pm', x.pm) + '</div>'; }).join('')
       + '</div><div class="h-total ' + (c && Math.abs(tot - c) > 0.01 ? 'warn' : 'ok') + '"><span>Total de la semaine type</span><b>' + fh(tot) + (c ? ' / ' + fh(c) : '') + '</b></div>';
     h += '<h2 class="a-jour">Consigne</h2><div class="card"><textarea class="in" rows="2" data-pff="consigne" placeholder="Ex. : pas de samedi, finit à 17 h le mardi…">' + esc(p.consigne || '') + '</textarea></div>';
-    h += '<h2 class="a-jour">Congés</h2><div class="card"><p class="mu" style="margin:0">Les congés arrivent avec l’étape suivante (demande depuis le téléphone, validation par la référente ou la responsable).</p></div>';
+    h += '<h2 class="a-jour">Congés</h2>' + (nouv ? '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>' : blocConges(false, F.id, p));
     h += '<h2 class="a-jour">Compte de connexion</h2>';
     if (nouv) h += '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche, puis vous pourrez lui créer un compte.</p></div>';
     else if (prof) h += carteProfil(prof) + '<button class="a-lien" data-act="pfdelier">Détacher ce compte de la fiche</button>';
@@ -833,7 +845,7 @@
     if (!nouv) h += '<h2 class="a-jour">Assistantes (semaine type)</h2><div class="a-liste">' + [1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j] || as[j]; }).map(function (j) {
       return '<div class="a-li"><span class="a-it-n"><b>' + JOURS[j] + '</b>' + (as[j] ? '<span>' + as[j].map(esc).join(', ') + '</span>' : '<span class="warn">pas d’assistante</span>') + '</span></div>';
     }).join('') + '</div><p class="a-aide">Pour changer, modifiez la semaine type de l’assistante (Réglages › L’équipe).</p>';
-    h += '<h2 class="a-jour">Congés</h2><div class="card"><p class="mu" style="margin:0">Les congés arrivent avec l’étape suivante.</p></div>';
+    h += '<h2 class="a-jour">Congés</h2>' + (nouv ? '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>' : blocConges(true, F.id, d));
     return h + '</div>';
   }
   function vBarDFiche() {
@@ -857,15 +869,17 @@
     if (!gestion()) return Promise.resolve();
     return Promise.all([
       sb.from('equipe').select('*').order('ordre'),
-      sb.from('dentistes').select('*').order('ordre')
+      sb.from('dentistes').select('*').order('ordre'),
+      sb.from('conges').select('*').gte('au', dIso(new Date(Date.now() - 120 * 864e5))).order('du')
     ]).then(function (r) {
       if (r[0].error || r[1].error) { S.equipe = null; S.dentistes = null; } else { S.equipe = r[0].data; S.dentistes = r[1].data; }
+      S.conges = r[2] && !r[2].error ? r[2].data : [];
       render();
     }, function () { S.equipe = null; S.dentistes = null; render(); });
   }
 
   function renderH() {
-    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche }[S.tab] || vHub;
+    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges }[S.tab] || vHub;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
     h += '<div class="a-app h-app' + (S.tab === 'hub' ? ' large' : '') + '">' + ecr() + '</div>';
     if (S.tab === 'pfiche') h += vBarPFiche();
@@ -873,15 +887,156 @@
     return h;
   }
 
+  // ---------- Congés ----------
+  var MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  var TYPES_C = [['CP', 'Congés'], ['ARRET', 'Arrêt maladie'], ['FORMATION', 'Formation'], ['AUTRE', 'Autre absence']];
+  function dIso(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function dDe(s) { var p = String(s).slice(0, 10).split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function periode(du, au) {
+    var a = dDe(du), b = dDe(au), an = new Date().getFullYear();
+    var f = function (d, mois, annee) { return d.getDate() + (mois ? ' ' + MOIS[d.getMonth()] : '') + (annee && d.getFullYear() !== an ? ' ' + d.getFullYear() : ''); };
+    if (du === au) return 'le ' + f(a, true, true);
+    if (a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()) return 'du ' + f(a, false) + ' au ' + f(b, true, true);
+    return 'du ' + f(a, true, a.getFullYear() !== b.getFullYear()) + ' au ' + f(b, true, true);
+  }
+  function dateCourte(s) { var d = new Date(s); return d.getDate() + ' ' + MOIS[d.getMonth()]; }
+  // Jours de travail d'une période d'après la semaine type (personne) ou les jours de présence (dentiste)
+  function joursTravail(qui, du, au, dentiste) {
+    var n = 0, d = dDe(du), fin = dDe(au);
+    for (var i = 0; d <= fin && i < 400; i++) {
+      var j = d.getDay();
+      if (j >= 1 && j <= 5) {
+        if (dentiste) { if (qui.jours && qui.jours[j]) n++; }
+        else { var x = (qui.trame || {})[j] || {}, ok = ['am', 'pm'].some(function (k) { return x[k] && x[k].a && x[k].a !== 'OFF' && x[k].a !== 'ECOLE'; }); if (ok || !qui.trame || !Object.keys(qui.trame).length) n++; }
+      }
+      d.setDate(d.getDate() + 1);
+    }
+    return n;
+  }
+  function nomProfil(id) { var p = (S.profils || []).filter(function (x) { return x.id === id; })[0]; return p ? p.nom : ''; }
+  function persById(id) { return (S.equipe || []).filter(function (p) { return String(p.id) === String(id); })[0]; }
+  function nomConge(c) { if (c.dentiste_id) { var d = dentById(c.dentiste_id); return d ? 'Dr ' + d.prenom : 'Dentiste'; } var p = persById(c.equipe_id); return p ? p.prenom : '?'; }
+  function typeTxt(t) { var x = TYPES_C.filter(function (y) { return y[0] === t; })[0]; return x ? x[1] : t; }
+  function congesAttente() { return (S.conges || []).filter(function (c) { return c.statut === 'attente'; }); }
+  function chevauche(c) {
+    return (S.conges || []).filter(function (o) { return o.id !== c.id && o.equipe_id && (o.statut === 'accepte' || o.statut === 'attente') && o.du <= c.au && o.au >= c.du; });
+  }
+
+  // Référente / responsable : congés à valider
+  function vPConges() {
+    var h = hdA({ back: ACC_H, t: 'Congés', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    var att = congesAttente().sort(function (a, b) { return a.du < b.du ? -1 : 1; });
+    h += '<h2 class="a-jour">À valider</h2>';
+    h += att.length ? att.map(function (c) {
+      var p = persById(c.equipe_id) || {}, n = joursTravail(p, c.du, c.au), ch = chevauche(c);
+      return '<div class="card h-cg"><div class="h-cg-t"><span class="a-av p">' + initiale(p.prenom) + '</span><div><b>' + esc(p.prenom || '?') + ' · ' + periode(c.du, c.au) + '</b><span class="mu">' + n + ' ' + pl(n, 'jour') + ' de travail · demandé le ' + dateCourte(c.cree_le) + '</span></div></div>'
+        + (c.mot ? '<p class="h-mot">« ' + esc(c.mot) + ' »</p>' : '')
+        + (ch.length ? '<p class="warn-t" style="margin:0">Aussi absent' + (ch.length > 1 ? 's' : '') + ' sur cette période : ' + ch.map(function (o) { return esc(nomConge(o)) + ' (' + periode(o.du, o.au) + (o.statut === 'attente' ? ', en attente' : '') + ')'; }).join(', ') + '</p>' : '')
+        + '<div class="h-cg-b"><button class="a-btn blanc" data-crefus="' + c.id + '">Refuser</button><button class="a-btn vert" data-cok="' + c.id + '">Accepter</button></div></div>';
+    }).join('') : '<p class="a-vide">Aucune demande en attente.</p>';
+    var auj = dIso(new Date());
+    var proch = (S.conges || []).filter(function (c) { return c.statut === 'accepte' && c.au >= auj; }).sort(function (a, b) { return a.du < b.du ? -1 : 1; }).slice(0, 40);
+    h += '<h2 class="a-jour">Prochains congés de l’équipe et des dentistes</h2>';
+    h += proch.length ? '<div class="a-liste">' + proch.map(function (c) {
+      var qui = c.dentiste_id ? 'dentiste' : c.traite_par ? (c.demande_par ? 'accepté par ' : 'saisi par ') + esc(nomProfil(c.traite_par)) : '';
+      return '<div class="a-li"><span class="a-it-n"><b>' + esc(nomConge(c)) + '</b><span>' + periode(c.du, c.au) + (c.type !== 'CP' ? ' · ' + typeTxt(c.type) : '') + '</span></span><span class="h-qui">' + qui + '</span></div>';
+    }).join('') + '</div>' : '<p class="a-vide">Aucun congé prévu.</p>';
+    return h + '<p class="a-aide">Pour saisir directement des congés (ou un arrêt, une formation), ouvrez la fiche de la personne ou du dentiste dans Réglages.</p></div>';
+  }
+  function repondre(id, ok) {
+    var rep = null;
+    if (!ok) { rep = prompt('Motif du refus (facultatif, la personne le verra) :', ''); if (rep === null) return; }
+    sb.rpc('repondre_conges', { p_id: +id, p_accepte: ok, p_reponse: rep }).then(function (r) {
+      if (r.error) throw r.error; toast(ok ? '✔ Congés acceptés' : 'Demande refusée'); chargerPlan();
+    }).catch(function (e) { toast(msgErr(e)); chargerPlan(); });
+  }
+
+  // Bloc « Congés » dans les fiches (personne ou dentiste)
+  function blocConges(estDent, id, qui) {
+    var auj = dIso(new Date()), lim = dIso(new Date(Date.now() - 60 * 864e5));
+    var l = (S.conges || []).filter(function (c) { return (estDent ? String(c.dentiste_id) : String(c.equipe_id)) === String(id) && c.statut !== 'annule' && c.au >= lim; }).sort(function (a, b) { return a.du < b.du ? -1 : 1; });
+    var h = '<div class="a-liste">' + l.map(function (c) {
+      var n = joursTravail(qui, c.du, c.au, estDent), passe = c.au < auj;
+      var st = c.statut === 'attente' ? '<span class="pill warn">en attente</span>' : c.statut === 'refuse' ? '<span class="pill">refusé</span>' : '';
+      var plus = '';
+      if (estDent && c.statut === 'accepte') { var as = assistantesDe(id), noms = {}; Object.keys(as).forEach(function (j) { as[j].forEach(function (x) { noms[x] = 1; }); }); if (Object.keys(noms).length) plus = '<span>' + Object.keys(noms).map(esc).join(', ') + ' ' + (Object.keys(noms).length > 1 ? 'seront disponibles' : 'sera disponible') + ' pour un autre dentiste</span>'; }
+      return '<div class="a-li' + (passe ? ' passe' : '') + '"><span class="a-it-n"><b>' + periode(c.du, c.au) + ' ' + st + '</b><span>' + (c.type !== 'CP' ? typeTxt(c.type) + ' · ' : '') + n + ' ' + pl(n, 'jour') + (estDent ? ' de présence' : ' de travail') + (c.mot ? ' · « ' + esc(c.mot) + ' »' : '') + '</span>' + plus + '</span>'
+        + (c.statut === 'attente' ? '<span class="h-mini"><button class="btn l sm" data-crefus="' + c.id + '">Refuser</button><button class="btn sm" data-cok="' + c.id + '">Accepter</button></span>' : '<button class="btn l sm" data-csuppr="' + c.id + '" aria-label="Supprimer ces congés">Supprimer</button>') + '</div>';
+    }).join('');
+    var A = S.cAjout && S.cAjout.cle === (estDent ? 'd' : 'p') + id ? S.cAjout : null;
+    if (A) h += '<div class="a-li h-cadd"><div class="h-g2" style="width:100%"><label class="mu">Du<input class="in" type="date" id="cadu" value="' + esc(A.du || '') + '"></label><label class="mu">Au (inclus)<input class="in" type="date" id="caau" value="' + esc(A.au || '') + '"></label>'
+      + (estDent ? '' : '<label class="mu">Type<select class="in" id="catype">' + TYPES_C.map(function (t) { return '<option value="' + t[0] + '"' + (A.type === t[0] ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('') + '</select></label>')
+      + '<div class="row" style="align-self:end"><button class="btn l" data-act="caannule">Annuler</button><button class="btn" data-act="caok">Ajouter</button></div></div></div>';
+    else h += '<button class="a-li h-lien" data-cadd="' + (estDent ? 'd' : 'p') + id + '">+ Ajouter des congés</button>';
+    return h + '</div>';
+  }
+  function ajouterConges() {
+    var A = S.cAjout, du = $('cadu').value, au = $('caau').value || du, ty = $('catype') ? $('catype').value : 'CP';
+    if (!du) { toast('Choisissez la date de début'); return; }
+    if (au < du) { toast('La date de fin est avant la date de début'); return; }
+    var o = { du: du, au: au, type: ty, statut: 'accepte', traite_par: S.me.id, traite_le: new Date().toISOString() };
+    o[A.cle[0] === 'd' ? 'dentiste_id' : 'equipe_id'] = +A.cle.slice(1);
+    sb.from('conges').insert(o).then(function (r) { if (r.error) throw r.error; S.cAjout = null; toast('✔ Congés ajoutés'); chargerPlan(); }).catch(function (e) { toast(msgErr(e)); });
+  }
+  function supprimerConges(id) {
+    if (!confirm('Supprimer ces congés ?')) return;
+    sb.from('conges').delete().eq('id', +id).then(function (r) { if (r.error) throw r.error; toast('Congés supprimés'); chargerPlan(); }).catch(function (e) { toast(msgErr(e)); });
+  }
+
+  // Assistante : mes congés et demande
+  function chargerMesConges() {
+    if (gestion() || !S.me) return Promise.resolve();
+    return Promise.all([sb.from('equipe').select('*').eq('profil_id', S.me.id).maybeSingle(), sb.from('conges').select('*').order('du', { ascending: false }).limit(60)]).then(function (r) {
+      S.moiEq = r[0].error ? null : r[0].data; S.mesConges = r[1].error ? [] : r[1].data || []; S.mesCongesOk = !r[0].error; render();
+    }, function () { S.moiEq = null; S.mesConges = []; render(); });
+  }
+  function vMesCongesA() {
+    var h = hdA({ back: ['data-tab="moi"', 'Moi'], t: 'Mes congés', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    if (S.mesConges == null) return h + '<p class="a-vide">Chargement…</p></div>';
+    if (!S.moiEq) return h + '<p class="a-note warn">Votre compte n’est pas encore relié à une fiche du planning : demandez à la référente de le faire (Réglages › L’équipe).</p></div>';
+    h += '<button class="a-btn gold h-centre" data-tab="mdemande">' + ico('plus', 22, 2.2) + 'Demander des congés</button><h2 class="a-jour">Mes demandes</h2>';
+    var l = S.mesConges.filter(function (c) { return c.statut !== 'annule' && String(c.equipe_id) === String(S.moiEq.id); });
+    if (!l.length) return h + '<p class="a-vide">Aucune demande pour l’instant.</p></div>';
+    return h + '<div class="a-liste">' + l.map(function (c) {
+      var ic = c.statut === 'attente' ? ['attente', ' orange'] : c.statut === 'accepte' ? ['ok', ' vert'] : ['croix', ''];
+      var st = c.statut === 'attente' ? '<span class="warn">en attente de validation</span>' : c.statut === 'accepte' ? '<span class="ok">accepté</span>' : '<span>refusé' + (c.reponse ? ' · « ' + esc(c.reponse) + ' »' : '') + '</span>';
+      return '<div class="a-ev"><span class="a-evi' + ic[1] + '">' + ico(ic[0], 20, 2.4) + '</span><div class="a-it-n"><b>' + periode(c.du, c.au).replace(/^./, function (x) { return x.toUpperCase(); }) + '</b>' + (c.type !== 'CP' ? '<span>' + typeTxt(c.type) + '</span>' : '') + st + '</div>'
+        + (c.statut === 'attente' ? '<button class="a-lien" data-cannule="' + c.id + '">Annuler</button>' : '') + '</div>';
+    }).join('') + '</div></div>';
+  }
+  function vDemandeA() {
+    var D = S.dm = S.dm || { un: false, du: '', au: '', mot: '' };
+    var h = hdA({ back: ['data-tab="mconges"', 'Retour'], t: 'Demande', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    h += '<div class="h-choix"><button class="' + (!D.un ? 'on' : '') + '" data-dmun="0">Plusieurs jours</button><button class="' + (D.un ? 'on' : '') + '" data-dmun="1">Un seul jour</button></div>';
+    var au = D.un ? D.du : D.au, n = D.du && au && au >= D.du && S.moiEq ? joursTravail(S.moiEq, D.du, au) : null;
+    h += '<div class="card h-dm"><label class="mu">' + (D.un ? 'Le' : 'Du') + '<input class="in" type="date" id="dmdu" min="' + dIso(new Date()) + '" value="' + esc(D.du) + '"></label>'
+      + (D.un ? '' : '<label class="mu">Au (inclus)<input class="in" type="date" id="dmau" min="' + esc(D.du || dIso(new Date())) + '" value="' + esc(D.au) + '"></label>')
+      + (n != null ? '<p style="margin:0"><b>' + n + ' ' + pl(n, 'jour') + ' de travail</b> <span class="mu">(d’après vos jours habituels)</span></p>' : '')
+      + '<label class="mu">Un petit mot (facultatif)<textarea class="in" rows="2" id="dmmot">' + esc(D.mot) + '</textarea></label></div>'
+      + '<p class="a-aide">La référente et la responsable reçoivent la demande ; la première qui répond décide. Vous verrez la réponse dans « Mes congés ».</p>';
+    return h + '</div>';
+  }
+  function vBarDemandeA() { return '<div class="bar a-bar"><div class="bar-in"><button class="a-btn navy" data-act="dmenvoi"' + (S.dm && S.dm.busy ? ' disabled' : '') + '>' + (S.dm && S.dm.busy ? 'Envoi…' : 'Envoyer la demande') + '</button></div></div>'; }
+  function envoyerDemande() {
+    var D = S.dm; D.du = $('dmdu').value; if (!D.un) D.au = $('dmau').value; D.mot = $('dmmot').value;
+    var au = D.un ? D.du : D.au;
+    if (!D.du || !au) { toast('Choisissez ' + (D.un ? 'le jour' : 'les dates')); return; }
+    if (au < D.du) { toast('La date de fin est avant la date de début'); return; }
+    D.busy = true; render();
+    sb.rpc('demander_conges', { p_du: D.du, p_au: au, p_mot: D.mot || null }).then(function (r) {
+      if (r.error) throw r.error; S.dm = null; S.tab = 'mconges'; toast('✔ Demande envoyée'); chargerMesConges();
+    }).catch(function (e) { D.busy = false; toast(msgErr(e)); render(); });
+  }
+
   // ---------- Navigation téléphone : barre du bas + menu ----------
   var ICO = { accueil: '🏠', sortie: '📤', retour: '↩️', inventaire: '📋', demandes: '⏳', stock: '📦', commandes: '🛒', articles: '🏷️', fournisseurs: '🚚', histo: '🕘', equipe: '👥', hub: '🏠', plus: '⚙️', compte: '🔑', aide: '❓', maison: '🏠', moi: '👤' };
   var NOMS = { accueil: 'Accueil', sortie: 'Sortie', retour: 'Retour', inventaire: 'Inventaire', demandes: 'Demandes', stock: 'Stock', commandes: 'Commandes', articles: 'Articles', fournisseurs: 'Fournisseurs', histo: 'Historique', equipe: 'Équipe', hub: 'Menu principal', plus: 'Plus', compte: 'Mon code', aide: 'Aide', maison: 'Accueil', moi: 'Moi' };
   function retourAcc(titre) { return '<div class="tache-hd">' + (!gestion() ? '<button class="retour-acc" data-act="accueil">' + ico('prec', 18, 2.6) + 'Accueil</button>' : '') + '<h2>' + titre + '</h2></div>'; }
-  function enTache() { return !gestion() && ['sortie', 'retour', 'inventaire'].indexOf(S.tab) >= 0; }
+  function enTache() { return !gestion() && ['sortie', 'retour', 'inventaire', 'mdemande'].indexOf(S.tab) >= 0; }
   function vNavMobile() {
     if (!gestion()) {
       if (enTache()) return '';
-      var cur = S.tab === 'compte' ? 'moi' : S.tab;
+      var cur = ['compte', 'mconges', 'mdemande'].indexOf(S.tab) >= 0 ? 'moi' : S.tab;
       return '<nav class="bnav a4" aria-label="Menu principal">' + ['maison', 'histo', 'aide', 'moi'].map(function (t) {
         return '<button data-tab="' + t + '" class="' + (cur === t ? 'on' : '') + '"><span class="bi">' + ico(t, 24) + '</span><span>' + NOMS[t] + '</span></button>';
       }).join('') + '</nav>';
@@ -2318,6 +2473,15 @@
     if (d.djour && S.df) { var dj = S.df.d.jours = S.df.d.jours || {}; if (dj[d.djour]) delete dj[d.djour]; else dj[d.djour] = true; render(); return; }
     if (d.act === 'pfcompte' && S.pf) { var pr = S.pf.d.prenom || ''; S.eqNew = { identifiant: norm(pr).replace(/[^a-z0-9]/g, ''), nom: pr, role: 'assistante', cabinet: '', lierA: S.pf.id }; S.eqEdit = null; render(); return; }
     if (d.act === 'pfdelier' && S.pf) { if (confirm('Détacher le compte de connexion de cette fiche ? Le compte reste actif, il n’est simplement plus relié au planning.')) lierCompte(S.pf.id, null); return; }
+    if (d.cok) return repondre(d.cok, true);
+    if (d.crefus) return repondre(d.crefus, false);
+    if (d.csuppr) return supprimerConges(d.csuppr);
+    if (d.cadd) { S.cAjout = { cle: d.cadd, type: 'CP' }; render(); return; }
+    if (d.act === 'caannule') { S.cAjout = null; render(); return; }
+    if (d.act === 'caok') return ajouterConges();
+    if (d.cannule) { if (!confirm('Annuler cette demande de congés ?')) return; sb.rpc('annuler_conges', { p_id: +d.cannule }).then(function (r) { if (r.error) throw r.error; toast('Demande annulée'); chargerMesConges(); }).catch(function (e) { toast(msgErr(e)); }); return; }
+    if (d.dmun != null && S.dm) { var x1 = $('dmdu'), x2 = $('dmau'), x3 = $('dmmot'); if (x1) S.dm.du = x1.value; if (x2) S.dm.au = x2.value; if (x3) S.dm.mot = x3.value; S.dm.un = d.dmun === '1'; render(); return; }
+    if (d.act === 'dmenvoi') return envoyerDemande();
     if (d.act === 'planbientot') { toast('Arrive à l’étape du planning'); return; }
     if (d.act === 'eqnew') { S.eqNew = { identifiant: '', nom: '', role: 'assistante', cabinet: '' }; S.eqEdit = null; render(); return; }
     if (d.act === 'eqnewno') { S.eqNew = null; render(); return; }
@@ -2354,6 +2518,8 @@
     var t = e.target; if (!S.me) return;
     if (t.dataset && (t.dataset.pff || t.dataset.tr) && S.pf) { majPers(t); if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); return; }
     if (t.dataset && t.dataset.dff && S.df) { S.df.d[t.dataset.dff] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox') render(); return; }
+    if ((t.id === 'dmdu' || t.id === 'dmau') && S.dm) { S.dm[t.id === 'dmdu' ? 'du' : 'au'] = t.value; if (t.id === 'dmdu' && S.dm.au && S.dm.au < t.value) S.dm.au = t.value; var mm = $('dmmot'); if (mm) S.dm.mot = mm.value; render(); return; }
+    if ((t.id === 'cadu' || t.id === 'caau' || t.id === 'catype') && S.cAjout) { S.cAjout[t.id === 'cadu' ? 'du' : t.id === 'caau' ? 'au' : 'type'] = t.value; if (t.id === 'cadu' && !S.cAjout.au) { S.cAjout.au = t.value; render(); } return; }
     if (t.id === 'pflier' && S.pf && t.value) { if (confirm('Relier ce compte de connexion à la fiche de ' + S.pf.d.prenom + ' ?')) lierCompte(S.pf.id, t.value); else t.value = ''; return; }
     if (t.id === 'nrole' && S.eqNew) { S.eqNew.role = t.value; S.eqNew.identifiant = $('nid').value; S.eqNew.nom = $('nnom').value; render(); }
     else if (t.id === 'ncab' && S.eqNew) { S.eqNew.cabinet = t.value; }
