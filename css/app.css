@@ -737,3 +737,13 @@ body.mode-h .bnav{display:none}
 .pl-seul.vide{background:none;color:#9aa3ab}
 .pl-seul-t{background:#fbf7ef!important}
 .pl-seul-t .a-av{width:30px;height:30px;border-radius:9px;background:var(--navy);color:var(--gold);display:flex;align-items:center;justify-content:center}
+.pl-jc{display:flex;align-items:center;gap:12px;background:var(--soft);border-radius:14px;padding:10px 14px;cursor:pointer}
+.pl-jc > span{flex:1;display:flex;flex-direction:column}
+.pl-jc small{font-size:13px;color:var(--mute)}
+/* Interrupteurs (style téléphone) */
+.h-sw{-webkit-appearance:none;appearance:none;width:52px;height:32px;border-radius:16px;background:#c9d2db;position:relative;cursor:pointer;flex:none;margin:0;transition:background .15s}
+.h-sw::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:13px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .15s}
+.h-sw:checked{background:var(--ok)}
+.h-sw:checked::after{left:23px}
+.h-sw:disabled{opacity:.5;cursor:default}
+.h-sw:focus-visible{outline:2px solid var(--gold);outline-offset:2px}

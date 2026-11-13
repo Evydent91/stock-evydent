@@ -1214,14 +1214,15 @@
   function ouvrirCase(v) {
     var x = v.split('|'), p = persById(x[0]); if (!p) return;
     var am = caseEff(p, x[1], 'AM'), pm = caseEff(p, x[1], 'PM');
-    S.pl.cas = { eid: p.id, jour: x[1], r: am.r || pm.r || null, AM: { a: am.a, de: am.de, fi: am.fi }, PM: { a: pm.a, de: pm.de, fi: pm.fi }, enreg: !!(S.pl.rows[cleCase(p.id, x[1], 'AM')] || S.pl.rows[cleCase(p.id, x[1], 'PM')]) };
+    S.pl.cas = { eid: p.id, jour: x[1], r: am.r || pm.r || null, jc: am.a === pm.a, AM: { a: am.a, de: am.de, fi: am.fi }, PM: { a: pm.a, de: pm.de, fi: pm.fi }, enreg: !!(S.pl.rows[cleCase(p.id, x[1], 'AM')] || S.pl.rows[cleCase(p.id, x[1], 'PM')]) };
     render();
   }
   function vCasePlanning() {
     var K = S.pl.cas, p = persById(K.eid), iso = K.jour; if (!p) return '';
+    // Interrupteur « Journée complète » : un seul choix pour le matin et l'après-midi (horaires gardés par demi-journée)
     var dem = function (d) {
       var c = K[d], off = !c.a || c.a === 'OFF' || ABS.indexOf(c.a) >= 0;
-      return '<div class="pl-cd"><span class="h-dl">' + (d === 'AM' ? 'Matin' : 'Après-midi') + '</span><select class="in" data-plk="' + d + '.a">' + optAffPl(c.a) + '</select>'
+      return '<div class="pl-cd"><span class="h-dl">' + (d === 'AM' ? 'Matin' : 'Après-midi') + '</span>' + (K.jc ? '' : '<select class="in" data-plk="' + d + '.a">' + optAffPl(c.a) + '</select>')
         + '<span class="h-hh"><input class="in" type="time" data-plk="' + d + '.de" value="' + esc(off ? '' : c.de || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Arrivée"><span>–</span><input class="in" type="time" data-plk="' + d + '.fi" value="' + esc(off ? '' : c.fi || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Départ"></span></div>';
     };
     var hj = heuresDemi(p, iso, 'AM', K.AM) + heuresDemi(p, iso, 'PM', K.PM);
@@ -1232,6 +1233,8 @@
       + '<div class="pl-ft"><span class="a-av p">' + initiale(p.prenom) + '</span><div><b>' + esc(p.prenom) + '</b><span class="mu">' + JOURS[jourSem(iso)] + ' ' + dateCourte(iso) + (fe ? ' · ' + fe : '') + '</span></div><button class="h-rond gris" data-act="plfermer" aria-label="Fermer">' + ico('croix', 20, 2.4) + '</button></div>'
       + (K.r ? '<p class="pl-regle"><b>Règle d’or :</b> ' + esc(affTxt(K.r)) + ' est absent ce jour-là ; proposition : ' + esc(nomAff(K.AM.a)) + (K.PM.a !== K.AM.a ? ' / ' + esc(nomAff(K.PM.a)) : '') + '. Enregistrez pour confirmer ou changez.</p>' : '')
       + (p.consigne ? '<p class="pl-consigne"><b>Consigne :</b> « ' + esc(p.consigne) + ' »</p>' : '')
+      + '<label class="pl-jc"><span><b>Journée complète</b><small>même dentiste ou poste le matin et l’après-midi</small></span><input type="checkbox" role="switch" class="h-sw" data-pljc="1"' + (K.jc ? ' checked' : '') + ' aria-label="Journée complète"></label>'
+      + (K.jc ? '<div class="pl-cd"><span class="h-dl">Journée</span><select class="in" data-plk="J.a">' + optAffPl(K.AM.a) + '</select></div>' : '')
       + dem('AM') + dem('PM')
       + '<div class="pl-vite"><span class="mu">Toute la journée :</span>' + ['CP', 'ARRET', 'ECOLE', 'FORMATION'].map(function (a) { return '<button data-plabs="' + a + '">' + ABS_TXT[a] + '</button>'; }).join('') + '</div>'
       + '<div class="pl-tot"><span>Heures ce jour</span><b>' + fh(hj) + '</b></div>'
@@ -1240,7 +1243,9 @@
       + '</div></div>';
   }
   function majCase(el) {
-    var K = S.pl.cas, x = el.dataset.plk.split('.'), c = K[x[0]];
+    var K = S.pl.cas, x = el.dataset.plk.split('.');
+    if (x[0] === 'J') { ['AM', 'PM'].forEach(function (d) { majCase({ value: el.value, dataset: { plk: d + '.a' } }); }); return; }
+    var c = K[x[0]];
     c[x[1]] = el.value || null;
     if (x[1] === 'a') {
       if (!el.value || el.value === 'OFF' || ABS.indexOf(el.value) >= 0) { c.de = null; c.fi = null; }
@@ -2895,7 +2900,7 @@
     if (d.plsem != null && S.pl) { S.pl.lundi = d.plsem === '0' ? lundiDe(dIso(new Date())) : addJ(S.pl.lundi, +d.plsem); S.pl.cas = null; if (gestion()) chargerSemaine(); else S.pl.de = null; render(); return; }
     if (d.plc) return ouvrirCase(d.plc);
     if (d.act === 'plfermer' && S.pl) { S.pl.cas = null; render(); return; }
-    if (d.plabs && S.pl && S.pl.cas) { ['AM', 'PM'].forEach(function (k) { S.pl.cas[k] = { a: d.plabs, de: null, fi: null }; }); render(); return; }
+    if (d.plabs && S.pl && S.pl.cas) { ['AM', 'PM'].forEach(function (k) { S.pl.cas[k] = { a: d.plabs, de: null, fi: null }; }); S.pl.cas.jc = true; render(); return; }
     if (d.act === 'plsave') return sauverCase();
     if (d.act === 'plreset') return caseSemaineType();
     if (d.act === 'plimpno') { S.plImp = null; render(); return; }
@@ -2951,6 +2956,11 @@
     var t = e.target; if (!S.me) return;
     if (t.dataset && (t.dataset.pff || t.dataset.tr) && S.pf) { majPers(t); if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); return; }
     if (t.dataset && t.dataset.dff && S.df) { S.df.d[t.dataset.dff] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox') render(); return; }
+    if (t.dataset && t.dataset.pljc && S.pl && S.pl.cas) {
+      var K2 = S.pl.cas; K2.jc = t.checked;
+      if (t.checked && K2.PM.a !== K2.AM.a) majCase({ value: K2.AM.a && K2.AM.a !== 'OFF' ? K2.AM.a : K2.PM.a, dataset: { plk: 'J.a' } });
+      render(); return;
+    }
     if (t.dataset && t.dataset.plk && S.pl && S.pl.cas) { majCase(t); if (t.tagName === 'SELECT') render(); return; }
     if (t.id === 'plimpf') { var fp = t.files && t.files[0]; t.value = ''; importerPlanning(fp); return; }
     if (t.dataset && t.dataset.vis) { basculerVisible(t.dataset.vis, t.checked); return; }
