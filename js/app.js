@@ -749,7 +749,7 @@
       + [1, 2, 3, 4, 5].map(function (j) { var x = t[j] || {}, hj = heuresJour(t, j); return '<div class="card h-jour"><div class="h-jt"><b>' + JOURS[j] + '</b><span class="mu">' + (hj ? fh(hj) : 'ne travaille pas') + '</span></div>' + demiEdit(j, 'am', x.am) + demiEdit(j, 'pm', x.pm) + '</div>'; }).join('')
       + '</div><div class="h-total ' + (c && Math.abs(tot - c) > 0.01 ? 'warn' : 'ok') + '"><span>Total de la semaine type</span><b>' + fh(tot) + (c ? ' / ' + fh(c) : '') + '</b></div>';
     h += '<h2 class="a-jour">Consigne</h2><div class="card"><textarea class="in" rows="2" data-pff="consigne" placeholder="Ex. : pas de samedi, finit à 17 h le mardi…">' + esc(p.consigne || '') + '</textarea></div>';
-    h += '<h2 class="a-jour">Congés</h2>' + (nouv ? '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>' : blocConges(false, F.id, p));
+    h += '<h2 class="a-jour">Congés</h2>' + (nouv ? '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>' : blocConges(false, F.id, p)) + '<h2 class="a-jour">Formations</h2>' + (nouv ? '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>' : blocConges(false, F.id, p, true));
     h += '<h2 class="a-jour">Compte de connexion</h2>';
     if (nouv) h += '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche, puis vous pourrez lui créer un compte.</p></div>';
     else if (prof) h += carteProfil(prof) + '<button class="a-lien" data-act="pfdelier">Détacher ce compte de la fiche</button>';
@@ -846,7 +846,7 @@
     if (!nouv) h += '<h2 class="a-jour">Assistantes (semaine type)</h2><div class="a-liste">' + [1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j] || as[j]; }).map(function (j) {
       return '<div class="a-li"><span class="a-it-n"><b>' + JOURS[j] + '</b>' + (as[j] ? '<span>' + as[j].map(esc).join(', ') + '</span>' : '<span class="warn">pas d’assistante</span>') + '</span></div>';
     }).join('') + '</div><p class="a-aide">Pour changer, modifiez la semaine type de l’assistante (Réglages › L’équipe).</p>';
-    h += '<h2 class="a-jour">Congés</h2>' + (nouv ? '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>' : blocConges(true, F.id, d));
+    h += '<h2 class="a-jour">Congés</h2>' + (nouv ? '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>' : blocConges(true, F.id, d)) + '<h2 class="a-jour">Formations</h2>' + (nouv ? '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>' : blocConges(true, F.id, d, true));
     return h + '</div>';
   }
   function vBarDFiche() {
@@ -955,31 +955,35 @@
   }
 
   // Bloc « Congés » dans les fiches (personne ou dentiste)
-  function blocConges(estDent, id, qui) {
+  // Bloc « Congés » ou « Formations » dans les fiches (personne ou dentiste). Les formations sont des absences de type FORMATION.
+  function blocConges(estDent, id, qui, formation) {
     var auj = dIso(new Date()), lim = dIso(new Date(Date.now() - 60 * 864e5));
-    var l = (S.conges || []).filter(function (c) { return (estDent ? String(c.dentiste_id) : String(c.equipe_id)) === String(id) && c.statut !== 'annule' && c.au >= lim; }).sort(function (a, b) { return a.du < b.du ? -1 : 1; });
+    var l = (S.conges || []).filter(function (c) { return (estDent ? String(c.dentiste_id) : String(c.equipe_id)) === String(id) && c.statut !== 'annule' && c.au >= lim && (c.type === 'FORMATION') === !!formation; }).sort(function (a, b) { return a.du < b.du ? -1 : 1; });
     var h = '<div class="a-liste">' + l.map(function (c) {
       var n = joursTravail(qui, c.du, c.au, estDent), passe = c.au < auj;
       var st = c.statut === 'attente' ? '<span class="pill warn">en attente</span>' : c.statut === 'refuse' ? '<span class="pill">refusé</span>' : '';
       var plus = '';
       if (estDent && c.statut === 'accepte') { var as = assistantesDe(id), noms = {}; Object.keys(as).forEach(function (j) { as[j].forEach(function (x) { noms[x] = 1; }); }); if (Object.keys(noms).length) plus = '<span>' + Object.keys(noms).map(esc).join(', ') + ' ' + (Object.keys(noms).length > 1 ? 'seront disponibles' : 'sera disponible') + ' pour un autre dentiste</span>'; }
-      return '<div class="a-li' + (passe ? ' passe' : '') + '"><span class="a-it-n"><b>' + periode(c.du, c.au) + ' ' + st + '</b><span>' + (c.type !== 'CP' ? typeTxt(c.type) + ' · ' : '') + n + ' ' + pl(n, 'jour') + (estDent ? ' de présence' : ' de travail') + (c.mot ? ' · « ' + esc(c.mot) + ' »' : '') + '</span>' + plus + '</span>'
-        + (c.statut === 'attente' ? '<span class="h-mini"><button class="btn l sm" data-crefus="' + c.id + '">Refuser</button><button class="btn sm" data-cok="' + c.id + '">Accepter</button></span>' : '<button class="btn l sm" data-csuppr="' + c.id + '" aria-label="Supprimer ces congés">Supprimer</button>') + '</div>';
+      var quoi = formation ? (c.mot ? '<b class="h-fi">' + esc(c.mot) + '</b> · ' : '') : (c.type !== 'CP' ? typeTxt(c.type) + ' · ' : '');
+      return '<div class="a-li' + (passe ? ' passe' : '') + '"><span class="a-it-n"><b>' + periode(c.du, c.au) + ' ' + st + '</b><span>' + quoi + n + ' ' + pl(n, 'jour') + (estDent ? ' de présence' : ' de travail') + (!formation && c.mot ? ' · « ' + esc(c.mot) + ' »' : '') + '</span>' + plus + '</span>'
+        + (c.statut === 'attente' ? '<span class="h-mini"><button class="btn l sm" data-crefus="' + c.id + '">Refuser</button><button class="btn sm" data-cok="' + c.id + '">Accepter</button></span>' : '<button class="btn l sm" data-csuppr="' + c.id + '" aria-label="Supprimer">Supprimer</button>') + '</div>';
     }).join('');
-    var A = S.cAjout && S.cAjout.cle === (estDent ? 'd' : 'p') + id ? S.cAjout : null;
+    var cle = (estDent ? 'd' : 'p') + id, A = S.cAjout && S.cAjout.cle === cle && !!S.cAjout.formation === !!formation ? S.cAjout : null;
     if (A) h += '<div class="a-li h-cadd"><div class="h-g2" style="width:100%"><label class="mu">Du<input class="in" type="date" id="cadu" value="' + esc(A.du || '') + '"></label><label class="mu">Au (inclus)<input class="in" type="date" id="caau" value="' + esc(A.au || '') + '"></label>'
-      + (estDent ? '' : '<label class="mu">Type<select class="in" id="catype">' + TYPES_C.map(function (t) { return '<option value="' + t[0] + '"' + (A.type === t[0] ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('') + '</select></label>')
+      + (formation ? '<label class="mu" style="grid-column:1/-1">Intitulé de la formation (facultatif)<input class="in" id="caint" value="' + esc(A.mot || '') + '" placeholder="Ex. : radioprotection, AFGSU…"></label>'
+        : estDent ? '' : '<label class="mu">Type<select class="in" id="catype">' + TYPES_C.filter(function (t) { return t[0] !== 'FORMATION'; }).map(function (t) { return '<option value="' + t[0] + '"' + (A.type === t[0] ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('') + '</select></label>')
       + '<div class="row" style="align-self:end"><button class="btn l" data-act="caannule">Annuler</button><button class="btn" data-act="caok">Ajouter</button></div></div></div>';
-    else h += '<button class="a-li h-lien" data-cadd="' + (estDent ? 'd' : 'p') + id + '">+ Ajouter des congés</button>';
+    else h += '<button class="a-li h-lien" data-cadd="' + cle + '"' + (formation ? ' data-cform="1"' : '') + '>' + (formation ? '+ Ajouter une formation' : '+ Ajouter des congés') + '</button>';
     return h + '</div>';
   }
   function ajouterConges() {
-    var A = S.cAjout, du = $('cadu').value, au = $('caau').value || du, ty = $('catype') ? $('catype').value : 'CP';
+    var A = S.cAjout, du = $('cadu').value, au = $('caau').value || du, ty = A.formation ? 'FORMATION' : $('catype') ? $('catype').value : 'CP';
     if (!du) { toast('Choisissez la date de début'); return; }
     if (au < du) { toast('La date de fin est avant la date de début'); return; }
     var o = { du: du, au: au, type: ty, statut: 'accepte', traite_par: S.me.id, traite_le: new Date().toISOString() };
+    if (A.formation && $('caint') && $('caint').value.trim()) o.mot = $('caint').value.trim();
     o[A.cle[0] === 'd' ? 'dentiste_id' : 'equipe_id'] = +A.cle.slice(1);
-    sb.from('conges').insert(o).then(function (r) { if (r.error) throw r.error; S.cAjout = null; toast('✔ Congés ajoutés'); chargerPlan(); }).catch(function (e) { toast(msgErr(e)); });
+    sb.from('conges').insert(o).then(function (r) { if (r.error) throw r.error; S.cAjout = null; toast(A.formation ? '✔ Formation ajoutée' : '✔ Congés ajoutés'); chargerPlan(); }).catch(function (e) { toast(msgErr(e)); });
   }
   function supprimerConges(id) {
     if (!confirm('Supprimer ces congés ?')) return;
@@ -2859,7 +2863,7 @@
     if (d.cok) return repondre(d.cok, true);
     if (d.crefus) return repondre(d.crefus, false);
     if (d.csuppr) return supprimerConges(d.csuppr);
-    if (d.cadd) { S.cAjout = { cle: d.cadd, type: 'CP' }; render(); return; }
+    if (d.cadd) { S.cAjout = { cle: d.cadd, type: 'CP', formation: !!d.cform }; render(); return; }
     if (d.act === 'caannule') { S.cAjout = null; render(); return; }
     if (d.act === 'caok') return ajouterConges();
     if (d.cannule) { if (!confirm('Annuler cette demande de congés ?')) return; sb.rpc('annuler_conges', { p_id: +d.cannule }).then(function (r) { if (r.error) throw r.error; toast('Demande annulée'); chargerMesConges(); }).catch(function (e) { toast(msgErr(e)); }); return; }
@@ -2896,6 +2900,7 @@
     else if (t.dataset && t.dataset.qte) { setQte(t.dataset.qte, t.value); var b = document.querySelector('.bar'); if (b) b.outerHTML = vBarSortie(); }
     else if (t.dataset && (t.dataset.pff || t.dataset.tr) && S.pf && t.tagName !== 'SELECT' && t.type !== 'checkbox') majPers(t);
     else if (t.dataset && t.dataset.dff && S.df && t.type !== 'checkbox') S.df.d[t.dataset.dff] = t.value;
+    else if (t.id === 'caint' && S.cAjout) S.cAjout.mot = t.value;
     else if (t.dataset && t.dataset.plk && S.pl && S.pl.cas && t.tagName !== 'SELECT') majCase(t);
   });
   document.addEventListener('change', function (e) {
@@ -2906,6 +2911,7 @@
     if (t.id === 'plimpf') { var fp = t.files && t.files[0]; t.value = ''; importerPlanning(fp); return; }
     if (t.dataset && t.dataset.vis) { basculerVisible(t.dataset.vis, t.checked); return; }
     if ((t.id === 'dmdu' || t.id === 'dmau') && S.dm) { S.dm[t.id === 'dmdu' ? 'du' : 'au'] = t.value; if (t.id === 'dmdu' && S.dm.au && S.dm.au < t.value) S.dm.au = t.value; var mm = $('dmmot'); if (mm) S.dm.mot = mm.value; render(); return; }
+    if (t.id === 'caint' && S.cAjout) { S.cAjout.mot = t.value; return; }
     if ((t.id === 'cadu' || t.id === 'caau' || t.id === 'catype') && S.cAjout) { S.cAjout[t.id === 'cadu' ? 'du' : t.id === 'caau' ? 'au' : 'type'] = t.value; if (t.id === 'cadu' && !S.cAjout.au) { S.cAjout.au = t.value; render(); } return; }
     if (t.id === 'pflier' && S.pf && t.value) { if (confirm('Relier ce compte de connexion à la fiche de ' + S.pf.d.prenom + ' ?')) lierCompte(S.pf.id, t.value); else t.value = ''; return; }
     if (t.id === 'nrole' && S.eqNew) { S.eqNew.role = t.value; S.eqNew.identifiant = $('nid').value; S.eqNew.nom = $('nnom').value; render(); }
