@@ -1659,7 +1659,7 @@
   function vPointage() {
     var G = S.ptg = S.ptg || { mode: 'jour', jour: dIso(new Date()), rows: {} }, J = G.jour, L = lundiDe(J);
     var titre = G.mode === 'jour' ? JOURS[jourSem(J)] ? JOURS[jourSem(J)] + ' ' + dateCourte(J) : dateCourte(J) : 'Semaine du ' + periode(L, addJ(L, 4)).replace(/^du /, '');
-    var h = '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" data-tab="hub">' + ico('prec', 22, 2.4) + 'Accueil</button><h1>Pointage</h1><span class="pl-hbtns"><button class="pl-imp" data-act="ptqr">' + ico('qr', 18, 2) + '<span class="m-hide">QR code</span></button></span></div>'
+    var h = '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" data-tab="hub">' + ico('prec', 22, 2.4) + 'Accueil</button><h1>Pointage</h1><span class="pl-hbtns"><button class="pl-imp" data-act="ptlog">' + ico('histo', 18, 2) + '<span class="m-hide">Journal</span></button><button class="pl-imp" data-act="ptqr">' + ico('qr', 18, 2) + '<span class="m-hide">QR code</span></button></span></div>'
       + '<div class="hr-nav"><div class="hr-seg" role="group" aria-label="Affichage">' + [['jour', 'Jour'], ['semaine', 'Semaine']].map(function (m) { return '<button data-ptmode="' + m[0] + '" aria-pressed="' + (G.mode === m[0]) + '"' + (G.mode === m[0] ? ' class="on"' : '') + '>' + m[1] + '</button>'; }).join('') + '</div>'
       + '<div class="hr-per"><button class="h-rond" data-ptnav="-1" aria-label="Précédent">' + ico('prec', 20, 2.4) + '</button><span class="hr-titre"><b>' + titre + '</b></span><button class="h-rond" data-ptnav="1" aria-label="Suivant">' + ico('suiv', 20, 2.4) + '</button>'
       + (J !== dIso(new Date()) ? '<button class="pl-auj" data-ptnav="0">Aujourd’hui</button>' : '') + '</div></div></header><div class="a-corps hr-corps">';
@@ -1670,7 +1670,7 @@
     if (!ps.length) return h + '<div class="card"><b>Personne n’est soumis au pointage pour l’instant.</b><p class="mu" style="margin:6px 0 0">Cochez « Soumise au pointage journalier » dans la fiche de chaque assistante concernée (Réglages › L’équipe).</p></div></div>' + (S.ptQR ? vQR() : '');
     h += G.mode === 'jour' ? vPointageJour(ps, J) : vPointageSemaine(ps, L);
     if (CONFIG.env === 'dev') h += '<div class="sim"><b>Simulation (site de test uniquement)</b><span class="mu">Autorise les assistantes à pointer avec un jour et une heure choisis (encadré « Simulation » sous leur tuile Pointer), pour tester sans attendre le lendemain. N’existe pas sur le vrai site.</span><button class="btn sm' + (S.simOn ? ' l' : '') + '" data-act="simgestion" aria-pressed="' + !!S.simOn + '">' + (S.simOn ? 'Heure simulée autorisée · Couper' : 'Autoriser l’heure simulée') + '</button></div>';
-    return h + '<p class="a-aide">Temps effectif = sortie − arrivée, moins la coupure de midi prévue au planning ce jour-là (seulement la partie passée entre l’arrivée et la sortie). Écart de la semaine : sur les journées pointées en entier. Touchez une ligne ou une case pour corriger un oubli : la correction est signée.</p></div>' + (S.ptEd ? vPtEdit() : '') + (S.ptQR ? vQR() : '');
+    return h + '<p class="a-aide">Temps effectif = sortie − arrivée, moins la coupure de midi prévue au planning ce jour-là (seulement la partie passée entre l’arrivée et la sortie). Écart de la semaine : sur les journées pointées en entier. Touchez une ligne ou une case pour corriger un oubli : la correction est signée.</p></div>' + (S.ptEd ? vPtEdit() : '') + (S.ptQR ? vQR() : '') + (S.ptLog ? vPtLog() : '');
   }
   function vPointageJour(ps, J) {
     var tot = 0, totP = 0, h = '<section class="hr-carte hr-tab"><div class="hr-scroll"><div class="pt-grille"><div class="pt-l hr-tete"><span>Personne</span><span>Prévu au planning</span><span>Arrivée</span><span>Sortie</span><span>Pause déduite</span><span>Temps effectif</span><span>Écart</span></div>';
@@ -1742,7 +1742,7 @@
   }
   function ouvrirQR() {
     S.ptQR = { charge: true }; render();
-    Promise.all([chargerQR(), sb.from('pointage_cle').select('jeton,cree_le').eq('id', 1).maybeSingle()]).then(function (r) {
+    Promise.all([chargerQR(), sb.from('pointage_cle').select('*').eq('id', 1).maybeSingle()]).then(function (r) {
       if (r[1].error) throw r[1].error; S.ptQR = r[1].data || { err: 'Aucun QR code' }; render();
     }).catch(function (e) { S.ptQR = { err: msgErr(e) }; render(); });
   }
@@ -1752,15 +1752,62 @@
     if (Q.charge) return h + '<p class="a-vide">Chargement…</p></div></div>';
     if (Q.err) return h + '<div class="ban warn">' + esc(Q.err) + '</div></div></div>';
     return h + '<div class="pt-qr">' + qrSvg(urlPointage(Q.jeton), 260) + '</div>'
-      + '<p class="mu" style="margin:0;text-align:center">Les assistantes le scannent avec l’appareil photo de leur téléphone, à l’arrivée puis à la sortie. Créé le ' + dateCourte(Q.cree_le) + '.</p>'
+      + '<p class="mu" style="margin:0;text-align:center">Les assistantes le scannent avec la tuile « Pointer » de l’application (ou l’appareil photo du téléphone), à l’arrivée puis à la sortie.</p><p class="pt-ref">Référence : <b>' + esc(refQR(Q)) + '</b> · créé le ' + dateCourte(Q.cree_le) + ' à ' + hTs(Q.cree_le) + '</p>'
       + '<div class="h-cpied"><button class="h-csup" data-act="ptregen">' + ico('refaire', 18, 2) + 'Régénérer</button><span class="row"><button class="btn" data-act="ptimprimer">' + ico('sortie', 18, 2) + 'Imprimer</button></span></div>'
       + '<p class="a-aide" style="margin:0">Régénérer crée un nouveau QR code : l’ancien ne fonctionne plus (à faire si une photo du QR code a circulé). Pensez à réimprimer l’affiche.</p></div></div>';
+  }
+  function refQR(Q) { return (Q.numero ? 'n° ' + Q.numero + ' · ' : '') + String(Q.jeton || '').slice(0, 6); }
+  // Journal du pointage (fichier texte) : tous les événements d'une période, avec la référence du QR code
+  var EVT_PT = { ARRIVEE: 'Arrivée', SORTIE: 'Sortie', DOUBLON: 'Doublon (ignoré)', QR_PERIME: 'QR périmé', NON_SOUMIS: 'Non soumis', SANS_FICHE: 'Compte non relié', SIMULATION_COUPEE: 'Simulation refusée', CORRECTION: 'Correction', EFFACEMENT: 'Effacement', QR_REGENERE: 'QR régénéré' };
+  function vPtLog() {
+    var E = S.ptLog;
+    return '<div class="pl-modal" role="dialog" aria-modal="true" aria-label="Journal du pointage"><button class="pl-fond" data-act="ptlogfermer" aria-label="Fermer"></button><div class="pl-fen">'
+      + '<div class="pl-ft"><span class="a-av p">' + ico('histo', 20) + '</span><div><b>Journal du pointage</b><span class="mu">Fichier texte (.txt)</span></div><button class="h-rond gris" data-act="ptlogfermer" aria-label="Fermer">' + ico('croix', 20, 2.4) + '</button></div>'
+      + '<p class="mu" style="margin:0">Tout ce qui s’est passé sur la période : chaque scan (arrivée, sortie, doublon, QR périmé…) avec l’heure, la personne, le compte utilisé et la référence du QR code, les corrections (avant → après, par qui) et les régénérations du QR code.</p>'
+      + '<div class="h-g2"><label class="mu">Du<input class="in" type="date" id="ptlogdu" value="' + esc(E.du) + '"></label><label class="mu">Au<input class="in" type="date" id="ptlogau" value="' + esc(E.au) + '"></label></div>'
+      + '<div class="pl-btns"><button class="a-btn blanc" data-act="ptlogfermer">Annuler</button><button class="a-btn navy" data-act="ptlogok"' + (E.busy ? ' disabled' : '') + '>' + (E.busy ? 'Préparation…' : 'Télécharger le journal') + '</button></div></div></div>';
+  }
+  function exporterJournalPt() {
+    var E = S.ptLog, du = $('ptlogdu').value, au = $('ptlogau').value;
+    if (!du || !au || au < du) { toast('Choisissez une période valide'); return; }
+    E.du = du; E.au = au; E.busy = true; render();
+    var debut = dDe(du).toISOString(), fin = dDe(addJ(au, 1)).toISOString();
+    Promise.all([
+      toutLire('pointage_journal', '*', function (q) { return q.gte('jour', du).lte('jour', au); }),
+      toutLire('pointage_journal', '*', function (q) { return q.is('jour', null).gte('quand', debut).lt('quand', fin); }),
+      sb.from('pointage_cle').select('*').eq('id', 1).maybeSingle()
+    ]).then(function (r) {
+      var vus = {}, l = r[0].concat(r[1]).filter(function (x) { if (vus[x.id]) return false; vus[x.id] = 1; return true; }).sort(function (a, b) { return a.quand < b.quand ? -1 : a.quand > b.quand ? 1 : a.id - b.id; });
+      var dt = function (ts) { var d = new Date(ts); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2) + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); };
+      var hh = function (ts) { var d = new Date(ts); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); };
+      var jf = function (iso) { return iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : ''; };
+      var col = function (t, n) { t = String(t == null ? '' : t); return t.length >= n ? t.slice(0, n - 1) + ' ' : t + new Array(n - t.length + 1).join(' '); };
+      var prof = function (id) { var p = (S.profils || []).filter(function (x) { return x.id === id; })[0]; return p ? p.nom + ' (' + p.identifiant + ')' : id ? 'compte ' + String(id).slice(0, 8) : ''; };
+      var Q = r[2] && r[2].data, mtn = new Date();
+      var tete = ['JOURNAL DU POINTAGE — Espace dentaire Val d’Yerres' + (CONFIG.env === 'dev' ? ' — SITE DE TEST' : ''),
+        'Période : du ' + jf(du) + ' au ' + jf(au),
+        'Exporté le ' + jf(dIso(mtn)) + ' à ' + hh(mtn.toISOString()) + ' par ' + S.me.nom,
+        'QR code en service : ' + (Q ? refQR(Q) + ' (créé le ' + jf(dIso(new Date(Q.cree_le))) + ' à ' + hh(Q.cree_le) + ')' : '—'),
+        'Événements : ' + l.length,
+        'Heures en heure de Paris. « Heure pointée » = heure enregistrée (différente de l’heure réelle si simulée).',
+        new Array(150).join('-'),
+        col('DATE ET HEURE', 21) + col('ÉVÉNEMENT', 20) + col('PERSONNE', 14) + col('COMPTE UTILISÉ', 26) + col('JOUR', 12) + col('POINTÉE', 16) + col('QR CODE', 20) + 'DÉTAIL',
+        new Array(150).join('-')];
+      var lignes = l.map(function (x) {
+        var p = x.equipe_id ? persById(x.equipe_id) : null;
+        return col(dt(x.quand), 21) + col(EVT_PT[x.evenement] || x.evenement, 20) + col(p ? p.prenom : x.equipe_id ? '#' + x.equipe_id : '', 14) + col(prof(x.profil_id), 26) + col(jf(x.jour), 12)
+          + col(x.heure_pt ? hh(x.heure_pt) + (x.simule ? ' (simulée)' : '') : '', 16) + col(x.qr_ref || '', 20) + (x.detail || '');
+      });
+      var txt = '﻿' + tete.concat(lignes.length ? lignes : ['(aucun événement sur cette période)']).join('\r\n') + '\r\n';
+      telecharger(new Blob([txt], { type: 'text/plain;charset=utf-8' }), 'journal-pointage-' + du + '-au-' + au + (CONFIG.env === 'dev' ? '-TEST' : '') + '.txt');
+      S.ptLog = null; toast('✔ Journal téléchargé (' + l.length + ' ' + pl(l.length, 'événement') + ')'); render();
+    }).catch(function (e) { E.busy = false; toast(/pointage_journal/.test(String(e && e.message)) ? 'La mise à jour 018 de la base n’est pas encore faite' : msgErr(e)); render(); });
   }
   function imprimerQR() {
     var Q = S.ptQR; if (!Q || !Q.jeton) return;
     var w = window.open('', '_blank'); if (!w) { toast('Autorisez l’ouverture de fenêtres pour imprimer'); return; }
     w.document.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>QR code de pointage</title><style>body{margin:0;font-family:"Source Sans 3",system-ui,sans-serif;color:#1f2a33;display:flex;justify-content:center}main{width:170mm;text-align:center;padding:18mm 0}h1{font-family:Georgia,serif;font-size:30pt;margin:0 0 4mm;color:#2b3e4c}p{font-size:15pt;margin:3mm 0}svg{width:120mm;height:120mm;margin:8mm auto;display:block}small{color:#555f68;font-size:10pt}</style></head><body><main><h1>Pointage</h1><p><b>Espace dentaire Val d’Yerres</b></p>'
-      + qrSvg(urlPointage(Q.jeton), 400) + '<p>Scannez avec l’appareil photo de votre téléphone<br><b>en arrivant</b> et <b>en partant</b>.</p><small>QR code du ' + dateCourte(Q.cree_le) + '</small></main><script>setTimeout(function(){print()},300)<\/script></body></html>');
+      + qrSvg(urlPointage(Q.jeton), 400) + '<p>Scannez avec l’appareil photo de votre téléphone<br><b>en arrivant</b> et <b>en partant</b>.</p><small>Réf. ' + esc(refQR(Q)) + ' · QR code du ' + dateCourte(Q.cree_le) + '</small></main><script>setTimeout(function(){print()},300)<\/script></body></html>');
     w.document.close();
   }
   function regenererQR() {
@@ -3644,6 +3691,9 @@
     if (d.act === 'simscan') { var jt0 = ''; try { jt0 = localStorage.getItem('evy-jeton-test') || ''; } catch (e) {} if (jt0) { JETON_QR = jt0; pointerQR(); } return; }
     if (d.act === 'simgestion') return basculerSimulation();
     if (d.act === 'ptqr') return ouvrirQR();
+    if (d.act === 'ptlog' && S.ptg) { var lL = lundiDe(S.ptg.jour); S.ptLog = S.ptg.mode === 'jour' ? { du: S.ptg.jour, au: S.ptg.jour } : { du: lL, au: addJ(lL, 6) }; render(); return; }
+    if (d.act === 'ptlogfermer') { S.ptLog = null; render(); return; }
+    if (d.act === 'ptlogok' && S.ptLog) return exporterJournalPt();
     if (d.act === 'ptqrfermer') { S.ptQR = null; render(); return; }
     if (d.act === 'ptimprimer') return imprimerQR();
     if (d.act === 'ptregen') return regenererQR();

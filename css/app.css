@@ -1006,3 +1006,4 @@ body.scan-ouvert{overflow:hidden}
 .sim-l{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .sim-l .in{width:auto;flex:1 1 140px;height:44px}
 .sim .btn{align-self:flex-start}
+.pt-ref{margin:0;text-align:center;font-size:14px;color:var(--ink2)}
