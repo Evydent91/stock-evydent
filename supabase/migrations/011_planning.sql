@@ -2,7 +2,7 @@
 -- 011_planning.sql — Planning : affichage pour les assistantes (option), réglages des heures
 -- Suppose : 001 à 010 déjà appliquées.
 -- Ce que fait cette migration :
---  1. Paramètres par défaut (table parametres) :
+--  1. Paramètres par défaut (table parametres) — école 7 h depuis la 014 :
 --       regles_heures : heures comptées pour une journée de congés, maladie, école, formation,
 --                       jour férié (9 h chacun), règle du jour férié, date de départ du reliquat ;
 --       planning_visible : ce que voient les assistantes (planning, reliquat) — coupé par défaut.
@@ -12,7 +12,7 @@
 -- =====================================================================
 
 insert into public.parametres(cle, valeur) values
-  ('regles_heures', '{"CP":9,"ARRET":9,"ECOLE":9,"FORMATION":9,"FERIE":9,"ferie":"habituel","depuis":"2026-11-02"}'::jsonb),
+  ('regles_heures', '{"CP":9,"ARRET":9,"ECOLE":7,"FORMATION":9,"FERIE":9,"ferie":"habituel","depuis":"2026-11-02"}'::jsonb),
   ('planning_visible', '{"planning":false,"reliquat":false}'::jsonb)
 on conflict (cle) do nothing;
 

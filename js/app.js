@@ -1098,7 +1098,7 @@
   // Case enregistrée (table planning) sinon case calculée : jour férié > congés acceptés > semaine type.
   var ABS = ['CP', 'ARRET', 'ECOLE', 'FORMATION', 'FERIE'];
   var ABS_TXT = { CP: 'Congés', ARRET: 'Maladie', ECOLE: 'École', FORMATION: 'Formation', FERIE: 'Férié' };
-  var REGLES_DEF = { CP: 9, ARRET: 9, ECOLE: 9, FORMATION: 9, FERIE: 9, ferie: 'habituel', depuis: '2026-11-02' };
+  var REGLES_DEF = { CP: 9, ARRET: 9, ECOLE: 7, FORMATION: 9, FERIE: 9, ferie: 'habituel', depuis: '2026-11-02' };
   function regles() { return Object.assign({}, REGLES_DEF, S.regles || {}); }
   function addJ(iso, n) { var d = dDe(iso); d.setDate(d.getDate() + n); return dIso(d); }
   function lundiDe(iso) { var d = dDe(iso), j = d.getDay() || 7; d.setDate(d.getDate() - j + 1); return dIso(d); }
