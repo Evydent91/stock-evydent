@@ -977,3 +977,22 @@ button.pt-l:hover,.pt-sc:hover{background:var(--ivory)}
 .pt-qrf{max-width:460px}
 .pt-qr{display:flex;justify-content:center;padding:8px;background:#fff;border:1px solid var(--soft);border-radius:16px}
 .pt-ec{display:flex;flex-direction:column}.pt-ec small{font-size:12.5px;font-weight:700}.pt-ec small.ko{color:var(--ko)}
+/* Assistante : tuile « Pointer » et scanner */
+.tuile-pt{display:flex;align-items:center;gap:14px;width:100%;margin:0 0 14px;padding:18px 18px;border:none;border-radius:20px;background:var(--gold);color:var(--ink);text-align:left;font:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(31,42,51,.12);min-height:92px}
+.tuile-pt .ti{width:58px;height:58px;border-radius:16px;background:rgba(255,255,255,.55);display:grid;place-items:center;flex:none;color:var(--navy)}
+.tuile-pt .tt{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.tuile-pt b{font-size:20px}
+.tuile-pt .tt span{font-size:15px;color:var(--ink2)}
+.tuile-pt .tc{color:var(--navy);flex:none}
+.tuile-pt.fait{background:#fff}
+.tuile-pt.fait .ti{background:var(--okbg);color:var(--ok)}
+body.scan-ouvert{overflow:hidden}
+.scan{position:fixed;inset:0;z-index:200;background:#0f171d;color:#fff;display:flex;flex-direction:column;align-items:center;gap:14px;padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 20px)}
+.scan-hd{width:100%;max-width:520px;display:flex;align-items:center;justify-content:space-between;font-size:19px}
+.scan-x{width:48px;height:48px;border-radius:50%;border:none;background:rgba(255,255,255,.12);color:#fff;display:grid;place-items:center;cursor:pointer}
+.scan-zone{position:relative;width:100%;max-width:520px;aspect-ratio:3/4;max-height:62vh;border-radius:20px;overflow:hidden;background:#000}
+.scan-zone video{width:100%;height:100%;object-fit:cover;display:block}
+.scan-cadre{position:absolute;left:50%;top:50%;width:62%;aspect-ratio:1;transform:translate(-50%,-50%);border:3px solid var(--gold);border-radius:18px;box-shadow:0 0 0 100vmax rgba(0,0,0,.35)}
+.scan-msg{margin:0;max-width:520px;text-align:center;font-size:17px;color:#e8edf1}
+.scan-msg.ko{color:#ffd6a8}
+.scan-annuler{margin-top:auto;width:100%;max-width:520px;height:54px;border-radius:14px;border:1.5px solid rgba(255,255,255,.4);background:none;color:#fff;font:inherit;font-weight:700;font-size:17px;cursor:pointer}

@@ -425,7 +425,7 @@
     var mesAtt = (S.recents || []).filter(function (x) { return x.type === 'demande' && x.statut === 'attente' && x.auteur === S.me.id; });
     var h = '<header class="a-hd a-maison"><div class="a-mh-top"><img src="assets/logo-evydent.jpg" alt="Evydent"><span class="grow">Espace dentaire Val d’Yerres</span></div>'
       + '<div><h1>Bonjour ' + esc(S.me.nom) + '</h1><p>' + (S.me.cabinet ? 'Cabinet ' + S.me.cabinet + ' · ' : '') + j + '</p></div></header>';
-    h += '<div class="a-corps">' + vBienvenue() + '<div class="tuiles">'
+    h += '<div class="a-corps">' + vBienvenue() + tuilePointer() + '<div class="tuiles">'
       + '<button class="tuile t1" data-tab="sortie"><span class="ti">' + ico('sortie', 34) + '</span><span class="tt"><b>Sortie</b><span>Prendre dans la réserve</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
       + '<button class="tuile" data-tab="inventaire"><span class="ti">' + ico('inventaire', 32) + '</span><span class="tt"><b>Inventaire</b><span>Compter mon cabinet</span>' + (inventaireAFaire() ? '<em>À faire ce mois-ci</em>' : '') + '</span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
       + '<button class="tuile" data-tab="retour"><span class="ti">' + ico('retour', 32) + '</span><span class="tt"><b>Retour</b><span>Rendre des boîtes fermées</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button></div>';
@@ -1199,6 +1199,7 @@
     return Promise.all([sb.from('equipe').select('*').eq('profil_id', S.me.id).maybeSingle(), sb.from('conges').select('*').order('du', { ascending: false }).limit(60),
       sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible'])]).then(function (r) {
       S.moiEq = r[0].error ? null : r[0].data; S.mesConges = r[1].error ? [] : r[1].data || []; S.mesCongesOk = !r[0].error;
+      if (S.moiEq && S.moiEq.pointage) chargerMonPointage();
       if (r[2] && !r[2].error) (r[2].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else S.visible = x.valeur; });
       render();
     }, function () { S.moiEq = null; S.mesConges = []; render(); });
@@ -1489,6 +1490,7 @@
     S.ptRes = { busy: true }; render();
     sb.rpc('pointer', { p_jeton: j }).then(function (r) {
       if (r.error) throw r.error; S.ptRes = r.data || { etat: 'erreur' }; render();
+      if (!gestion() && S.moiEq) chargerMonPointage();
     }).catch(function (e) { S.ptRes = { etat: 'erreur', msg: msgErr(e) }; render(); });
   }
   function hTs(ts) { if (!ts) return ''; var d = new Date(ts); return d.getHours() + ' h ' + ('0' + d.getMinutes()).slice(-2); }
@@ -1504,6 +1506,71 @@
     else { t = 'Pointage impossible'; g = ''; sous = esc(R.msg || 'Réessayez dans un instant.'); }
     return '<div class="pt-res ' + (R.busy ? '' : ok ? 'ok' : 'ko') + '"><div class="pt-res-in">' + (R.busy ? '' : '<span class="pt-ic">' + ico(ok ? 'ok' : R.etat === 'doublon' ? 'attente' : 'croix', 44, 2.4) + '</span>')
       + '<h1>' + t + '</h1>' + (g ? '<p class="pt-h">' + g + '</p>' : '') + (sous ? '<p>' + sous + '</p>' : '') + (R.busy ? '' : '<button class="a-btn navy" data-act="ptok">Continuer</button>') + '</div></div>';
+  }
+  // Assistante : tuile « Pointer » et scanner intégré (appareil photo du téléphone)
+  function chargerMonPointage() {
+    if (!S.moiEq) return;
+    sb.from('pointages').select('*').eq('equipe_id', S.moiEq.id).eq('jour', dIso(new Date())).maybeSingle().then(function (r) { S.monPt = r.error ? null : r.data; render(); });
+  }
+  function tuilePointer() {
+    if (!S.moiEq || !S.moiEq.pointage) return '';
+    var r = S.monPt, t, sous;
+    if (!r || !r.arrivee) { t = 'Pointer mon arrivée'; sous = 'Scannez le QR code du centre'; }
+    else if (!r.sortie) { t = 'Pointer ma sortie'; sous = 'Arrivée à ' + hTs(r.arrivee); }
+    else { t = 'Journée pointée'; sous = hTs(r.arrivee) + ' → ' + hTs(r.sortie) + ' · touchez pour repointer la sortie'; }
+    return '<button class="tuile-pt' + (r && r.sortie ? ' fait' : '') + '" data-act="scan"><span class="ti">' + ico('qr', 34) + '</span><span class="tt"><b>' + t + '</b><span>' + sous + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>';
+  }
+  var SCAN = null;
+  function chargerJsQR() {
+    if (window.jsQR) return Promise.resolve();
+    return new Promise(function (ok, ko) { var sc = document.createElement('script'); sc.src = 'js/vendor/jsqr.js?v=1'; sc.onload = ok; sc.onerror = function () { ko(new Error('Lecteur de QR code introuvable')); }; document.head.appendChild(sc); });
+  }
+  function fermerScanner() {
+    if (!SCAN) return;
+    SCAN.fini = true; try { (SCAN.flux && SCAN.flux.getTracks() || []).forEach(function (t) { t.stop(); }); } catch (e) {}
+    if (SCAN.el && SCAN.el.parentNode) SCAN.el.parentNode.removeChild(SCAN.el);
+    document.body.classList.remove('scan-ouvert'); SCAN = null;
+  }
+  function msgScan(t, ko) { if (SCAN && SCAN.msg) { SCAN.msg.textContent = t; SCAN.msg.className = 'scan-msg' + (ko ? ' ko' : ''); } }
+  function ouvrirScanner() {
+    fermerScanner();
+    var el = document.createElement('div'); el.className = 'scan'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Scanner le QR code de pointage');
+    el.innerHTML = '<div class="scan-hd"><b>Pointage</b><button class="scan-x" aria-label="Fermer">' + ico('croix', 24, 2.4) + '</button></div>'
+      + '<div class="scan-zone"><video playsinline muted autoplay></video><span class="scan-cadre" aria-hidden="true"></span></div>'
+      + '<p class="scan-msg">Visez le QR code du centre…</p><button class="scan-annuler">Annuler</button>';
+    document.body.appendChild(el); document.body.classList.add('scan-ouvert');
+    SCAN = { el: el, video: el.querySelector('video'), msg: el.querySelector('.scan-msg'), cv: document.createElement('canvas') };
+    el.querySelector('.scan-x').onclick = el.querySelector('.scan-annuler').onclick = function () { fermerScanner(); };
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { msgScan('Ce téléphone ne permet pas d’ouvrir l’appareil photo ici. Utilisez l’appareil photo du téléphone pour scanner le QR code.', true); return; }
+    var S0 = SCAN, det = null;
+    try { if ('BarcodeDetector' in window) det = new window.BarcodeDetector({ formats: ['qr_code'] }); } catch (e) { det = null; }
+    Promise.all([navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false }), det ? Promise.resolve() : chargerJsQR()]).then(function (r) {
+      if (S0.fini) { r[0].getTracks().forEach(function (t) { t.stop(); }); return; }
+      S0.flux = r[0]; S0.video.srcObject = r[0]; var pl2 = S0.video.play(); if (pl2 && pl2.catch) pl2.catch(function () {});
+      var dernier = 0;
+      (function boucle(ts) {
+        if (S0.fini) return;
+        if (ts - dernier > 180 && S0.video.readyState >= 2) {
+          dernier = ts;
+          var lu = function (txt) {
+            if (!txt || S0.fini) return;
+            var j = null; try { j = new URL(txt).searchParams.get('pointer'); } catch (e) { j = null; }
+            if (!j) { msgScan('Ce n’est pas le QR code de pointage du centre.', true); return; }
+            S0.fini = true; if (navigator.vibrate) try { navigator.vibrate(60); } catch (e) {}
+            fermerScanner(); JETON_QR = j; pointerQR();
+          };
+          if (det) det.detect(S0.video).then(function (l) { if (l && l[0]) lu(l[0].rawValue); }).catch(function () {});
+          else {
+            var v = S0.video, k = Math.min(1, 640 / Math.max(v.videoWidth, v.videoHeight)), w = Math.round(v.videoWidth * k), h = Math.round(v.videoHeight * k);
+            if (w && h) { S0.cv.width = w; S0.cv.height = h; var cx = S0.cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(v, 0, 0, w, h); var q = window.jsQR(cx.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: 'dontInvert' }); if (q) lu(q.data); }
+          }
+        }
+        requestAnimationFrame(boucle);
+      })(0);
+    }).catch(function (e) {
+      var refus = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError');
+      msgScan(refus ? 'L’accès à l’appareil photo est refusé. Autorisez-le dans les réglages du navigateur, ou scannez le QR code avec l’appareil photo du téléphone.' : 'Impossible d’ouvrir l’appareil photo (' + (e && e.message || e) + ').', true);
+    });
   }
   function tuilePointage() {
     if (telephone()) return '<div class="h-tuile pc" aria-disabled="true"><span class="ti">' + ico('qr', 34) + '</span><span class="tt"><b>Pointage</b><span><b class="pc-t">À ouvrir sur ordinateur</b>Le suivi des pointages se fait sur un écran de PC.</span></span></div>';
@@ -3525,6 +3592,7 @@
     if (d.plsem != null && S.pl) { S.pl.lundi = d.plsem === '0' ? lundiDe(dIso(new Date())) : addJ(S.pl.lundi, +d.plsem); S.pl.cas = null; if (gestion()) chargerSemaine(); else S.pl.de = null; render(); return; }
     if (d.plc) return ouvrirCase(d.plc);
     if (d.act === 'ptok') { S.ptRes = null; render(); return; }
+    if (d.act === 'scan') return ouvrirScanner();
     if (d.act === 'ptqr') return ouvrirQR();
     if (d.act === 'ptqrfermer') { S.ptQR = null; render(); return; }
     if (d.act === 'ptimprimer') return imprimerQR();
