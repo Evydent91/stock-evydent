@@ -809,3 +809,8 @@ button.pl-imp{background:none;font-family:inherit}
 .pl-imp:hover{background:rgba(201,185,122,.12)}
 .pl-mois{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
 .pl-mo{width:100%;font-size:15px}
+/* Fiche assistante : jours off récurrents */
+.h-off{display:flex;flex-direction:column;align-items:stretch;gap:12px}
+.h-off-l{display:flex;flex-direction:column;gap:6px}
+.h-off-p{min-width:0;font-size:15px}
+.h-off-pr{margin:0;font-size:14px;color:var(--ink2)}

@@ -764,6 +764,7 @@
       + '</div><div class="h-total ' + (c && Math.abs(tot - c) > 0.01 ? 'warn' : 'ok') + '"><span>Total de la semaine type</span><b>' + fh(tot) + (c ? ' / ' + fh(c) : '') + '</b></div>';
     h += '<h2 class="a-jour">Consigne</h2><div class="card"><textarea class="in" rows="2" data-pff="consigne" placeholder="Ex. : pas de samedi, finit à 17 h le mardi…">' + esc(p.consigne || '') + '</textarea></div>';
     h += '<h2 class="a-jour">Congés</h2>' + (nouv ? '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>' : blocConges(false, F.id, p)) + '<h2 class="a-jour">Formations</h2>' + (nouv ? '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>' : blocConges(false, F.id, p, true));
+    if (!nouv) h += '<h2 class="a-jour">Jours off</h2>' + blocOffs(F);
     h += '<h2 class="a-jour">Compte de connexion</h2>';
     if (nouv) h += '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche, puis vous pourrez lui créer un compte.</p></div>';
     else if (prof) h += carteProfil(prof) + '<button class="a-lien" data-act="pfdelier">Détacher ce compte de la fiche</button>';
@@ -797,6 +798,90 @@
         else if (!c.de) { c.de = p[1] === 'am' ? '09:00' : '14:00'; c.fi = p[1] === 'am' ? '13:00' : '19:00'; }
       }
     }
+  }
+  // ---------- Jours off récurrents (fiche d'une assistante) ----------
+  var REC_OFF = [['une', 'Une fois'], ['sem', 'Chaque semaine'], ['2sem', '1 semaine sur 2'], ['mois', '1 fois par mois']];
+  var RANG_OFF = [[1, '1er'], [2, '2e'], [3, '3e'], [4, '4e'], [-1, 'Dernier']];
+  function offMatch(o, iso) {
+    if (!o || !o.du || iso < o.du || (o.au && iso > o.au)) return false;
+    var j = jourSem(iso); if (j < 1 || j > 5) return false;
+    if (o.rec === 'une') return iso === o.du;
+    if ((o.jours || []).indexOf(j) < 0) return false;
+    if (o.rec === '2sem') return Math.round((dDe(lundiDe(iso)) - dDe(lundiDe(o.du))) / 864e5 / 7) % 2 === 0;
+    if (o.rec === 'mois') { var d = dDe(iso), n = Math.ceil(d.getDate() / 7), fin = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); return o.rang === -1 ? d.getDate() + 7 > fin : n === o.rang; }
+    return true;
+  }
+  function offLe(p, iso, demi) { return (p.offs || []).some(function (o) { return (o.demi === 'J' || o.demi === demi) && offMatch(o, iso); }); }
+  function offProchains(o, n) {
+    var l = [], d = [dIso(new Date()), o.du || dIso(new Date())].sort()[1];
+    for (var i = 0; i < 800 && l.length < n; i++, d = addJ(d, 1)) { if (o.au && d > o.au) break; if (offMatch(o, d) && !ferie(d)) l.push(d); }
+    return l;
+  }
+  function jourCourt(iso) { var d = dDe(iso); return JC[jourSem(iso)].toLowerCase() + '. ' + d.getDate() + ' ' + ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'][d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : ''); }
+  function offTxt(o) {
+    var dm = o.demi === 'AM' ? 'matin' : o.demi === 'PM' ? 'après-midi' : 'journée';
+    if (o.rec === 'une') return JOURS[jourSem(o.du)] + ' ' + dateCourte(o.du) + ', ' + dm + ' · une fois';
+    var js = (o.jours || []).slice().sort().map(function (j) { return JOURS[j]; }), jt = js.length > 1 ? js.slice(0, -1).join(', ') + ' et ' + js[js.length - 1] : js[0] || '?';
+    var r = o.rec === 'sem' ? 'chaque semaine' : o.rec === '2sem' ? 'une semaine sur deux' : (o.rang === -1 ? 'le dernier' : 'le ' + (o.rang === 1 ? '1er' : o.rang + 'e')) + ' du mois';
+    return (o.rec === 'mois' ? jt + ', ' + dm + ' · ' + r : jt + ', ' + dm + ' · ' + r) + ' depuis le ' + dateCourte(o.du) + (o.au ? ' jusqu’au ' + dateCourte(o.au) : '');
+  }
+  function blocOffs(F) {
+    var l = F.d.offs || [], E = S.offEd && String(S.offEd.pid) === String(F.id) ? S.offEd : null;
+    var h = '<div class="a-liste">' + l.map(function (o) {
+      if (E && E.id === o.id) return formOff(E);
+      var pr = offProchains(o, 3), fini = !pr.length;
+      return '<button class="a-li h-cgl' + (fini ? ' passe' : '') + '" data-offmod="' + esc(o.id) + '" aria-label="Modifier"><span class="a-it-n"><b>' + esc(offTxt(o)) + '</b><span>' + (fini ? 'terminé' : 'Prochains : ' + pr.map(jourCourt).join(' · ')) + '</span></span><span class="h-crayon">' + ico('crayon', 18, 2) + '</span></button>';
+    }).join('');
+    if (E && !E.id) h += formOff(E);
+    else if (!E) h += '<button class="a-li h-lien" data-act="offadd">+ Ajouter un jour off</button>';
+    return h + '</div><p class="a-aide">Dans le planning, ces demi-journées passent en « OFF » (0 h). Une case modifiée à la main reste prioritaire.</p>';
+  }
+  function puces(attr, opts, actif) { return opts.map(function (x) { var on = actif(x[0]); return '<button type="button" class="h-ex-j h-off-p' + (on ? ' on' : '') + '" ' + attr + '="' + x[0] + '" aria-pressed="' + on + '">' + x[1] + '</button>'; }).join(''); }
+  function formOff(E) {
+    var une = E.rec === 'une', o = offDe(E), pr = o ? offProchains(o, 4) : [];
+    return '<div class="a-li h-cadd h-off">' + (E.id ? '<b class="h-ctit">Modifier le jour off</b>' : '')
+      + (une ? '' : '<div class="h-off-l"><span class="mu">Jours</span><div class="h-ex-js">' + puces('data-offj', [[1, 'Lun'], [2, 'Mar'], [3, 'Mer'], [4, 'Jeu'], [5, 'Ven']], function (j) { return E.jours.indexOf(j) >= 0; }) + '</div></div>')
+      + '<div class="h-off-l"><span class="mu">Durée</span><div class="h-ex-js">' + puces('data-offd', [['J', 'Journée'], ['AM', 'Matin'], ['PM', 'Après-midi']], function (x) { return E.demi === x; }) + '</div></div>'
+      + '<div class="h-off-l"><span class="mu">Récurrence</span><div class="h-ex-js">' + puces('data-offr', REC_OFF, function (x) { return E.rec === x; }) + '</div></div>'
+      + (E.rec === 'mois' ? '<div class="h-off-l"><span class="mu">Dans le mois</span><div class="h-ex-js">' + puces('data-offn', RANG_OFF, function (x) { return E.rang === x; }) + '</div></div>' : '')
+      + '<div class="h-g2" style="width:100%"><label class="mu">' + (une ? 'Date' : 'À partir du') + '<input class="in" type="date" id="offdu" value="' + esc(E.du || '') + '"></label>'
+      + (une ? '' : '<label class="mu">Jusqu’au (facultatif)<input class="in" type="date" id="offau" value="' + esc(E.au || '') + '"></label>') + '</div>'
+      + '<p class="h-off-pr">' + (pr.length ? 'Prochains : <b>' + pr.map(jourCourt).join(' · ') + '</b>' : '<span class="warn">' + (une ? 'Choisissez la date.' : !E.jours.length ? 'Touchez au moins un jour.' : 'Aucune date à venir avec ces choix.') + '</span>') + '</p>'
+      + '<div class="h-cpied">' + (E.id ? '<button class="h-csup" data-act="offsuppr">' + ico('poubelle', 18, 2) + 'Supprimer</button>' : '<span></span>')
+      + '<span class="row"><button class="btn l" data-act="offannule">Annuler</button><button class="btn" data-act="offok"' + (o ? '' : ' disabled') + '>' + (E.id ? 'Enregistrer' : 'Ajouter') + '</button></span></div></div>';
+  }
+  function offDe(E) {   // jour off construit depuis le formulaire, ou null s'il est incomplet
+    if (!E.du || (E.rec !== 'une' && !E.jours.length)) return null;
+    var o = { id: E.id || 'o' + Date.now().toString(36), jours: E.rec === 'une' ? [jourSem(E.du)] : E.jours.slice().sort(), demi: E.demi, rec: E.rec, du: E.du, au: E.rec === 'une' ? null : (E.au || null) };
+    if (E.rec === 'mois') o.rang = E.rang;
+    if (o.au && o.au < o.du) return null;
+    return o;
+  }
+  function sauverOffs(l, msg) {
+    var F = S.pf; if (!F || F.id === 'new') return;
+    var avant = F.d.offs || []; F.d.offs = l; S.offEd = null; render();
+    sb.from('equipe').update({ offs: l }).eq('id', F.id).then(function (r) {
+      if (r.error) throw r.error; var p = persById(F.id); if (p) p.offs = l; JOUR_CACHE = {}; toast(msg); render();
+    }).catch(function (e) { F.d.offs = avant; toast(msgErr(e)); render(); });
+  }
+  function actionOff(d, el) {
+    var F = S.pf, E = S.offEd; if (!F) return false;
+    if (d.act === 'offadd') { S.offEd = { pid: F.id, id: null, jours: [], demi: 'J', rec: 'sem', rang: 1, du: dIso(new Date()), au: '' }; render(); return true; }
+    if (d.offmod) { var o = (F.d.offs || []).filter(function (x) { return x.id === d.offmod; })[0]; if (o) { S.offEd = { pid: F.id, id: o.id, jours: (o.jours || []).slice(), demi: o.demi || 'J', rec: o.rec || 'sem', rang: o.rang || 1, du: o.du, au: o.au || '' }; render(); } return true; }
+    if (!E) return false;
+    if (d.offj) { var j = +d.offj, i = E.jours.indexOf(j); if (i >= 0) E.jours.splice(i, 1); else E.jours.push(j); render(); return true; }
+    if (d.offd) { E.demi = d.offd; render(); return true; }
+    if (d.offr) { E.rec = d.offr; render(); return true; }
+    if (d.offn) { E.rang = +d.offn; render(); return true; }
+    if (d.act === 'offannule') { S.offEd = null; render(); return true; }
+    if (d.act === 'offsuppr') { if (!confirm('Supprimer ce jour off ?')) return true; sauverOffs((F.d.offs || []).filter(function (x) { return x.id !== E.id; }), 'Jour off supprimé'); return true; }
+    if (d.act === 'offok') {
+      var n = offDe(E); if (!n) { toast('Complétez le jour off'); return true; }
+      var l = (F.d.offs || []).slice(), k = -1; l.forEach(function (x, ii) { if (x.id === E.id) k = ii; });
+      if (k >= 0) l[k] = n; else l.push(n);
+      sauverOffs(l, E.id ? '✔ Jour off modifié' : '✔ Jour off ajouté'); return true;
+    }
+    return false;
   }
   function sauverPers() {
     var F = S.pf, p = F.d;
@@ -1128,6 +1213,7 @@
     if (ferie(iso)) return { a: 'FERIE', v: 1 };
     var c = congeLe(p.id, iso);
     if (c) return { a: c.type === 'AUTRE' ? 'CP' : c.type, v: 1 };
+    if (offLe(p, iso, demi)) return { a: 'OFF', v: 1, off: 1 };
     var k = demi === 'AM' ? 'am' : 'pm', t = ((p.trame || {})[j] || {})[k];
     // Jour en plus d'un dentiste : son assistante attitrée le suit toute la journée (sauf école), avec ses horaires habituels auprès de lui
     var at = attitre(p), da = at && dentById(at);
@@ -1228,10 +1314,10 @@
   function celluleJour(p, iso) {
     var am = caseEff(p, iso, 'AM'), pm = caseEff(p, iso, 'PM'), ab = function (c) { return ABS.indexOf(c.a) >= 0; };
     var cls = 'pl-c', h;
-    if (am.a === pm.a && (ab(am) || am.a === 'OFF')) { cls += am.a === 'OFF' ? ' off' : ' abs'; h = '<b>' + nomAff(am.a) + '</b>'; }
+    if (am.a === pm.a && (ab(am) || am.a === 'OFF')) { cls += am.a === 'OFF' ? ' off' : ' abs'; h = '<b>' + (am.a === 'OFF' && (am.off || pm.off) ? 'Jour off' : nomAff(am.a)) + '</b>'; }
     else if (am.a === pm.a) { cls += ' on'; h = '<b>' + esc(nomAff(am.a)) + '</b><span>' + ft(am.de) + '–' + ft(am.fi) + ' · ' + ft(pm.de) + '–' + ft(pm.fi) + '</span>'; }
     else {
-      var demi = function (c) { return '<span class="pl-d' + (ab(c) ? ' abs' : c.a === 'OFF' ? ' off' : '') + '"><b>' + esc(nomAff(c.a)) + '</b>' + (c.de ? ' ' + ft(c.de) + '–' + ft(c.fi) : '') + '</span>'; };
+      var demi = function (c) { return '<span class="pl-d' + (ab(c) ? ' abs' : c.a === 'OFF' ? ' off' : '') + '"><b>' + (c.off ? 'Off' : esc(nomAff(c.a))) + '</b>' + (c.de ? ' ' + ft(c.de) + '–' + ft(c.fi) : '') + '</span>'; };
       cls += ' mix'; h = demi(am) + demi(pm);
     }
     var rg = am.r || pm.r;
@@ -3108,6 +3194,7 @@
     if (d.act === 'rgsave') return sauverRegles();
     if (d.cok) return repondre(d.cok, true);
     if (d.crefus) return repondre(d.crefus, false);
+    if ((d.act && d.act.slice(0, 3) === 'off') || d.offmod || d.offj || d.offd || d.offr || d.offn) { if (actionOff(d)) return; }
     if (d.csuppr) return supprimerConges(d.csuppr);
     if (d.cmodif) { var cm = (S.conges || []).filter(function (c) { return String(c.id) === String(d.cmodif); })[0]; if (cm) { S.cAjout = { cle: d.cle, id: cm.id, du: cm.du, au: cm.au, type: cm.type, mot: cm.mot || '', formation: !!d.cform }; render(); } return; }
     if (d.cadd) { S.cAjout = { cle: d.cadd, type: 'CP', formation: !!d.cform }; render(); return; }
@@ -3154,6 +3241,7 @@
     var t = e.target; if (!S.me) return;
     if (t.dataset && (t.dataset.pff || t.dataset.tr) && S.pf) { majPers(t); if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); return; }
     if (t.dataset && t.dataset.dff && S.df) { S.df.d[t.dataset.dff] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox') render(); return; }
+    if ((t.id === 'offdu' || t.id === 'offau') && S.offEd) { S.offEd[t.id === 'offdu' ? 'du' : 'au'] = t.value; render(); return; }
     if (t.id === 'plcal' && S.pl && t.value) { S.pl.lundi = lundiDe(t.value); S.pl.cas = null; if (gestion()) chargerSemaine(); else S.pl.de = null; render(); return; }
     if (t.dataset && t.dataset.pljc && S.pl && S.pl.cas) {
       var K2 = S.pl.cas; K2.jc = t.checked;
