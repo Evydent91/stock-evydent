@@ -946,3 +946,5 @@ button.hr-l:hover{background:var(--ivory)}
 .cgm-li span{color:var(--ink2);flex:1 1 170px;min-width:0}
 .cgm-sans{margin:0;font-size:13.5px}
 @media (min-width:701px){.cgm{--cgm-nom:130px;--cgm-j:26px}.cgm-c{height:26px}}
+/* Page Congés sur PC : pleine largeur, cases plus grandes */
+@media (min-width:1000px){.h-app.tres-large .cgm{--cgm-nom:150px;--cgm-j:34px}.h-app.tres-large .cgm-c{height:30px}.h-app.tres-large .cgm-h{font-size:13.5px}.h-app.tres-large .cgm-n{font-size:15px}.h-app.tres-large .h-cg{max-width:760px}}
