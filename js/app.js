@@ -183,6 +183,7 @@
     if (fq && $(fq)) { S.refocus = true; $(fq).focus(); try { $(fq).setSelectionRange(pos, pos); } catch (e) {} S.refocus = false; }
   }
   function render() {
+    JOUR_CACHE = {};
     var app = $('app');
     document.body.classList.toggle('ecran-lg', !S.session);
     if (!S.session) { app.innerHTML = vLogin(); bindLogin(); return; }
@@ -744,6 +745,7 @@
       + '<label class="mu">Statut<select class="in" data-pff="statut"><option value="qualifiee"' + (p.statut === 'qualifiee' ? ' selected' : '') + '>Qualifiée / qualifié</option><option value="apprentie"' + (p.statut === 'apprentie' ? ' selected' : '') + '>Apprentie / apprenti</option></select></label>'
       + '<label class="mu">Heures du contrat par semaine<input class="in" inputmode="decimal" data-pff="contrat_h" value="' + esc(fr(p.contrat_h)) + '"></label>'
       + (p.statut === 'apprentie' ? '<label class="mu">Jour d’école par défaut<select class="in" data-pff="ecole_jour"><option value="">—</option>' + [1, 2, 3, 4, 5].map(function (j) { return '<option value="' + j + '"' + (+p.ecole_jour === j ? ' selected' : '') + '>' + JOURS[j] + '</option>'; }).join('') + '</select></label>' : '')
+      + '<label class="mu">Poste quand son dentiste est absent<select class="in" data-pff="repli">' + CODES.filter(function (c) { return ['ECOLE', 'OFF'].indexOf(c[0]) < 0; }).map(function (c) { return '<option value="' + c[0] + '"' + (((p.regles || {}).repli || 'STE') === c[0] ? ' selected' : '') + '>' + c[1] + '</option>'; }).join('') + '</select></label>'
       + '<label class="row" style="grid-column:1/-1"><input type="checkbox" data-pff="actif"' + (p.actif ? ' checked' : '') + ' style="width:20px;height:20px;flex:none"><span>Fait partie de l’équipe <span class="mu">(décocher pour une ancienne : elle reste dans l’historique)</span></span></label></div>';
     h += '<h2 class="a-jour">Semaine type (pour le planning)</h2><p class="a-aide">Dentiste ou poste du matin et de l’après-midi, avec les horaires. Le planning de chaque semaine partira de là.</p><div class="h-trame">'
       + [1, 2, 3, 4, 5].map(function (j) { var x = t[j] || {}, hj = heuresJour(t, j); return '<div class="card h-jour"><div class="h-jt"><b>' + JOURS[j] + '</b><span class="mu">' + (hj ? fh(hj) : 'ne travaille pas') + '</span></div>' + demiEdit(j, 'am', x.am) + demiEdit(j, 'pm', x.pm) + '</div>'; }).join('')
@@ -773,6 +775,7 @@
       var k = el.dataset.pff, v = el.type === 'checkbox' ? el.checked : el.value;
       if (k === 'contrat_h') v = Math.max(0, nb(String(v).replace(',', '.')));
       if (k === 'ecole_jour') v = v ? +v : null;
+      if (k === 'repli') { F.d.regles = Object.assign({}, F.d.regles || {}); F.d.regles.repli = v; return; }
       F.d[k] = v;
     } else if (el.dataset.tr) {
       var p = el.dataset.tr.split('.'), t = F.d.trame = F.d.trame || {}, j = t[p[0]] = t[p[0]] || {}, c = j[p[1]] = j[p[1]] || {};
@@ -787,7 +790,7 @@
     var F = S.pf, p = F.d;
     if (!String(p.prenom || '').trim()) { toast('Le prénom est obligatoire'); return; }
     if (p.statut !== 'apprentie') p.ecole_jour = null;
-    var o = { prenom: String(p.prenom).trim(), type: p.type, statut: p.statut, contrat_h: +p.contrat_h || 0, ecole_jour: p.ecole_jour || null, actif: !!p.actif, trame: p.trame || {}, consigne: String(p.consigne || '').trim() || null };
+    var o = { prenom: String(p.prenom).trim(), type: p.type, statut: p.statut, contrat_h: +p.contrat_h || 0, ecole_jour: p.ecole_jour || null, actif: !!p.actif, trame: p.trame || {}, regles: p.regles || {}, consigne: String(p.consigne || '').trim() || null };
     if (F.id === 'new') o.ordre = S.equipe.reduce(function (m, x) { return Math.max(m, x.ordre || 0); }, 0) + 1;
     F.busy = true; render();
     (F.id === 'new' ? sb.from('equipe').insert(o).select().single() : sb.from('equipe').update(o).eq('id', F.id).select().single()).then(function (r) {
@@ -1064,7 +1067,8 @@
   function dentAbsent(did, iso) { return (S.conges || []).some(function (c) { return String(c.dentiste_id) === String(did) && c.statut === 'accepte' && c.du <= iso && c.au >= iso; }); }
   function cleCase(eid, iso, demi) { return eid + '|' + iso + '|' + demi; }
   function hm(t) { return t ? String(t).slice(0, 5) : null; }
-  function caseCalc(p, iso, demi) {
+  // Case de base : jour férié > congés / formation acceptés > semaine type
+  function caseBase(p, iso, demi) {
     var j = jourSem(iso); if (j < 1 || j > 5) return { a: 'OFF', v: 1 };
     if (ferie(iso)) return { a: 'FERIE', v: 1 };
     var c = congeLe(p.id, iso);
@@ -1072,6 +1076,36 @@
     var t = ((p.trame || {})[j] || {})[demi === 'AM' ? 'am' : 'pm'];
     return t && t.a ? { a: t.a, de: t.de || null, fi: t.fi || null, v: 1 } : { a: 'OFF', v: 1 };
   }
+  // Règle d'or (rapport d'organisation § 5A) : quand le dentiste d'une assistante est absent, elle couvre d'abord
+  // un dentiste présent sans assistante (en priorité ceux qui n'ont personne dans les semaines types ce jour-là,
+  // comme Dr Angela le lundi et le jeudi), sinon elle bascule en Sté. Seulement pour les cases non saisies.
+  var JOUR_CACHE = {};
+  function dentPresent(d, iso) { var j = jourSem(iso); return !!(d && d.actif && d.jours && d.jours[j] && !dentAbsent(d.id, iso)); }
+  function jourCalc(iso) {
+    if (JOUR_CACHE[iso]) return JOUR_CACHE[iso];
+    var ps = (S.equipe || []).filter(function (p) { return p.actif; }).sort(function (a, b) { return (a.ordre - b.ordre) || (a.id - b.id); }), out = {}, rows = S.pl && S.pl.rows || {}, j = jourSem(iso);
+    ps.forEach(function (p) { out[p.id] = { AM: caseBase(p, iso, 'AM'), PM: caseBase(p, iso, 'PM') }; });
+    if (j >= 1 && j <= 5 && !ferie(iso)) ['AM', 'PM'].forEach(function (demi) {
+      var k = demi === 'AM' ? 'am' : 'pm', pris = {}, trameA = {};
+      ps.forEach(function (p) {
+        var r = rows[cleCase(p.id, iso, demi)], a = r ? r.aff : out[p.id][demi].a;
+        if (a && a.slice(0, 2) === 'D:') pris[a] = 1;
+        var t = ((p.trame || {})[j] || {})[k]; if (t && t.a && t.a.slice(0, 2) === 'D:') trameA[t.a] = 1;
+      });
+      var libres = (S.dentistes || []).filter(function (d) { return dentPresent(d, iso) && !pris['D:' + d.id]; })
+        .sort(function (a, b) { return (trameA['D:' + a.id] ? 1 : 0) - (trameA['D:' + b.id] ? 1 : 0) || (a.ordre - b.ordre); });
+      // Les apprenties couvrent d'abord les dentistes seuls ; sinon chacune va à son poste de repli (fiche, Sté par défaut)
+      ps.slice().sort(function (a, b) { return (a.statut === 'apprentie' ? 0 : 1) - (b.statut === 'apprentie' ? 0 : 1); }).forEach(function (p) {
+        if (rows[cleCase(p.id, iso, demi)]) return;
+        var c = out[p.id][demi]; if (!c.a || c.a.slice(0, 2) !== 'D:' || dentPresent(dentById(c.a.slice(2)), iso)) return;
+        var n = libres.shift();
+        out[p.id][demi] = { a: n ? 'D:' + n.id : ((p.regles || {}).repli || 'STE'), de: c.de, fi: c.fi, v: 1, r: c.a };
+        if (n) pris['D:' + n.id] = 1;
+      });
+    });
+    return (JOUR_CACHE[iso] = out);
+  }
+  function caseCalc(p, iso, demi) { var o = jourCalc(iso)[p.id]; return o ? o[demi] : caseBase(p, iso, demi); }
   function caseEff(p, iso, demi) { var r = (S.pl && S.pl.rows || {})[cleCase(p.id, iso, demi)]; return r ? { a: r.aff, de: hm(r.debut), fi: hm(r.fin) } : caseCalc(p, iso, demi); }
   function travailleHabituellement(p, iso, demi) { var t = ((p.trame || {})[jourSem(iso)] || {})[demi === 'AM' ? 'am' : 'pm']; return !!(t && t.a && t.a !== 'OFF'); }
   function heuresDemi(p, iso, demi, c) {
@@ -1118,6 +1152,8 @@
       var demi = function (c) { return '<span class="pl-d' + (ab(c) ? ' abs' : c.a === 'OFF' ? ' off' : '') + '"><b>' + esc(nomAff(c.a)) + '</b>' + (c.de ? ' ' + ft(c.de) + '–' + ft(c.fi) : '') + '</span>'; };
       cls += ' mix'; h = demi(am) + demi(pm);
     }
+    var rg = am.r || pm.r;
+    if (rg) { cls += ' reg'; h += '<small class="pl-r">' + esc(affTxt(rg)) + ' absent</small>'; }
     return '<button class="' + cls + '" data-plc="' + p.id + '|' + iso + '" aria-label="' + esc(p.prenom) + ', ' + JOURS[jourSem(iso)] + '">' + h + '</button>';
   }
   function alertesSemaine(lundi) {
@@ -1172,7 +1208,7 @@
   function ouvrirCase(v) {
     var x = v.split('|'), p = persById(x[0]); if (!p) return;
     var am = caseEff(p, x[1], 'AM'), pm = caseEff(p, x[1], 'PM');
-    S.pl.cas = { eid: p.id, jour: x[1], AM: { a: am.a, de: am.de, fi: am.fi }, PM: { a: pm.a, de: pm.de, fi: pm.fi }, enreg: !!(S.pl.rows[cleCase(p.id, x[1], 'AM')] || S.pl.rows[cleCase(p.id, x[1], 'PM')]) };
+    S.pl.cas = { eid: p.id, jour: x[1], r: am.r || pm.r || null, AM: { a: am.a, de: am.de, fi: am.fi }, PM: { a: pm.a, de: pm.de, fi: pm.fi }, enreg: !!(S.pl.rows[cleCase(p.id, x[1], 'AM')] || S.pl.rows[cleCase(p.id, x[1], 'PM')]) };
     render();
   }
   function vCasePlanning() {
@@ -1188,6 +1224,7 @@
     var fe = ferie(iso);
     return '<div class="pl-modal" role="dialog" aria-modal="true" aria-label="' + esc(p.prenom) + '"><button class="pl-fond" data-act="plfermer" aria-label="Fermer"></button><div class="pl-fen">'
       + '<div class="pl-ft"><span class="a-av p">' + initiale(p.prenom) + '</span><div><b>' + esc(p.prenom) + '</b><span class="mu">' + JOURS[jourSem(iso)] + ' ' + dateCourte(iso) + (fe ? ' · ' + fe : '') + '</span></div><button class="h-rond gris" data-act="plfermer" aria-label="Fermer">' + ico('croix', 20, 2.4) + '</button></div>'
+      + (K.r ? '<p class="pl-regle"><b>Règle d’or :</b> ' + esc(affTxt(K.r)) + ' est absent ce jour-là ; proposition : ' + esc(nomAff(K.AM.a)) + (K.PM.a !== K.AM.a ? ' / ' + esc(nomAff(K.PM.a)) : '') + '. Enregistrez pour confirmer ou changez.</p>' : '')
       + (p.consigne ? '<p class="pl-consigne"><b>Consigne :</b> « ' + esc(p.consigne) + ' »</p>' : '')
       + dem('AM') + dem('PM')
       + '<div class="pl-vite"><span class="mu">Toute la journée :</span>' + ['CP', 'ARRET', 'ECOLE', 'FORMATION'].map(function (a) { return '<button data-plabs="' + a + '">' + ABS_TXT[a] + '</button>'; }).join('') + '</div>'
@@ -1332,7 +1369,7 @@
     h += '<h2 class="a-jour">Reliquat</h2><div class="a-liste"><label class="a-li"><span class="a-it-n"><b>Compté à partir du</b><span>les semaines d’avant ne comptent pas</span></span><input class="in" type="date" data-rg="depuis" value="' + esc(R.depuis || '') + '" style="max-width:170px"></label></div>';
     h += '<button class="a-btn navy" data-act="rgsave">Enregistrer les règles générales</button>';
     h += '<h2 class="a-jour">Règles et consignes par personne</h2><div class="a-liste">' + persPlanning().map(function (p) {
-      var rg = p.regles || {}, k = Object.keys(rg).filter(function (x) { return rg[x] !== '' && rg[x] != null; });
+      var rg = p.regles || {}, k = Object.keys(rg).filter(function (x) { return ABS.indexOf(x) >= 0 && rg[x] !== '' && rg[x] != null; });
       if (E && String(E.id) === String(p.id)) {
         return '<div class="a-li h-cadd"><b>' + esc(p.prenom) + '</b><p class="mu" style="margin:4px 0 8px">Laissez vide pour garder la règle générale.</p><div class="h-g2">'
           + ['CP', 'ARRET', 'ECOLE', 'FORMATION', 'FERIE'].map(function (a) { return '<label class="mu">' + ABS_TXT[a] + ' (h)<input class="in" inputmode="decimal" data-rgp="' + a + '" value="' + esc(E.r[a] != null ? fr(E.r[a]) : '') + '" placeholder="' + fr(R[a]) + '"></label>'; }).join('')
@@ -1355,7 +1392,8 @@
   function sauverReglePers() {
     var E = S.rgEdit, r = {};
     Array.prototype.forEach.call(document.querySelectorAll('[data-rgp]'), function (el) { var v = String(el.value).trim(); if (v !== '') r[el.dataset.rgp] = Math.max(0, nb(v.replace(',', '.'))); });
-    var cons = $('rgcons').value.trim() || null;
+    var cons = $('rgcons').value.trim() || null, pe = persById(E.id);
+    if (pe && pe.regles && pe.regles.repli) r.repli = pe.regles.repli;
     sb.from('equipe').update({ regles: r, consigne: cons }).eq('id', E.id).then(function (x) {
       if (x.error) throw x.error; S.rgEdit = null; toast('✔ Règles enregistrées'); chargerPlan();
     }).catch(function (e) { toast(msgErr(e)); });

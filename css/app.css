@@ -726,3 +726,7 @@ body.mode-h .bnav{display:none}
 .h-rond.gris{border-color:var(--line);color:var(--navy);background:#fff}
 .pl-nav.clair{flex-wrap:nowrap}
 .pl-nav.clair b{min-width:0;flex:1;font-size:16px}
+.pl-c.reg{box-shadow:inset 0 0 0 2px var(--gold)}
+.pl-r{display:block;font-size:10px;color:var(--gold);font-weight:700}
+.pl-c.mix .pl-r{color:#6b5d24}
+.pl-regle{margin:0;background:var(--okbg);color:#14532d;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.35}
