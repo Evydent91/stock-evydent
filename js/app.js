@@ -1102,8 +1102,8 @@
     var avec = lignes.filter(function (r) { return r.l.length || r.d; }), sans = lignes.filter(function (r) { return !r.l.length && !r.d; });
     var titre = MOIS[+x[1] - 1].replace(/^./, function (c) { return c.toUpperCase(); }) + ' ' + x[0];
     var h = '<h2 class="a-jour">Congés du mois</h2><div class="card cgm"><div class="cgm-nav"><button class="h-rond gris" data-cgm="-1" aria-label="Mois précédent">' + ico('prec', 20, 2.4) + '</button><b>' + titre + '</b><button class="h-rond gris" data-cgm="1" aria-label="Mois suivant">' + ico('suiv', 20, 2.4) + '</button></div>';
+    if (avec.length && !avec.some(function (r) { return !r.d; })) h += '<p class="mu" style="margin:0">Personne de l’équipe n’est absent ce mois-ci.</p>';
     if (!avec.length) h += '<p class="a-vide" style="margin:6px 0">Personne n’est absent ce mois-ci.</p>';
-    if (!avec.some(function (r) { return !r.d; }) && avec.length) h += '<p class="mu" style="margin:0">Personne de l’équipe n’est absent ce mois-ci.</p>';
     else {
       var cols = 'grid-template-columns:var(--cgm-nom) repeat(' + jours.length + ',minmax(var(--cgm-j),1fr))';
       h += '<div class="cgm-scroll"><div class="cgm-g" style="' + cols + '"><span class="cgm-n cgm-h"></span>' + jours.map(function (iso) {
@@ -1129,7 +1129,7 @@
         return '<div class="cgm-li"><i class="' + (c.statut === 'attente' ? 'at' : TYPE_CL[c.type] || 'cp') + '"></i><b>' + esc(nomConge(c)) + '</b><span>' + periode(c.du, c.au) + (c.type !== 'CP' ? ' · ' + typeTxt(c.type) : '') + (c.statut === 'attente' ? ' · en attente' : '') + '</span></div>';
       }).join('') + '</div>';
     }
-    if (sans.length && avec.length) h += '<p class="mu cgm-sans">Pas d’absence dans l’équipe ce mois : ' + sans.map(function (r) { return esc(r.nom); }).join(', ') + '</p>';
+    if (sans.length && avec.some(function (r) { return !r.d; })) h += '<p class="mu cgm-sans">Pas d’absence dans l’équipe ce mois : ' + sans.map(function (r) { return esc(r.nom); }).join(', ') + '</p>';
     return h + '</div>';
   }
   function repondre(id, ok) {
