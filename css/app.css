@@ -764,3 +764,4 @@ body.ecran-ok #ver-coin{background:var(--okbg);color:var(--ok)}
 /* Les bandeaux bleus occupent toute la largeur de l'écran (l'étiquette de version est posée dessus) */
 .a-app > .a-hd,.h-app > .a-hd{box-shadow:0 0 0 100vmax var(--navy);clip-path:inset(0 -100vmax)}
 .a-app > .a-hd.fixe,.h-app > .a-hd.fixe{box-shadow:0 0 0 100vmax var(--navy),0 2px 8px rgba(31,42,51,.18)}
+.h-mini.col{flex-direction:column;align-items:stretch}
