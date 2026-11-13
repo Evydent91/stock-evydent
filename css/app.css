@@ -803,3 +803,9 @@ body.ecran-ok #ver-coin{background:var(--okbg);color:var(--ok)}
   .pl-nav:not(.clair) .pl-g.d{grid-column:1/-1;justify-self:center}
   .pl-nav:not(.clair) .pl-g.d:empty{display:none}
 }
+/* Planning : boutons Exporter / Importer et choix des mois */
+.pl-hbtns{justify-self:end;display:inline-flex;gap:8px}
+button.pl-imp{background:none;font-family:inherit}
+.pl-imp:hover{background:rgba(201,185,122,.12)}
+.pl-mois{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.pl-mo{width:100%;font-size:15px}
