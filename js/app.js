@@ -1125,8 +1125,25 @@
     if (ferie(iso)) return { a: 'FERIE', v: 1 };
     var c = congeLe(p.id, iso);
     if (c) return { a: c.type === 'AUTRE' ? 'CP' : c.type, v: 1 };
-    var t = ((p.trame || {})[j] || {})[demi === 'AM' ? 'am' : 'pm'];
+    var k = demi === 'AM' ? 'am' : 'pm', t = ((p.trame || {})[j] || {})[k];
+    // Jour en plus d'un dentiste : son assistante attitrée le suit toute la journée (sauf école), avec ses horaires habituels auprès de lui
+    var at = attitre(p), da = at && dentById(at);
+    if (da && dentExtra(da, iso) && dentPresent(da, iso) && !(t && t.a === 'ECOLE')) {
+      var hab = horairesAvec(p, 'D:' + at, k);
+      return { a: 'D:' + at, de: hab.de, fi: hab.fi, v: 1 };
+    }
     return t && t.a ? { a: t.a, de: t.de || null, fi: t.fi || null, v: 1 } : { a: 'OFF', v: 1 };
+  }
+  // Dentiste attitré d'une assistante : celui avec qui elle travaille le plus dans sa semaine type (au moins 2 jours)
+  function attitre(p) {
+    var n = {}, best = null;
+    Object.keys(p.trame || {}).forEach(function (j) { ['am', 'pm'].forEach(function (k) { var x = (p.trame[j] || {})[k]; if (x && x.a && x.a.slice(0, 2) === 'D:') n[x.a.slice(2)] = (n[x.a.slice(2)] || 0) + 1; }); });
+    Object.keys(n).forEach(function (id) { if (n[id] >= 4 && (!best || n[id] > n[best])) best = id; });
+    return best;
+  }
+  function horairesAvec(p, aff, k) {
+    for (var j = 1; j <= 5; j++) { var x = ((p.trame || {})[j] || {})[k]; if (x && x.a === aff && x.de) return { de: x.de, fi: x.fi }; }
+    return { de: null, fi: null };
   }
   // Règle d'or (rapport d'organisation § 5A) : quand le dentiste d'une assistante est absent, elle couvre d'abord
   // un dentiste présent sans assistante (en priorité ceux qui n'ont personne dans les semaines types ce jour-là,
