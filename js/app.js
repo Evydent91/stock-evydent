@@ -1205,6 +1205,10 @@
   function nomAff(a) { return ABS_TXT[a] || (a === 'OFF' ? '—' : affTxt(a)); }
   function persPlanning() { return (S.equipe || []).filter(function (p) { return p.actif; }).sort(function (a, b) { return (a.type === 'interimaire') - (b.type === 'interimaire') || (a.ordre - b.ordre); }); }
 
+  // Titre de la semaine : une touche ouvre un calendrier pour aller directement à une semaine
+  function titreCal(titre, L) {
+    return '<span class="pl-titre"><button type="button" class="pl-tbtn" data-act="plcal" aria-label="Choisir une semaine dans le calendrier">' + ico('agenda', 18, 2.2) + '<b>' + titre + '</b></button><input type="date" id="plcal" class="pl-calin" tabindex="-1" aria-hidden="true" value="' + L + '"></span>';
+  }
   function chargerSemaine(force) {
     var P = S.pl = S.pl || { lundi: lundiDe(dIso(new Date())), rows: {} };
     var de = [lundiDe(regles().depuis || P.lundi), P.lundi].sort()[0], a = addJ(P.lundi, 4);
@@ -1252,8 +1256,8 @@
     var fin = addJ(L, 4), titre = 'Semaine du ' + periode(L, fin).replace(/^du /, '');
     var h = '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" data-tab="hub">' + ico('prec', 22, 2.4) + 'Accueil</button><h1>Planning</h1>'
       + '<label class="pl-imp">' + ico('boite', 18) + '<span class="m-hide">Importer l’Excel</span><input type="file" id="plimpf" accept=".xlsm,.xlsx" hidden></label></div>'
-      + '<div class="pl-nav"><button class="h-rond" data-plsem="-7" aria-label="Semaine précédente">' + ico('prec', 20, 2.4) + '</button><b>' + titre + '</b><button class="h-rond" data-plsem="7" aria-label="Semaine suivante">' + ico('suiv', 20, 2.4) + '</button>'
-      + (lundiDe(auj) !== L ? '<button class="pl-auj" data-plsem="0">Cette semaine</button>' : '') + '</div></header>';
+      + '<div class="pl-nav"><span class="pl-g"></span><button class="h-rond" data-plsem="-7" aria-label="Semaine précédente">' + ico('prec', 20, 2.4) + '</button>' + titreCal(titre, L) + '<button class="h-rond" data-plsem="7" aria-label="Semaine suivante">' + ico('suiv', 20, 2.4) + '</button>'
+      + '<span class="pl-g d">' + (lundiDe(auj) !== L ? '<button class="pl-auj" data-plsem="0">Cette semaine</button>' : '') + '</span></div></header>';
     h += '<div class="a-corps pl-corps">';
     if (!planPret()) return h + '<div class="ban warn">Les mises à jour 009 à 011 de la base ne sont pas encore faites.</div></div>';
     if (S.plImp) h += vImportPlanning();
@@ -1519,7 +1523,7 @@
     if (!p || !(S.visible && S.visible.planning)) return h + '<p class="a-vide">Le planning n’est pas encore affiché pour les assistantes.</p></div>';
     if (!S.pl || !S.pl.de) { chargerMonPlanning(); return h + '<p class="a-vide">Chargement…</p></div>'; }
     var L = S.pl.lundi;
-    h += '<div class="pl-nav clair"><button class="h-rond gris" data-plsem="-7" aria-label="Semaine précédente">' + ico('prec', 20, 2.4) + '</button><b>Semaine du ' + periode(L, addJ(L, 4)).replace(/^du /, '') + '</b><button class="h-rond gris" data-plsem="7" aria-label="Semaine suivante">' + ico('suiv', 20, 2.4) + '</button></div><div class="a-liste">';
+    h += '<div class="pl-nav clair"><button class="h-rond gris" data-plsem="-7" aria-label="Semaine précédente">' + ico('prec', 20, 2.4) + '</button>' + titreCal('Semaine du ' + periode(L, addJ(L, 4)).replace(/^du /, ''), L) + '<button class="h-rond gris" data-plsem="7" aria-label="Semaine suivante">' + ico('suiv', 20, 2.4) + '</button></div><div class="a-liste">';
     for (var k = 0; k < 5; k++) {
       var iso = addJ(L, k), am = caseEff(p, iso, 'AM'), pm = caseEff(p, iso, 'PM'), t;
       if (am.a === pm.a) t = '<b>' + esc(nomAff(am.a)) + '</b>' + (am.de ? '<span>' + ft(am.de) + '–' + ft(am.fi) + ' · ' + ft(pm.de) + '–' + ft(pm.fi) + '</span>' : '');
@@ -2981,6 +2985,7 @@
     if (d.djour && S.df) { var dj = S.df.d.jours = S.df.d.jours || {}; if (dj[d.djour]) delete dj[d.djour]; else dj[d.djour] = true; render(); return; }
     if (d.act === 'pfcompte' && S.pf) { var pr = S.pf.d.prenom || ''; S.eqNew = { identifiant: norm(pr).replace(/[^a-z0-9]/g, ''), nom: pr, role: 'assistante', cabinet: '', lierA: S.pf.id }; S.eqEdit = null; render(); return; }
     if (d.act === 'pfdelier' && S.pf) { if (confirm('Détacher le compte de connexion de cette fiche ? Le compte reste actif, il n’est simplement plus relié au planning.')) lierCompte(S.pf.id, null); return; }
+    if (d.act === 'plcal') { var ci = document.getElementById('plcal'); if (ci) { try { if (ci.showPicker) ci.showPicker(); else { ci.focus(); ci.click(); } } catch (er) { ci.focus(); ci.click(); } } return; }
     if (d.plsem != null && S.pl) { S.pl.lundi = d.plsem === '0' ? lundiDe(dIso(new Date())) : addJ(S.pl.lundi, +d.plsem); S.pl.cas = null; if (gestion()) chargerSemaine(); else S.pl.de = null; render(); return; }
     if (d.plc) return ouvrirCase(d.plc);
     if (d.act === 'plfermer' && S.pl) { S.pl.cas = null; render(); return; }
@@ -3041,6 +3046,7 @@
     var t = e.target; if (!S.me) return;
     if (t.dataset && (t.dataset.pff || t.dataset.tr) && S.pf) { majPers(t); if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); return; }
     if (t.dataset && t.dataset.dff && S.df) { S.df.d[t.dataset.dff] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox') render(); return; }
+    if (t.id === 'plcal' && S.pl && t.value) { S.pl.lundi = lundiDe(t.value); S.pl.cas = null; if (gestion()) chargerSemaine(); else S.pl.de = null; render(); return; }
     if (t.dataset && t.dataset.pljc && S.pl && S.pl.cas) {
       var K2 = S.pl.cas; K2.jc = t.checked;
       if (t.checked && K2.PM.a !== K2.AM.a) majCase({ value: K2.AM.a && K2.AM.a !== 'OFF' ? K2.AM.a : K2.PM.a, dataset: { plk: 'J.a' } });
