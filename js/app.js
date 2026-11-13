@@ -1760,48 +1760,64 @@
   // Journal du pointage (fichier texte) : tous les événements d'une période, avec la référence du QR code
   var EVT_PT = { ARRIVEE: 'Arrivée', SORTIE: 'Sortie', DOUBLON: 'Doublon (ignoré)', QR_PERIME: 'QR périmé', NON_SOUMIS: 'Non soumis', SANS_FICHE: 'Compte non relié', SIMULATION_COUPEE: 'Simulation refusée', CORRECTION: 'Correction', EFFACEMENT: 'Effacement', QR_REGENERE: 'QR régénéré' };
   function vPtLog() {
-    var E = S.ptLog;
-    return '<div class="pl-modal" role="dialog" aria-modal="true" aria-label="Journal du pointage"><button class="pl-fond" data-act="ptlogfermer" aria-label="Fermer"></button><div class="pl-fen">'
-      + '<div class="pl-ft"><span class="a-av p">' + ico('histo', 20) + '</span><div><b>Journal du pointage</b><span class="mu">Fichier texte (.txt)</span></div><button class="h-rond gris" data-act="ptlogfermer" aria-label="Fermer">' + ico('croix', 20, 2.4) + '</button></div>'
-      + '<p class="mu" style="margin:0">Tout ce qui s’est passé sur la période : chaque scan (arrivée, sortie, doublon, QR périmé…) avec l’heure, la personne, le compte utilisé et la référence du QR code, les corrections (avant → après, par qui) et les régénérations du QR code.</p>'
-      + '<div class="h-g2"><label class="mu">Du<input class="in" type="date" id="ptlogdu" value="' + esc(E.du) + '"></label><label class="mu">Au<input class="in" type="date" id="ptlogau" value="' + esc(E.au) + '"></label></div>'
-      + '<div class="pl-btns"><button class="a-btn blanc" data-act="ptlogfermer">Annuler</button><button class="a-btn navy" data-act="ptlogok"' + (E.busy ? ' disabled' : '') + '>' + (E.busy ? 'Préparation…' : 'Télécharger le journal') + '</button></div></div></div>';
+    var E = S.ptLog, l = E.l;
+    var h = '<div class="pl-modal" role="dialog" aria-modal="true" aria-label="Journal du pointage"><button class="pl-fond" data-act="ptlogfermer" aria-label="Fermer"></button><div class="pl-fen pt-logf">'
+      + '<div class="pl-ft"><span class="a-av p">' + ico('histo', 20) + '</span><div><b>Journal du pointage</b><span class="mu">Tout ce qui s’est passé sur la période</span></div><button class="h-rond gris" data-act="ptlogfermer" aria-label="Fermer">' + ico('croix', 20, 2.4) + '</button></div>'
+      + '<div class="pt-logbar"><label class="mu">Du<input class="in" type="date" id="ptlogdu" value="' + esc(E.du) + '"></label><label class="mu">Au<input class="in" type="date" id="ptlogau" value="' + esc(E.au) + '"></label>'
+      + '<label class="mu">Personne<select class="in" id="ptlogqui"><option value="">Tout le monde</option>' + (S.equipe || []).filter(function (p) { return p.pointage || (l || []).some(function (x) { return String(x.equipe_id) === String(p.id); }); }).map(function (p) { return '<option value="' + p.id + '"' + (String(E.qui) === String(p.id) ? ' selected' : '') + '>' + esc(p.prenom) + '</option>'; }).join('') + '</select></label>'
+      + '<button class="a-btn blanc" data-act="ptlogok"' + (!l ? ' disabled' : '') + '>' + ico('sortie', 18, 2) + 'Télécharger (.txt)</button></div>';
+    if (E.err) return h + '<div class="ban warn">' + esc(E.err) + '</div></div></div>';
+    if (!l) return h + '<p class="a-vide">Chargement…</p></div></div>';
+    var v = journalFiltre(), Q = E.q;
+    h += '<p class="mu" style="margin:0">' + v.length + ' ' + pl(v.length, 'événement') + (Q ? ' · QR code en service : <b>' + esc(refQR(Q)) + '</b>' : '') + '</p>';
+    if (!v.length) return h + '<p class="a-vide">Aucun événement sur cette période.</p></div></div>';
+    h += '<div class="pt-logt"><table><thead><tr><th>Date et heure</th><th>Événement</th><th>Personne</th><th>Compte utilisé</th><th>Jour</th><th>Heure pointée</th><th>QR code</th><th>Détail</th></tr></thead><tbody>'
+      + v.map(function (x) {
+        var p = x.equipe_id ? persById(x.equipe_id) : null, k = /^(ARRIVEE|SORTIE)$/.test(x.evenement) ? 'ok' : /^(CORRECTION|EFFACEMENT|QR_REGENERE|DOUBLON)$/.test(x.evenement) ? 'neutre' : 'ko';
+        return '<tr><td>' + esc(jlDate(x.quand)) + '</td><td><span class="pt-ev ' + k + '">' + esc(EVT_PT[x.evenement] || x.evenement) + '</span></td><td>' + esc(p ? p.prenom : '') + '</td><td>' + esc(jlProfil(x.profil_id)) + '</td><td>' + esc(jlJour(x.jour)) + '</td><td>' + (x.heure_pt ? esc(jlH(x.heure_pt)) + (x.simule ? ' <small>(simulée)</small>' : '') : '') + '</td><td>' + esc(x.qr_ref || '') + '</td><td>' + esc(x.detail || '') + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+    return h + '</div></div>';
   }
-  function exporterJournalPt() {
-    var E = S.ptLog, du = $('ptlogdu').value, au = $('ptlogau').value;
-    if (!du || !au || au < du) { toast('Choisissez une période valide'); return; }
-    E.du = du; E.au = au; E.busy = true; render();
-    var debut = dDe(du).toISOString(), fin = dDe(addJ(au, 1)).toISOString();
+  function jlDate(ts) { var d = new Date(ts); return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear() + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); }
+  function jlH(ts) { var d = new Date(ts); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+  function jlJour(iso) { return iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : ''; }
+  function jlProfil(id) { var p = (S.profils || []).filter(function (x) { return x.id === id; })[0]; return p ? p.nom + ' (' + p.identifiant + ')' : id ? 'compte ' + String(id).slice(0, 8) : ''; }
+  function journalFiltre() { var E = S.ptLog; return (E.l || []).filter(function (x) { return !E.qui || String(x.equipe_id) === String(E.qui); }); }
+  function chargerJournalPt() {
+    var E = S.ptLog; if (!E.du || !E.au || E.au < E.du) { toast('Choisissez une période valide'); return; }
+    E.l = null; E.err = null; render();
+    var debut = dDe(E.du).toISOString(), fin = dDe(addJ(E.au, 1)).toISOString(), cle = E.du + E.au; E.cle = cle;
     Promise.all([
-      toutLire('pointage_journal', '*', function (q) { return q.gte('jour', du).lte('jour', au); }),
+      toutLire('pointage_journal', '*', function (q) { return q.gte('jour', E.du).lte('jour', E.au); }),
       toutLire('pointage_journal', '*', function (q) { return q.is('jour', null).gte('quand', debut).lt('quand', fin); }),
       sb.from('pointage_cle').select('*').eq('id', 1).maybeSingle()
     ]).then(function (r) {
-      var vus = {}, l = r[0].concat(r[1]).filter(function (x) { if (vus[x.id]) return false; vus[x.id] = 1; return true; }).sort(function (a, b) { return a.quand < b.quand ? -1 : a.quand > b.quand ? 1 : a.id - b.id; });
-      var dt = function (ts) { var d = new Date(ts); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2) + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); };
-      var hh = function (ts) { var d = new Date(ts); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); };
-      var jf = function (iso) { return iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : ''; };
-      var col = function (t, n) { t = String(t == null ? '' : t); return t.length >= n ? t.slice(0, n - 1) + ' ' : t + new Array(n - t.length + 1).join(' '); };
-      var prof = function (id) { var p = (S.profils || []).filter(function (x) { return x.id === id; })[0]; return p ? p.nom + ' (' + p.identifiant + ')' : id ? 'compte ' + String(id).slice(0, 8) : ''; };
-      var Q = r[2] && r[2].data, mtn = new Date();
-      var tete = ['JOURNAL DU POINTAGE — Espace dentaire Val d’Yerres' + (CONFIG.env === 'dev' ? ' — SITE DE TEST' : ''),
-        'Période : du ' + jf(du) + ' au ' + jf(au),
-        'Exporté le ' + jf(dIso(mtn)) + ' à ' + hh(mtn.toISOString()) + ' par ' + S.me.nom,
-        'QR code en service : ' + (Q ? refQR(Q) + ' (créé le ' + jf(dIso(new Date(Q.cree_le))) + ' à ' + hh(Q.cree_le) + ')' : '—'),
-        'Événements : ' + l.length,
-        'Heures en heure de Paris. « Heure pointée » = heure enregistrée (différente de l’heure réelle si simulée).',
-        new Array(150).join('-'),
-        col('DATE ET HEURE', 21) + col('ÉVÉNEMENT', 20) + col('PERSONNE', 14) + col('COMPTE UTILISÉ', 26) + col('JOUR', 12) + col('POINTÉE', 16) + col('QR CODE', 20) + 'DÉTAIL',
-        new Array(150).join('-')];
-      var lignes = l.map(function (x) {
-        var p = x.equipe_id ? persById(x.equipe_id) : null;
-        return col(dt(x.quand), 21) + col(EVT_PT[x.evenement] || x.evenement, 20) + col(p ? p.prenom : x.equipe_id ? '#' + x.equipe_id : '', 14) + col(prof(x.profil_id), 26) + col(jf(x.jour), 12)
-          + col(x.heure_pt ? hh(x.heure_pt) + (x.simule ? ' (simulée)' : '') : '', 16) + col(x.qr_ref || '', 20) + (x.detail || '');
-      });
-      var txt = '﻿' + tete.concat(lignes.length ? lignes : ['(aucun événement sur cette période)']).join('\r\n') + '\r\n';
-      telecharger(new Blob([txt], { type: 'text/plain;charset=utf-8' }), 'journal-pointage-' + du + '-au-' + au + (CONFIG.env === 'dev' ? '-TEST' : '') + '.txt');
-      S.ptLog = null; toast('✔ Journal téléchargé (' + l.length + ' ' + pl(l.length, 'événement') + ')'); render();
-    }).catch(function (e) { E.busy = false; toast(/pointage_journal/.test(String(e && e.message)) ? 'La mise à jour 018 de la base n’est pas encore faite' : msgErr(e)); render(); });
+      if (!S.ptLog || S.ptLog.cle !== cle) return;
+      var vus = {}; E.l = r[0].concat(r[1]).filter(function (x) { if (vus[x.id]) return false; vus[x.id] = 1; return true; }).sort(function (a, b) { return a.quand < b.quand ? -1 : a.quand > b.quand ? 1 : a.id - b.id; });
+      E.q = r[2] && r[2].data; render();
+    }).catch(function (e) { if (!S.ptLog) return; E.err = /pointage_journal/.test(String(e && e.message)) ? 'La mise à jour 018 de la base n’est pas encore faite.' : msgErr(e); render(); });
+  }
+  function exporterJournalPt() {
+    var E = S.ptLog, l = journalFiltre(), Q = E.q, mtn = new Date();
+    var col = function (t, n) { t = String(t == null ? '' : t); return t.length >= n ? t.slice(0, n - 1) + ' ' : t + new Array(n - t.length + 1).join(' '); };
+    var qui = E.qui ? persById(E.qui) : null;
+    var tete = ['JOURNAL DU POINTAGE — Espace dentaire Val d’Yerres' + (CONFIG.env === 'dev' ? ' — SITE DE TEST' : ''),
+      'Période : du ' + jlJour(E.du) + ' au ' + jlJour(E.au) + (qui ? ' · ' + qui.prenom : ''),
+      'Exporté le ' + jlDate(mtn.toISOString()) + ' par ' + S.me.nom,
+      'QR code en service : ' + (Q ? refQR(Q) + ' (créé le ' + jlDate(Q.cree_le) + ')' : '—'),
+      'Événements : ' + l.length,
+      'Heures en heure de Paris. « Pointée » = heure enregistrée (différente de l’heure réelle si simulée).',
+      new Array(150).join('-'),
+      col('DATE ET HEURE', 21) + col('ÉVÉNEMENT', 20) + col('PERSONNE', 14) + col('COMPTE UTILISÉ', 26) + col('JOUR', 12) + col('POINTÉE', 16) + col('QR CODE', 20) + 'DÉTAIL',
+      new Array(150).join('-')];
+    var lignes = l.map(function (x) {
+      var p = x.equipe_id ? persById(x.equipe_id) : null;
+      return col(jlDate(x.quand), 21) + col(EVT_PT[x.evenement] || x.evenement, 20) + col(p ? p.prenom : x.equipe_id ? '#' + x.equipe_id : '', 14) + col(jlProfil(x.profil_id), 26) + col(jlJour(x.jour), 12)
+        + col(x.heure_pt ? jlH(x.heure_pt) + (x.simule ? ' (simulée)' : '') : '', 16) + col(x.qr_ref || '', 20) + (x.detail || '');
+    });
+    var txt = '﻿' + tete.concat(lignes.length ? lignes : ['(aucun événement sur cette période)']).join('\r\n') + '\r\n';
+    telecharger(new Blob([txt], { type: 'text/plain;charset=utf-8' }), 'journal-pointage-' + E.du + '-au-' + E.au + (qui ? '-' + norm(qui.prenom) : '') + (CONFIG.env === 'dev' ? '-TEST' : '') + '.txt');
+    toast('✔ Journal téléchargé (' + l.length + ' ' + pl(l.length, 'événement') + ')');
   }
   function imprimerQR() {
     var Q = S.ptQR; if (!Q || !Q.jeton) return;
@@ -3691,7 +3707,7 @@
     if (d.act === 'simscan') { var jt0 = ''; try { jt0 = localStorage.getItem('evy-jeton-test') || ''; } catch (e) {} if (jt0) { JETON_QR = jt0; pointerQR(); } return; }
     if (d.act === 'simgestion') return basculerSimulation();
     if (d.act === 'ptqr') return ouvrirQR();
-    if (d.act === 'ptlog' && S.ptg) { var lL = lundiDe(S.ptg.jour); S.ptLog = S.ptg.mode === 'jour' ? { du: S.ptg.jour, au: S.ptg.jour } : { du: lL, au: addJ(lL, 6) }; render(); return; }
+    if (d.act === 'ptlog' && S.ptg) { var lL = lundiDe(S.ptg.jour); S.ptLog = S.ptg.mode === 'jour' ? { du: S.ptg.jour, au: S.ptg.jour } : { du: lL, au: addJ(lL, 6) }; chargerJournalPt(); return; }
     if (d.act === 'ptlogfermer') { S.ptLog = null; render(); return; }
     if (d.act === 'ptlogok' && S.ptLog) return exporterJournalPt();
     if (d.act === 'ptqrfermer') { S.ptQR = null; render(); return; }
@@ -3771,6 +3787,8 @@
     if (t.dataset && (t.dataset.pff || t.dataset.tr) && S.pf) { majPers(t); if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); return; }
     if (t.dataset && t.dataset.dff && S.df) { S.df.d[t.dataset.dff] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox') render(); return; }
     if (t.dataset && t.dataset.ddep && S.df) { var jj = S.df.d.jours = S.df.d.jours || {}; jj[t.dataset.ddep] = t.value ? t.value : true; render(); return; }
+    if ((t.id === 'ptlogdu' || t.id === 'ptlogau') && S.ptLog) { S.ptLog[t.id === 'ptlogdu' ? 'du' : 'au'] = t.value; chargerJournalPt(); return; }
+    if (t.id === 'ptlogqui' && S.ptLog) { S.ptLog.qui = t.value; render(); return; }
     if ((t.id === 'simj' || t.id === 'simh') && CONFIG.env === 'dev') { S.sim = S.sim || {}; S.sim[t.id === 'simj' ? 'jour' : 'heure'] = t.value; if (S.sim.jour && !S.sim.heure) S.sim.heure = '08:30'; if (S.sim.heure && !S.sim.jour) S.sim.jour = dIso(new Date()); try { sessionStorage.setItem('evy-sim', JSON.stringify(S.sim)); } catch (e) {} chargerMonPointage(); render(); return; }
     if ((t.id === 'offdu' || t.id === 'offau') && S.offEd) { S.offEd[t.id === 'offdu' ? 'du' : 'au'] = t.value; render(); return; }
     if (t.id === 'plcal' && S.pl && t.value) { S.pl.lundi = lundiDe(t.value); S.pl.cas = null; if (gestion()) chargerSemaine(); else S.pl.de = null; render(); return; }
