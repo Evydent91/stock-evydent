@@ -352,6 +352,8 @@
 
   // ---------- Icônes dessinées (les mêmes que la maquette) ----------
   var SVGI = {
+    bas: '<path d="M6 9l6 6 6-6"/>',
+    haut: '<path d="M6 15l6-6 6 6"/>',
     graph: '<path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/>',
     crayon: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
     poubelle: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
@@ -945,9 +947,11 @@
       + '<div><span class="mu">Jours de présence habituels</span><div class="h-jours">' + [1, 2, 3, 4, 5].map(function (j) { return '<button type="button" class="h-jbtn' + (d.jours && d.jours[j] ? ' on' : '') + '" data-djour="' + j + '" aria-pressed="' + !!(d.jours && d.jours[j]) + '">' + JC[j] + '</button>'; }).join('') + '</div></div>'
       + '<label class="mu">Spécificités<textarea class="in" rows="2" data-dff="note" placeholder="Ex. : + 1 mercredi par mois">' + esc(d.note || '') + '</textarea></label>'
       + '<label class="row"><input type="checkbox" data-dff="actif"' + (d.actif ? ' checked' : '') + ' style="width:20px;height:20px;flex:none"><span>Travaille au centre <span class="mu">(décocher pour un ancien dentiste)</span></span></label></div>';
-    if (!nouv) h += '<h2 class="a-jour">Assistantes (semaine type)</h2><div class="a-liste">' + [1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j] || as[j]; }).map(function (j) {
-      return '<div class="a-li"><span class="a-it-n"><b>' + JOURS[j] + '</b>' + (as[j] ? '<span>' + as[j].map(esc).join(', ') + '</span>' : '<span class="warn">pas d’assistante</span>') + '</span></div>';
-    }).join('') + '</div><p class="a-aide">Pour changer, modifiez la semaine type de l’assistante (Réglages › L’équipe).</p>';
+    if (!nouv) h += '<h2 class="a-jour">Jours de présence et assistantes</h2><div class="a-liste">' + [1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j] || as[j]; }).map(function (j) {
+      var pres = d.jours && d.jours[j], dep = typeof pres === 'string' ? pres : '';
+      return '<div class="a-li h-djl"><span class="a-it-n"><b>' + JOURS[j] + '</b>' + (as[j] ? '<span>' + as[j].map(esc).join(', ') + '</span>' : '<span class="warn">pas d’assistante</span>') + '</span>'
+        + (pres ? '<label class="h-dep"><span>Départ anticipé</span><input class="in" type="time" data-ddep="' + j + '" value="' + esc(dep) + '" aria-label="Départ anticipé le ' + JOURS[j].toLowerCase() + ' (vide = heure normale)"></label>' : '<span class="mu">pas présent</span>') + '</div>';
+    }).join('') + '</div><p class="a-aide">Départ anticipé : laissez vide s’il finit à l’heure habituelle. Il s’affiche dans le planning sur la case de son assistante, qui garde ses horaires. Pour changer les assistantes, modifiez leur semaine type (Réglages › L’équipe).</p>';
     if (!nouv) h += blocExtra(d);
     h += '<h2 class="a-jour">Congés</h2>' + (nouv ? '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>' : blocConges(true, F.id, d)) + '<h2 class="a-jour">Formations</h2>' + (nouv ? '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>' : blocConges(true, F.id, d, true));
     return h + '</div>';
@@ -962,7 +966,10 @@
       if (js.length) mois.push({ n: MOIS[mo], js: js });
     }
     var plusieurs = [1, 2, 3, 4, 5].filter(function (j) { return !(d.jours && d.jours[j]); }).length > 1;
-    var h = '<h2 class="a-jour">Jours en plus</h2><div class="card h-ex"><p class="mu" style="margin:0 0 4px">Touchez un jour où le Dr ' + esc(d.prenom) + ' vient en plus de ses jours habituels. Le planning en tient compte tout de suite.</p>';
+    var futurs = ex.filter(function (i) { return i >= auj; }), ouvert = S.df && S.df.exOuvert;
+    var h = '<h2 class="a-jour">Jours en plus</h2><div class="card h-ex"><button type="button" class="h-pli" data-act="exouvre" aria-expanded="' + !!ouvert + '"><span><b>' + (futurs.length ? futurs.length + ' ' + pl(futurs.length, 'jour') + ' prévu' + (futurs.length > 1 ? 's' : '') : 'Aucun jour prévu') + '</b><span class="mu">' + (futurs.length ? futurs.slice(0, 4).map(jourCourt).join(' · ') + (futurs.length > 4 ? '…' : '') : 'Touchez pour choisir des jours') + '</span></span>' + ico(ouvert ? 'haut' : 'bas', 20, 2.4) + '</button>';
+    if (!ouvert) return h + '</div>';
+    h += '<p class="mu" style="margin:0 0 4px">Touchez un jour où le Dr ' + esc(d.prenom) + ' vient en plus de ses jours habituels. Le planning en tient compte tout de suite.</p>';
     h += mois.map(function (M) {
       var choisis = M.js.filter(function (i) { return ex.indexOf(i) >= 0; });
       var etat = choisis.length ? '<span class="h-ex-ok">✓ ' + choisis.map(function (i) { return (plusieurs ? JOURS[jourSem(i)].toLowerCase() + ' ' : '') + (+i.slice(8)); }).join(', ') + ' ' + M.n + '</span>' : '<span class="h-ex-ko">à choisir</span>';
@@ -1078,14 +1085,49 @@
         + (ch.length ? '<p class="warn-t" style="margin:0">Aussi absent' + (ch.length > 1 ? 's' : '') + ' sur cette période : ' + ch.map(function (o) { return esc(nomConge(o)) + ' (' + periode(o.du, o.au) + (o.statut === 'attente' ? ', en attente' : '') + ')'; }).join(', ') + '</p>' : '')
         + '<div class="h-cg-b"><button class="a-btn blanc" data-crefus="' + c.id + '">Refuser</button><button class="a-btn vert" data-cok="' + c.id + '">Accepter</button></div></div>';
     }).join('') : '<p class="a-vide">Aucune demande en attente.</p>';
-    var auj = dIso(new Date());
-    var proch = (S.conges || []).filter(function (c) { return c.statut === 'accepte' && c.au >= auj; }).sort(function (a, b) { return a.du < b.du ? -1 : 1; }).slice(0, 40);
-    h += '<h2 class="a-jour">Prochains congés de l’équipe et des dentistes</h2>';
-    h += proch.length ? '<div class="a-liste">' + proch.map(function (c) {
-      var qui = c.dentiste_id ? 'dentiste' : c.traite_par ? (c.demande_par ? 'accepté par ' : 'saisi par ') + esc(nomProfil(c.traite_par)) : '';
-      return '<div class="a-li"><span class="a-it-n"><b>' + esc(nomConge(c)) + '</b><span>' + periode(c.du, c.au) + (c.type !== 'CP' ? ' · ' + typeTxt(c.type) : '') + '</span></span><span class="h-qui">' + qui + '</span></div>';
-    }).join('') + '</div>' : '<p class="a-vide">Aucun congé prévu.</p>';
+    h += vMoisConges();
     return h + '<p class="a-aide">Pour saisir directement des congés (ou un arrêt, une formation), ouvrez la fiche de la personne ou du dentiste dans Réglages.</p></div>';
+  }
+  // Congés : planning synthétique du mois (une ligne par personne, une colonne par jour ouvré)
+  var TYPE_CL = { CP: 'cp', ARRET: 'ar', FORMATION: 'fo', ECOLE: 'ec', AUTRE: 'cp' };
+  function vMoisConges() {
+    var auj = dIso(new Date()), M = S.cgMois = S.cgMois || auj.slice(0, 7), x = M.split('-'), dn = new Date(+x[0], +x[1], 0).getDate(), jours = [];
+    for (var i = 1; i <= dn; i++) { var iso = M + '-' + ('0' + i).slice(-2), j = jourSem(iso); if (j >= 1 && j <= 5) jours.push(iso); }
+    var du = jours[0], au = jours[jours.length - 1];
+    var cs = (S.conges || []).filter(function (c) { return (c.statut === 'accepte' || c.statut === 'attente') && c.du <= au && c.au >= du; });
+    var lignes = [];
+    (S.equipe || []).filter(function (p) { return p.actif; }).sort(function (a, b) { return a.ordre - b.ordre; }).forEach(function (p) { lignes.push({ nom: p.type === 'interimaire' ? 'Intérimaire' : p.prenom, ouv: 'data-pf="' + p.id + '"', l: cs.filter(function (c) { return String(c.equipe_id) === String(p.id); }), d: false }); });
+    (S.dentistes || []).filter(function (d) { return d.actif; }).sort(function (a, b) { return a.ordre - b.ordre; }).forEach(function (d) { lignes.push({ nom: 'Dr ' + d.prenom, ouv: 'data-dent="' + d.id + '"', l: cs.filter(function (c) { return String(c.dentiste_id) === String(d.id); }), d: true }); });
+    var avec = lignes.filter(function (r) { return r.l.length; }), sans = lignes.filter(function (r) { return !r.l.length; });
+    var titre = MOIS[+x[1] - 1].replace(/^./, function (c) { return c.toUpperCase(); }) + ' ' + x[0];
+    var h = '<h2 class="a-jour">Congés du mois</h2><div class="card cgm"><div class="cgm-nav"><button class="h-rond gris" data-cgm="-1" aria-label="Mois précédent">' + ico('prec', 20, 2.4) + '</button><b>' + titre + '</b><button class="h-rond gris" data-cgm="1" aria-label="Mois suivant">' + ico('suiv', 20, 2.4) + '</button></div>';
+    if (!avec.length) h += '<p class="a-vide" style="margin:6px 0">Personne n’est absent ce mois-ci.</p>';
+    else {
+      var cols = 'grid-template-columns:var(--cgm-nom) repeat(' + jours.length + ',minmax(var(--cgm-j),1fr))';
+      h += '<div class="cgm-scroll"><div class="cgm-g" style="' + cols + '"><span class="cgm-n cgm-h"></span>' + jours.map(function (iso) {
+        var j = jourSem(iso); return '<span class="cgm-h' + (j === 1 ? ' lun' : '') + (iso === auj ? ' auj' : '') + '"><small>' + JC[j][0] + '</small>' + (+iso.slice(8)) + '</span>';
+      }).join('');
+      var groupe = null;
+      avec.forEach(function (r) {
+        if (groupe !== r.d) { groupe = r.d; h += '<span class="cgm-gr" style="grid-column:1/-1">' + (r.d ? 'Dentistes' : 'Équipe') + '</span>'; }
+        h += '<button class="cgm-n" ' + r.ouv + '>' + esc(r.nom) + '</button>';
+        jours.forEach(function (iso) {
+          var c = r.l.filter(function (y) { return y.du <= iso && y.au >= iso; })[0], f = ferie(iso), j = jourSem(iso);
+          var cl = 'cgm-c' + (j === 1 ? ' lun' : '') + (iso === auj ? ' auj' : '');
+          if (c) { var deb = c.du === iso || j === 1 || iso === du, fin = c.au === iso || j === 5 || iso === au; cl += ' ' + (c.statut === 'attente' ? 'at' : TYPE_CL[c.type] || 'cp') + (deb ? ' deb' : '') + (fin ? ' fin' : ''); }
+          else if (f) cl += ' fe';
+          h += '<span class="' + cl + '" title="' + esc(c ? r.nom + ' · ' + (c.statut === 'attente' ? 'demande en attente · ' : '') + typeTxt(c.type) + ' ' + periode(c.du, c.au) : f ? 'Férié : ' + f : '') + '"></span>';
+        });
+      });
+      h += '</div></div>';
+      h += '<div class="cgm-leg"><span><i class="cp"></i>Congés</span><span><i class="ar"></i>Maladie</span><span><i class="fo"></i>Formation</span><span><i class="at"></i>En attente</span><span><i class="fe"></i>Férié</span></div>';
+      // Liste lisible du mois, sous la grille
+      h += '<div class="cgm-liste">' + cs.slice().sort(function (a, b) { return a.du < b.du ? -1 : a.du > b.du ? 1 : nomConge(a) < nomConge(b) ? -1 : 1; }).map(function (c) {
+        return '<div class="cgm-li"><i class="' + (c.statut === 'attente' ? 'at' : TYPE_CL[c.type] || 'cp') + '"></i><b>' + esc(nomConge(c)) + '</b><span>' + periode(c.du, c.au) + (c.type !== 'CP' ? ' · ' + typeTxt(c.type) : '') + (c.statut === 'attente' ? ' · en attente' : '') + '</span></div>';
+      }).join('') + '</div>';
+    }
+    if (sans.length && avec.length) h += '<p class="mu cgm-sans">Pas d’absence ce mois : ' + sans.map(function (r) { return esc(r.nom); }).join(', ') + '</p>';
+    return h + '</div>';
   }
   function repondre(id, ok) {
     var rep = null;
@@ -1438,7 +1480,8 @@
       var demi = function (c) { return '<span class="pl-d' + (ab(c) ? ' abs' : c.a === 'OFF' ? ' off' : '') + '"><b>' + (c.off ? 'Off' : esc(nomAff(c.a))) + '</b>' + (c.de ? ' ' + ft(c.de) + '–' + ft(c.fi) : '') + '</span>'; };
       cls += ' mix'; h = demi(am) + demi(pm);
     }
-    var rg = am.r || pm.r;
+    var rg = am.r || pm.r, dpt = pm.a && pm.a.slice(0, 2) === 'D:' ? dentById(pm.a.slice(2)) : null, hd = dpt && dpt.jours && dpt.jours[jourSem(iso)];
+    if (typeof hd === 'string' && hd) h += '<small class="pl-r dep">Dr ' + esc(dpt.prenom) + ' part à ' + ft(hd) + '</small>';
     if (rg) { cls += ' reg'; h += '<small class="pl-r">' + esc(affTxt(rg)) + ' absent</small>'; }
     return '<button class="' + cls + '" data-plc="' + p.id + '|' + iso + '" aria-label="' + esc(p.prenom) + ', ' + JOURS[jourSem(iso)] + '">' + h + '</button>';
   }
@@ -3291,6 +3334,8 @@
     if (d.act === 'dfsave') return sauverDent();
     if (d.dextra) return basculerExtra(d.dextra);
     if (d.djour && S.df) { var dj = S.df.d.jours = S.df.d.jours || {}; if (dj[d.djour]) delete dj[d.djour]; else dj[d.djour] = true; render(); return; }
+    if (d.cgm) { var cx = (S.cgMois || dIso(new Date()).slice(0, 7)).split('-'), cdt = new Date(+cx[0], +cx[1] - 1 + (+d.cgm), 1); S.cgMois = cdt.getFullYear() + '-' + ('0' + (cdt.getMonth() + 1)).slice(-2); render(); return; }
+    if (d.act === 'exouvre' && S.df) { S.df.exOuvert = !S.df.exOuvert; render(); return; }
     if (d.act === 'pfcompte' && S.pf) { var pr = S.pf.d.prenom || ''; S.eqNew = { identifiant: norm(pr).replace(/[^a-z0-9]/g, ''), nom: pr, role: 'assistante', cabinet: '', lierA: S.pf.id }; S.eqEdit = null; render(); return; }
     if (d.act === 'pfdelier' && S.pf) { if (confirm('Détacher le compte de connexion de cette fiche ? Le compte reste actif, il n’est simplement plus relié au planning.')) lierCompte(S.pf.id, null); return; }
     if (d.act === 'plcal') { var ci = document.getElementById('plcal'); if (ci) { try { if (ci.showPicker) ci.showPicker(); else { ci.focus(); ci.click(); } } catch (er) { ci.focus(); ci.click(); } } return; }
@@ -3363,6 +3408,7 @@
     var t = e.target; if (!S.me) return;
     if (t.dataset && (t.dataset.pff || t.dataset.tr) && S.pf) { majPers(t); if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); return; }
     if (t.dataset && t.dataset.dff && S.df) { S.df.d[t.dataset.dff] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox') render(); return; }
+    if (t.dataset && t.dataset.ddep && S.df) { var jj = S.df.d.jours = S.df.d.jours || {}; jj[t.dataset.ddep] = t.value ? t.value : true; render(); return; }
     if ((t.id === 'offdu' || t.id === 'offau') && S.offEd) { S.offEd[t.id === 'offdu' ? 'du' : 'au'] = t.value; render(); return; }
     if (t.id === 'plcal' && S.pl && t.value) { S.pl.lundi = lundiDe(t.value); S.pl.cas = null; if (gestion()) chargerSemaine(); else S.pl.de = null; render(); return; }
     if (t.dataset && t.dataset.pljc && S.pl && S.pl.cas) {
