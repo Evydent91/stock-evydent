@@ -1632,14 +1632,17 @@
   // comprise entre l'arrivée et la sortie)
   function calculJour(p, iso, r) {
     var am = caseEff(p, iso, 'AM'), pm = caseEff(p, iso, 'PM'), trav = function (c) { return c.a && c.a !== 'OFF' && ABS.indexOf(c.a) < 0; };
-    var prevu = (trav(am) ? dureeDemi(am) : 0) + (trav(pm) ? dureeDemi(pm) : 0), absTxt = ABS.indexOf(am.a) >= 0 ? ABS_TXT[am.a] : ABS.indexOf(pm.a) >= 0 ? ABS_TXT[pm.a] : null;
-    var hor = [trav(am) && am.de ? ft(am.de) + '–' + ft(am.fi) : '', trav(pm) && pm.de ? ft(pm.de) + '–' + ft(pm.fi) : ''].filter(Boolean).join(' · ');
-    var o = { prevu: prevu, hor: hor || (absTxt || (am.off || pm.off ? 'Jour off' : 'Ne travaille pas')), absTxt: absTxt, travaille: prevu > 0, pauseMin: 0, effMin: null };
+    // École et formation : comptées dans le prévu et dans le temps effectif (heures de la règle), sans pointage
+    var compte = function (c) { return c.a === 'ECOLE' || c.a === 'FORMATION'; };
+    var hEF = (compte(am) ? heuresDemi(p, iso, 'AM', am) : 0) + (compte(pm) ? heuresDemi(p, iso, 'PM', pm) : 0);
+    var travH = (trav(am) ? dureeDemi(am) : 0) + (trav(pm) ? dureeDemi(pm) : 0), prevu = travH + hEF, absTxt = ABS.indexOf(am.a) >= 0 ? ABS_TXT[am.a] : ABS.indexOf(pm.a) >= 0 ? ABS_TXT[pm.a] : null;
+    var hor = [trav(am) && am.de ? ft(am.de) + '–' + ft(am.fi) : compte(am) ? ABS_TXT[am.a] + (am.a === pm.a ? '' : ' le matin') : '', trav(pm) && pm.de ? ft(pm.de) + '–' + ft(pm.fi) : compte(pm) && pm.a !== am.a ? ABS_TXT[pm.a] + ' l’après-midi' : ''].filter(Boolean).join(' · ');
+    var o = { prevu: prevu, hEF: hEF, hor: hor || (absTxt || (am.off || pm.off ? 'Jour off' : 'Ne travaille pas')), absTxt: absTxt, travaille: travH > 0, pauseMin: 0, effMin: !travH && hEF ? Math.round(hEF * 60) : null };
     var p1 = trav(am) ? enMin(am.fi) : null, p2 = trav(pm) ? enMin(pm.de) : null;
     if (r && r.arrivee && r.sortie) {
       var a = minLoc(r.arrivee), b = minLoc(r.sortie); if (b < a) b = a;
       if (p1 != null && p2 != null && p2 > p1) o.pauseMin = Math.max(0, Math.min(b, p2) - Math.max(a, p1));
-      o.effMin = b - a - o.pauseMin;
+      o.effMin = b - a - o.pauseMin + Math.round(hEF * 60);
     }
     return o;
   }
@@ -1678,7 +1681,7 @@
         + '<span><b>' + esc(c.hor) + '</b>' + (c.prevu ? '<small>' + fh(c.prevu) + '</small>' : '') + '</span>'
         + '<b>' + (r && r.arrivee ? hTs(r.arrivee) : '—') + '</b><b>' + (r && r.sortie ? hTs(r.sortie) : '—') + '</b>'
         + '<span>' + (c.effMin != null ? (c.pauseMin ? fMin(c.pauseMin) : '0h00') : '') + '</span>'
-        + '<span>' + (c.effMin != null ? '<b class="pt-eff">' + fh(c.effMin / 60) + '</b>' : et ? '<span class="pt-et ' + et.k + '">' + et.t + '</span>' : '<span class="mu">—</span>') + '</span>'
+        + '<span>' + (c.effMin != null ? '<b class="pt-eff">' + fh(c.effMin / 60) + '</b>' + (c.hEF ? '<small>dont ' + (c.absTxt || 'école').toLowerCase() + ' ' + fh(c.hEF) + '</small>' : '') : et ? '<span class="pt-et ' + et.k + '">' + et.t + '</span>' : '<span class="mu">—</span>') + '</span>'
         + '<b class="' + hrCouleur(ec) + '">' + (ec == null ? '' : Math.abs(ec) < 0.01 ? '0 h' : relTxt(ec)) + '</b></button>';
     });
     return h + '</div></div></section>' + (tot ? '<p class="mu" style="margin:0">Total des journées complètes : <b>' + fh(tot / 60) + '</b> pour ' + fh(totP) + ' prévues.</p>' : '');
@@ -1692,7 +1695,7 @@
       for (var k = 0; k < 5; k++) {
         var iso = addJ(L, k), r = S.ptg.rows[p.id + '|' + iso], c = calculJour(p, iso, r), et = etatPointage(p, iso, r, c);
         tp += c.prevu; if (c.effMin != null) { te += c.effMin; tpp += c.prevu; } else if (c.travaille && iso < auj) manq++;
-        h += '<button class="pt-sc" data-pted="' + p.id + '|' + iso + '">' + (c.effMin != null ? '<b>' + fh(c.effMin / 60) + '</b><small>' + hTs(r.arrivee).replace(' h ', 'h') + '–' + hTs(r.sortie).replace(' h ', 'h') + '</small>' : et ? '<span class="pt-et ' + et.k + '">' + et.t + '</span>' : '<small class="mu">' + esc(c.absTxt || (c.travaille ? '—' : 'repos')) + '</small>') + '</button>';
+        h += '<button class="pt-sc" data-pted="' + p.id + '|' + iso + '">' + (c.effMin != null ? '<b>' + fh(c.effMin / 60) + '</b><small>' + (r && r.arrivee && r.sortie ? hTs(r.arrivee).replace(' h ', 'h') + '–' + hTs(r.sortie).replace(' h ', 'h') + (c.hEF ? ' + ' + c.absTxt.toLowerCase() : '') : esc(c.absTxt || '')) + '</small>' : et ? '<span class="pt-et ' + et.k + '">' + et.t + '</span>' : '<small class="mu">' + esc(c.absTxt || (c.travaille ? '—' : 'repos')) + '</small>') + '</button>';
       }
       var ec = te / 60 - tpp;
       h += '<b>' + fh(te / 60) + '</b><span>' + fh(tp) + '</span><span class="pt-ec"><b class="' + hrCouleur(tpp ? ec : null) + '">' + (!tpp ? '—' : Math.abs(ec) < 0.01 ? '0 h' : relTxt(ec)) + '</b>' + (manq ? '<small class="ko">' + manq + ' jour' + (manq > 1 ? 's' : '') + ' sans pointage complet</small>' : '') + '</span></div>';
