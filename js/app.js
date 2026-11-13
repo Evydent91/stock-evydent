@@ -126,6 +126,7 @@
       if (S.inv.emp == null && S.me.cabinet) choisirEmp(S.me.cabinet);
       if (!S.tabChoisi) S.tab = gestion() ? 'hub' : 'maison';
       S.histTous = gestion();
+      if (JETON_QR) pointerQR();
       return charger();
     });
   }
@@ -199,6 +200,7 @@
       app.innerHTML = '<div class="lg"><div class="lg-top"></div><div class="lg-in"><div class="lg-card"><h1>Compte non activé</h1><p>Votre connexion fonctionne, mais votre compte n’a pas encore de profil actif dans l’application. Demandez à la responsable des achats ou à la référente de l’activer.</p><button class="btn l" id="bout">Se déconnecter</button></div></div></div>';
       $('bout').onclick = deconnexion; return;
     }
+    if (S.ptRes) { app.innerHTML = vResultatPointage(); document.body.classList.remove('mode-h', 'mode-a'); return; }
     if (gestion() && HUB.indexOf(S.tab) >= 0) {
       poser(app, renderH());
       document.body.classList.remove('mode-a', 'ecran-ok', 'sans-nav'); document.body.classList.add('mode-h');
@@ -352,6 +354,7 @@
 
   // ---------- Icônes dessinées (les mêmes que la maquette) ----------
   var SVGI = {
+    qr: '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path d="M14 14h2v2h-2zM18 14h2M14 18v2h2M18 18h2v2"/>',
     bas: '<path d="M6 9l6 6 6-6"/>',
     haut: '<path d="M6 15l6-6 6 6"/>',
     graph: '<path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/>',
@@ -639,7 +642,7 @@
 
   // ---------- Accueil de la référente et de la responsable (2 tuiles), Réglages, Équipe, Dentistes ----------
   // Écrans de la maquette « Accueil référente et responsable ». Chaque écran a son en-tête bleu.
-  var HUB = ['hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures'];
+  var HUB = ['hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage'];
   var JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'], JC = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
   // Affectations possibles d'une demi-journée (en plus des dentistes)
   var CODES = [['ADMIN', 'Admin'], ['STE', 'Sté'], ['ACCUEIL', 'Accueil'], ['ADMIN_ORTHO', 'Admin ortho'], ['RANGEMENT', 'Rangement'], ['NETTOYAGE', 'Nettoyage cab.'], ['ECOLE', 'École'], ['OFF', 'Ne travaille pas']];
@@ -675,8 +678,8 @@
       + (ca ? '<button class="h-alerte" data-tab="pconges">' + ico('attente', 22) + '<span><b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à valider</span>' + ico('suiv', 20, 2.4) + '</button>' : '')
       + '<div class="h-tuiles">'
       + '<button class="h-tuile fonce" data-tab="accueil"><span class="ti">' + ico('boite', 34) + '</span><span class="tt"><b>Gestion de stock</b><span>' + (sous.length ? sous.join(' · ') : 'Sorties, inventaires, commandes') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
-      + (telephone() ? '<div class="h-tuile pc" aria-disabled="true"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span><b class="pc-t">À ouvrir sur ordinateur</b>Le planning et les heures se gèrent sur un écran de PC.</span></span></div></div>'
-        : '<button class="h-tuile" data-tab="planning"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span>Qui travaille, avec quel dentiste, et les heures</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button></div>')
+      + (telephone() ? '<div class="h-tuile pc" aria-disabled="true"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span><b class="pc-t">À ouvrir sur ordinateur</b>Le planning et les heures se gèrent sur un écran de PC.</span></span></div>'
+        : '<button class="h-tuile" data-tab="planning"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span>Qui travaille, avec quel dentiste, et les heures</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>') + tuilePointage() + '</div>'
       + '<button class="h-ligne" data-tab="pconges"><span class="a-lii">' + ico('agenda', 20) + '</span><span class="a-it-n"><b>Congés</b><span>Demandes à valider, prochains congés</span></span>' + ico('suiv', 20, 2.2) + '</button>'
       + '<button class="h-ligne" data-tab="reglages"><span class="a-lii">' + ico('equipe', 20) + '</span><span class="a-it-n"><b>Réglages</b><span>L’équipe et les dentistes</span></span>' + ico('suiv', 20, 2.2) + '</button>'
       + '<div class="h-bas"><button class="a-btn blanc" data-tab="compte">' + ico('code', 20) + 'Mot de passe</button><button class="a-btn navy" data-act="out">' + ico('changer', 20, 2.2) + 'Changer</button></div>'
@@ -762,6 +765,8 @@
       + '<label class="mu">Heures du contrat par semaine<input class="in" inputmode="decimal" data-pff="contrat_h" value="' + esc(fr(p.contrat_h)) + '"></label>'
       + (p.statut === 'apprentie' ? '<label class="mu">Jour d’école par défaut<select class="in" data-pff="ecole_jour"><option value="">—</option>' + [1, 2, 3, 4, 5].map(function (j) { return '<option value="' + j + '"' + (+p.ecole_jour === j ? ' selected' : '') + '>' + JOURS[j] + '</option>'; }).join('') + '</select></label>' : '')
       + '<label class="mu">Poste quand son dentiste est absent<select class="in" data-pff="repli">' + CODES.filter(function (c) { return ['ECOLE', 'OFF'].indexOf(c[0]) < 0; }).map(function (c) { return '<option value="' + c[0] + '"' + (((p.regles || {}).repli || 'STE') === c[0] ? ' selected' : '') + '>' + c[1] + '</option>'; }).join('') + '</select></label>'
+      + (!pointagePret() ? '' : prof && (prof.role === 'referente' || prof.role === 'responsable') ? '<p class="mu" style="grid-column:1/-1;margin:0">Pointage journalier : non concernée (' + LABEL[prof.role].toLowerCase() + ').</p>'
+        : '<label class="row" style="grid-column:1/-1"><input type="checkbox" data-pff="pointage"' + (p.pointage ? ' checked' : '') + ' style="width:20px;height:20px;flex:none"><span>Soumise au pointage journalier <span class="mu">(scanne le QR code du centre à l’arrivée et à la sortie)</span></span></label>')
       + '<label class="row" style="grid-column:1/-1"><input type="checkbox" data-pff="actif"' + (p.actif ? ' checked' : '') + ' style="width:20px;height:20px;flex:none"><span>Fait partie de l’équipe <span class="mu">(décocher pour une ancienne : elle reste dans l’historique)</span></span></label></div>';
     h += '<h2 class="a-jour">Semaine type (pour le planning)</h2><p class="a-aide">Dentiste ou poste du matin et de l’après-midi, avec les horaires. Le planning de chaque semaine partira de là.</p><div class="h-trame">'
       + [1, 2, 3, 4, 5].map(function (j) { var x = t[j] || {}, hj = heuresJour(t, j); return '<div class="card h-jour"><div class="h-jt"><b>' + JOURS[j] + '</b><span class="mu">' + (hj ? fh(hj) : 'ne travaille pas') + '</span></div>' + demiEdit(j, 'am', x.am) + demiEdit(j, 'pm', x.pm) + '</div>'; }).join('')
@@ -892,6 +897,7 @@
     if (!String(p.prenom || '').trim()) { toast('Le prénom est obligatoire'); return; }
     if (p.statut !== 'apprentie') p.ecole_jour = null;
     var o = { prenom: String(p.prenom).trim(), type: p.type, statut: p.statut, contrat_h: +p.contrat_h || 0, ecole_jour: p.ecole_jour || null, actif: !!p.actif, trame: p.trame || {}, regles: p.regles || {}, consigne: String(p.consigne || '').trim() || null };
+    if (pointagePret()) o.pointage = !!p.pointage;
     if (F.id === 'new') o.ordre = S.equipe.reduce(function (m, x) { return Math.max(m, x.ordre || 0); }, 0) + 1;
     F.busy = true; render();
     (F.id === 'new' ? sb.from('equipe').insert(o).select().single() : sb.from('equipe').update(o).eq('id', F.id).select().single()).then(function (r) {
@@ -1029,10 +1035,10 @@
       + '<div class="a-corps"><div class="card pc-msg">' + ico('agenda', 34) + '<b>À ouvrir sur ordinateur</b><p class="mu">Le planning et le tableau des heures se gèrent sur un écran de PC. Sur téléphone, vous pouvez gérer les congés et les réglages.</p><button class="btn" data-tab="hub">Retour à l’accueil</button></div></div>';
   }
   function renderH() {
-    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures }[S.tab] || vHub;
-    if ((S.tab === 'planning' || S.tab === 'heures') && telephone()) ecr = vSurPC;
+    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage }[S.tab] || vHub;
+    if ((S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage') && telephone()) ecr = vSurPC;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
-    h += '<div class="a-app h-app' + (S.tab === 'hub' ? ' large' : S.tab === 'planning' || S.tab === 'heures' || (S.tab === 'pconges' && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
+    h += '<div class="a-app h-app' + (S.tab === 'hub' ? ' large' : S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || (S.tab === 'pconges' && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
     if (S.tab === 'pfiche') h += vBarPFiche();
     if (S.tab === 'dfiche') h += vBarDFiche();
     return h;
@@ -1473,6 +1479,180 @@
       + '<div class="hr-leg"><span><i class="f"></i>Au fauteuil<b>' + fh(r.rep.fauteuil) + '</b></span><span><i class="p"></i>Sté, admin, accueil…<b>' + fh(r.rep.postes) + '</b></span><span><i class="a"></i>Absences comptées<b>' + fh(r.rep.abs) + '</b></span></div></section>';
     h += '<button class="btn hr-ouvrir" data-hrouvrir="' + W[W.length - 1] + '">Ouvrir sa semaine dans le planning</button></div>';
     return h;
+  }
+  // ---------- Pointage journalier (QR code) ----------
+  var JETON_QR = null;
+  function pointagePret() { return (S.equipe || []).some(function (e) { return 'pointage' in e; }); }
+  function pointerQR() {
+    var j = JETON_QR; JETON_QR = null; try { sessionStorage.removeItem('evy-pointer'); } catch (e) {}
+    if (!j) return;
+    S.ptRes = { busy: true }; render();
+    sb.rpc('pointer', { p_jeton: j }).then(function (r) {
+      if (r.error) throw r.error; S.ptRes = r.data || { etat: 'erreur' }; render();
+    }).catch(function (e) { S.ptRes = { etat: 'erreur', msg: msgErr(e) }; render(); });
+  }
+  function hTs(ts) { if (!ts) return ''; var d = new Date(ts); return d.getHours() + ' h ' + ('0' + d.getMinutes()).slice(-2); }
+  function vResultatPointage() {
+    var R = S.ptRes, ok = R.etat === 'arrivee' || R.etat === 'sortie', t, g, sous = '';
+    if (R.busy) { t = 'Pointage…'; g = ''; }
+    else if (R.etat === 'arrivee') { t = 'Arrivée enregistrée'; g = hTs(R.heure); sous = 'Bonne journée' + (R.prenom ? ', ' + esc(R.prenom) : '') + ' ! Scannez le même QR code en partant.'; }
+    else if (R.etat === 'sortie') { t = 'Sortie enregistrée'; g = hTs(R.heure); sous = 'Arrivée à ' + hTs(R.arrivee) + '. Bonne soirée' + (R.prenom ? ', ' + esc(R.prenom) : '') + ' !'; }
+    else if (R.etat === 'doublon') { t = 'Déjà enregistré'; g = ''; sous = 'Votre pointage vient d’être pris en compte, inutile de scanner deux fois.' + (R.arrivee ? ' Arrivée : ' + hTs(R.arrivee) + (R.sortie ? ', sortie : ' + hTs(R.sortie) : '') + '.' : ''); }
+    else if (R.etat === 'qr_perime') { t = 'QR code périmé'; g = ''; sous = 'Ce QR code n’est plus valable. Scannez celui affiché au centre.'; }
+    else if (R.etat === 'non_soumis') { t = 'Pas de pointage pour vous'; g = ''; sous = 'Votre fiche n’est pas soumise au pointage journalier.'; }
+    else if (R.etat === 'sans_fiche') { t = 'Compte non relié'; g = ''; sous = 'Votre compte n’est pas encore relié à votre fiche. Prévenez la référente.'; }
+    else { t = 'Pointage impossible'; g = ''; sous = esc(R.msg || 'Réessayez dans un instant.'); }
+    return '<div class="pt-res ' + (R.busy ? '' : ok ? 'ok' : 'ko') + '"><div class="pt-res-in">' + (R.busy ? '' : '<span class="pt-ic">' + ico(ok ? 'ok' : R.etat === 'doublon' ? 'attente' : 'croix', 44, 2.4) + '</span>')
+      + '<h1>' + t + '</h1>' + (g ? '<p class="pt-h">' + g + '</p>' : '') + (sous ? '<p>' + sous + '</p>' : '') + (R.busy ? '' : '<button class="a-btn navy" data-act="ptok">Continuer</button>') + '</div></div>';
+  }
+  function tuilePointage() {
+    if (telephone()) return '<div class="h-tuile pc" aria-disabled="true"><span class="ti">' + ico('qr', 34) + '</span><span class="tt"><b>Pointage</b><span><b class="pc-t">À ouvrir sur ordinateur</b>Le suivi des pointages se fait sur un écran de PC.</span></span></div>';
+    var P = S.ptg && S.ptg.rows, auj = dIso(new Date()), n = 0, soum = (S.equipe || []).filter(function (e) { return e.actif && e.pointage; });
+    if (P) soum.forEach(function (e) { var r = P[e.id + '|' + auj]; if (r && r.arrivee) n++; });
+    return '<button class="h-tuile" data-tab="pointage"><span class="ti">' + ico('qr', 34) + '</span><span class="tt"><b>Pointage</b><span>' + (soum.length ? (P ? n + ' / ' + soum.length + ' arrivée' + (n > 1 ? 's' : '') + ' pointée' + (n > 1 ? 's' : '') + ' aujourd’hui' : 'Arrivées, sorties et temps effectif') : 'QR code, arrivées, sorties et temps effectif') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>';
+  }
+  function chargerPointages(force) {
+    var G = S.ptg = S.ptg || { mode: 'jour', jour: dIso(new Date()), rows: {} }, L = lundiDe(G.jour), de = L, a = addJ(L, 6);
+    if (!force && G.de === de && G.a === a) return null;
+    if (G.charge) return null;
+    G.charge = true;
+    sb.from('pointages').select('*').gte('jour', de).lte('jour', a).then(function (r) {
+      if (r.error) throw r.error; var o = {}; (r.data || []).forEach(function (x) { o[x.equipe_id + '|' + String(x.jour).slice(0, 10)] = x; });
+      G.rows = o; G.de = de; G.a = a; G.charge = false; G.err = null; render();
+    }).catch(function (e) { G.charge = false; G.err = msgErr(e); G.de = de; G.a = a; render(); });
+    return true;
+  }
+  function minLoc(ts) { var d = new Date(ts); return d.getHours() * 60 + d.getMinutes(); }
+  function fMin(m) { return Math.floor(m / 60) + 'h' + ('0' + (m % 60)).slice(-2); }
+  // Temps effectif d'une journée : sortie − arrivée, moins la coupure de midi prévue au planning (seulement la partie
+  // comprise entre l'arrivée et la sortie)
+  function calculJour(p, iso, r) {
+    var am = caseEff(p, iso, 'AM'), pm = caseEff(p, iso, 'PM'), trav = function (c) { return c.a && c.a !== 'OFF' && ABS.indexOf(c.a) < 0; };
+    var prevu = (trav(am) ? dureeDemi(am) : 0) + (trav(pm) ? dureeDemi(pm) : 0), absTxt = ABS.indexOf(am.a) >= 0 ? ABS_TXT[am.a] : ABS.indexOf(pm.a) >= 0 ? ABS_TXT[pm.a] : null;
+    var hor = [trav(am) && am.de ? ft(am.de) + '–' + ft(am.fi) : '', trav(pm) && pm.de ? ft(pm.de) + '–' + ft(pm.fi) : ''].filter(Boolean).join(' · ');
+    var o = { prevu: prevu, hor: hor || (absTxt || (am.off || pm.off ? 'Jour off' : 'Ne travaille pas')), absTxt: absTxt, travaille: prevu > 0, pauseMin: 0, effMin: null };
+    var p1 = trav(am) ? enMin(am.fi) : null, p2 = trav(pm) ? enMin(pm.de) : null;
+    if (r && r.arrivee && r.sortie) {
+      var a = minLoc(r.arrivee), b = minLoc(r.sortie); if (b < a) b = a;
+      if (p1 != null && p2 != null && p2 > p1) o.pauseMin = Math.max(0, Math.min(b, p2) - Math.max(a, p1));
+      o.effMin = b - a - o.pauseMin;
+    }
+    return o;
+  }
+  function etatPointage(p, iso, r, c) {
+    var auj = dIso(new Date()), maintenant = new Date().getHours() * 60 + new Date().getMinutes();
+    if (r && r.arrivee && r.sortie) return null;
+    if (r && r.arrivee) return iso < auj ? { t: 'Sortie manquante', k: 'ko' } : iso === auj ? { t: 'Sur place', k: 'on' } : null;
+    if (!c.travaille) return null;
+    if (iso > auj) return null;
+    if (iso === auj && maintenant < 12 * 60) return { t: 'Pas encore pointé', k: 'at' };
+    return { t: 'Aucun pointage', k: 'ko' };
+  }
+  function vPointage() {
+    var G = S.ptg = S.ptg || { mode: 'jour', jour: dIso(new Date()), rows: {} }, J = G.jour, L = lundiDe(J);
+    var titre = G.mode === 'jour' ? JOURS[jourSem(J)] ? JOURS[jourSem(J)] + ' ' + dateCourte(J) : dateCourte(J) : 'Semaine du ' + periode(L, addJ(L, 4)).replace(/^du /, '');
+    var h = '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" data-tab="hub">' + ico('prec', 22, 2.4) + 'Accueil</button><h1>Pointage</h1><span class="pl-hbtns"><button class="pl-imp" data-act="ptqr">' + ico('qr', 18, 2) + '<span class="m-hide">QR code</span></button></span></div>'
+      + '<div class="hr-nav"><div class="hr-seg" role="group" aria-label="Affichage">' + [['jour', 'Jour'], ['semaine', 'Semaine']].map(function (m) { return '<button data-ptmode="' + m[0] + '" aria-pressed="' + (G.mode === m[0]) + '"' + (G.mode === m[0] ? ' class="on"' : '') + '>' + m[1] + '</button>'; }).join('') + '</div>'
+      + '<div class="hr-per"><button class="h-rond" data-ptnav="-1" aria-label="Précédent">' + ico('prec', 20, 2.4) + '</button><span class="hr-titre"><b>' + titre + '</b></span><button class="h-rond" data-ptnav="1" aria-label="Suivant">' + ico('suiv', 20, 2.4) + '</button>'
+      + (J !== dIso(new Date()) ? '<button class="pl-auj" data-ptnav="0">Aujourd’hui</button>' : '') + '</div></div></header><div class="a-corps hr-corps">';
+    if (!pointagePret()) return h + '<div class="ban warn">La mise à jour 016 de la base (pointage) n’est pas encore faite.</div></div>' + (S.ptQR ? vQR() : '');
+    if (assurerPlage(addJ(L, 6)) || S.pl.chargeH || chargerPointages() || G.charge) return h + '<p class="a-vide">Chargement…</p></div>';
+    if (G.err) h += '<div class="ban warn">' + esc(G.err) + '</div>';
+    var ps = (S.equipe || []).filter(function (e) { return e.actif && e.pointage; }).sort(function (a, b) { return (a.type === 'interimaire') - (b.type === 'interimaire') || a.ordre - b.ordre; });
+    if (!ps.length) return h + '<div class="card"><b>Personne n’est soumis au pointage pour l’instant.</b><p class="mu" style="margin:6px 0 0">Cochez « Soumise au pointage journalier » dans la fiche de chaque assistante concernée (Réglages › L’équipe).</p></div></div>' + (S.ptQR ? vQR() : '');
+    h += G.mode === 'jour' ? vPointageJour(ps, J) : vPointageSemaine(ps, L);
+    return h + '<p class="a-aide">Temps effectif = sortie − arrivée, moins la coupure de midi prévue au planning ce jour-là (seulement la partie passée entre l’arrivée et la sortie). Écart de la semaine : sur les journées pointées en entier. Touchez une ligne ou une case pour corriger un oubli : la correction est signée.</p></div>' + (S.ptEd ? vPtEdit() : '') + (S.ptQR ? vQR() : '');
+  }
+  function vPointageJour(ps, J) {
+    var tot = 0, totP = 0, h = '<section class="hr-carte hr-tab"><div class="hr-scroll"><div class="pt-grille"><div class="pt-l hr-tete"><span>Personne</span><span>Prévu au planning</span><span>Arrivée</span><span>Sortie</span><span>Pause déduite</span><span>Temps effectif</span><span>Écart</span></div>';
+    ps.forEach(function (p) {
+      var r = S.ptg.rows[p.id + '|' + J], c = calculJour(p, J, r), et = etatPointage(p, J, r, c), ec = c.effMin != null ? c.effMin / 60 - c.prevu : null;
+      if (c.effMin != null) { tot += c.effMin; totP += c.prevu; }
+      h += '<button class="pt-l" data-pted="' + p.id + '|' + J + '"><span class="hr-p"><span class="a-av">' + esc((p.prenom || '?')[0]) + '</span><span><b>' + esc(p.type === 'interimaire' ? 'Intérimaire' : p.prenom) + '</b>' + (r && r.corrige_par ? '<small>corrigé par ' + esc(nomProfil(r.corrige_par) || '?') + '</small>' : r && r.note ? '<small>' + esc(r.note) + '</small>' : '') + '</span></span>'
+        + '<span><b>' + esc(c.hor) + '</b>' + (c.prevu ? '<small>' + fh(c.prevu) + '</small>' : '') + '</span>'
+        + '<b>' + (r && r.arrivee ? hTs(r.arrivee) : '—') + '</b><b>' + (r && r.sortie ? hTs(r.sortie) : '—') + '</b>'
+        + '<span>' + (c.effMin != null ? (c.pauseMin ? fMin(c.pauseMin) : '0h00') : '') + '</span>'
+        + '<span>' + (c.effMin != null ? '<b class="pt-eff">' + fh(c.effMin / 60) + '</b>' : et ? '<span class="pt-et ' + et.k + '">' + et.t + '</span>' : '<span class="mu">—</span>') + '</span>'
+        + '<b class="' + hrCouleur(ec) + '">' + (ec == null ? '' : Math.abs(ec) < 0.01 ? '0 h' : relTxt(ec)) + '</b></button>';
+    });
+    return h + '</div></div></section>' + (tot ? '<p class="mu" style="margin:0">Total des journées complètes : <b>' + fh(tot / 60) + '</b> pour ' + fh(totP) + ' prévues.</p>' : '');
+  }
+  function vPointageSemaine(ps, L) {
+    var h = '<section class="hr-carte hr-tab"><div class="hr-scroll"><div class="pt-gs"><div class="pt-s hr-tete"><span>Personne</span>' + [0, 1, 2, 3, 4].map(function (k) { var d = addJ(L, k); return '<span>' + JC[k + 1] + ' ' + dDe(d).getDate() + '</span>'; }).join('') + '<span>Effectif</span><span>Prévu</span><span>Écart</span></div>';
+    var auj = dIso(new Date());
+    ps.forEach(function (p) {
+      var te = 0, tp = 0, tpp = 0, manq = 0;
+      h += '<div class="pt-s"><span class="hr-p"><span class="a-av">' + esc((p.prenom || '?')[0]) + '</span><b>' + esc(p.type === 'interimaire' ? 'Intérimaire' : p.prenom) + '</b></span>';
+      for (var k = 0; k < 5; k++) {
+        var iso = addJ(L, k), r = S.ptg.rows[p.id + '|' + iso], c = calculJour(p, iso, r), et = etatPointage(p, iso, r, c);
+        tp += c.prevu; if (c.effMin != null) { te += c.effMin; tpp += c.prevu; } else if (c.travaille && iso < auj) manq++;
+        h += '<button class="pt-sc" data-pted="' + p.id + '|' + iso + '">' + (c.effMin != null ? '<b>' + fh(c.effMin / 60) + '</b><small>' + hTs(r.arrivee).replace(' h ', 'h') + '–' + hTs(r.sortie).replace(' h ', 'h') + '</small>' : et ? '<span class="pt-et ' + et.k + '">' + et.t + '</span>' : '<small class="mu">' + esc(c.absTxt || (c.travaille ? '—' : 'repos')) + '</small>') + '</button>';
+      }
+      var ec = te / 60 - tpp;
+      h += '<b>' + fh(te / 60) + '</b><span>' + fh(tp) + '</span><span class="pt-ec"><b class="' + hrCouleur(tpp ? ec : null) + '">' + (!tpp ? '—' : Math.abs(ec) < 0.01 ? '0 h' : relTxt(ec)) + '</b>' + (manq ? '<small class="ko">' + manq + ' jour' + (manq > 1 ? 's' : '') + ' sans pointage complet</small>' : '') + '</span></div>';
+    });
+    return h + '</div></div></section>';
+  }
+  function vPtEdit() {
+    var E = S.ptEd, p = persById(E.eid) || {}, r = S.ptg.rows[E.eid + '|' + E.jour], t = function (ts) { if (!ts) return ''; var d = new Date(ts); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); };
+    return '<div class="pl-modal" role="dialog" aria-modal="true" aria-label="Corriger le pointage"><button class="pl-fond" data-act="ptedfermer" aria-label="Fermer"></button><div class="pl-fen">'
+      + '<div class="pl-ft"><span class="a-av">' + esc((p.prenom || '?')[0]) + '</span><div><b>' + esc(p.prenom || '') + '</b><span class="mu">' + JOURS[jourSem(E.jour)] + ' ' + dateCourte(E.jour) + '</span></div><button class="h-rond gris" data-act="ptedfermer" aria-label="Fermer">' + ico('croix', 20, 2.4) + '</button></div>'
+      + '<div class="h-g2"><label class="mu">Arrivée<input class="in" type="time" id="ptarr" value="' + t(r && r.arrivee) + '"></label><label class="mu">Sortie<input class="in" type="time" id="ptsor" value="' + t(r && r.sortie) + '"></label></div>'
+      + '<label class="mu">Note (facultatif)<input class="in" id="ptnote" value="' + esc(r && r.note || '') + '" placeholder="Ex. : oubli de pointage, badge à 17 h 05"></label>'
+      + (r && r.corrige_par ? '<p class="mu" style="margin:0">Corrigé par ' + esc(nomProfil(r.corrige_par)) + ' le ' + dateCourte(r.corrige_le) + ' à ' + hTs(r.corrige_le) + '.</p>' : '')
+      + '<div class="h-cpied">' + (r ? '<button class="h-csup" data-act="ptsuppr">' + ico('poubelle', 18, 2) + 'Effacer le pointage</button>' : '<span></span>')
+      + '<span class="row"><button class="btn l" data-act="ptedfermer">Annuler</button><button class="btn" data-act="ptsave">Enregistrer</button></span></div></div></div>';
+  }
+  function sauverPointage(supprimer) {
+    var E = S.ptEd, cle = E.eid + '|' + E.jour, r = S.ptg.rows[cle];
+    var ts = function (v) { if (!v) return null; var x = v.split(':'), d = dDe(E.jour); d.setHours(+x[0], +x[1], 0, 0); return d.toISOString(); };
+    var q;
+    if (supprimer) { if (!confirm('Effacer le pointage de cette journée ?')) return; q = sb.from('pointages').delete().eq('equipe_id', +E.eid).eq('jour', E.jour); }
+    else {
+      var a = $('ptarr').value, b = $('ptsor').value;
+      if (b && !a) { toast('Indiquez l’heure d’arrivée'); return; }
+      if (a && b && b <= a) { toast('La sortie doit être après l’arrivée'); return; }
+      q = sb.from('pointages').upsert({ equipe_id: +E.eid, jour: E.jour, arrivee: ts(a), sortie: ts(b), note: $('ptnote').value.trim() || null, corrige_par: S.me.id, corrige_le: new Date().toISOString() }, { onConflict: 'equipe_id,jour' });
+    }
+    q.then(function (x) { if (x.error) throw x.error; S.ptEd = null; toast(supprimer ? 'Pointage effacé' : '✔ Pointage corrigé'); chargerPointages(true); }).catch(function (e) { toast(msgErr(e)); });
+  }
+  // QR code du centre : affichage, impression, régénération
+  function chargerQR() {
+    if (window.QRCodeEVY) return Promise.resolve();
+    return new Promise(function (ok, ko) { var sc = document.createElement('script'); sc.src = 'js/vendor/qrcode.js?v=1'; sc.onload = ok; sc.onerror = function () { ko(new Error('Module QR code introuvable')); }; document.head.appendChild(sc); });
+  }
+  function urlPointage(j) { return location.origin + location.pathname + '?pointer=' + encodeURIComponent(j); }
+  function qrSvg(texte, taille) {
+    var q = window.QRCodeEVY(texte, 'M'), n = q.getModuleCount(), m = 4, t = n + 2 * m, d = '';
+    for (var l = 0; l < n; l++) for (var c = 0; c < n; c++) if (q.isDark(l, c)) d += 'M' + (c + m) + ' ' + (l + m) + 'h1v1h-1z';
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + t + ' ' + t + '" width="' + taille + '" height="' + taille + '" shape-rendering="crispEdges" role="img" aria-label="QR code de pointage"><rect width="' + t + '" height="' + t + '" fill="#fff"/><path d="' + d + '" fill="#1f2a33"/></svg>';
+  }
+  function ouvrirQR() {
+    S.ptQR = { charge: true }; render();
+    Promise.all([chargerQR(), sb.from('pointage_cle').select('jeton,cree_le').eq('id', 1).maybeSingle()]).then(function (r) {
+      if (r[1].error) throw r[1].error; S.ptQR = r[1].data || { err: 'Aucun QR code' }; render();
+    }).catch(function (e) { S.ptQR = { err: msgErr(e) }; render(); });
+  }
+  function vQR() {
+    var Q = S.ptQR, h = '<div class="pl-modal" role="dialog" aria-modal="true" aria-label="QR code de pointage"><button class="pl-fond" data-act="ptqrfermer" aria-label="Fermer"></button><div class="pl-fen pt-qrf">'
+      + '<div class="pl-ft"><span class="a-av p">' + ico('qr', 20) + '</span><div><b>QR code de pointage</b><span class="mu">À afficher au centre</span></div><button class="h-rond gris" data-act="ptqrfermer" aria-label="Fermer">' + ico('croix', 20, 2.4) + '</button></div>';
+    if (Q.charge) return h + '<p class="a-vide">Chargement…</p></div></div>';
+    if (Q.err) return h + '<div class="ban warn">' + esc(Q.err) + '</div></div></div>';
+    return h + '<div class="pt-qr">' + qrSvg(urlPointage(Q.jeton), 260) + '</div>'
+      + '<p class="mu" style="margin:0;text-align:center">Les assistantes le scannent avec l’appareil photo de leur téléphone, à l’arrivée puis à la sortie. Créé le ' + dateCourte(Q.cree_le) + '.</p>'
+      + '<div class="h-cpied"><button class="h-csup" data-act="ptregen">' + ico('refaire', 18, 2) + 'Régénérer</button><span class="row"><button class="btn" data-act="ptimprimer">' + ico('sortie', 18, 2) + 'Imprimer</button></span></div>'
+      + '<p class="a-aide" style="margin:0">Régénérer crée un nouveau QR code : l’ancien ne fonctionne plus (à faire si une photo du QR code a circulé). Pensez à réimprimer l’affiche.</p></div></div>';
+  }
+  function imprimerQR() {
+    var Q = S.ptQR; if (!Q || !Q.jeton) return;
+    var w = window.open('', '_blank'); if (!w) { toast('Autorisez l’ouverture de fenêtres pour imprimer'); return; }
+    w.document.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>QR code de pointage</title><style>body{margin:0;font-family:"Source Sans 3",system-ui,sans-serif;color:#1f2a33;display:flex;justify-content:center}main{width:170mm;text-align:center;padding:18mm 0}h1{font-family:Georgia,serif;font-size:30pt;margin:0 0 4mm;color:#2b3e4c}p{font-size:15pt;margin:3mm 0}svg{width:120mm;height:120mm;margin:8mm auto;display:block}small{color:#555f68;font-size:10pt}</style></head><body><main><h1>Pointage</h1><p><b>Espace dentaire Val d’Yerres</b></p>'
+      + qrSvg(urlPointage(Q.jeton), 400) + '<p>Scannez avec l’appareil photo de votre téléphone<br><b>en arrivant</b> et <b>en partant</b>.</p><small>QR code du ' + dateCourte(Q.cree_le) + '</small></main><script>setTimeout(function(){print()},300)<\/script></body></html>');
+    w.document.close();
+  }
+  function regenererQR() {
+    if (!confirm('Créer un nouveau QR code ? L’ancien ne fonctionnera plus : il faudra réimprimer l’affiche.')) return;
+    sb.rpc('regenerer_qr').then(function (r) { if (r.error) throw r.error; toast('✔ Nouveau QR code créé'); ouvrirQR(); }).catch(function (e) { toast(msgErr(e)); });
   }
   function celluleJour(p, iso) {
     var am = caseEff(p, iso, 'AM'), pm = caseEff(p, iso, 'PM'), ab = function (c) { return ABS.indexOf(c.a) >= 0; };
@@ -3344,6 +3524,17 @@
     if (d.act === 'plcal') { var ci = document.getElementById('plcal'); if (ci) { try { if (ci.showPicker) ci.showPicker(); else { ci.focus(); ci.click(); } } catch (er) { ci.focus(); ci.click(); } } return; }
     if (d.plsem != null && S.pl) { S.pl.lundi = d.plsem === '0' ? lundiDe(dIso(new Date())) : addJ(S.pl.lundi, +d.plsem); S.pl.cas = null; if (gestion()) chargerSemaine(); else S.pl.de = null; render(); return; }
     if (d.plc) return ouvrirCase(d.plc);
+    if (d.act === 'ptok') { S.ptRes = null; render(); return; }
+    if (d.act === 'ptqr') return ouvrirQR();
+    if (d.act === 'ptqrfermer') { S.ptQR = null; render(); return; }
+    if (d.act === 'ptimprimer') return imprimerQR();
+    if (d.act === 'ptregen') return regenererQR();
+    if (d.ptmode && S.ptg) { S.ptg.mode = d.ptmode; render(); return; }
+    if (d.ptnav != null && d.ptnav !== '' && S.ptg) { var pn = +d.ptnav, G = S.ptg; if (!pn) G.jour = dIso(new Date()); else if (G.mode === 'semaine') G.jour = addJ(lundiDe(G.jour), 7 * pn); else { var jx = addJ(G.jour, pn); while (jourSem(jx) < 1 || jourSem(jx) > 5) jx = addJ(jx, pn); G.jour = jx; } render(); return; }
+    if (d.pted && S.ptg) { var pe = d.pted.split('|'); S.ptEd = { eid: pe[0], jour: pe[1] }; render(); return; }
+    if (d.act === 'ptedfermer') { S.ptEd = null; render(); return; }
+    if (d.act === 'ptsave' && S.ptEd) return sauverPointage(false);
+    if (d.act === 'ptsuppr' && S.ptEd) return sauverPointage(true);
     if (d.hrmode && S.hr) { S.hr.mode = d.hrmode; render(); window.scrollTo(0, 0); return; }
     if (d.hrnav && S.hr) { var Hn = S.hr, sn = +d.hrnav; if (Hn.mode === 'semaine') Hn.lundi = addJ(Hn.lundi, 7 * sn); else { var xm = Hn.mois.split('-'), dm2 = new Date(+xm[0], +xm[1] - 1 + sn, 1); Hn.mois = dm2.getFullYear() + '-' + ('0' + (dm2.getMonth() + 1)).slice(-2); } render(); return; }
     if (d.hrsel != null && S.hr) { S.hr.sel = d.hrsel || null; render(); window.scrollTo(0, 0); return; }
@@ -3457,6 +3648,12 @@
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { verifierVersion(); if (S.me) charger(); } });
 
   // ---------- Démarrage ----------
+  // QR code de pointage : l'adresse contient ?pointer=<jeton> ; on le garde le temps de la connexion puis on l'enlève de l'adresse
+  try {
+    var uq = new URL(location.href), jq = uq.searchParams.get('pointer');
+    if (jq) { sessionStorage.setItem('evy-pointer', jq); uq.searchParams.delete('pointer'); history.replaceState(null, '', uq.pathname + uq.search + uq.hash); }
+    JETON_QR = jq || sessionStorage.getItem('evy-pointer');
+  } catch (e) { JETON_QR = null; }
   sb.auth.getSession().then(function (r) { if (r.data.session) demarrer(r.data.session); else render(); });
   sb.auth.onAuthStateChange(function (ev, session) { if (ev === 'SIGNED_OUT') { oublierPersonne(); render(); } else if (session) S.session = session; });
 })();
