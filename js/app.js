@@ -800,10 +800,10 @@
     var h = '<header class="a-hd a-maison h-hd"><div class="a-mh-top"><img src="assets/logo-evydent.jpg" alt="Evydent"><span class="grow">Espace dentaire Val d’Yerres</span>'
       + '<button class="h-rond" data-tab="reglages" aria-label="Réglages">' + ico('reglage', 22) + '</button></div>'
       + '<div><h1>Bonjour ' + esc(S.me.nom) + '</h1><p>' + LABEL[S.me.role] + ' · ' + j + '</p></div></header>';
-    var ca = congesAttente().length;
+    var ca = congesAttente().length + congesAnnul().length;
     h += '<div class="a-corps h-corps">' + vBienvenue()
       + ((S.oublis || []).length ? '<button class="h-alerte" data-tab="pointage">' + ico('attente', 22) + '<span><b>' + S.oublis.length + ' ' + pl(S.oublis.length, 'oubli') + ' de pointage</b> ' + pl(S.oublis.length, 'signalé') + ' à valider</span>' + ico('suiv', 20, 2.2) + '</button>' : '')
-      + (ca ? '<button class="h-alerte" data-tab="pconges">' + ico('attente', 22) + '<span><b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à valider</span>' + ico('suiv', 20, 2.4) + '</button>' : '')
+      + (ca ? '<button class="h-alerte" data-tab="pconges">' + ico('attente', 22) + '<span><b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à traiter</span>' + ico('suiv', 20, 2.4) + '</button>' : '')
       + '<div class="h-tuiles">'
       + '<button class="h-tuile fonce" data-tab="accueil"><span class="ti">' + ico('boite', 34) + '</span><span class="tt"><b>Gestion de stock</b><span>' + (sous.length ? sous.join(' · ') : 'Sorties, inventaires, commandes') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
       + (telephone() ? '<div class="h-tuile pc" aria-disabled="true"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span><b class="pc-t">À ouvrir sur ordinateur</b>Le planning et les heures se gèrent sur un écran de PC.</span></span></div>'
@@ -1476,6 +1476,7 @@
   function persById(id) { return (S.equipe || []).filter(function (p) { return String(p.id) === String(id); })[0]; }
   function nomConge(c) { if (c.dentiste_id) { var d = dentById(c.dentiste_id); return d ? 'Dr ' + d.prenom : 'Dentiste'; } var p = persById(c.equipe_id); return p ? p.prenom : '?'; }
   function typeTxt(t) { var x = TYPES_C.filter(function (y) { return y[0] === t; })[0]; return x ? x[1] : t; }
+  function congesAnnul() { return (S.conges || []).filter(function (c) { return c.statut === 'accepte' && c.annul_demande; }); }
   function congesAttente() { return (S.conges || []).filter(function (c) { return c.statut === 'attente'; }); }
   // ---------- Solde de congés payés (période de référence, droits, report) ----------
   function periodeCP(ref) {
@@ -1560,7 +1561,15 @@
           })()
           + '<div class="h-cg-b"><button class="a-btn blanc" data-crefus="' + c.id + '">Refuser</button><button class="a-btn vert" data-cok="' + c.id + '">Accepter</button></div></div>';
       }).join('') + '</section>';
-    } else h += '<p class="cg2-ok">' + ico('ok', 18, 2.6) + 'Aucune demande de congés à valider.</p>';
+    } else if (!congesAnnul().length) h += '<p class="cg2-ok">' + ico('ok', 18, 2.6) + 'Aucune demande de congés à valider.</p>';
+    var an = congesAnnul().sort(function (a, b) { return a.du < b.du ? -1 : 1; });
+    if (an.length) h += '<section class="cg2-att"><h2 class="cg2-t">Demandes d’annulation <span>' + an.length + '</span></h2>' + an.map(function (c) {
+      var p = persById(c.equipe_id) || {}, n = joursTravail(p, c.du, c.au);
+      return '<div class="card h-cg cg-an"><div class="h-cg-t"><span class="a-av p">' + initiale(p.prenom) + '</span><div><b>' + esc(p.prenom || '?') + ' · ' + periode(c.du, c.au) + '</b><span class="mu">Congés acceptés (' + n + ' ' + pl(n, 'jour') + ' de travail) · annulation demandée le ' + dateCourte(String(c.annul_demande).slice(0, 10)) + '</span></div></div>'
+        + (c.annul_mot ? '<p class="h-mot">« ' + esc(c.annul_mot) + ' »</p>' : '')
+        + '<p class="mu" style="margin:0;font-size:14px">Si vous acceptez, les congés sont retirés du planning et la personne travaille selon sa semaine type.</p>'
+        + '<div class="h-cg-b"><button class="a-btn blanc" data-canko="' + c.id + '">Garder les congés</button><button class="a-btn vert" data-canok="' + c.id + '">Accepter l’annulation</button></div></div>';
+    }).join('') + '</section>';
     h += vMoisConges() + vSoldesCP();
     return h + '<p class="a-aide">Pour saisir des congés, un arrêt ou une formation : touchez le nom de la personne ou du dentiste, ou ouvrez sa fiche dans Réglages.</p></div>';
   }
@@ -1645,6 +1654,19 @@
     h += '<section class="cg2-carte"><div class="cg2-scroll"><div class="cg2-g" style="grid-template-columns:' + tpl.join(' ') + ';grid-template-rows:' + rows.join(' ') + '">' + g + '</div></div>'
       + (F === 'tous' || F === 'couples' ? '<p class="cg2-note"><i aria-hidden="true"></i>Contour doré : le dentiste et son assistant(e) attitré(e) sont absents le même jour.</p>' : '') + '</section>';
     return h;
+  }
+  async function repondreAnnul(id, ok) {
+    var rep = null;
+    if (!ok) { rep = await saisir('Garder ces congés ?', 'L’annulation est refusée : les congés restent posés.', { label: 'Motif (facultatif, la personne le verra)', ok: 'Garder les congés' }); if (rep === null) return; rep = rep.trim() || null; }
+    sb.rpc('repondre_annulation_conges', { p_id: +id, p_accepte: ok, p_reponse: rep }).then(function (r) {
+      if (r.error) throw r.error; toast(ok ? '✔ Congés annulés' : 'Congés gardés'); chargerPlan();
+    }).catch(function (e) { toast(/repondre_annulation_conges/.test(msgErr(e)) ? 'Mise à jour 024 de la base à faire' : msgErr(e)); chargerPlan(); });
+  }
+  async function demanderAnnul(id) {
+    var mot = await saisir('Demander l’annulation de ces congés ?', 'La référente ou la responsable doit valider. En attendant, vos congés restent posés.', { label: 'Raison (facultatif)', ok: 'Envoyer la demande' });
+    if (mot === null) return;
+    sb.rpc('demander_annulation_conges', { p_id: +id, p_mot: mot.trim() || null }).then(function (r) { if (r.error) throw r.error; toast('✔ Demande d’annulation envoyée'); chargerMesConges(); })
+      .catch(function (e) { toast(/demander_annulation_conges/.test(msgErr(e)) ? 'Pas encore disponible (mise à jour de la base à faire)' : msgErr(e)); });
   }
   async function repondre(id, ok) {
     var rep = null;
@@ -1789,9 +1811,10 @@
     var auj = dIso(new Date()), enCours = l.filter(function (c) { return c.au >= auj; }).sort(function (x, y) { return x.du < y.du ? -1 : 1; }), passes = l.filter(function (c) { return c.au < auj; }).sort(function (x, y) { return x.du < y.du ? 1 : -1; });
     var ligne = function (c) {
       var ic = c.statut === 'attente' ? ['attente', ' orange'] : c.statut === 'accepte' ? ['ok', ' vert'] : ['croix', ''];
-      var st = c.statut === 'attente' ? '<span class="warn">en attente de validation</span>' : c.statut === 'accepte' ? '<span class="ok">accepté</span>' : '<span>refusé' + (c.reponse ? ' · « ' + esc(c.reponse) + ' »' : '') + '</span>';
+      if (c.statut === 'accepte' && c.annul_demande) ic = ['attente', ' orange'];
+      var st = c.statut === 'attente' ? '<span class="warn">en attente de validation</span>' : c.statut === 'accepte' ? (c.annul_demande ? '<span class="warn">annulation demandée · en attente de validation</span>' : '<span class="ok">accepté</span>' + (c.annul_reponse ? '<span class="mu">annulation refusée' + (c.annul_reponse !== 'refusée' ? ' · « ' + esc(c.annul_reponse) + ' »' : '') + '</span>' : '')) : '<span>refusé' + (c.reponse ? ' · « ' + esc(c.reponse) + ' »' : '') + '</span>';
       return '<div class="a-ev"><span class="a-evi' + ic[1] + '">' + ico(ic[0], 20, 2.4) + '</span><div class="a-it-n"><b>' + periode(c.du, c.au).replace(/^./, function (x) { return x.toUpperCase(); }) + '</b>' + (c.type !== 'CP' ? '<span>' + typeTxt(c.type) + '</span>' : '') + st + '</div>'
-        + (c.statut === 'attente' ? '<button class="a-lien" data-cannule="' + c.id + '">Annuler</button>' : '') + '</div>';
+        + (c.statut === 'attente' ? '<button class="a-lien" data-cannule="' + c.id + '">Annuler</button>' : c.statut === 'accepte' && c.annul_demande ? '<button class="a-lien" data-cannr="' + c.id + '">Retirer</button>' : c.statut === 'accepte' && c.du > dIso(new Date()) ? '<button class="a-lien cg-ann" data-cannd="' + c.id + '">Demander l’annulation</button>' : '') + '</div>';
     };
     h += enCours.length ? '<div class="a-liste">' + enCours.map(ligne).join('') + '</div>' : '<p class="a-vide">Aucun congé en cours ou à venir.</p>';
     if (passes.length) h += '<details class="mc-passes"><summary>Congés passés <span>' + passes.length + '</span></summary><div class="mc-pl">' + passes.map(function (c) {
@@ -2924,6 +2947,8 @@
     if (typeof hd === 'string' && hd) h += '<small class="pl-r dep">Dr ' + esc(dpt.prenom) + ' part à ' + ft(hd) + '</small>';
     if (rg) { cls += ' reg'; h += '<small class="pl-r">' + esc(affTxt(rg)) + ' absent</small>'; }
     if (S.plVoirPt) h += badgePt(p, iso);
+    var cac = congeLe(p.id, iso);
+    if (cac && cac.annul_demande) { cls += ' cg-at'; h += '<small class="pl-at">' + ico('attente', 13, 2.4) + 'Annulation demandée</small>'; }
     var cat = !(am.a === 'OFF' && pm.a === 'OFF') && congeAttenteLe(p.id, iso);
     if (cat) { cls += ' cg-at'; h += '<small class="pl-at" title="Demande du ' + dateCourte(cat.du) + (cat.au !== cat.du ? ' au ' + dateCourte(cat.au) : '') + ', pas encore validée">' + ico('attente', 13, 2.4) + esc(cat.type === 'FORMATION' ? 'Formation' : typeTxt(cat.type)) + ' demandé' + (cat.type === 'FORMATION' ? 'e' : 's') + '</small>'; }
     return '<button class="' + cls + (jourClos(iso) ? ' clos' : '') + '" data-plc=""' + p.id + '|' + iso + '" aria-label="' + esc(p.prenom) + ', ' + JOURS[jourSem(iso)] + '">' + h + '</button>';
@@ -2985,6 +3010,7 @@
     h += '</div></div>';
     h += '<div class="pl-notes"><span class="pl-n vert"><b>Semaine remplie automatiquement</b> d’après les fiches (semaine type, école, congés acceptés, jours fériés, règle d’or) : corrigez seulement les exceptions.</span>'
       + (congesAttente().some(function (c) { return c.equipe_id && c.du <= fin && c.au >= L; }) ? '<span class="pl-n at"><span class="pl-at">' + ico('attente', 13, 2.4) + 'Congés demandés</span> = demande pas encore validée (à valider dans Congés). La case garde le planning prévu tant que la demande n’est pas acceptée.</span>' : '')
+      + (congesAnnul().some(function (c) { return c.equipe_id && c.du <= fin && c.au >= L; }) ? '<span class="pl-n at"><span class="pl-at">' + ico('attente', 13, 2.4) + 'Annulation demandée</span> = congés acceptés dont la personne demande l’annulation (à traiter dans Congés). Ils restent posés tant que ce n’est pas accepté.</span>' : '')
       + '<span class="pl-n">Touchez une case pour choisir le dentiste et les heures. Reliquat : heures faites moins heures du contrat, cumulées depuis le ' + dateCourte(regles().depuis) + ' (Réglages › Règles des heures).</span></div>';
     return h + '</div>' + (P.cas ? vCasePlanning() : '') + (S.plExp ? vExportPlanning() : '') + (S.plClo ? vCloture() : '');
   }
@@ -4969,6 +4995,10 @@
     if (d.act === 'rgpok') return sauverReglePers();
     if (d.act === 'rgsave') return sauverRegles();
     if (d.cok) return repondre(d.cok, true);
+    if (d.canok) return repondreAnnul(d.canok, true);
+    if (d.canko) return repondreAnnul(d.canko, false);
+    if (d.cannd) return demanderAnnul(d.cannd);
+    if (d.cannr) { var cgR = +d.cannr; demander('Retirer la demande d’annulation ?', 'Vos congés restent posés comme prévu.', 'Retirer la demande').then(function (ok) { if (!ok) return; sb.rpc('retirer_annulation_conges', { p_id: cgR }).then(function (r) { if (r.error) throw r.error; toast('Demande d’annulation retirée'); chargerMesConges(); }).catch(function (e) { toast(msgErr(e)); }); }); return; }
     if (d.crefus) return repondre(d.crefus, false);
     if ((d.act && d.act.slice(0, 3) === 'off') || d.offmod || d.offj || d.offd || d.offr || d.offn) { if (actionOff(d)) return; }
     if (d.csuppr) return supprimerConges(d.csuppr);

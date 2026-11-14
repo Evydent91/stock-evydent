@@ -1774,3 +1774,4 @@ button.stk-k{cursor:pointer}
 .mc-p{display:flex;justify-content:space-between;gap:10px;padding:8px 0;font-size:14px;color:var(--ink2);border-top:1px solid var(--soft)}
 .mc-p:first-child{border-top:none}
 .mc-p .ok{color:var(--ok);font-weight:700}.mc-p .warn{color:var(--warn);font-weight:700}
+.a-lien.cg-ann{max-width:118px;text-align:right;line-height:1.25;white-space:normal}
