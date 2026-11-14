@@ -3414,25 +3414,29 @@
       + (n ? '<span class="use">📈 ' + fr(n) + ' ' + uSortie(a, n) + ' sortie' + (n > 1 ? 's' : '') + ' en 12 mois</span>' : '') + '</div>'
       + '<div class="stpw"><div class="stp"><button type="button" data-moins="' + a.id + '" aria-label="Moins un">−</button><input inputmode="decimal" data-qte="' + a.id + '" value="' + (v || '') + '" placeholder="0" aria-label="Quantité en ' + uSortie(a, 2) + '"><button type="button" data-plus="' + a.id + '" aria-label="Plus un">+</button></div><small class="stpu ' + (enBoite(a) ? 'boite' : 'unite') + '">en ' + uSortie(a, 2) + '</small></div></div>';
   }
+  // Tuiles d'emplacement et barre de recherche (Sortie, Retour)
+  function tuilesCab(liste, cur, attr, lab) {
+    return '<section class="iv-emps st-emps" aria-label="' + lab + '">' + liste.map(function (c) { var on = +cur === c; return '<button class="iv-emp' + (on ? ' on' : '') + '" data-' + attr + '="' + c + '" aria-pressed="' + on + '"><b>' + (c === 9 ? 'La Sté' : 'Cab. ' + c) + '</b><span>' + (S.me.cabinet === c ? '★ le mien' : on ? 'choisi' : '&nbsp;') + '</span></button>'; }).join('') + '</section>';
+  }
+  function barreRech(id, v, ph) { return '<label class="stk-q st-q">' + ico('loupe', 18, 2.2) + '<input id="' + id + '" type="search" placeholder="' + ph + '" value="' + esc(v) + '" aria-label="' + ph + '"></label>'; }
   function vSortie() {
     var s = S.sortie, hors = horsCab(s.cab);
     if (s.ok) return vSortieOk();
     var ids0 = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; });
     if (s.voir && ids0.length) return vSortieVerif();
-    var h = retourAcc('Sortie');
+    var h = gestion() ? '' : retourAcc('Sortie');
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
-    h += '<div class="card filtre"><div class="frow"><label class="mu fcab"><span class="m-hide">Cabinet</span><select class="in" id="scab" aria-label="Cabinet">'
-      + [1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (c) { return '<option value="' + c + '"' + (+s.cab === c ? ' selected' : '') + '>' + cabTxt(c) + (S.me.cabinet === c ? ' ★' : '') + '</option>'; }).join('')
-      + '</select></label><label class="mu fq"><span class="m-hide">Rechercher un article</span><input class="in" id="sq" type="search" placeholder="🔍 Nom ou référence" value="' + esc(s.q) + '" aria-label="Rechercher un article"></label></div>'
-      + (hors ? '<p class="ban warn" style="margin:10px 0 0">Ce n’est pas votre cabinet : la sortie sera enregistrée « hors cabinet » (remplacement).</p>' : '') + '</div>';
+    h += '<p class="st-lab">Pour quel emplacement ?</p>' + tuilesCab([1, 2, 3, 4, 5, 6, 7, 8, 9], s.cab, 'scab', 'Cabinet')
+      + (hors ? '<p class="ban warn">Ce n’est pas votre cabinet : la sortie sera enregistrée « hors cabinet » (remplacement).</p>' : '')
+      + '<div class="st-f">' + barreRech('sq', s.q, 'Rechercher un article') + '</div>';
     var q = norm(s.q), ids = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; }), tri = parUsage(+s.cab);
     if (q) {
       var trouves = S.articles.filter(function (a) { return norm(a.nom + ' ' + (a.reference || '')).indexOf(q) >= 0; }).sort(tri).slice(0, 40);
-      return h + (trouves.length ? '<div class="card liste">' + trouves.map(function (a) { return ligneSortie(a, s); }).join('') + '</div>' : '<p class="mu">Aucun article trouvé.</p>');
+      return h + (trouves.length ? '<div class="sect st-sect">Résultats · ' + trouves.length + '</div><div class="card liste st-l">' + trouves.map(function (a) { return ligneSortie(a, s); }).join('') + '</div>' : '<p class="mu">Aucun article trouvé.</p>');
     }
-    if (s.voir && ids.length) return h + '<div class="sect row"><span class="grow">🧺 Dans la sortie · ' + ids.length + ' article(s)</span><button class="lnk" data-act="svoir">← Tous les articles</button></div><div class="card liste">' + ids.map(function (k) { return S.byId[k]; }).filter(Boolean).map(function (a) { return ligneSortie(a, s); }).join('') + '</div>';
+    if (s.voir && ids.length) return h + '<div class="sect st-sect row"><span class="grow">Dans la sortie · ' + ids.length + ' article(s)</span><button class="lnk" data-act="svoir">← Tous les articles</button></div><div class="card liste st-l">' + ids.map(function (k) { return S.byId[k]; }).filter(Boolean).map(function (a) { return ligneSortie(a, s); }).join('') + '</div>';
     var autres = S.articles.filter(function (a) { return pourLieu(a, s.cab); }).sort(tri), max = s.max || 30;
-    h += '<div class="sect">⭐ Les plus sortis · ' + lieuTxt(s.cab) + '</div><div class="card liste">' + autres.slice(0, max).map(function (a) { return ligneSortie(a, s); }).join('') + '</div>';
+    h += '<div class="sect st-sect">Les plus sortis · ' + lieuTxt(s.cab) + '</div><div class="card liste st-l">' + autres.slice(0, max).map(function (a) { return ligneSortie(a, s); }).join('') + '</div>';
     if (autres.length > max) h += '<button class="btn l plus" data-act="splus">Afficher plus d’articles (' + (autres.length - max) + ' restants)</button>';
     return h;
   }
@@ -3467,18 +3471,17 @@
   // Saisie dans l'unité de la réserve, en entiers : boîtes fermées pour un article rangé en boîte.
   function vRetour() {
     var s = S.ret, hors = horsCab(s.cab);
-    var h = retourAcc('Retour en réserve') + '<p class="ban warn avec-ic" style="margin:0 0 10px">' + ico('boite', 22) + '<span>On ne rend que des <b>boîtes fermées</b>. Les unités en vrac restent au cabinet.</span></p>';
+    var h = (gestion() ? '' : retourAcc('Retour en réserve')) + '<p class="st-info">' + ico('boite', 22) + '<span>On ne rend que des <b>boîtes fermées</b>. Les unités en vrac restent au cabinet.</span></p>';
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
-    h += '<div class="card filtre"><div class="frow"><label class="mu fcab"><span class="m-hide">Depuis le cabinet</span><select class="in" id="rcab" aria-label="Depuis le cabinet">'
-      + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+s.cab === c ? ' selected' : '') + '>Cab. ' + c + (S.me.cabinet === c ? ' ★' : '') + '</option>'; }).join('')
-      + '</select></label><label class="mu fq"><span class="m-hide">Rechercher un article</span><input class="in" id="rq" type="search" placeholder="🔍 Nom ou référence" value="' + esc(s.q) + '" aria-label="Rechercher un article"></label></div>'
-      + (hors ? '<p class="ban warn" style="margin:10px 0 0">Ce n’est pas votre cabinet : le retour sera enregistré « hors cabinet » (remplacement).</p>' : '') + '</div>';
+    h += '<p class="st-lab">Depuis quel cabinet ?</p>' + tuilesCab([1, 2, 3, 4, 5, 6, 7, 8], s.cab, 'rcab', 'Depuis le cabinet')
+      + (hors ? '<p class="ban warn">Ce n’est pas votre cabinet : le retour sera enregistré « hors cabinet » (remplacement).</p>' : '')
+      + '<div class="st-f">' + barreRech('rq', s.q, 'Rechercher un article') + '</div>';
     var q = norm(s.q), ids = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; });
     // Sans recherche : les articles dont le cabinet a au moins une boîte fermée (ou une unité), plus ceux déjà choisis
     var liste = q ? S.articles.filter(function (a) { return norm(a.nom + ' ' + (a.reference || '')).indexOf(q) >= 0; }).slice(0, 40)
                   : S.articles.filter(function (a) { return s.panier[a.id] > 0 || stockDe(a.id, +s.cab) >= facteur(a); }).sort(parUsage(+s.cab));
-    if (!liste.length) return h + '<p class="mu">' + (q ? 'Aucun article trouvé.' : 'Aucune boîte fermée enregistrée dans ce cabinet. Cherchez l’article avec 🔍.') + '</p>';
-    return h + (q ? '' : '<div class="sect">📦 Présents dans le cabinet ' + s.cab + '</div>') + '<div class="card liste">' + liste.map(function (a) {
+    if (!liste.length) return h + '<p class="mu">' + (q ? 'Aucun article trouvé.' : 'Aucune boîte fermée enregistrée dans ce cabinet. Cherchez l’article avec la recherche.') + '</p>';
+    return h + (q ? '' : '<div class="sect st-sect">Présents dans le cabinet ' + s.cab + '</div>') + '<div class="card liste st-l">' + liste.map(function (a) {
       var v = s.panier[a.id] || 0, f = facteur(a), cab = stockDe(a.id, +s.cab), boites = f > 1 ? Math.floor(cab / f + 1e-9) : null, trop = f > 1 ? v > boites : v > cab;
       return '<div class="it"><div class="it-n"><b>' + esc(a.nom) + (a.reference && a.reference !== 'SR' ? '<span class="ref">' + esc(a.reference) + '</span>' : '') + '</b>'
         + '<span class="' + (trop ? 'pill warn' : '') + '">Au cabinet ' + s.cab + ' : ' + fr(cab) + ' u.' + (f > 1 ? ' (' + boites + ' boîte(s) entière(s) de ' + fr(a.qte_par_boite) + ')' : '') + (trop ? ' · plus que le stock enregistré' : '') + '</span>'
@@ -3531,13 +3534,13 @@
 
   // ---------- Demandes (gestion) ----------
   function vDemandes() {
-    var h = '<h2>Demandes à confirmer</h2>';
-    if (!S.attente.length) return h + '<p class="mu">Aucune demande en attente.</p>';
-    return h + S.attente.map(function (m) {
-      var a = S.byId[m.article_id] || { nom: '?' }, d = dispoUnites(a);
-      return '<div class="card"><div class="row wrap"><div class="grow"><b>' + esc(a.nom) + ' × ' + fr(m.quantite) + '</b><br><span class="mu">' + esc(m.auteur_nom || '?') + ' · ' + cabTxt(m.emplacement_vers) + ' · ' + quand(m.cree_le) + (m.hors_cabinet ? ' · <span class="pill warn">hors cabinet</span>' : '') + '</span><br><span class="mu">Réserve actuelle : ' + fr(d) + ' u. — écart si confirmé : ' + fr(Math.max(0, m.quantite - d)) + ' u.</span></div>'
-        + '<button class="btn l sm" data-refuser="' + m.id + '">Refuser</button><button class="btn sm" data-confirmer="' + m.id + '">Confirmer</button></div></div>';
-    }).join('');
+    if (!S.attente.length) return '<div class="dm-vide">' + ico('ok', 28, 2.2) + '<b>Aucune demande en attente</b><span class="mu">Les sorties qui dépassent la réserve arrivent ici pour être confirmées.</span></div>';
+    return '<p class="mu dm-int">Sorties au-delà de la réserve : confirmez si l’article a bien été pris (l’écart de réserve est enregistré), refusez sinon (le stock ne bouge pas).</p><section class="dm-l">' + S.attente.map(function (m) {
+      var a = S.byId[m.article_id] || { nom: '?' }, d = dispoUnites(a), ec = Math.max(0, m.quantite - d);
+      return '<div class="dm-c"><span class="dm-q">× ' + fr(m.quantite) + '</span><span class="dm-n"><b>' + esc(a.nom) + '</b><span>' + esc(m.auteur_nom || '?') + ' · ' + cabTxt(m.emplacement_vers) + ' · ' + quand(m.cree_le) + (m.hors_cabinet ? ' <span class="pill warn">hors cabinet</span>' : '') + '</span>'
+        + '<span>Réserve actuelle : <b>' + fr(d) + ' u.</b>' + (ec ? ' · écart si confirmé : <b class="dm-ec">' + fr(ec) + ' u.</b>' : '') + '</span></span>'
+        + '<span class="dm-b"><button class="btn l" data-refuser="' + m.id + '">Refuser</button><button class="btn" data-confirmer="' + m.id + '">Confirmer</button></span></div>';
+    }).join('') + '</section>';
   }
   async function traiter(id, ok) {
     if (!ok && !(await demander('Refuser cette demande ?', 'Le stock ne sera pas modifié.', 'Refuser', true))) return;
@@ -3774,14 +3777,15 @@
   var TYP = { sortie: 'Sortie', demande: 'Demande', transfert: 'Transfert', retour: 'Retour', reception: 'Réception', inventaire: 'Inventaire', regul: 'Régularisation', correction: 'Correction', annulation: 'Annulation' };
   var STAT = { ok: ['ok', 'ok'], attente: ['warn', 'en attente'], refuse: ['ko', 'refusée'], annule: ['', 'annulée'], corrige: ['', 'corrigée'] };
   function vHisto() {
-    var h = '<h2>Historique</h2>';
-    h += gestion() ? '<div class="row" style="margin-bottom:10px"><label class="row"><input type="checkbox" id="htous"' + (S.histTous ? ' checked' : '') + ' style="width:20px;height:20px"> Toute l’équipe</label>' + (S.histTous ? '' : '<span class="mu">(seulement vos mouvements)</span>') + '</div>' : '<p class="mu" style="margin-top:-6px">Vos derniers mouvements.</p>';
+    var h = gestion() ? '<div class="hi-top"><span class="cm-seg" role="tablist" aria-label="Mouvements"><button role="tab" aria-selected="' + !S.histTous + '" class="' + (!S.histTous ? 'on' : '') + '" data-htous="0">Mes mouvements</button><button role="tab" aria-selected="' + !!S.histTous + '" class="' + (S.histTous ? 'on' : '') + '" data-htous="1">Toute l’équipe</button></span></div>' : '<p class="mu">Vos derniers mouvements.</p>';
     if (!S.histo.length) return h + '<p class="mu">Aucun mouvement pour l’instant.</p>';
-    return h + '<div class="scroll"><table class="tbl tbl-h"><thead><tr><th>Date</th><th>Mouvement</th><th class="n">Qté</th><th>Par</th></tr></thead><tbody>' + S.histo.map(function (m) {
+    var CL = { sortie: 'k-so', demande: 'k-so', retour: 'k-re', reception: 'k-rc', inventaire: 'k-in', regul: 'k-in', correction: 'k-co', transfert: 'k-re', annulation: 'k-co' };
+    return h + '<section class="hi-l"><div class="hi-r hi-h" aria-hidden="true"><span>Date</span><span>Mouvement</span><span>Quantité</span><span>Par</span></div>' + S.histo.map(function (m) {
       var a = S.byId[m.article_id] || { nom: m.article_nom ? m.article_nom + ' (supprimé)' : '(article)' }, st = STAT[m.statut] || ['', m.statut];
-      var lieu = m.type === 'retour' ? ' ' + cabTxt(m.emplacement_de) + ' → réserve' : m.type === 'sortie' || m.type === 'demande' ? ' → ' + cabTxt(m.emplacement_vers) : m.emplacement_de != null ? ' · ' + cabTxt(m.emplacement_de) : '';
-      return '<tr><td>' + quand(m.cree_le) + '</td><td>' + (TYP[m.type] || m.type) + lieu + ' · <b>' + esc(a.nom) + '</b> ' + (m.statut !== 'ok' ? '<span class="pill ' + st[0] + '">' + st[1] + '</span> ' : '') + (m.hors_cabinet ? '<span class="pill warn">hors cabinet</span>' : '') + (m.ecart ? '<br><span class="mu">écart ' + fr(m.ecart) + (m.valeur ? ' · ' + eur(m.valeur) : '') + '</span>' : '') + '</td><td class="n">' + (m.type === 'retour' && m.quantite_reserve != null && +m.quantite_reserve !== +m.quantite ? fr(m.quantite_reserve) + ' boîte(s)<br><small class="mu">' + fr(m.quantite) + ' u.</small>' : fr(m.quantite)) + '</td><td>' + esc(m.auteur_nom || '') + '</td></tr>';
-    }).join('') + '</tbody></table></div>';
+      var lieu = m.type === 'retour' ? cabTxt(m.emplacement_de) + ' → réserve' : m.type === 'sortie' || m.type === 'demande' ? '→ ' + cabTxt(m.emplacement_vers) : m.emplacement_de != null ? cabTxt(m.emplacement_de) : '';
+      return '<div class="hi-r"><span class="hi-d">' + quand(m.cree_le) + '</span><span class="hi-m"><span><span class="hi-t ' + (CL[m.type] || '') + '">' + (TYP[m.type] || m.type) + '</span> <b>' + esc(a.nom) + '</b></span><span class="mu">' + lieu + (m.statut !== 'ok' ? ' <span class="pill ' + st[0] + '">' + st[1] + '</span>' : '') + (m.hors_cabinet ? ' <span class="pill warn">hors cabinet</span>' : '') + (m.ecart ? ' · écart ' + fr(m.ecart) + (m.valeur ? ' · ' + eur(m.valeur) : '') : '') + '</span></span>'
+        + '<span class="hi-q">' + (m.type === 'retour' && m.quantite_reserve != null && +m.quantite_reserve !== +m.quantite ? fr(m.quantite_reserve) + ' boîte(s) <small class="mu">' + fr(m.quantite) + ' u.</small>' : fr(m.quantite)) + '</span><span class="hi-p">' + esc(m.auteur_nom || '') + '</span></div>';
+    }).join('') + '</section>';
   }
 
   // ---------- Articles (gestion) ----------
@@ -4800,6 +4804,9 @@
     if (d.act === 'vider') { S.sortie.panier = {}; S.sortie.voir = false; render(); return; }
     if (d.plus) { setQte(d.plus, (S.sortie.panier[d.plus] || 0) + 1); S.sortie.msg = null; render(); return; }
     if (d.moins) { setQte(d.moins, (S.sortie.panier[d.moins] || 0) - 1); render(); return; }
+    if (d.scab) { S.sortie.cab = +d.scab; render(); return; }
+    if (d.htous != null) { var ht = d.htous === '1'; if (ht !== !!S.histTous) { S.histTous = ht; render(); chargerHisto(); } return; }
+    if (d.rcab) { S.ret.cab = +d.rcab; render(); return; }
     if (d.izero) { S.inv.d[d.izero] = '0'; ecrireBrouillon(); render(); return; }
     if (d.iemp != null && d.iemp !== '') { choisirEmp(+d.iemp); render(); return; }
     if (d.ieq) { var ia = S.byId[+d.ieq]; if (ia) { S.inv.d[d.ieq] = String(theo(ia, S.inv.emp)).replace('.', ','); ecrireBrouillon(); render(); } return; }
