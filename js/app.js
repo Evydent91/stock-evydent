@@ -2200,7 +2200,9 @@
     var G = S.ptg = S.ptg || { mode: 'semaine', jour: dIso(new Date()), rows: {} }, J = G.jour, L = lundiDe(J);
     if (G.mode === 'bord') return vPtBord();
     var titre = G.mode === 'jour' ? jourLong(J) : 'Semaine du ' + periode(L, addJ(L, 4)).replace(/^du /, '');
-    var h = enTetePt({ mode: G.mode, titre: titre, nav: 'ptnav', fleches: true, auj: J !== dIso(new Date()) ? 'Aujourd’hui' : '', sous: G.mode === 'jour' ? 'Heures prévues = total de la journée, coupure de midi déduite' : 'Semaine du lundi au vendredi' }) + '<div class="a-corps hr-corps">';
+    var scP = semClose(L);
+    var h = enTetePt({ mode: G.mode, titre: titre, nav: 'ptnav', fleches: true, auj: J !== dIso(new Date()) ? 'Aujourd’hui' : '', sous: (scP ? '<b class="pt-closs">' + ico('cadenas', 14, 2.4) + 'Semaine clôturée</b> · ' : '') + (G.mode === 'jour' ? 'Heures prévues = total de la journée, coupure de midi déduite' : 'Semaine du lundi au vendredi') }) + '<div class="a-corps hr-corps">';
+    if (scP) h += '<div class="clo-ban">' + ico('cadenas', 20, 2.2) + '<span><b>Semaine ' + (G.mode === 'jour' ? 'de ce jour ' : '') + 'clôturée le ' + dateCourte(String(scP.cloture_le).slice(0, 10)) + (scP.cloture_par ? ' par ' + esc(nomProfil(scP.cloture_par) || '?') : '') + '</b><span>Heures figées : les pointages de cette semaine ne se corrigent plus. Pour corriger, rouvrez-la dans le planning.</span></span><button class="btn l" data-ptplan="' + L + '">Ouvrir dans le planning</button></div>';
     if (!pointagePret()) return h + '<div class="ban warn">La mise à jour 016 de la base (pointage) n’est pas encore faite.</div></div>' + (S.ptQR ? vQR() : '');
     if (assurerPlage(addJ(L, 6)) || S.pl.chargeH || chargerPointages() || G.charge) return h + '<p class="a-vide">Chargement…</p></div>';
     if (G.err) h += '<div class="ban warn">' + esc(G.err) + '</div>';
@@ -2278,7 +2280,7 @@
     var tous = (S.equipe || []).filter(function (e) { return e.actif && e.pointage; }), ps = trierPt(tous);
     var sous = W.length + ' semaine' + (W.length > 1 ? 's' : '') + ' · ' + periode(W[0], addJ(der, 4)) + ' · ' + ps.length + ' ' + pl(ps.length, 'personne') + ' soumise' + (ps.length > 1 ? 's' : '') + ' au pointage';
     var auj0 = dIso(new Date()), estCourant = B.per === 'semaine' ? B.lundi === lundiDe(auj0) : B.per === 'mois' ? B.mois === addJ(lundiDe(auj0), 3).slice(0, 7) : true;
-    var h = enTetePt({ mode: 'bord', titre: titre, nav: 'ptbnav', fleches: B.per !== 'depuis', auj: estCourant ? '' : B.per === 'semaine' ? 'Cette semaine' : 'Ce mois-ci', sous: sous + (regles().pt_reliquat !== false ? ' · <b class="or">Le reliquat utilise le temps pointé</b>' : ' · le reliquat utilise le planning') }) + '<div class="a-corps hr-corps">';
+    var h = enTetePt({ mode: 'bord', titre: titre, nav: 'ptbnav', fleches: B.per !== 'depuis', auj: estCourant ? '' : B.per === 'semaine' ? 'Cette semaine' : 'Ce mois-ci', sous: (function () { var nc = W.filter(function (L0) { return semClose(L0); }).length; return nc ? '<b class="pt-closs">' + ico('cadenas', 14, 2.4) + (nc === W.length ? (W.length > 1 ? 'Toutes les semaines clôturées' : 'Semaine clôturée') : nc + ' / ' + W.length + ' semaines clôturées') + '</b> · ' : ''; })() + sous + (regles().pt_reliquat !== false ? ' · <b class="or">Le reliquat utilise le temps pointé</b>' : ' · le reliquat utilise le planning') }) + '<div class="a-corps hr-corps">';
     if (!pointagePret()) return h + '<div class="ban warn">La mise à jour 016 de la base (pointage) n’est pas encore faite.</div></div>';
     if (assurerPlage(addJ(der, 6)) || S.pl.chargeH || assurerPointages(lundiDe(regles().depuis || W[0]), addJ(der, 6))) return h + '<p class="a-vide">Chargement…</p></div>' + modalesPt();
     if (!ps.length) return h + '<div class="card"><b>Personne n’est soumis au pointage pour l’instant.</b></div></div>' + modalesPt();
@@ -4719,6 +4721,7 @@
     if (d.act === 'ptexp') { var mE = S.ptg && S.ptg.mode === 'bord' && S.ptg.bord && S.ptg.bord.per === 'mois' ? S.ptg.bord.mois : (S.ptg ? addJ(lundiDe(S.ptg.jour), 2).slice(0, 7) : dIso(new Date()).slice(0, 7)); S.ptExp = { mois: mE, cat: S.ptg && S.ptg.cat || '' }; render(); return; }
     if (d.act === 'ptexpx') { S.ptExp = null; render(); return; }
     if (d.act === 'ptexpok' && S.ptExp) return exporterPointage();
+    if (d.ptplan) { S.pl = S.pl || { rows: {} }; S.pl.rows = S.pl.rows || {}; S.pl.lundi = d.ptplan; S.pl.cas = null; S.tab = 'planning'; S.tabChoisi = true; chargerSemaine(); render(); window.scrollTo(0, 0); return; }
     if (d.plpt != null) { S.plVoirPt = d.plpt === '1'; render(); return; }
     if (d.act === 'clo' && S.pl) { if (!S.clos) { toast(S.clos === null ? 'La clôture demande la mise à jour 023 de la base (SQL Editor de Supabase)' : 'Chargement… réessayez dans un instant'); if (S.clos === null) chargerClos(); return; } S.plClo = { L: S.pl.lundi }; render(); return; }
     if (d.act === 'clox') { S.plClo = null; render(); return; }
