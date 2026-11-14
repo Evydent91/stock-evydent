@@ -1358,7 +1358,7 @@ button.lien{border:none;background:none;padding:0;font:inherit;font-weight:700;c
 .cg2-k small{font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--mute)}.cg2-k b{font-size:19px}.cg2-k span{font-size:13.5px;color:var(--mute)}
 .cg2-carte{background:#fff;border-radius:18px;box-shadow:0 1px 3px rgba(31,42,51,.08);padding:12px 14px 16px}
 .cg2-scroll{overflow-x:auto}
-.cg2-g{display:grid;grid-auto-rows:34px;row-gap:4px;column-gap:2px;align-items:stretch;min-width:max-content}
+.cg2-g{display:grid;row-gap:4px;column-gap:2px;align-items:stretch;min-width:max-content}
 .cg2-coin{position:sticky;left:0;background:#fff;z-index:2}
 .cg2-h{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;border-radius:8px}
 .cg2-h small{font-size:10.5px;font-weight:700;text-transform:uppercase;color:var(--mute)}.cg2-h b{font-size:14px}
@@ -1372,10 +1372,21 @@ button.lien{border:none;background:none;padding:0;font:inherit;font-weight:700;c
 .cg2-c.np{background:#f1eee6;border-color:#f1eee6}
 .cg2-c.fe{background:repeating-linear-gradient(135deg,#e6e9ec 0 4px,#f4f5f6 4px 8px);border-color:transparent}
 .cg2-c.auj{border:2px solid var(--navy)}
-.cg2-b{z-index:1;margin:3px 0;border:none;border-radius:8px;color:#fff;font:inherit;font-size:12.5px;font-weight:700;display:flex;align-items:center;padding:0 8px;overflow:hidden;cursor:pointer;min-width:0}
+.cg2-b{z-index:2;position:relative;margin:3px 0;border:none;border-radius:8px;color:#fff;font:inherit;font-size:12.5px;font-weight:700;display:flex;align-items:center;padding:0 8px;overflow:hidden;cursor:pointer;min-width:0}
 .cg2-b span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cg2-b.cp,.cg2-leg .cp{background:#1d5fa0}.cg2-b.ar,.cg2-leg .ar{background:#a8521a}.cg2-b.fo,.cg2-leg .fo{background:#1f7a4d}.cg2-b.ec{background:#8e6bb8}
 .cg2-b.at,.cg2-leg .at{background:repeating-linear-gradient(135deg,#e7a96b 0 5px,#f3c79d 5px 10px);color:#5a2b06}
 .cg2-leg .np{background:#f1eee6;border:1px solid #e3ded2}.cg2-leg .fe{background:repeating-linear-gradient(135deg,#d3d8dd 0 3px,#f4f5f6 3px 6px)}
 @media (min-width:1000px){.h-app.tres-large .cg2{--cg2-nom:150px;--cg2-j:38px}}
-@media (max-width:700px){.cg2{--cg2-nom:92px;--cg2-j:26px}.cg2-k{grid-template-columns:1fr 1fr}.cg2-k > div:last-child{grid-column:1/-1}.cg2-nav b{min-width:0;font-size:17px}.cg2-b{font-size:0;padding:0}.cg2-g{grid-auto-rows:30px}}
+@media (max-width:700px){.cg2{--cg2-nom:92px;--cg2-j:26px}.cg2-k{grid-template-columns:1fr 1fr}.cg2-k > div:last-child{grid-column:1/-1}.cg2-nav b{min-width:0;font-size:17px}.cg2-b{font-size:0;padding:0}}
+/* Congés : couples dentiste / assistante et filtres */
+.cg2-gr{gap:10px;align-items:flex-end}.cg2-gr b{font-weight:700}.cg2-gr small{font-size:12px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--mute)}
+.cg2-n.pt b{font-size:12.5px;font-weight:600;color:var(--mute)}.cg2-n.pt i{font-style:normal;margin:0 4px 0 8px;color:var(--gold)}
+.cg2-n.pt small{font-size:10.5px;padding:0 5px}
+.cg2-c.pt{border-radius:4px}
+.cg2-b.pt{margin:2px 0;border-radius:4px;opacity:.8}
+.cg2-c.ens{box-shadow:0 0 0 2px var(--gold);z-index:3;position:relative;background:transparent!important;border-color:transparent;pointer-events:none}
+.cg2-note{margin:10px 2px 0;font-size:13px;color:var(--mute);display:flex;align-items:center;gap:8px}
+.cg2-note i{width:16px;height:10px;border-radius:3px;box-shadow:0 0 0 2px var(--gold)}
+.cg2-f{margin-bottom:-4px}
+@media (max-width:700px){.cg2-n.pt i{margin-left:2px}}

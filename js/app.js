@@ -1385,31 +1385,57 @@
     // colonnes : nom + jours, avec un petit espace entre les semaines
     var col = {}, tpl = ['var(--cg2-nom)'], k = 2;
     jours.forEach(function (iso, n) { if (n && jourSem(iso) === 1) { tpl.push('10px'); k++; } col[iso] = k; tpl.push('minmax(var(--cg2-j),1fr)'); k++; });
-    var g = '<div class="cg2-scroll"><div class="cg2-g" style="grid-template-columns:' + tpl.join(' ') + '">', row = 1;
+    // catégories de l'équipe : assistant(e)s (et intérimaire) d'un côté, les autres (administratif, stérilisation…) par catégorie
+    var estAss = function (r) { var c = catPt(r.p).k; return c === 'assistante' || c === 'interimaire'; };
+    var ass = eq.filter(estAss), autres = {}, ordreAutres = [];
+    eq.filter(function (r) { return !estAss(r); }).forEach(function (r) { var c = catPt(r.p); if (!autres[c.k]) { autres[c.k] = { n: c.n, l: [] }; ordreAutres.push(c.k); } autres[c.k].l.push(r); });
+    ordreAutres.sort(function (a, b) { return autres[a].n.localeCompare(autres[b].n); });
+    var F = S.cgFiltre || 'tous'; if (F.slice(0, 4) === 'cat:' && !autres[F.slice(4)]) F = S.cgFiltre = 'tous';
+    var filtres = [['tous', 'Tous'], ['couples', 'Dentistes & assistant(e)s'], ['dent', 'Dentistes'], ['ass', 'Assistant(e)s']].concat(ordreAutres.map(function (c) { return ['cat:' + c, autres[c].n]; }));
+    h += '<div class="pt-cats cg2-f" role="group" aria-label="Filtrer">' + filtres.map(function (f) { return '<button data-cgf="' + esc(f[0]) + '"' + (F === f[0] ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"') + '>' + esc(f[1]) + '</button>'; }).join('') + '</div>';
+    // lignes à afficher : { r, petit, gr }
+    var L = [], titreB = function (t, sous) { L.push({ gr: t, sous: sous }); };
+    var parDent = {}; ass.forEach(function (r) { var a = attitre(r.p); if (a) (parDent[a] = parDent[a] || []).push(r); });
+    if (F === 'tous' || F === 'couples') {
+      titreB('Dentistes et leur assistant(e)', 'la ligne fine sous chaque dentiste : son assistant(e) attitré(e)');
+      de.forEach(function (r) { L.push({ r: r }); (parDent[r.dent.id] || []).forEach(function (a) { L.push({ r: a, petit: true }); }); });
+      var seuls = ass.filter(function (r) { return !attitre(r.p); });
+      if (seuls.length) { titreB('Assistant(e)s sans dentiste attitré'); seuls.forEach(function (r) { L.push({ r: r }); }); }
+    }
+    if (F === 'dent') { titreB('Dentistes'); de.forEach(function (r) { L.push({ r: r }); }); }
+    if (F === 'ass') { titreB('Assistant(e)s'); ass.forEach(function (r) { L.push({ r: r }); }); }
+    ordreAutres.forEach(function (c) { if (F === 'tous' || F === 'cat:' + c) { titreB(autres[c].n); autres[c].l.forEach(function (r) { L.push({ r: r }); }); } });
+    // grille
+    var rows = ['44px'], g = '', row = 1;
     g += '<span class="cg2-coin" style="grid-row:1;grid-column:1"></span>' + jours.map(function (iso) { var j = jourSem(iso), f = ferie(iso); return '<span class="cg2-h' + (iso === auj ? ' auj' : '') + (f ? ' fe' : '') + '" style="grid-row:1;grid-column:' + col[iso] + '"><small>' + JC[j] + '</small><b>' + (+iso.slice(8)) + '</b></span>'; }).join('');
-    var ligne = function (r) {
-      row++;
-      var n = nbJ(r), out = '<button class="cg2-n" ' + r.ouv + ' style="grid-row:' + row + ';grid-column:1"><b>' + esc(r.nom) + '</b>' + (n ? '<small>' + n + ' j</small>' : '') + '</button>';
+    var absLe = function (r, iso) { return r.l.some(function (c) { return c.du <= iso && c.au >= iso; }); };
+    var ligne = function (r, petit, dentR) {
+      row++; rows.push(petit ? '18px' : '34px');
+      var n = nbJ(r), out = '<button class="cg2-n' + (petit ? ' pt' : '') + '" ' + r.ouv + ' style="grid-row:' + row + ';grid-column:1"><b>' + (petit ? '<i aria-hidden="true">↳</i>' : '') + esc(r.nom) + '</b>' + (n ? '<small>' + n + ' j</small>' : '') + '</button>';
       jours.forEach(function (iso) {
         var j = jourSem(iso), f = ferie(iso), trav = r.dent ? (r.dent.jours && r.dent.jours[j]) || dentExtra(r.dent, iso) : (function () { var t = (r.p.trame || {})[j] || {}; return heuresTrame(r.p.trame) < 0.01 || (t.am && t.am.a && t.am.a !== 'OFF') || (t.pm && t.pm.a && t.pm.a !== 'OFF'); })();
-        out += '<span class="cg2-c' + (f ? ' fe' : !trav ? ' np' : '') + (iso === auj ? ' auj' : '') + '" style="grid-row:' + row + ';grid-column:' + col[iso] + '" title="' + esc(r.nom + ' · ' + JOURS[j].toLowerCase() + ' ' + dateCourte(iso) + (f ? ' · férié' : !trav ? ' · ne travaille pas ce jour-là' : '')) + '"></span>';
+        var ens = petit && dentR && absLe(r, iso) && absLe(dentR, iso);
+        out += '<span class="cg2-c' + (petit ? ' pt' : '') + (f ? ' fe' : !trav ? ' np' : '') + (iso === auj ? ' auj' : '') + (ens ? ' ens' : '') + '" style="grid-row:' + row + ';grid-column:' + col[iso] + '" title="' + esc(r.nom + ' · ' + JOURS[j].toLowerCase() + ' ' + dateCourte(iso) + (f ? ' · férié' : !trav ? ' · ne travaille pas ce jour-là' : '') + (ens ? ' · absent(e) en même temps que ' + dentR.nom : '')) + '"></span>';
       });
-      // barres d'absence, coupées à chaque semaine
       r.l.forEach(function (c) {
         var seg = null, segs = [];
         jours.forEach(function (iso) { var dedans = c.du <= iso && c.au >= iso; if (dedans && (!seg || jourSem(iso) === 1)) { seg = { a: iso, b: iso }; segs.push(seg); } else if (dedans) seg.b = iso; else seg = null; });
         segs.forEach(function (sg, si) {
           var cl = c.statut === 'attente' ? 'at' : TYPE_CL[c.type] || 'cp', lib = c.type === 'FORMATION' ? (c.mot || 'Formation') : typeTxt(c.type);
-          out += '<button class="cg2-b ' + cl + '" ' + r.ouv + ' style="grid-row:' + row + ';grid-column:' + col[sg.a] + '/' + (col[sg.b] + 1) + '" title="' + esc(r.nom + ' · ' + lib + ' ' + periode(c.du, c.au) + (c.statut === 'attente' ? ' · en attente' : '')) + '"><span>' + (si === 0 ? esc(lib) + (c.statut === 'attente' ? ' ?' : '') : '') + '</span></button>';
+          out += '<button class="cg2-b ' + cl + (petit ? ' pt' : '') + '" ' + r.ouv + ' style="grid-row:' + row + ';grid-column:' + col[sg.a] + '/' + (col[sg.b] + 1) + '" title="' + esc(r.nom + ' · ' + lib + ' ' + periode(c.du, c.au) + (c.statut === 'attente' ? ' · en attente' : '')) + '"><span>' + (si === 0 && !petit ? esc(lib) + (c.statut === 'attente' ? ' ?' : '') : '') + '</span></button>';
         });
       });
       return out;
     };
-    row++; g += '<span class="cg2-gr" style="grid-row:' + row + ';grid-column:1/-1">Équipe</span>';
-    g += eq.map(ligne).join('');
-    row++; g += '<span class="cg2-gr" style="grid-row:' + row + ';grid-column:1/-1">Dentistes</span>';
-    g += de.map(ligne).join('');
-    h += '<section class="cg2-carte">' + g + '</div></div></section>';
+    var dentCourant = null;
+    L.forEach(function (x) {
+      if (x.gr) { row++; rows.push('34px'); g += '<span class="cg2-gr" style="grid-row:' + row + ';grid-column:1/-1"><b>' + esc(x.gr) + '</b>' + (x.sous ? '<small>' + esc(x.sous) + '</small>' : '') + '</span>'; return; }
+      if (x.r.dent) dentCourant = x.r;
+      g += ligne(x.r, x.petit, x.petit ? dentCourant : null);
+    });
+    if (!L.length) g += '<p class="a-vide" style="grid-row:2;grid-column:1/-1">Personne dans ce filtre.</p>';
+    h += '<section class="cg2-carte"><div class="cg2-scroll"><div class="cg2-g" style="grid-template-columns:' + tpl.join(' ') + ';grid-template-rows:' + rows.join(' ') + '">' + g + '</div></div>'
+      + (F === 'tous' || F === 'couples' ? '<p class="cg2-note"><i aria-hidden="true"></i>Contour doré : le dentiste et son assistant(e) attitré(e) sont absents le même jour.</p>' : '') + '</section>';
     return h;
   }
   function repondre(id, ok) {
@@ -4311,6 +4337,7 @@
     if (d.act === 'dfsave') return sauverDent();
     if (d.dextra) return basculerExtra(d.dextra);
     if (d.djour && S.df) { var dj = S.df.d.jours = S.df.d.jours || {}; if (dj[d.djour]) delete dj[d.djour]; else dj[d.djour] = true; render(); return; }
+    if (d.cgf) { S.cgFiltre = d.cgf; render(); return; }
     if (d.cgm0) { S.cgMois = dIso(new Date()).slice(0, 7); render(); return; }
     if (d.cgm) { var cx = (S.cgMois || dIso(new Date()).slice(0, 7)).split('-'), cdt = new Date(+cx[0], +cx[1] - 1 + (+d.cgm), 1); S.cgMois = cdt.getFullYear() + '-' + ('0' + (cdt.getMonth() + 1)).slice(-2); render(); return; }
     if (d.act === 'exouvre' && S.df) { S.df.exOuvert = !S.df.exOuvert; render(); return; }
