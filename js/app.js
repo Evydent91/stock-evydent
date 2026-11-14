@@ -763,7 +763,7 @@
   function postes() { return Array.isArray(S.postes) && S.postes.length ? S.postes : POSTES_BASE; }
   function posteDe(code) { return postes().filter(function (x) { return x.code === code; })[0]; }
   function listeCodes(cur) {   // [code, nom] pour les listes : postes en service (+ celui déjà choisi), puis École et Ne travaille pas
-    return postes().filter(function (x) { return !x.retire || x.code === cur; }).map(function (x) { return [x.code, x.n]; }).concat([['ECOLE', 'École'], ['OFF', 'Ne travaille pas']]);
+    return postes().filter(function (x) { return !x.retire || x.code === cur; }).map(function (x) { return [x.code, x.n]; }).concat([['ECOLE', 'École'], ['OFF', 'OFF · ne travaille pas (0 h)']]);
   }
   // Types de personnel (Réglages › Types de personnel)
   function enType(x) { return { code: x.code, n: x.n, planning: x.planning !== false, contrat: x.contrat !== false, dentiste: x.dentiste !== false, base: x.base, retire: x.retire, gestion: x.gestion }; }
@@ -2937,10 +2937,11 @@
   function celluleJour(p, iso) {
     var am = caseEff(p, iso, 'AM'), pm = caseEff(p, iso, 'PM'), ab = function (c) { return ABS.indexOf(c.a) >= 0; };
     var cls = 'pl-c', h;
-    if (am.a === pm.a && (ab(am) || am.a === 'OFF')) { cls += am.a === 'OFF' ? ' off' : ' abs'; h = '<b>' + (am.a === 'OFF' && (am.off || pm.off) ? 'Jour off' : nomAff(am.a)) + '</b>'; }
+    var itm = p.type === 'interimaire', ofc = itm ? ' off' : ' off2', acl = function (c) { return ' abs ab-' + String(c.a).toLowerCase(); };
+    if (am.a === pm.a && (ab(am) || am.a === 'OFF')) { cls += am.a === 'OFF' ? ofc : acl(am); h = '<b>' + (am.a === 'OFF' ? (am.off || pm.off ? 'Jour off' : itm ? '—' : 'OFF') : nomAff(am.a)) + '</b>'; }
     else if (am.a === pm.a) { cls += ' on'; h = '<b>' + esc(nomAff(am.a)) + '</b><span>' + ft(am.de) + '–' + ft(am.fi) + ' · ' + ft(pm.de) + '–' + ft(pm.fi) + '</span>'; }
     else {
-      var demi = function (c) { return '<span class="pl-d' + (ab(c) ? ' abs' : c.a === 'OFF' ? ' off' : '') + '"><b>' + (c.off ? 'Off' : esc(nomAff(c.a))) + '</b>' + (c.de ? ' ' + ft(c.de) + '–' + ft(c.fi) : '') + '</span>'; };
+      var demi = function (c) { return '<span class="pl-d' + (ab(c) ? acl(c) : c.a === 'OFF' ? ofc : '') + '"><b>' + (c.off ? 'Off' : c.a === 'OFF' ? (itm ? '—' : 'OFF') : esc(nomAff(c.a))) + '</b>' + (c.de ? ' ' + ft(c.de) + '–' + ft(c.fi) : '') + '</span>'; };
       cls += ' mix'; h = demi(am) + demi(pm);
     }
     var rg = am.r || pm.r, dpt = pm.a && pm.a.slice(0, 2) === 'D:' ? dentById(pm.a.slice(2)) : am.a && am.a.slice(0, 2) === 'D:' && pm.a === 'OFF' ? dentById(am.a.slice(2)) : null, hd = dpt && dpt.jours && dpt.jours[jourSem(iso)];
