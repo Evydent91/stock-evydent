@@ -2672,7 +2672,7 @@
   // ---------- Clôture de semaine (mise à jour 023) ----------
   function chargerClos() {
     return sb.from('semaines_cloturees').select('*').then(function (r) {
-      if (r.error) { S.clos = null; return; }
+      if (r.error) { S.clos = null; render(); return; }
       var o = {}; (r.data || []).forEach(function (x) { o[String(x.lundi).slice(0, 10)] = x; }); S.clos = o; JOUR_CACHE = {}; render();
     }, function () { S.clos = null; });
   }
@@ -2773,7 +2773,7 @@
       + '<div class="pl-nav"><span class="pl-g"></span><button class="h-rond" data-plsem="-7" aria-label="Semaine précédente">' + ico('prec', 20, 2.4) + '</button>' + titreCal(titre, L) + '<button class="h-rond" data-plsem="7" aria-label="Semaine suivante">' + ico('suiv', 20, 2.4) + '</button>'
       + '<span class="pl-g d">' + (lundiDe(auj) !== L ? '<button class="pl-auj" data-plsem="0">Cette semaine</button>' : '') + '</span></div>'
       + '<div class="pl-outils"><div class="hr-seg" role="group" aria-label="Heures affichées"><button data-plpt="0" aria-pressed="' + !S.plVoirPt + '"' + (!S.plVoirPt ? ' class="on"' : '') + '>Planning seul</button><button data-plpt="1" aria-pressed="' + !!S.plVoirPt + '"' + (S.plVoirPt ? ' class="on"' : '') + '>Planning + pointé</button></div>'
-      + (S.clos === null || S.clos === undefined ? '<span></span>' : semClose(L) ? '<span class="pl-clos">' + ico('cadenas', 16, 2.4) + 'Clôturée</span>' : '<button class="pl-clob" data-act="clo"' + (addJ(L, 4) >= auj ? ' disabled title="La semaine n’est pas terminée"' : '') + '>' + ico('cadenas', 18, 2.2) + 'Clôturer la semaine</button>') + '</div></header>';
+      + (semClose(L) ? '<span class="pl-clos">' + ico('cadenas', 16, 2.4) + 'Clôturée</span>' : '<button class="pl-clob" data-act="clo"' + (addJ(L, 4) >= auj ? ' disabled title="La semaine n’est pas terminée"' : '') + '>' + ico('cadenas', 18, 2.2) + 'Clôturer la semaine</button>') + '</div></header>';
     h += '<div class="a-corps pl-corps">';
     if (!planPret()) return h + '<div class="ban warn">Les mises à jour 009 à 011 de la base ne sont pas encore faites.</div></div>';
     if (S.plImp) h += vImportPlanning();
@@ -4673,7 +4673,7 @@
     if (d.act === 'ptexpx') { S.ptExp = null; render(); return; }
     if (d.act === 'ptexpok' && S.ptExp) return exporterPointage();
     if (d.plpt != null) { S.plVoirPt = d.plpt === '1'; render(); return; }
-    if (d.act === 'clo' && S.pl) { S.plClo = { L: S.pl.lundi }; render(); return; }
+    if (d.act === 'clo' && S.pl) { if (!S.clos) { toast(S.clos === null ? 'La clôture demande la mise à jour 023 de la base (SQL Editor de Supabase)' : 'Chargement… réessayez dans un instant'); if (S.clos === null) chargerClos(); return; } S.plClo = { L: S.pl.lundi }; render(); return; }
     if (d.act === 'clox') { S.plClo = null; render(); return; }
     if (d.act === 'clook' && S.plClo) return cloturerSemaine();
     if (d.clorouv) return rouvrirSemaine(d.clorouv);
