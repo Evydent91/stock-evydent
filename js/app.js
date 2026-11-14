@@ -642,16 +642,30 @@
 
   // ---------- Accueil de la référente et de la responsable (2 tuiles), Réglages, Équipe, Dentistes ----------
   // Écrans de la maquette « Accueil référente et responsable ». Chaque écran a son en-tête bleu.
-  var HUB = ['hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage'];
+  var HUB = ['hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes'];
   var JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'], JC = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
   // Affectations possibles d'une demi-journée (en plus des dentistes)
-  var CODES = [['ADMIN', 'Admin'], ['STE', 'Sté'], ['ACCUEIL', 'Accueil'], ['ADMIN_ORTHO', 'Admin ortho'], ['RANGEMENT', 'Rangement'], ['NETTOYAGE', 'Nettoyage cab.'], ['ECOLE', 'École'], ['OFF', 'Ne travaille pas']];
+  // Postes (modifiables dans Réglages › Postes) ; École et « Ne travaille pas » sont fixes
+  var POSTES_BASE = [
+    { code: 'ADMIN', n: 'Admin', xl: 'ADMIN', coul: 'DCEAF7' }, { code: 'STE', n: 'Sté', xl: 'STE', coul: 'C04F15' }, { code: 'ACCUEIL', n: 'Accueil', xl: 'ACCUEIL', coul: 'CAEEFB' },
+    { code: 'ADMIN_ORTHO', n: 'Admin ortho', xl: 'ADMIN ORTHO', coul: 'DCEAF7' }, { code: 'RANGEMENT', n: 'Rangement', xl: 'RANGEMENT', coul: 'E2EFDA' }, { code: 'NETTOYAGE', n: 'Nettoyage cab.', xl: 'NETTOYAGE CAB', coul: 'E2EFDA' }];
+  function postes() { return Array.isArray(S.postes) && S.postes.length ? S.postes : POSTES_BASE; }
+  function posteDe(code) { return postes().filter(function (x) { return x.code === code; })[0]; }
+  function listeCodes(cur) {   // [code, nom] pour les listes : postes en service (+ celui déjà choisi), puis École et Ne travaille pas
+    return postes().filter(function (x) { return !x.retire || x.code === cur; }).map(function (x) { return [x.code, x.n]; }).concat([['ECOLE', 'École'], ['OFF', 'Ne travaille pas']]);
+  }
+  // Types de personnel (Réglages › Types de personnel)
+  var TYPES_BASE = [{ code: 'assistante', n: 'Assistante / assistant', planning: true, contrat: true, base: true }, { code: 'interimaire', n: 'Intérimaire', planning: true, contrat: false, base: true }];
+  function typesPers() { var l = Array.isArray(S.typesPers) ? S.typesPers : []; return TYPES_BASE.concat(l.filter(function (x) { return !TYPES_BASE.some(function (b) { return b.code === x.code; }); })); }
+  function typeDe(code) { return typesPers().filter(function (x) { return x.code === code; })[0] || TYPES_BASE[0]; }
+  function nomType(p) { return p.type === 'interimaire' ? 'Intérimaire' : p.type === 'assistante' || !p.type ? (p.statut === 'apprentie' ? 'Apprentie' : 'Assistante') : typeDe(p.type).n; }
   var ACC_H = ['data-tab="hub"', 'Accueil'];
   function dentById(id) { return (S.dentistes || []).filter(function (d) { return String(d.id) === String(id); })[0]; }
   function affTxt(a) {
     if (!a) return '—';
     if (a.slice(0, 2) === 'D:') { var d = dentById(a.slice(2)); return d ? 'Dr ' + d.prenom : 'Dr ?'; }
-    var c = CODES.filter(function (x) { return x[0] === a; })[0]; return c ? c[1] : a;
+    var ps = posteDe(a); if (ps) return ps.n;
+    return a === 'ECOLE' ? 'École' : a === 'OFF' ? 'Ne travaille pas' : a;
   }
   function enMin(t) { var m = /^(\d{1,2}):(\d{2})/.exec(t || ''); return m ? +m[1] * 60 + +m[2] : null; }
   function dureeDemi(c) { if (!c || !c.a || c.a === 'OFF') return 0; var a = enMin(c.de), b = enMin(c.fi); return a != null && b != null && b > a ? (b - a) / 60 : 0; }
@@ -681,26 +695,107 @@
       + (telephone() ? '<div class="h-tuile pc" aria-disabled="true"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span><b class="pc-t">À ouvrir sur ordinateur</b>Le planning et les heures se gèrent sur un écran de PC.</span></span></div>'
         : '<button class="h-tuile" data-tab="planning"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span>Qui travaille, avec quel dentiste, et les heures</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>') + tuilePointage() + '</div>'
       + '<button class="h-ligne" data-tab="pconges"><span class="a-lii">' + ico('agenda', 20) + '</span><span class="a-it-n"><b>Congés</b><span>Demandes à valider, prochains congés</span></span>' + ico('suiv', 20, 2.2) + '</button>'
-      + '<button class="h-ligne" data-tab="reglages"><span class="a-lii">' + ico('equipe', 20) + '</span><span class="a-it-n"><b>Réglages</b><span>L’équipe et les dentistes</span></span>' + ico('suiv', 20, 2.2) + '</button>'
+      + '<button class="h-ligne" data-tab="reglages"><span class="a-lii">' + ico('equipe', 20) + '</span><span class="a-it-n"><b>Réglages</b><span>Tous les réglages, regroupés par outil</span></span>' + ico('suiv', 20, 2.2) + '</button>'
       + '<div class="h-bas"><button class="a-btn blanc" data-tab="compte">' + ico('code', 20) + 'Mot de passe</button><button class="a-btn navy" data-act="out">' + ico('changer', 20, 2.2) + 'Changer</button></div>'
       + '</div>';
     return h;
   }
 
+  // Réglages : tous les réglages de l'application, regroupés par outil
   function vReglages() {
     var n = (S.equipe || []).filter(function (p) { return p.actif; }).length, nd = (S.dentistes || []).filter(function (d) { return d.actif; }).length;
-    var h = hdA({ back: ACC_H, t: 'Réglages', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    var np = (S.equipe || []).filter(function (p) { return p.actif && p.pointage; }).length, R = regles();
+    var it = function (t, d, attr, nouveau) { return '<button class="rg-it" ' + attr + ' data-rgi="' + esc((t + ' ' + d).toLowerCase()) + '"><span><b>' + t + '</b><small>' + d + '</small></span>' + (nouveau ? '<em>Nouveau</em>' : '') + ico('suiv', 18, 2.4) + '</button>'; };
+    var bloc = function (lettre, cl, t, d, items) { return '<section class="rg-bloc"><div class="rg-bt"><span class="rg-ic ' + cl + '" aria-hidden="true">' + lettre + '</span><span><h2>' + t + '</h2><small>' + d + '</small></span></div>' + items.join('') + '</section>'; };
+    var h = hdA({ back: ACC_H, t: 'Réglages', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps rg-corps">';
     if (!planPret()) h += '<div class="ban warn">La mise à jour 009 de la base n’est pas encore faite : l’équipe et les dentistes ne peuvent pas s’afficher.</div>';
-    h += '<div class="a-liste">'
-      + '<button class="a-li" data-tab="pequipe"><span class="a-lii">' + ico('equipe', 22) + '</span><span class="a-it-n"><b>L’équipe</b><span>' + (planPret() ? n + ' ' + pl(n, 'personne') + ' · ' : '') + 'comptes, jours, horaires</span></span>' + ico('suiv', 20, 2.2) + '</button>'
-      + '<button class="a-li" data-tab="pdent"><span class="a-lii">' + ico('dent', 22) + '</span><span class="a-it-n"><b>Les dentistes</b><span>' + (planPret() ? nd + ' ' + pl(nd, 'dentiste') + ' · ' : '') + 'jours de présence, congés</span></span>' + ico('suiv', 20, 2.2) + '</button>'
-      + '<button class="a-li" data-tab="pregles"><span class="a-lii">' + ico('histo', 22) + '</span><span class="a-it-n"><b>Règles des heures</b><span>Heures comptées pour congés, maladie, école, férié ; consignes par personne</span></span>' + ico('suiv', 20, 2.2) + '</button></div>'
-      + '<h2 class="a-jour">Ce que voient les assistantes</h2><div class="a-liste">'
+    h += '<label class="rg-cherche">' + ico('loupe', 18, 2) + '<input id="rgq" placeholder="Chercher un réglage" autocomplete="off"></label>';
+    h += '<div class="rg-grille">'
+      + bloc('É', 'b1', 'Équipe et comptes', 'Commun à tous les outils', [
+        it('L’équipe', (planPret() ? n + ' ' + pl(n, 'personne') + ' · ' : '') + 'fiches, semaine type, absences', 'data-tab="pequipe"'),
+        it('Les dentistes', (planPret() ? nd + ' ' + pl(nd, 'dentiste') + ' · ' : '') + 'jours de présence, départs anticipés', 'data-tab="pdent"'),
+        it('Comptes de connexion', 'Identifiants, codes, rôles, cabinet par défaut', 'data-tab="equipe"'),
+        it('Types de personnel', 'Assistante, intérimaire… et vos propres types', 'data-tab="ptypes"', true)])
+      + bloc('P', 'b2', 'Planning', 'Organisation des journées', [
+        it('Postes', 'Sté, Admin, Accueil… ajouter, renommer, couleur', 'data-tab="ppostes"', true),
+        it('Règles des heures', 'Congés, maladie, école, formation, férié, reliquat', 'data-tab="pregles"'),
+        it('Ce que voient les assistantes', 'Leur planning' + (S.visible && S.visible.planning ? ' (affiché)' : ' (coupé)') + ', leur reliquat', 'data-tab="pvisible"')])
+      + bloc('Q', 'b3', 'Pointage', 'Arrivées, sorties, temps effectif', [
+        it('QR code', 'Afficher, imprimer, régénérer', 'data-act="rgqr"'),
+        it('Calcul et alertes', (R.pt_reliquat !== false ? 'Reliquat sur le temps pointé' : 'Reliquat sur le planning') + ' · tolérance ' + R.pt_tol + ' min', 'data-tab="pregles"'),
+        it('Qui pointe', np + ' ' + pl(np, 'personne') + ' soumise' + (np > 1 ? 's' : '') + ' · case dans chaque fiche', 'data-tab="pequipe"')])
+      + bloc('C', 'b4', 'Congés', 'Demandes et absences', [
+        it('Demandes et planning des congés', 'À valider, congés du mois', 'data-tab="pconges"')])
+      + bloc('S', 'b5', 'Gestion de stock', 'Articles, commandes, inventaire', [
+        it('Articles', 'Lieux d’utilisation, types de soins, seuils', 'data-tab="articles"'),
+        it('Fournisseurs', 'Coordonnées, comptes', 'data-tab="fournisseurs"')])
+      + bloc('A', 'b1', 'Application', 'Données et versions', [
+        it('Sauvegarde et journal des versions', 'Télécharger les données, ce qui a changé', 'data-tab="plus"'),
+        it('Mon mot de passe', 'Changer mon mot de passe', 'data-tab="compte"')])
+      + '</div><p class="rg-vide" hidden>Aucun réglage ne correspond.</p>';
+    return h + '</div>';
+  }
+  // ---------- Réglages › Postes ----------
+  function vPPostes() {
+    var E = S.postesEd = S.postesEd || JSON.parse(JSON.stringify(postes()));
+    var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'Postes', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    h += '<p class="a-aide" style="margin-top:0">Ce qu’une assistante peut faire quand elle n’est pas au fauteuil. Proposés dans la semaine type, le planning et l’export Excel. « École », « Ne travaille pas » et les absences sont fixes.</p>';
+    h += '<div class="a-liste po-l">' + E.map(function (x, i) {
+      return '<div class="a-li po' + (x.retire ? ' retire' : '') + '"><span class="po-ord"><button class="btn l sm" data-poup="' + i + '" aria-label="Monter"' + (i ? '' : ' disabled') + '>' + ico('haut', 16, 2.4) + '</button><button class="btn l sm" data-podown="' + i + '" aria-label="Descendre"' + (i < E.length - 1 ? '' : ' disabled') + '>' + ico('bas', 16, 2.4) + '</button></span>'
+        + '<label class="mu">Nom affiché<input class="in" data-pon="' + i + '" value="' + esc(x.n) + '"></label>'
+        + '<label class="mu">Dans l’Excel<input class="in po-xl" data-poxl="' + i + '" value="' + esc(x.xl || '') + '"></label>'
+        + '<label class="mu">Couleur<input class="in po-c" type="color" data-poc="' + i + '" value="#' + esc(x.coul || 'EEF1F4') + '"></label>'
+        + '<button class="btn l sm po-r" data-poret="' + i + '">' + (x.retire ? 'Rétablir' : 'Retirer') + '</button></div>';
+    }).join('') + '</div>';
+    h += '<div class="card po-add"><b>Ajouter un poste</b><div class="h-g2"><label class="mu">Nom affiché<input class="in" id="ponew" placeholder="Ex. : Secrétariat, Stérilisation 2"></label><label class="mu">Couleur<input class="in po-c" type="color" id="ponewc" value="#E2EFDA"></label></div><button class="btn" data-act="poadd">Ajouter</button></div>';
+    h += '<p class="a-aide">Un poste retiré n’est plus proposé, mais reste lisible dans les plannings où il apparaît déjà.</p>';
+    return h + '<button class="a-btn navy" data-act="posave">Enregistrer les postes</button></div>';
+  }
+  function sauverParam(cle0, val, msg, apres) {
+    sb.from('parametres').upsert({ cle: cle0, valeur: val }, { onConflict: 'cle' }).then(function (r) { if (r.error) throw r.error; toast(msg); if (apres) apres(); render(); }).catch(function (e) { toast(msgErr(e)); });
+  }
+  // ---------- Réglages › Types de personnel ----------
+  function vPTypes() {
+    var E = S.typesEd = S.typesEd || JSON.parse(JSON.stringify(typesPers()));
+    var util = function (code) { return (S.equipe || []).filter(function (p) { return p.type === code; }).length; };
+    var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'Types de personnel', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    h += '<p class="a-aide" style="margin-top:0">Choisi dans chaque fiche. Indique si la personne apparaît dans le planning et si elle a un contrat d’heures (reliquat).</p><div class="a-liste">' + E.map(function (t, i) {
+      var n = util(t.code);
+      return '<div class="a-li ty' + (t.retire ? ' retire' : '') + '"><span class="a-it-n"><b>' + esc(t.n) + '</b><span>' + n + ' ' + pl(n, 'personne') + (t.base ? ' · type de base' : '') + '</span></span>'
+        + (t.base ? '<span class="ty-f">' + (t.planning ? 'Planning' : '') + (t.contrat ? ' · contrat' : ' · sans contrat') + '</span>'
+          : '<label class="ty-c"><input type="checkbox" data-typl="' + i + '"' + (t.planning !== false ? ' checked' : '') + '>Planning</label><label class="ty-c"><input type="checkbox" data-tyco="' + i + '"' + (t.contrat !== false ? ' checked' : '') + '>Contrat</label><button class="btn l sm" data-tyret="' + i + '"' + (n && !t.retire ? ' title="Utilisé dans ' + n + ' fiche(s) : il restera lisible"' : '') + '>' + (t.retire ? 'Rétablir' : 'Retirer') + '</button>') + '</div>';
+    }).join('') + '</div>';
+    h += '<div class="card po-add"><b>Nouveau type</b><input class="in" id="tynew" placeholder="Ex. : Secrétaire, Hygiéniste, Aide-dentaire"><label class="row"><input type="checkbox" id="tynewpl" checked style="width:20px;height:20px"> Apparaît dans le planning</label><label class="row"><input type="checkbox" id="tynewco" checked style="width:20px;height:20px"> A un contrat d’heures (reliquat)</label><button class="btn" data-act="tyadd">Ajouter le type</button></div>';
+    return h + '<button class="a-btn navy" data-act="tysave">Enregistrer les types</button></div>';
+  }
+  function actionReglages(d) {
+    var E = S.postesEd, T = S.typesEd, i;
+    if (d.poup != null && E) { i = +d.poup; var a = E[i]; E[i] = E[i - 1]; E[i - 1] = a; render(); return true; }
+    if (d.podown != null && E) { i = +d.podown; var b = E[i]; E[i] = E[i + 1]; E[i + 1] = b; render(); return true; }
+    if (d.poret != null && E) { E[+d.poret].retire = !E[+d.poret].retire; render(); return true; }
+    if (d.act === 'poadd' && E) {
+      var n = $('ponew').value.trim(); if (!n) { toast('Indiquez le nom du poste'); return true; }
+      var code = majSansAccent(n).replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '') || 'POSTE';
+      if (['ECOLE', 'OFF', 'CP', 'ARRET', 'FORMATION', 'FERIE'].indexOf(code) >= 0 || E.some(function (x) { return x.code === code; })) code += '_' + (E.length + 1);
+      E.push({ code: code, n: n, xl: majSansAccent(n), coul: $('ponewc').value.replace('#', '').toUpperCase() }); render(); return true;
+    }
+    if (d.act === 'posave' && E) { sauverParam('postes', E, '✔ Postes enregistrés', function () { S.postes = JSON.parse(JSON.stringify(E)); }); return true; }
+    if (d.tyret != null && T) { T[+d.tyret].retire = !T[+d.tyret].retire; render(); return true; }
+    if (d.act === 'tyadd' && T) {
+      var nt = $('tynew').value.trim(); if (!nt) { toast('Indiquez le nom du type'); return true; }
+      var ct = norm(nt).replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'type';
+      if (T.some(function (x) { return x.code === ct; })) { toast('Ce type existe déjà'); return true; }
+      T.push({ code: ct, n: nt, planning: $('tynewpl').checked, contrat: $('tynewco').checked }); render(); return true;
+    }
+    if (d.act === 'tysave' && T) { sauverParam('types_personnel', T.filter(function (x) { return !x.base; }), '✔ Types enregistrés', function () { S.typesPers = T.filter(function (x) { return !x.base; }); }); return true; }
+    return false;
+  }
+  function vPVisible() {
+    var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'Ce que voient les assistantes', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps"><div class="a-liste">'
       + (function () { var V = S.visible || {}; return '<label class="a-li"><span class="a-it-n"><b>Leur planning</b><span>jours, dentiste, horaires</span></span><input type="checkbox" role="switch" class="h-sw" data-vis="planning"' + (V.planning ? ' checked' : '') + ' aria-label="Les assistantes voient leur planning"><span class="pill' + (V.planning ? ' ok' : '') + '">' + (V.planning ? 'Activé' : 'Coupé') + '</span></label>'
-        + '<label class="a-li"' + (V.planning ? '' : ' style="opacity:.6"') + '><span class="a-it-n"><b>Leur reliquat d’heures</b><span>possible seulement si le planning est affiché</span></span><input type="checkbox" role="switch" class="h-sw" data-vis="reliquat"' + (V.reliquat ? ' checked' : '') + (V.planning ? '' : ' disabled') + ' aria-label="Les assistantes voient leur reliquat"><span class="pill' + (V.reliquat ? ' ok' : '') + '">' + (V.reliquat ? 'Activé' : 'Coupé') + '</span></label>'; })() + '</div>'
-      + '<p class="a-aide">Tant que c’est coupé, le planning n’est visible que par la référente et la responsable. Les demandes de congés restent toujours possibles pour les assistantes.</p>'
-      + '<p class="a-aide">Réservé à la référente et à la responsable. Ces fiches servent à la fois à la gestion de stock et au planning.</p></div>';
-    return h;
+        + '<label class="a-li"' + (V.planning ? '' : ' style="opacity:.6"') + '><span class="a-it-n"><b>Leur reliquat d’heures</b><span>possible seulement si le planning est affiché</span></span><input type="checkbox" role="switch" class="h-sw" data-vis="reliquat"' + (V.reliquat ? ' checked' : '') + (V.planning ? '' : ' disabled') + ' aria-label="Les assistantes voient leur reliquat"><span class="pill' + (V.reliquat ? ' ok' : '') + '">' + (V.reliquat ? 'Activé' : 'Coupé') + '</span></label>'; })()
+      + '</div><p class="a-aide">Tant que c’est coupé, le planning n’est visible que par la référente et la responsable. Les demandes de congés restent toujours possibles pour les assistantes.</p>';
+    return h + '</div>';
   }
 
   // --- L'équipe ---
@@ -746,7 +841,7 @@
   function optAff(cur) {
     var ds = (S.dentistes || []).filter(function (d) { return d.actif || 'D:' + d.id === cur; }).sort(function (a, b) { return a.ordre - b.ordre; });
     return '<option value="">—</option><optgroup label="Dentistes">' + ds.map(function (d) { var v = 'D:' + d.id; return '<option value="' + v + '"' + (cur === v ? ' selected' : '') + '>Dr ' + esc(d.prenom) + '</option>'; }).join('') + '</optgroup>'
-      + '<optgroup label="Autres">' + CODES.map(function (c) { return '<option value="' + c[0] + '"' + (cur === c[0] ? ' selected' : '') + '>' + c[1] + '</option>'; }).join('') + '</optgroup>';
+      + '<optgroup label="Autres">' + listeCodes(cur).map(function (c) { return '<option value="' + c[0] + '"' + (cur === c[0] ? ' selected' : '') + '>' + c[1] + '</option>'; }).join('') + '</optgroup>';
   }
   function demiEdit(j, k, c) {
     c = c || {}; var off = !c.a || c.a === 'OFF';
@@ -760,11 +855,11 @@
     var h = '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" data-tab="pequipe">' + ico('prec', 22, 2.4) + 'L’équipe</button><h1>' + (nouv ? 'Nouvelle fiche' : esc(p.prenom || '…')) + '</h1><span class="a-cale"></span></div></header><div class="a-corps h-fiche">';
     h += '<h2 class="a-jour">Identité</h2><div class="card h-g2">'
       + '<label class="mu">Prénom<input class="in" data-pff="prenom" value="' + esc(p.prenom) + '"></label>'
-      + '<label class="mu">Type<select class="in" data-pff="type"><option value="assistante"' + (p.type === 'assistante' ? ' selected' : '') + '>Assistante / assistant</option><option value="interimaire"' + (p.type === 'interimaire' ? ' selected' : '') + '>Intérimaire</option></select></label>'
+      + '<label class="mu">Type<select class="in" data-pff="type">' + typesPers().filter(function (t) { return !t.retire || t.code === p.type; }).map(function (t) { return '<option value="' + esc(t.code) + '"' + (p.type === t.code ? ' selected' : '') + '>' + esc(t.n) + '</option>'; }).join('') + '</select></label>'
       + '<label class="mu">Statut<select class="in" data-pff="statut"><option value="qualifiee"' + (p.statut === 'qualifiee' ? ' selected' : '') + '>Qualifiée / qualifié</option><option value="apprentie"' + (p.statut === 'apprentie' ? ' selected' : '') + '>Apprentie / apprenti</option></select></label>'
       + '<label class="mu">Heures du contrat par semaine<input class="in" inputmode="decimal" data-pff="contrat_h" value="' + esc(fr(p.contrat_h)) + '"></label>'
       + (p.statut === 'apprentie' ? '<label class="mu">Jour d’école par défaut<select class="in" data-pff="ecole_jour"><option value="">—</option>' + [1, 2, 3, 4, 5].map(function (j) { return '<option value="' + j + '"' + (+p.ecole_jour === j ? ' selected' : '') + '>' + JOURS[j] + '</option>'; }).join('') + '</select></label>' : '')
-      + '<label class="mu">Poste quand son dentiste est absent<select class="in" data-pff="repli">' + CODES.filter(function (c) { return ['ECOLE', 'OFF'].indexOf(c[0]) < 0; }).map(function (c) { return '<option value="' + c[0] + '"' + (((p.regles || {}).repli || 'STE') === c[0] ? ' selected' : '') + '>' + c[1] + '</option>'; }).join('') + '</select></label>'
+      + '<label class="mu">Poste quand son dentiste est absent<select class="in" data-pff="repli">' + listeCodes((p.regles || {}).repli).filter(function (c) { return ['ECOLE', 'OFF'].indexOf(c[0]) < 0; }).map(function (c) { return '<option value="' + c[0] + '"' + (((p.regles || {}).repli || 'STE') === c[0] ? ' selected' : '') + '>' + c[1] + '</option>'; }).join('') + '</select></label>'
       + (!pointagePret() ? '' : prof && (prof.role === 'referente' || prof.role === 'responsable') ? '<p class="mu" style="grid-column:1/-1;margin:0">Pointage journalier : non concernée (' + LABEL[prof.role].toLowerCase() + ').</p>'
         : '<label class="row" style="grid-column:1/-1"><input type="checkbox" data-pff="pointage"' + (p.pointage ? ' checked' : '') + ' style="width:20px;height:20px;flex:none"><span>Soumise au pointage journalier <span class="mu">(scanne le QR code du centre à l’arrivée et à la sortie)</span></span></label>')
       + '<label class="row" style="grid-column:1/-1"><input type="checkbox" data-pff="actif"' + (p.actif ? ' checked' : '') + ' style="width:20px;height:20px;flex:none"><span>Fait partie de l’équipe <span class="mu">(décocher pour une ancienne : elle reste dans l’historique)</span></span></label></div>';
@@ -904,7 +999,7 @@
       if (r.error) throw r.error;
       var x = r.data || Object.assign({ id: F.id }, F.d, o);
       F.busy = false; F.id = x.id; F.d = JSON.parse(JSON.stringify(x)); toast('✔ Fiche de ' + x.prenom + ' enregistrée'); chargerPlan();
-    }).catch(function (e) { F.busy = false; toast(msgErr(e)); render(); });
+    }).catch(function (e) { F.busy = false; toast(/type_check/.test(String(e && e.message)) ? 'Ce type de personnel demande la mise à jour 020 de la base' : msgErr(e)); render(); });
   }
   function lierCompte(fid, pid) {
     return sb.from('equipe').update({ profil_id: pid || null }).eq('id', fid).select().single().then(function (r) {
@@ -1019,9 +1114,9 @@
       sb.from('equipe').select('*').order('ordre'),
       sb.from('dentistes').select('*').order('ordre'),
       sb.from('conges').select('*').gte('au', dIso(new Date(Date.now() - 120 * 864e5))).order('du'),
-      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'simulation_pointage'])
+      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'simulation_pointage', 'postes', 'types_personnel'])
     ]).then(function (r) {
-      if (r[3] && !r[3].error) (r[3].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else S.visible = x.valeur; });
+      if (r[3] && !r[3].error) (r[3].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else if (x.cle === 'postes') S.postes = x.valeur; else if (x.cle === 'types_personnel') S.typesPers = x.valeur; else S.visible = x.valeur; });
       if (r[0].error || r[1].error) { S.equipe = null; S.dentistes = null; } else { S.equipe = r[0].data; S.dentistes = r[1].data; }
       S.conges = r[2] && !r[2].error ? r[2].data : [];
       render();
@@ -1035,10 +1130,10 @@
       + '<div class="a-corps"><div class="card pc-msg">' + ico('agenda', 34) + '<b>À ouvrir sur ordinateur</b><p class="mu">Le planning et le tableau des heures se gèrent sur un écran de PC. Sur téléphone, vous pouvez gérer les congés et les réglages.</p><button class="btn" data-tab="hub">Retour à l’accueil</button></div></div>';
   }
   function renderH() {
-    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage }[S.tab] || vHub;
+    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPVisible, ppostes: vPPostes, ptypes: vPTypes }[S.tab] || vHub;
     if ((S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage') && telephone()) ecr = vSurPC;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
-    h += '<div class="a-app h-app' + (S.tab === 'hub' ? ' large' : S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || (S.tab === 'pconges' && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
+    h += '<div class="a-app h-app' + (S.tab === 'hub' || (S.tab === 'reglages' && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || (S.tab === 'pconges' && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
     if (S.tab === 'pfiche') h += vBarPFiche();
     if (S.tab === 'dfiche') h += vBarDFiche();
     return h;
@@ -1363,7 +1458,7 @@
   function relTxt(r) { return (r > 0 ? '+' : r < 0 ? '−' : '') + fh(Math.abs(r)); }
   function ft(t) { if (!t) return ''; var p = t.split(':'); return +p[0] + 'h' + (p[1] !== '00' ? p[1] : ''); }
   function nomAff(a) { return ABS_TXT[a] || (a === 'OFF' ? '—' : affTxt(a)); }
-  function persPlanning() { return (S.equipe || []).filter(function (p) { return p.actif; }).sort(function (a, b) { return (a.type === 'interimaire') - (b.type === 'interimaire') || (a.ordre - b.ordre); }); }
+  function persPlanning() { return (S.equipe || []).filter(function (p) { return p.actif && typeDe(p.type).planning !== false; }).sort(function (a, b) { return (a.type === 'interimaire') - (b.type === 'interimaire') || (a.ordre - b.ordre); }); }
 
   // Titre de la semaine : une touche ouvre un calendrier pour aller directement à une semaine
   function titreCal(titre, L) {
@@ -2191,11 +2286,12 @@
   var TXT_XL = { ADMIN: 'ADMIN', STE: 'STE', ACCUEIL: 'ACCUEIL', ADMIN_ORTHO: 'ADMIN ORTHO', RANGEMENT: 'RANGEMENT', NETTOYAGE: 'NETTOYAGE CAB', ECOLE: 'ECOLE', OFF: 'OFF', CP: 'CP', ARRET: 'ARRET', FORMATION: 'FORMATION', FERIE: 'FERIE' };
   var MOIS_XL = ['JANV', 'FEV', 'MARS', 'AVRIL', 'MAI', 'JUIN', 'JUIL', 'AOUT', 'SEPT', 'OCT', 'NOV', 'DEC'];
   function majSansAccent(t) { return norm(String(t || '')).toUpperCase(); }
-  function xlAff(a) { if (a && a.slice(0, 2) === 'D:') { var d = dentById(a.slice(2)); return d ? majSansAccent(d.prenom) : '?'; } return TXT_XL[a] || a || 'OFF'; }
+  function xlAff(a) { if (a && a.slice(0, 2) === 'D:') { var d = dentById(a.slice(2)); return d ? majSansAccent(d.prenom) : '?'; } var ps = posteDe(a); if (ps) return majSansAccent(ps.xl || ps.n); return TXT_XL[a] || a || 'OFF'; }
+  function posteXL(k) { var ps = postes().filter(function (x) { return cle(x.xl || '') === k || cle(x.n) === k; })[0]; return ps ? ps.code : null; }
   function xlCoul(a) {
     var c = null;
     if (a && a.slice(0, 2) === 'D:') { var d = dentById(a.slice(2)); c = d && COUL_XL[cle(d.prenom)]; if (!c && d) c = COUL_AUTRES[(d.ordre || d.id) % COUL_AUTRES.length]; }
-    else c = COUL_XL[a || 'OFF'];
+    else { var ps = posteDe(a); c = ps && ps.coul ? ps.coul : COUL_XL[a || 'OFF']; }
     return Array.isArray(c) ? { fond: c[0], coul: c[1] } : { fond: c || 'FFFFFF' };
   }
   function moisPropose() {   // de novembre 2026 (départ du planning) à 6 mois après aujourd'hui
@@ -2313,7 +2409,7 @@
             if (!iso) return;
             [['AM', 1 + 4 * k, 1 + 4 * k, 2 + 4 * k], ['PM', 3 + 4 * k, 3 + 4 * k, 4 + 4 * k]].forEach(function (x) {
               var v = r[x[1]]; if (v == null || String(v).trim() === '') return;
-              var ck = cle(v), aff = CODE_XL[ck] || (dents[ck] ? 'D:' + dents[ck].id : null);
+              var ck = cle(v), aff = CODE_XL[ck] || posteXL(ck) || (dents[ck] ? 'D:' + dents[ck].id : null);
               if (!aff) { R.inconnusA[String(v).trim()] = 1; return; }
               var de = heureXl(tr[x[2]]), fi = heureXl(tr[x[3]]);
               if (ABS.indexOf(aff) >= 0 || aff === 'OFF') { de = null; fi = null; }
@@ -3809,7 +3905,7 @@
     if (d.act === 'bvno') { marquerVu('bienvenue'); render(); return; }
     if (d.essai) { marquerVu(d.gid); S.aideOuverte = d.gid; S.tab = d.essai; S.tabChoisi = true; if (d.essai === 'histo') chargerHisto(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'menu') { S.menu = !S.menu; render(); return; }
-    if (d.tab) { S.menu = false; S.fiche = null; if (d.tab === 'sortie') S.sortie.ok = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); if (d.tab === 'plus') chargerEcarts(); render(); window.scrollTo(0, 0); return; }
+    if (d.tab) { if (d.tab === 'ppostes') S.postesEd = null; if (d.tab === 'ptypes') S.typesEd = null; S.menu = false; S.fiche = null; if (d.tab === 'sortie') S.sortie.ok = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); if (d.tab === 'plus') chargerEcarts(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'out') { if (confirm('Changer de personne ? La personne suivante devra se connecter avec son identifiant et son code.')) deconnexion(); return; }
     if (d.act === 'maj') return mettreAJour();
     if (d.ecp) { S.ecarts = S.ecarts || {}; S.ecarts.p = d.ecp; chargerEcarts(); render(); return; }
@@ -3904,6 +4000,8 @@
     if (d.plsem != null && S.pl) { S.pl.lundi = d.plsem === '0' ? lundiDe(dIso(new Date())) : addJ(S.pl.lundi, +d.plsem); S.pl.cas = null; if (gestion()) chargerSemaine(); else S.pl.de = null; render(); return; }
     if (d.plc) return ouvrirCase(d.plc);
     if (d.act === 'ptok') { S.ptRes = null; render(); return; }
+    if ((d.poup != null || d.podown != null || d.poret != null || d.tyret != null || /^(poadd|posave|tyadd|tysave)$/.test(d.act || '')) && actionReglages(d)) return;
+    if (d.act === 'rgqr') { S.tab = 'pointage'; S.ptg = S.ptg || { mode: 'jour', jour: dIso(new Date()), rows: {} }; ouvrirQR(); return; }
     if (d.act === 'scan') return ouvrirScanner();
     if (d.ptsens && S.ptRes && S.ptRes.choix) return envoyerPointage(S.ptRes.choix, d.ptsens);
     if (d.act === 'simraz') { S.sim = null; try { sessionStorage.removeItem('evy-sim'); } catch (e) {} chargerMonPointage(); render(); return; }
@@ -3964,6 +4062,11 @@
   });
   document.addEventListener('input', function (e) {
     var t = e.target; if (!S.me) return;
+    if (t.id === 'rgq') {   // recherche dans les réglages : on masque sans redessiner (le curseur reste dans le champ)
+      var qq = norm(t.value).trim(), vus = 0;
+      document.querySelectorAll('.rg-bloc').forEach(function (b) { var n = 0; b.querySelectorAll('[data-rgi]').forEach(function (x) { var ok = !qq || norm(x.dataset.rgi).indexOf(qq) >= 0 || norm(b.querySelector('h2').textContent).indexOf(qq) >= 0; x.hidden = !ok; if (ok) n++; }); b.hidden = !n; vus += n; });
+      var v0 = document.querySelector('.rg-vide'); if (v0) v0.hidden = !!vus; return;
+    }
     if (t.id === 'sq') { S.sortie.q = t.value; S.sortie.msg = null; render(); }
     else if (t.id === 'rq') { S.ret.q = t.value; S.ret.msg = null; render(); }
     else if (t.dataset && t.dataset.rqte) { setRet(t.dataset.rqte, t.value); var rb = document.querySelector('.bar'); if (rb) rb.outerHTML = vBarRetour(); }
@@ -3994,6 +4097,8 @@
     var t = e.target; if (!S.me) return;
     if (t.dataset && (t.dataset.pff || t.dataset.tr) && S.pf) { majPers(t); if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); return; }
     if (t.dataset && t.dataset.dff && S.df) { S.df.d[t.dataset.dff] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox') render(); return; }
+    if (t.dataset && S.postesEd && (t.dataset.pon != null || t.dataset.poxl != null || t.dataset.poc != null)) { var pe = S.postesEd[+(t.dataset.pon || t.dataset.poxl || t.dataset.poc)]; if (t.dataset.pon != null) pe.n = t.value.trim() || pe.n; else if (t.dataset.poxl != null) pe.xl = t.value.trim(); else pe.coul = t.value.replace('#', '').toUpperCase(); return; }
+    if (t.dataset && S.typesEd && (t.dataset.typl != null || t.dataset.tyco != null)) { var te = S.typesEd[+(t.dataset.typl || t.dataset.tyco)]; if (t.dataset.typl != null) te.planning = t.checked; else te.contrat = t.checked; return; }
     if (t.dataset && t.dataset.ddep && S.df) { var jj = S.df.d.jours = S.df.d.jours || {}; jj[t.dataset.ddep] = t.value ? t.value : true; render(); return; }
     if ((t.id === 'ptlogdu' || t.id === 'ptlogau') && S.ptLog) { S.ptLog[t.id === 'ptlogdu' ? 'du' : 'au'] = t.value; chargerJournalPt(); return; }
     if (t.id === 'ptlogqui' && S.ptLog) { S.ptLog.qui = t.value; render(); return; }
