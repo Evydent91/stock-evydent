@@ -1329,7 +1329,8 @@
       if (k === 'ecole_jour') v = v ? +v : null;
       if (k === 'profil') { if (v === 'assistante' || v === 'apprentie') { F.d.type = 'assistante'; F.d.statut = v === 'apprentie' ? 'apprentie' : 'qualifiee'; } else { F.d.type = v; F.d.statut = 'qualifiee'; } return; }
       if (k === 'repli') { F.d.regles = Object.assign({}, F.d.regles || {}); F.d.regles.repli = v; return; }
-      if (k === 'cp_droits' || k === 'cp_report') { F.d.regles = Object.assign({}, F.d.regles || {}); var nv = String(v).replace(',', '.').trim(); if (nv === '') delete F.d.regles[k]; else F.d.regles[k] = +nv; return; }
+      if (k === 'cp_aj') { F.d.regles = Object.assign({}, F.d.regles || {}); var aj = F.d.regles.cp_aj = Object.assign({}, F.d.regles.cp_aj || {}), pk = periodeCP(dIso(new Date())).du, va = String(v).replace(',', '.').trim(); if (va === '') delete aj[pk]; else aj[pk] = +va; return; }
+      if (k === 'cp_droits' || k === 'cp_report' || k === 'cp_pris_avant') { F.d.regles = Object.assign({}, F.d.regles || {}); var nv = String(v).replace(',', '.').trim(); if (nv === '') delete F.d.regles[k]; else F.d.regles[k] = +nv; return; }
       F.d[k] = v;
     } else if (el.dataset.tr) {
       var p = el.dataset.tr.split('.'), t = F.d.trame = F.d.trame || {}, j = t[p[0]] = t[p[0]] || {}, c = j[p[1]] = j[p[1]] || {};
@@ -1693,8 +1694,30 @@
     var f = addJ((+d.slice(0, 4) + 1) + '-' + md, -1);
     return { du: d, au: f };
   }
-  function joursCP(p, du, au) {   // jours décomptés : lundi au vendredi hors fériés (ou jours de travail habituels de la personne)
-    var R = regles(), n = 0, d = du, i = 0, trav = R.cp_mode === 'travail';
+  // Congés payés de la personne connus de l'application (acceptés ou en attente), pour la règle du samedi
+  function congesCPde(p) {
+    var vus = {}, l = [];
+    (S.conges || []).concat(S.mesConges || []).forEach(function (c) { if (vus[c.id] || String(c.equipe_id) !== String(p.id) || (c.type !== 'CP' && c.type !== 'AUTRE') || (c.statut !== 'accepte' && c.statut !== 'attente')) return; vus[c.id] = 1; l.push(c); });
+    return l;
+  }
+  function joursCP(p, du, au) {   // jours décomptés pour une absence du … au …
+    var R = regles(), n = 0, d = du, i = 0, mode = R.cp_mode, trav = mode === 'travail';
+    if (mode === 'ouvrables') {
+      // Lundi au samedi hors fériés ; le samedi ne compte qu'une fois par semaine, quand toute la semaine (lundi → vendredi) est posée
+      var autres = congesCPde(p), couvert = function (x) { return (x >= du && x <= au) || autres.some(function (c) { return c.du <= x && c.au >= x; }); };
+      while (d <= au && i++ < 800) {
+        var js = jourSem(d);
+        if (js >= 1 && js <= 5 && !ferie(d)) {
+          n++;
+          var lun = addJ(d, 1 - js), sam = addJ(lun, 5), ouv = [], k;
+          for (k = 0; k < 5; k++) { var x = addJ(lun, k); if (!ferie(x)) ouv.push(x); }
+          // dernier jour ouvré de la semaine : le samedi est dû si toute la semaine est posée
+          if (ouv[ouv.length - 1] === d && !ferie(sam) && ouv.every(couvert)) n++;
+        }
+        d = addJ(d, 1);
+      }
+      return n;
+    }
     while (d <= au && i++ < 800) {
       var j = jourSem(d);
       if (j >= 1 && j <= 5 && !ferie(d)) {
@@ -1706,34 +1729,100 @@
     }
     return n;
   }
-  function soldeCP(p, conges, ref) {
-    var R = regles(), P = periodeCP(ref || dIso(new Date())), rg = p.regles || {};
-    var droits = rg.cp_droits != null && rg.cp_droits !== '' ? +rg.cp_droits : +R.cp_droits || 0, report = +rg.cp_report || 0, pris = 0, att = 0;
+  // Première période gérée par l'application : celle de la mise en service (report N-1 et jours déjà pris saisis à la main)
+  function baseCP(p) { var rg = p.regles || {}; return rg.cp_base || periodeCP(regles().depuis || '2026-11-30').du; }
+  function soldeCP(p, conges, ref, prof) {
+    var R = regles(), P = periodeCP(ref || dIso(new Date())), rg = p.regles || {}, base = baseCP(p), aj = (rg.cp_aj || {})[P.du];
+    var droits = rg.cp_droits != null && rg.cp_droits !== '' ? +rg.cp_droits : +R.cp_droits || 0, report = 0, avant = 0, pris = 0, att = 0, l = [];
+    if (P.du === base) { report = +rg.cp_report || 0; avant = +rg.cp_pris_avant || 0; }
+    else if (P.du > base && (prof || 0) < 12) report = soldeCP(p, conges, addJ(P.du, -1), (prof || 0) + 1).reste;   // rien ne se perd : le reste devient le report
+    if (aj) report += +aj;
     (conges || []).forEach(function (c) {
       if (String(c.equipe_id) !== String(p.id) || (c.type !== 'CP' && c.type !== 'AUTRE') || c.du > P.au || c.au < P.du) return;
+      if (c.statut !== 'accepte' && c.statut !== 'attente') return;
       var n = joursCP(p, c.du < P.du ? P.du : c.du, c.au > P.au ? P.au : c.au);
-      if (c.statut === 'accepte') pris += n; else if (c.statut === 'attente') att += n;
+      if (c.statut === 'accepte') pris += n; else att += n;
+      l.push({ c: c, n: n });
     });
-    return { P: P, droits: droits, report: report, pris: pris, att: att, reste: droits + report - pris };
+    pris += avant;
+    var reste = droits + report - pris, rep0 = Math.max(0, report), restRep = Math.max(0, rep0 - pris), restRepA = Math.max(0, restRep - att);
+    // Répartition congé par congé : le report part en premier (jours d'avant l'application, puis acceptés, puis en attente)
+    var gauche = Math.max(0, rep0 - avant);
+    l.sort(function (a, b) { return (a.c.statut === b.c.statut ? 0 : a.c.statut === 'accepte' ? -1 : 1) || (a.c.du < b.c.du ? -1 : a.c.du > b.c.du ? 1 : 0); }).forEach(function (x) { x.rep = Math.min(gauche, x.n); x.nn = x.n - x.rep; gauche -= x.rep; });
+    return { P: P, base: base, droits: droits, report: report, avant: avant, pris: pris, att: att, reste: reste, restRep: restRep, restN: reste - restRep, restRepA: restRepA, restNA: reste - att - restRepA, liste: l };
   }
   function txtJ(n) { n = Math.round(n * 10) / 10; return String(n).replace('.', ',') + ' j'; }
+  function modeCPtxt() { var m = regles().cp_mode; return m === 'travail' ? 'jours de travail habituels' : m === 'ouvrables' ? 'jours ouvrables (lundi au samedi)' : 'jours ouvrés (lundi au vendredi)'; }
+  function anP(P) { return P.du.slice(0, 4) + '-' + P.au.slice(0, 4); }
   function blocSoldeFiche(p) {
-    var s = soldeCP(p, S.conges), R = regles(), rg = p.regles || {};
-    return '<h3 class="fi-h3">Solde de congés payés</h3><div class="cp-f"><div class="cp-k"><span><small>Droits</small><b>' + txtJ(s.droits) + '</b></span><span><small>Report</small><b>' + (s.report ? (s.report > 0 ? '+' : '') + txtJ(s.report) : '—') + '</b></span><span><small>Pris</small><b>' + txtJ(s.pris) + '</b></span><span><small>En attente</small><b>' + (s.att ? txtJ(s.att) : '—') + '</b></span><span class="cp-r"><small>Reste</small><b class="' + (s.reste < 0 ? 'ko-t' : 'ok-t') + '">' + txtJ(s.reste) + '</b></span></div>'
-      + '<p class="mu" style="margin:0;font-size:13.5px">Période du ' + dateCourte(s.P.du) + ' ' + s.P.du.slice(0, 4) + ' au ' + dateCourte(s.P.au) + ' ' + s.P.au.slice(0, 4) + '. Mis à jour à l’enregistrement de la fiche.</p>'
-      + '<div class="h-g2"><label class="mu">Droits de la période (jours)<input class="in" inputmode="decimal" data-pff="cp_droits" value="' + esc(rg.cp_droits != null ? fr(rg.cp_droits) : '') + '" placeholder="' + fr(R.cp_droits) + ' (règle générale)"></label>'
-      + '<label class="mu">Report ou ajustement (jours, + ou −)<input class="in" inputmode="decimal" data-pff="cp_report" value="' + esc(rg.cp_report != null ? fr(rg.cp_report) : '') + '" placeholder="0"></label></div></div>';
+    var s = soldeCP(p, S.conges), R = regles(), rg = p.regles || {}, dep = s.P.du === s.base, an = anP(s.P);
+    var pct = s.report > 0 ? Math.round(100 * s.restRep / s.report) : 0, pctN = s.droits > 0 ? Math.round(100 * Math.max(0, Math.min(s.droits, s.restN)) / s.droits) : 0;
+    var h = '<h3 class="fi-h3">Congés payés</h3><div class="cp-f"><p class="mu" style="margin:0;font-size:13.5px">Période du ' + dateCourte(s.P.du) + ' ' + s.P.du.slice(0, 4) + ' au ' + dateCourte(s.P.au) + ' ' + s.P.au.slice(0, 4) + ' · ' + modeCPtxt() + '</p>'
+      + '<div class="cp3"><div class="cp3-r"><small>Report N-1 · pris en premier</small><b>' + txtJ(s.restRep) + ' <span>restants sur ' + txtJ(Math.max(0, s.report)) + '</span></b><i aria-hidden="true"><em style="width:' + pct + '%"></em></i><span class="mu">' + (s.report > s.droits ? '<span class="warn-t">Report élevé : à faire poser</span>' : 'ne se perd jamais') + '</span></div>'
+      + '<div class="cp3-n"><small>Droits ' + an + '</small><b>' + txtJ(s.restN) + ' <span>restants sur ' + txtJ(s.droits) + '</span></b><i aria-hidden="true"><em style="width:' + pctN + '%"></em></i><span class="mu">entamés une fois le report épuisé</span></div>'
+      + '<div class="cp3-d"><small>Disponible</small><b class="' + (s.reste < 0 ? 'ko-t' : '') + '">' + txtJ(s.reste) + '</b><span>' + txtJ(s.restRep) + ' de report + ' + txtJ(s.restN) + ' de ' + an + '</span></div></div>'
+      + (s.att ? '<p class="cp-att">' + ico('attente', 18, 2.2) + '<span>En attente : <b>' + txtJ(s.att) + '</b>. Si acceptés : <b>' + txtJ(s.reste - s.att) + '</b> restants, soit <b>' + txtJ(s.restRepA) + ' de report + ' + txtJ(s.restNA) + '</b> de ' + an + '.</span></p>' : '');
+    if (s.liste.length || s.avant) h += '<div class="cp-l"><span class="cp-h">Dates</span><span class="cp-h">Décompte</span><span class="cp-h">Pris sur</span>'
+      + (s.avant ? '<span>Avant la mise en service</span><span>' + txtJ(s.avant) + '</span><span><em class="cp-tr">' + txtJ(Math.min(s.avant, Math.max(0, s.report))) + ' de report</em>' + (s.avant > Math.max(0, s.report) ? ' + <em class="cp-tn">' + txtJ(s.avant - Math.max(0, s.report)) + ' N</em>' : '') + '</span>' : '')
+      + s.liste.slice().sort(function (a, b) { return a.c.du < b.c.du ? -1 : 1; }).map(function (x) { return '<span>' + periode(x.c.du, x.c.au) + (x.c.statut === 'attente' ? ' <i class="mu">(en attente)</i>' : '') + '</span><span>' + txtJ(x.n) + '</span><span>' + (x.rep ? '<em class="cp-tr">' + txtJ(x.rep) + ' de report</em>' : '') + (x.rep && x.nn ? ' + ' : '') + (x.nn ? '<em class="cp-tn">' + txtJ(x.nn) + ' N</em>' : '') + (!x.n ? '—' : '') + '</span>'; }).join('') + '</div>';
+    h += '<div class="h-g2"><label class="mu">Droits de la période (jours)<input class="in" inputmode="decimal" data-pff="cp_droits" value="' + esc(rg.cp_droits != null ? fr(rg.cp_droits) : '') + '" placeholder="' + fr(R.cp_droits) + ' (règle générale)"></label>'
+      + (dep ? '<label class="mu">Report N-1 (jours)<input class="in" inputmode="decimal" data-pff="cp_report" value="' + esc(rg.cp_report != null ? fr(rg.cp_report) : '') + '" placeholder="0"></label>'
+        + '<label class="mu">Jours déjà pris avant la mise en service<input class="in" inputmode="decimal" data-pff="cp_pris_avant" value="' + esc(rg.cp_pris_avant != null ? fr(rg.cp_pris_avant) : '') + '" placeholder="0"></label>'
+        : '<label class="mu">Ajustement du report (jours, + ou −)<input class="in" inputmode="decimal" data-pff="cp_aj" value="' + esc((rg.cp_aj || {})[s.P.du] != null ? fr(rg.cp_aj[s.P.du]) : '') + '" placeholder="0"></label>')
+      + '</div><p class="mu" style="margin:0;font-size:13px">Le 1er ' + MOIS[+s.P.du.slice(5, 7) - 1] + ', ce qui reste devient le report de la période suivante : rien n’est perdu. Mis à jour à l’enregistrement de la fiche.</p></div>';
+    return h;
   }
+  function personnesCP() { return (S.equipe || []).filter(function (p) { return p.actif && typeDe(p.type).contrat !== false && p.type !== 'interimaire'; }).sort(function (a, b) { return a.ordre - b.ordre; }); }
   function vSoldesCP() {
-    var ps = (S.equipe || []).filter(function (p) { return p.actif && typeDe(p.type).contrat !== false && p.type !== 'interimaire'; }).sort(function (a, b) { return a.ordre - b.ordre; });
+    var ps = personnesCP();
     if (!ps.length) return '';
-    var P = periodeCP(dIso(new Date()));
-    return '<section class="cg2-carte cp-s"><div class="cp-t"><h2>Soldes de congés payés</h2><span class="mu">Période du ' + dateCourte(P.du) + ' ' + P.du.slice(0, 4) + ' au ' + dateCourte(P.au) + ' ' + P.au.slice(0, 4) + ' · ' + (regles().cp_mode === 'travail' ? 'jours de travail habituels' : 'jours ouvrés (lundi au vendredi)') + '</span></div>'
-      + '<div class="cp-g"><span class="cp-h">Personne</span><span class="cp-h">Droits</span><span class="cp-h">Report</span><span class="cp-h">Pris</span><span class="cp-h">En attente</span><span class="cp-h">Reste</span>'
+    var P = periodeCP(dIso(new Date())), g = gestion(), h = '';
+    // Récapitulatif du passage à la nouvelle période (affiché les premières semaines, jusqu'à « J'ai compris »)
+    if (g && P.du > baseCP(ps[0]) && dIso(new Date()) <= addJ(P.du, 60) && !lsGet('evy-cp-bascule-' + P.du)) {
+      var gros = [];
+      h += '<section class="cg2-carte cp-s cp-bas"><div class="cp-t"><h2>Nouvelle période de congés : ' + anP(P) + '</h2><span class="mu">Ce qui restait (report + droits non pris) est devenu le nouveau report. Rien n’est perdu.</span></div>'
+        + '<div class="cp-g4"><span class="cp-h">Personne</span><span class="cp-h">Nouveau report</span><span class="cp-h">Droits ' + anP(P) + '</span><span class="cp-h">Disponible</span>'
+        + ps.map(function (p) { var s = soldeCP(p, S.conges); if (s.report > s.droits) gros.push(p.prenom + ' (' + txtJ(s.report) + ')'); return '<b>' + esc(p.prenom) + '</b><span><em class="' + (s.report > s.droits ? 'cp-tw' : 'cp-tr') + '">' + txtJ(s.report) + '</em></span><span>' + txtJ(s.droits) + '</span><span>' + txtJ(s.reste) + '</span>'; }).join('') + '</div>'
+        + (gros.length ? '<p class="cp-att warn">' + ico('attente', 18, 2.2) + '<span><b>Report qui grossit :</b> ' + esc(gros.join(', ')) + '. Pensez à le faire poser ; le report est conservé.</span></p>' : '')
+        + '<div style="display:flex;justify-content:flex-end"><button class="cp-b" data-cpbv="' + P.du + '">J’ai compris</button></div></section>';
+    }
+    if (S.cpDep && g) return h + vDepartCP(ps, P);
+    return h + '<section class="cg2-carte cp-s"><div class="cp-t"><h2>Soldes de congés payés</h2><span class="mu">Période du ' + dateCourte(P.du) + ' ' + P.du.slice(0, 4) + ' au ' + dateCourte(P.au) + ' ' + P.au.slice(0, 4) + ' · ' + modeCPtxt() + '</span>'
+      + (g && P.du === baseCP(ps[0]) ? '<button class="cp-b bl" data-cpdep="1">Saisie de départ</button>' : '') + '</div>'
+      + '<div class="cp-g"><span class="cp-h">Personne</span><span class="cp-h">Report</span><span class="cp-h">Droits</span><span class="cp-h">Pris</span><span class="cp-h">En attente</span><span class="cp-h">Disponible</span>'
       + ps.map(function (p) {
         var s = soldeCP(p, S.conges);
-        return '<button class="cp-n" data-pf="' + p.id + '" data-pfo="absences">' + esc(p.prenom) + '</button><span>' + txtJ(s.droits) + '</span><span class="mu">' + (s.report ? (s.report > 0 ? '+' : '') + txtJ(s.report) : '—') + '</span><span>' + txtJ(s.pris) + '</span><span class="' + (s.att ? 'warn-t' : 'mu') + '">' + (s.att ? txtJ(s.att) : '—') + '</span><b class="' + (s.reste < 0 ? 'ko-t' : s.reste - s.att < 0 ? 'warn-t' : 'ok-t') + '">' + txtJ(s.reste) + '</b>';
-      }).join('') + '</div><p class="mu cp-note">Droits et report se règlent dans la fiche de chaque personne (rubrique Absences) ; la valeur par défaut et le début de période dans Réglages › Règles des heures. Seuls les congés payés sont décomptés (pas la maladie ni la formation).</p></section>';
+        return '<button class="cp-n" data-pf="' + p.id + '" data-pfo="absences">' + esc(p.prenom) + '</button><span class="' + (s.report > s.droits ? 'warn-t' : s.restRep ? '' : 'mu') + '"' + (s.report > s.droits ? ' title="Report élevé : à faire poser"' : '') + '>' + (s.report ? txtJ(s.restRep) + '<small class="mu">&nbsp;/ ' + txtJ(s.report) + '</small>' : '—') + '</span><span>' + txtJ(s.droits) + '</span><span>' + txtJ(s.pris) + '</span><span class="' + (s.att ? 'warn-t' : 'mu') + '">' + (s.att ? txtJ(s.att) : '—') + '</span><b class="' + (s.reste < 0 ? 'ko-t' : s.reste - s.att < 0 ? 'warn-t' : 'ok-t') + '">' + txtJ(s.reste) + '</b>';
+      }).join('') + '</div><p class="mu cp-note">Le report N-1 est décompté en premier. Le 1er ' + MOIS[+P.du.slice(5, 7) - 1] + ', ce qui reste devient le report suivant : rien n’est perdu. Droits et report se règlent dans la fiche de chaque personne (rubrique Absences) ; le mode de décompte dans Réglages › Règles des heures. Seuls les congés payés sont décomptés (pas la maladie ni la formation).</p></section>';
+  }
+  // Saisie de départ : une ligne par personne (report N-1, droits, jours déjà pris avant la mise en service)
+  function dispoDep(p, v) {
+    var q = Object.assign({}, p, { regles: Object.assign({}, p.regles || {}) });
+    ['cp_report', 'cp_droits', 'cp_pris_avant'].forEach(function (k) { if (v && v[k] != null) { var x = String(v[k]).replace(',', '.').trim(); if (x === '') delete q.regles[k]; else q.regles[k] = +x; } });
+    var s = soldeCP(q, S.conges);
+    return '<b>' + txtJ(s.reste) + '</b> <span class="mu">= ' + txtJ(s.restRep) + ' de report + ' + txtJ(s.restN) + ' N</span>';
+  }
+  function vDepartCP(ps, P) {
+    var R = regles(), V = S.cpDepV = S.cpDepV || {};
+    var inp = function (p, k, cls, ph) { var rg = p.regles || {}, v = V[p.id] && V[p.id][k] != null ? V[p.id][k] : rg[k] != null ? fr(rg[k]) : ''; return '<span><input class="in ' + cls + '" inputmode="decimal" aria-label="' + esc(p.prenom) + '" data-cpd="' + p.id + '|' + k + '" value="' + esc(v) + '" placeholder="' + ph + '"></span>'; };
+    return '<section class="cg2-carte cp-s"><div class="cp-t"><h2>Saisie de départ</h2><span class="mu">Période ' + anP(P) + ' · ' + modeCPtxt() + '</span></div>'
+      + '<p class="mu" style="margin:0;font-size:14.5px">Pour chaque personne : le report de l’an dernier et les jours déjà pris depuis le ' + dateCourte(P.du) + ' ' + P.du.slice(0, 4) + ', avant la mise en service. À faire une seule fois (modifiable ensuite dans chaque fiche).</p>'
+      + '<div class="cp-dep"><span class="cp-h">Personne</span><span class="cp-h cp-hr">Report N-1</span><span class="cp-h">Droits ' + anP(P) + '</span><span class="cp-h">Déjà pris</span><span class="cp-h">Disponible aujourd’hui</span>'
+      + ps.map(function (p) { return '<b>' + esc(p.prenom) + '</b>' + inp(p, 'cp_report', 'cp-ir', '0') + inp(p, 'cp_droits', '', fr(R.cp_droits)) + inp(p, 'cp_pris_avant', '', '0') + '<span data-cpdv="' + p.id + '">' + dispoDep(p, V[p.id]) + '</span>'; }).join('') + '</div>'
+      + '<p class="mu cp-note">Les jours déjà pris sont retirés du report d’abord, puis des droits ' + anP(P) + '. Ils apparaissent dans la fiche comme « Avant la mise en service », sans dates. Droits vides = règle générale (' + txtJ(R.cp_droits) + ').</p>'
+      + '<div style="display:flex;gap:10px;justify-content:flex-end"><button class="cp-b bl" data-cpdep="0">Annuler</button><button class="cp-b" data-cpdok="1"' + (S.cpDepBusy ? ' disabled' : '') + '>Enregistrer la saisie de départ</button></div></section>';
+  }
+  function sauverDepartCP() {
+    var V = S.cpDepV || {}, ids = Object.keys(V);
+    if (!ids.length) { S.cpDep = false; render(); return; }
+    S.cpDepBusy = true; render();
+    Promise.all(ids.map(function (id) {
+      var p = persById(id); if (!p) return null;
+      var r = Object.assign({}, p.regles || {});
+      Object.keys(V[id]).forEach(function (k) { var x = String(V[id][k]).replace(',', '.').trim(); if (x === '') delete r[k]; else r[k] = Math.round((+x || 0) * 10) / 10; });
+      return sb.from('equipe').update({ regles: r }).eq('id', p.id).select().single().then(function (x) { if (x.error) throw x.error; p.regles = x.data.regles; });
+    })).then(function () { S.cpDep = false; S.cpDepV = {}; S.cpDepBusy = false; toast('✔ Saisie de départ enregistrée'); render(); })
+      .catch(function (e) { S.cpDepBusy = false; toast(msgErr(e)); render(); });
   }
   // Ce qui se passe si on accepte une demande : dentistes qui se retrouveraient seuls (planning recalculé avec ce congé)
   function alerteConge(c) {
@@ -2089,7 +2178,7 @@
     var h = hdA({ back: ['data-tab="moi"', 'Moi'], t: 'Mes congés', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
     if (S.mesConges == null) return h + '<p class="a-vide">Chargement…</p></div>';
     if (!S.moiEq) return h + '<p class="a-note warn">Votre compte n’est pas encore relié à une fiche du planning : demandez à la référente de le faire (Réglages › L’équipe).</p></div>';
-    if (typeDe(S.moiEq.type).contrat !== false && S.moiEq.type !== 'interimaire') { var so = soldeCP(S.moiEq, S.mesConges); h += '<div class="card cp-moi"><span class="mu">Il me reste</span><b class="' + (so.reste < 0 ? 'ko-t' : '') + '">' + txtJ(so.reste) + '</b><span class="mu">de congés payés sur ' + txtJ(so.droits + so.report) + (so.att ? ' · ' + txtJ(so.att) + ' en attente' : '') + '<br>période jusqu’au ' + dateCourte(so.P.au) + ' ' + so.P.au.slice(0, 4) + '</span></div>'; }
+    if (typeDe(S.moiEq.type).contrat !== false && S.moiEq.type !== 'interimaire') { var so = soldeCP(S.moiEq, S.mesConges); h += '<div class="card cp-moi"><span class="mu">Il me reste</span><b class="' + (so.reste < 0 ? 'ko-t' : '') + '">' + txtJ(so.reste) + '</b><span class="mu">de congés payés' + (so.restRep ? ', dont <b>' + txtJ(so.restRep) + '</b> de report (pris en premier)' : '') + (so.att ? ' · ' + txtJ(so.att) + ' en attente' : '') + '<br>période jusqu’au ' + dateCourte(so.P.au) + ' ' + so.P.au.slice(0, 4) + '</span></div>'; }
     h += '<button class="a-btn gold h-centre" data-tab="mdemande">' + ico('plus', 22, 2.2) + 'Demander des congés</button><h2 class="a-jour">En cours et à venir</h2>';
     var l = S.mesConges.filter(function (c) { return c.statut !== 'annule' && String(c.equipe_id) === String(S.moiEq.id); });
     if (!l.length) return h + '<p class="a-vide">Aucune demande pour l’instant.</p></div>';
@@ -2137,7 +2226,7 @@
   // Case enregistrée (table planning) sinon case calculée : jour férié > congés acceptés > semaine type.
   var ABS = ['CP', 'ARRET', 'ECOLE', 'FORMATION', 'FERIE'];
   var ABS_TXT = { CP: 'Congés', ARRET: 'Maladie', ECOLE: 'École', FORMATION: 'Formation', FERIE: 'Férié' };
-  var REGLES_DEF = { CP: 9, ARRET: 9, ECOLE: 7, FORMATION: 9, FERIE: 9, ferie: 'habituel', depuis: '2026-11-30', pt_reliquat: true, pt_tol: 5, pt_retards: 3, pt_ecart: 2, pt_tol_dep: 5, pt_departs: 3, cp_droits: 25, cp_debut: '06-01', cp_mode: 'ouvres' };
+  var REGLES_DEF = { CP: 9, ARRET: 9, ECOLE: 7, FORMATION: 9, FERIE: 9, ferie: 'habituel', depuis: '2026-11-30', pt_reliquat: true, pt_tol: 5, pt_retards: 3, pt_ecart: 2, pt_tol_dep: 5, pt_departs: 3, cp_droits: 30, cp_debut: '06-01', cp_mode: 'ouvrables' };
   function regles() { return Object.assign({}, REGLES_DEF, S.regles || {}); }
   function addJ(iso, n) { var d = dDe(iso); d.setDate(d.getDate() + n); return dIso(d); }
   function lundiDe(iso) { var d = dDe(iso), j = d.getDay() || 7; d.setDate(d.getDate() - j + 1); return dIso(d); }
@@ -3633,7 +3722,7 @@
     h += '<h2 class="a-jour">Congés payés</h2><div class="a-liste">'
       + '<label class="a-li"><span class="a-it-n"><b>Droits par période</b><span>jours de congés payés par défaut (réglable personne par personne dans sa fiche)</span></span><span class="h-hval"><input class="in" inputmode="decimal" data-rg="cp_droits" value="' + esc(fr(R.cp_droits)) + '"> j</span></label>'
       + '<label class="a-li"><span class="a-it-n"><b>Début de la période</b><span>la période dure un an à partir de ce jour</span></span><select class="in" data-rg="cp_debut" style="max-width:170px">' + MOIS.map(function (mo, i) { var v = ('0' + (i + 1)).slice(-2) + '-01'; return '<option value="' + v + '"' + ((R.cp_debut || '06-01') === v ? ' selected' : '') + '>1er ' + mo + '</option>'; }).join('') + '</select></label>'
-      + '<label class="a-li"><span class="a-it-n"><b>Jours décomptés</b><span>pour une semaine de congés</span></span><select class="in" data-rg="cp_mode" style="max-width:250px"><option value="ouvres"' + (R.cp_mode !== 'travail' ? ' selected' : '') + '>Jours ouvrés (lundi au vendredi)</option><option value="travail"' + (R.cp_mode === 'travail' ? ' selected' : '') + '>Jours de travail habituels de la personne</option></select></label></div>';
+      + '<label class="a-li"><span class="a-it-n"><b>Jours décomptés</b><span>en jours ouvrables, le samedi compte une fois par semaine, seulement si toute la semaine est posée (un vendredi seul = 1 j)</span></span><select class="in" data-rg="cp_mode" style="max-width:300px"><option value="ouvrables"' + (R.cp_mode === 'ouvrables' ? ' selected' : '') + '>Jours ouvrables : lundi au samedi (30 j)</option><option value="ouvres"' + (R.cp_mode === 'ouvres' ? ' selected' : '') + '>Jours ouvrés : lundi au vendredi (25 j)</option><option value="travail"' + (R.cp_mode === 'travail' ? ' selected' : '') + '>Jours de travail habituels de la personne</option></select></label></div>';
     h += '<h2 class="a-jour">Reliquat</h2><div class="a-liste"><label class="a-li"><span class="a-it-n"><b>Compté à partir du</b><span>les semaines d’avant ne comptent pas</span></span><input class="in" type="date" data-rg="depuis" value="' + esc(R.depuis || '') + '" style="max-width:170px"></label></div>';
     if (pointagePret()) h += '<h2 class="a-jour">Pointage</h2><div class="a-liste">'
       + '<label class="a-li"><span class="a-it-n"><b>Le reliquat utilise le temps pointé</b><span>Journée pointée en entier : temps réel ; sinon : heures prévues au planning. Décoché : tout revient au planning.</span></span><input type="checkbox" data-rg="pt_reliquat"' + (R.pt_reliquat !== false ? ' checked' : '') + ' style="width:22px;height:22px;flex:none"></label>'
@@ -3666,6 +3755,7 @@
     var dp = document.querySelector('[data-rg="depuis"]'); o.depuis = dp && dp.value || R.depuis;
     var cd = document.querySelector('[data-rg="cp_droits"]'), cdb = document.querySelector('[data-rg="cp_debut"]'), cm = document.querySelector('[data-rg="cp_mode"]');
     o.cp_droits = cd ? Math.max(0, nb(String(cd.value).replace(',', '.')) || 0) : R.cp_droits; o.cp_debut = cdb ? cdb.value : R.cp_debut; o.cp_mode = cm ? cm.value : R.cp_mode;
+    if (o.cp_mode !== R.cp_mode && o.cp_droits === R.cp_droits) { if (o.cp_mode === 'ouvrables' && o.cp_droits === 25) o.cp_droits = 30; else if (o.cp_mode !== 'ouvrables' && o.cp_droits === 30) o.cp_droits = 25; }
     var pr = document.querySelector('[data-rg="pt_reliquat"]'); o.pt_reliquat = pr ? pr.checked : R.pt_reliquat !== false;
     [['pt_tol', 5], ['pt_retards', 3], ['pt_ecart', 2], ['pt_tol_dep', 5], ['pt_departs', 3]].forEach(function (z) { var el = document.querySelector('[data-rg="' + z[0] + '"]'); var v = el ? nb(String(el.value).replace(',', '.')) : R[z[0]]; o[z[0]] = isNaN(v) || v == null ? z[1] : Math.max(0, v); });
     sb.from('parametres').upsert({ cle: 'regles_heures', valeur: o }, { onConflict: 'cle' }).then(function (r) {
@@ -3676,7 +3766,7 @@
     var E = S.rgEdit, r = {};
     Array.prototype.forEach.call(document.querySelectorAll('[data-rgp]'), function (el) { var v = String(el.value).trim(); if (v !== '') r[el.dataset.rgp] = Math.max(0, nb(v.replace(',', '.'))); });
     var cons = $('rgcons').value.trim() || null, pe = persById(E.id);
-    if (pe && pe.regles && pe.regles.repli) r.repli = pe.regles.repli;
+    if (pe && pe.regles) Object.keys(pe.regles).forEach(function (k) { if (k === 'repli' || k.indexOf('cp_') === 0) r[k] = pe.regles[k]; });
     sb.from('equipe').update({ regles: r, consigne: cons }).eq('id', E.id).then(function (x) {
       if (x.error) throw x.error; S.rgEdit = null; toast('✔ Règles enregistrées'); chargerPlan();
     }).catch(function (e) { toast(msgErr(e)); });
@@ -5331,6 +5421,9 @@
     if (d.act === 'rgsave') return sauverRegles();
     if (d.cok) return repondre(d.cok, true);
     if (d.canok) return repondreAnnul(d.canok, true);
+    if (d.cpdep) { S.cpDep = d.cpdep === '1'; S.cpDepV = {}; render(); return; }
+    if (d.cpdok) return sauverDepartCP();
+    if (d.cpbv) { lsSet('evy-cp-bascule-' + d.cpbv, '1'); render(); return; }
     if (d.canko) return repondreAnnul(d.canko, false);
     if (d.cannd) return demanderAnnul(d.cannd);
     if (d.cgb) return cgAbsence(d.cgb);
@@ -5362,6 +5455,7 @@
       document.querySelectorAll('.rg-bloc').forEach(function (b) { var n = 0; b.querySelectorAll('[data-rgi]').forEach(function (x) { var ok = !qq || norm(x.dataset.rgi).indexOf(qq) >= 0 || norm(b.querySelector('h2').textContent).indexOf(qq) >= 0; x.hidden = !ok; if (ok) n++; }); b.hidden = !n; vus += n; });
       var v0 = document.querySelector('.rg-vide'); if (v0) v0.hidden = !!vus; return;
     }
+    if (t.dataset && t.dataset.cpd) { var cq = t.dataset.cpd.split('|'), V = S.cpDepV = S.cpDepV || {}; (V[cq[0]] = V[cq[0]] || {})[cq[1]] = t.value; var pp = persById(cq[0]), cel = document.querySelector('[data-cpdv="' + cq[0] + '"]'); if (pp && cel) cel.innerHTML = dispoDep(pp, V[cq[0]]); return; }
     if (t.id === 'sq') { S.sortie.q = t.value; S.sortie.msg = null; render(); }
     else if (t.id === 'rq') { S.ret.q = t.value; S.ret.msg = null; render(); }
     else if (t.dataset && t.dataset.rqte) { setRet(t.dataset.rqte, t.value); var rb = document.querySelector('.bar'); if (rb) rb.outerHTML = vBarRetour(); }

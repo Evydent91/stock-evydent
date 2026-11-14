@@ -1879,3 +1879,28 @@ button.stk-k{cursor:pointer}
 .trf-act{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
 .trf-act .a-btn{width:auto;padding:0 22px}
 @media (max-width:900px){.trf-g{grid-template-columns:1fr}.trf-r{grid-template-columns:1fr}}
+/* Congés payés : report N-1 consommé en premier, saisie de départ, nouvelle période */
+.cp3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.cp3 > div{display:flex;flex-direction:column;gap:5px;border-radius:14px;padding:12px 14px;border:1.5px solid #d9dee3;background:#fff}
+.cp3 small{font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--mute)}
+.cp3 b{font-size:24px;line-height:1.1}.cp3 b span{font-size:13.5px;font-weight:600;color:var(--mute)}
+.cp3 i{display:block;height:7px;border-radius:4px;background:#e4e8ec;overflow:hidden}.cp3 i em{display:block;height:7px;background:#2b3e4c}
+.cp3 .mu{font-size:13px}
+.cp3-r{border-color:#e6dcb8 !important;background:#fbf8ee !important}.cp3-r small{color:#6b5c22}.cp3-r i{background:#efe7cc}.cp3-r i em{background:#c9b97a}
+.cp3-d{background:#2b3e4c !important;border-color:#2b3e4c !important;color:#fff}.cp3-d small{color:#e6dcb8}.cp3-d span{font-size:14px}.cp3-d b.ko-t{color:#ffb4a8}
+.cp-att{display:flex;gap:10px;align-items:flex-start;margin:0;background:#f4f6f8;border-radius:12px;padding:9px 12px;font-size:14.5px;line-height:1.4}.cp-att svg{flex:none;margin-top:1px}
+.cp-att.warn{background:#fdf0e6;color:#5a2b06}
+.cp-l{display:grid;grid-template-columns:minmax(0,2fr) minmax(60px,.8fr) minmax(0,2fr);column-gap:12px;font-size:14.5px}
+.cp-l > *{padding:6px 2px;border-top:1px solid var(--soft)}
+.cp-tr,.cp-tn,.cp-tw{font-style:normal;font-weight:600;border-radius:6px;padding:1px 7px;white-space:nowrap}
+.cp-tr{background:#f3e6b6}.cp-tn{background:#e4ebf2}.cp-tw{background:#fdf0e6;color:#7a3a0e}
+.cp-g4{display:grid;grid-template-columns:minmax(110px,1.4fr) repeat(3,minmax(70px,1fr));column-gap:10px}
+.cp-g4 > *{padding:7px 4px;border-top:1px solid var(--soft);font-size:15px;display:flex;align-items:center}
+.cp-bas{border-top:5px solid #c9b97a}
+.cp-dep{display:grid;grid-template-columns:minmax(100px,1.3fr) repeat(3,minmax(80px,.9fr)) minmax(170px,2fr);column-gap:10px;align-items:center}
+.cp-dep > *{padding:6px 2px;border-top:1px solid var(--soft);font-size:15px}
+.cp-dep .in{width:100%;max-width:110px;height:44px}.cp-dep .cp-ir{border-color:#e6dcb8;background:#fbf8ee}
+.cp-hr{color:#6b5c22 !important}
+.cp-g small{font-size:12px}
+@media (max-width:700px){.cp3{grid-template-columns:1fr}.cp-dep{grid-template-columns:minmax(70px,1fr) repeat(3,minmax(54px,.8fr));}.cp-dep > [data-cpdv]{grid-column:1/-1;border-top:none;padding-top:0}.cp-dep > .cp-h:last-of-type{display:none}}
+.cp-b{height:46px;padding:0 20px;border-radius:12px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:15px;cursor:pointer;flex:none}.cp-b.bl{background:#fff;color:var(--navy);border:1.5px solid #d9dee3}.cp-b:disabled{opacity:.5}
