@@ -920,18 +920,46 @@
     return (p.statut === 'apprentie' ? 'Apprentie' : 'Qualifiée') + (p.ecole_jour ? ' · école le ' + JOURS[p.ecole_jour].toLowerCase() : '') + (parts.length ? ' · ' + parts.join(', ') : '');
   }
   function lignePers(p) {
-    var h = heuresTrame(p.trame), c = +p.contrat_h || 0, ecart = p.type !== 'interimaire' && c && Math.abs(h - c) > 0.01;
-    return '<button class="a-li" data-pf="' + p.id + '"><span class="a-av p">' + initiale(p.prenom) + '</span><span class="a-it-n"><b>' + esc(p.prenom) + (p.profil_id ? '' : '') + '</b><span>' + esc(resumeTrame(p)) + '</span>'
-      + (ecart ? '<span class="warn">Semaine type : ' + fh(h) + ' pour un contrat de ' + fh(c) + '</span>' : '') + '</span>' + ico('suiv', 20, 2.2) + '</button>';
+    var ty = typeDe(p.type), auPl = ty.planning !== false, aContrat = ty.contrat !== false && p.type !== 'interimaire';
+    var h = heuresTrame(p.trame), c = +p.contrat_h || 0, vide = auPl && p.type !== 'interimaire' && h < 0.01;
+    var ecart = auPl && aContrat && c && !vide && Math.abs(h - c) > 0.01;
+    var prof = p.profil_id ? (S.profils || []).filter(function (x) { return x.id === p.profil_id; })[0] : null;
+    var sous = [nomType(p) === 'Assistante' ? 'Qualifiée' : nomType(p)];
+    if (aContrat && c) sous.push(fh(c) + ' / semaine');
+    if (p.statut === 'apprentie' && p.ecole_jour) sous.push('école le ' + JOURS[p.ecole_jour].toLowerCase());
+    var sem = '';
+    if (auPl && p.type !== 'interimaire' && !vide) {
+      sem = '<span class="eq-sem" aria-label="Semaine type">' + [1, 2, 3, 4, 5].map(function (j) {
+        var x = (p.trame || {})[j] || {}, a = x.am && x.am.a || 'OFF', b = x.pm && x.pm.a || 'OFF', v = a !== 'OFF' ? a : b;
+        var k = function (z) { return !z || z === 'OFF' ? 'j-off' : z === 'ECOLE' ? 'j-ec' : z.slice(0, 2) === 'D:' ? 'j-de' : 'j-po'; };
+        var nm = function (z) { return z === 'OFF' ? 'Off' : affTxt(z).replace(/^Dr /, ''); };
+        var txt = a === b || b === 'OFF' || a === 'OFF' ? nm(v) : nm(a) + ' / ' + nm(b);
+        return '<span class="eq-j ' + k(v) + (a !== b && a !== 'OFF' && b !== 'OFF' ? ' mix' : '') + '" title="' + JOURS[j] + ' : ' + esc(nm(a)) + ' le matin, ' + esc(nm(b)) + ' l’après-midi"><small>' + JC[j] + '</small><b>' + esc(txt) + '</b></span>';
+      }).join('') + '</span>';
+    } else if (p.type === 'interimaire') sem = '<span class="eq-note">Selon les besoins</span>';
+    else if (!auPl) sem = '<span class="eq-note">N’apparaît pas dans le planning</span>';
+    else if (vide) sem = '<span class="eq-note warn">Semaine type à remplir</span>';
+    var badges = (p.pointage ? '<span class="eq-b or">Pointe</span>' : '') + (prof ? '<span class="eq-b ok">' + ico('ok', 13, 2.8) + 'Compte</span>' : '<span class="eq-b">Sans compte</span>') + (ecart ? '<span class="eq-b warn" title="Semaine type ' + fh(h) + ' pour un contrat de ' + fh(c) + '">Semaine ' + fh(h) + ' au lieu de ' + fh(c) + '</span>' : '');
+    return '<button class="eq-l" data-pf="' + p.id + '"><span class="a-av p">' + initiale(p.prenom) + '</span><span class="eq-id"><b>' + esc(p.prenom) + '</b><span>' + esc(sous.join(' · ')) + '</span></span>'
+      + '<span class="eq-badges">' + badges + '</span>' + sem + '<span class="eq-go">' + ico('suiv', 20, 2.2) + '</span></button>';
+  }
+  function groupesEquipe(l) {
+    var G = [], idx = {};
+    var cle = function (p) { var ty = typeDe(p.type); if (ty.planning === false) return 'hors:' + p.type; if (p.type === 'assistante' || !p.type) return p.statut === 'apprentie' ? 'apprentie' : 'qualifiee'; return 'ty:' + p.type; };
+    var nom = function (k, p) { return k === 'qualifiee' ? 'Assistantes et assistants qualifiés' : k === 'apprentie' ? 'Apprenties et apprentis' : k.slice(0, 5) === 'hors:' ? typeDe(p.type).n + ' · hors planning' : typeDe(p.type).n; };
+    var ordre = function (k) { return k === 'qualifiee' ? 0 : k === 'apprentie' ? 1 : k === 'ty:interimaire' ? 9 : k.slice(0, 5) === 'hors:' ? 20 : 5; };
+    l.forEach(function (p) { var k = cle(p); if (!idx[k]) { idx[k] = { k: k, n: nom(k, p), l: [] }; G.push(idx[k]); } idx[k].l.push(p); });
+    return G.sort(function (a, b) { return ordre(a.k) - ordre(b.k); });
   }
   function vPEquipe() {
     var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'L’équipe', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
     if (!planPret()) return h + '<div class="ban warn">La mise à jour 009 de la base n’est pas encore faite.</div></div>';
     var tri = function (a, b) { return (a.ordre - b.ordre) || a.prenom.localeCompare(b.prenom); };
     var act = S.equipe.filter(function (p) { return p.actif; }).sort(tri), anc = S.equipe.filter(function (p) { return !p.actif; }).sort(tri);
-    h += act.length ? '<div class="a-liste">' + act.map(lignePers).join('') + '</div>' : '<p class="a-vide">Personne pour l’instant.</p>';
-    h += '<button class="a-plus" data-act="pfnew">+ Ajouter une personne</button>';
-    if (anc.length) h += '<details class="h-plie"><summary>Anciennes et anciens · ' + anc.length + '</summary><div class="a-liste">' + anc.map(lignePers).join('') + '</div></details>';
+    var nPl = act.filter(function (p) { return typeDe(p.type).planning !== false; }).length, nPt = act.filter(function (p) { return p.pointage; }).length;
+    h += '<div class="eq-top"><span><b>' + act.length + '</b> ' + pl(act.length, 'personne') + ' · ' + nPl + ' au planning · ' + nPt + ' ' + (nPt > 1 ? 'pointent' : 'pointe') + '</span><button class="btn" data-act="pfnew">+ Ajouter une personne</button></div>';
+    h += act.length ? groupesEquipe(act).map(function (g) { return '<section class="eq-g"><h2>' + esc(g.n) + ' <span>' + g.l.length + '</span></h2><div class="eq-liste">' + g.l.map(lignePers).join('') + '</div></section>'; }).join('') : '<p class="a-vide">Personne pour l’instant.</p>';
+    if (anc.length) h += '<details class="h-plie"><summary>Anciennes et anciens · ' + anc.length + '</summary><div class="eq-liste">' + anc.map(lignePers).join('') + '</div></details>';
     var lies = {}; S.equipe.forEach(function (p) { if (p.profil_id) lies[p.profil_id] = 1; });
     var seuls = S.profils.filter(function (p) { return !lies[p.id]; });
     if (seuls.length) h += '<h2 class="a-jour">Comptes sans fiche planning</h2><p class="a-aide">Ces personnes se connectent à l’appli mais n’apparaissent pas dans le planning (ex. la responsable).</p>'
@@ -1287,7 +1315,7 @@
     var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPVisible, ppostes: vPPostes, ptypes: vPTypes, pqui: vPQui, proles: vPRoles, pqr: vPQR }[S.tab] || vHub;
     if ((S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage') && telephone()) ecr = vSurPC;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
-    h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || (S.tab === 'pconges' && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
+    h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr' || S.tab === 'pequipe') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || (S.tab === 'pconges' && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
     if (S.tab === 'pfiche') h += vBarPFiche();
     if (S.tab === 'dfiche') h += vBarDFiche();
     return h;
