@@ -656,9 +656,9 @@
   }
   async function refOuvrirFerme(iso) {
     if (!refDroit('planning_modif') && !gestion()) return;
-    var cur = S.ref.ferm[iso], auto = refFermeAuto(iso), c = refDe(), noms = (S.ref.noms || []).filter(function (n) { return n.type !== 'interimaire'; }).sort(function (a, b) { return (a.type === c ? 0 : 1) - (b.type === c ? 0 : 1); });
+    var cur = S.ref.ferm[iso], auto = refFermeAuto(iso), c = refDe(), noms = refPers().map(function (p) { return { id: p.id, prenom: p.prenom, type: c }; });
     var choix = [{ v: '', t: auto ? 'Proposition : ' + auto.nom : 'Personne (à désigner)', s: auto ? 'finit à ' + hCourt(auto.heure) + ' · se met à jour avec le planning' : 'aucun horaire ce jour-là', on: !cur || !(cur.nom || cur.equipe_id) }]
-      .concat(noms.map(function (n) { return { v: String(n.id), t: n.prenom, s: n.type === c ? refNom() : 'autre équipe', on: !!cur && String(cur.equipe_id) === String(n.id) }; }));
+      .concat(noms.map(function (n) { return { v: String(n.id), t: n.prenom, on: !!cur && String(cur.equipe_id) === String(n.id) }; }));
     var r = await fenetre({ titre: 'Qui ferme le ' + JOURS[jourSem(iso)].toLowerCase() + ' ' + dateCourte(iso) + ' ?', choix: choix, grille: true, ok: 'Enregistrer', html: '<label class="mu" style="display:flex;flex-direction:column;gap:4px;margin-top:8px">Heure de fermeture (facultatif)<input class="in" type="time" id="rfh" value="' + esc((cur && cur.heure) || (auto && auto.heure) || '') + '"></label>', lire: function (bg) { return { h: bg.querySelector('#rfh').value || null }; } });
     if (!r) return;
     var q;

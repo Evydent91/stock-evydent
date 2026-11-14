@@ -1983,3 +1983,4 @@ button.stk-k{cursor:pointer}
 @media (min-width:1100px){.cg2-2c.rf-ro .cg2-cg > .cg2-k{grid-row:2;grid-template-columns:repeat(2,minmax(0,1fr))}.cg2-2c.rf-ro .cg2-cg > .cg2-carte{grid-row:3}}
 .cp-mois{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14.5px}.cp-mois .in{width:auto;height:44px}
 .cp3-d span b{font-weight:700}
+.dlg .dlg-ch.gr .dlg-c:first-child{grid-column:1/-1}.dlg .dlg-ch.gr .dlg-c{align-items:center;min-height:48px;padding:8px 12px}.dlg .dlg-ch.gr .dlg-c input[type=radio]{margin:0}.dlg .dlg-ch.gr .dlg-c small:empty{display:none}
