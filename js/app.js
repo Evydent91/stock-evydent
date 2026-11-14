@@ -1841,6 +1841,7 @@
   }
   function ferie(iso) { return feries(+iso.slice(0, 4))[iso] || null; }
   function congeLe(eid, iso) { return (S.conges || []).filter(function (c) { return String(c.equipe_id) === String(eid) && c.statut === 'accepte' && c.du <= iso && c.au >= iso; })[0]; }
+  function congeAttenteLe(eid, iso) { return (S.conges || []).filter(function (c) { return String(c.equipe_id) === String(eid) && c.statut === 'attente' && c.du <= iso && c.au >= iso; })[0]; }
   function dentAbsent(did, iso) { return (S.conges || []).some(function (c) { return String(c.dentiste_id) === String(did) && c.statut === 'accepte' && c.du <= iso && c.au >= iso; }); }
   function cleCase(eid, iso, demi) { return eid + '|' + iso + '|' + demi; }
   function hm(t) { return t ? String(t).slice(0, 5) : null; }
@@ -2917,7 +2918,9 @@
     if (typeof hd === 'string' && hd) h += '<small class="pl-r dep">Dr ' + esc(dpt.prenom) + ' part à ' + ft(hd) + '</small>';
     if (rg) { cls += ' reg'; h += '<small class="pl-r">' + esc(affTxt(rg)) + ' absent</small>'; }
     if (S.plVoirPt) h += badgePt(p, iso);
-    return '<button class="' + cls + (jourClos(iso) ? ' clos' : '') + '" data-plc="' + p.id + '|' + iso + '" aria-label="' + esc(p.prenom) + ', ' + JOURS[jourSem(iso)] + '">' + h + '</button>';
+    var cat = !(am.a === 'OFF' && pm.a === 'OFF') && congeAttenteLe(p.id, iso);
+    if (cat) { cls += ' cg-at'; h += '<small class="pl-at" title="Demande du ' + dateCourte(cat.du) + (cat.au !== cat.du ? ' au ' + dateCourte(cat.au) : '') + ', pas encore validée">' + ico('attente', 13, 2.4) + esc(cat.type === 'FORMATION' ? 'Formation' : typeTxt(cat.type)) + ' demandé' + (cat.type === 'FORMATION' ? 'e' : 's') + '</small>'; }
+    return '<button class="' + cls + (jourClos(iso) ? ' clos' : '') + '" data-plc=""' + p.id + '|' + iso + '" aria-label="' + esc(p.prenom) + ', ' + JOURS[jourSem(iso)] + '">' + h + '</button>';
   }
   // Dentistes présents qui travaillent sans assistante ce jour-là (journée entière, matin ou après-midi)
   function dentistesSeuls(iso) {
@@ -2975,6 +2978,7 @@
     h += '<div class="pl-h"></div>';
     h += '</div></div>';
     h += '<div class="pl-notes"><span class="pl-n vert"><b>Semaine remplie automatiquement</b> d’après les fiches (semaine type, école, congés acceptés, jours fériés, règle d’or) : corrigez seulement les exceptions.</span>'
+      + (congesAttente().some(function (c) { return c.equipe_id && c.du <= fin && c.au >= L; }) ? '<span class="pl-n at"><span class="pl-at">' + ico('attente', 13, 2.4) + 'Congés demandés</span> = demande pas encore validée (à valider dans Congés). La case garde le planning prévu tant que la demande n’est pas acceptée.</span>' : '')
       + '<span class="pl-n">Touchez une case pour choisir le dentiste et les heures. Reliquat : heures faites moins heures du contrat, cumulées depuis le ' + dateCourte(regles().depuis) + ' (Réglages › Règles des heures).</span></div>';
     return h + '</div>' + (P.cas ? vCasePlanning() : '') + (S.plExp ? vExportPlanning() : '') + (S.plClo ? vCloture() : '');
   }

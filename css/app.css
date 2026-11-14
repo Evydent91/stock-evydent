@@ -1756,3 +1756,9 @@ button.stk-k{cursor:pointer}
 .fx-lignes .it{padding:12px 0}
 .fx-lignes .it-n b{font-size:15.5px}
 @media (max-width:900px){.fx-w{flex-direction:column;align-items:stretch}.fx-a{flex:none;position:static}.fx-g{grid-template-columns:1fr}}
+
+/* Planning : congés demandés, pas encore validés */
+.pl-c.cg-at{box-shadow:inset 0 0 0 2px #e0a46a}
+.pl-at{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;margin-top:4px;font-size:11.5px;font-weight:700;line-height:1.2;color:var(--warn);background:var(--warnbg);border-radius:6px;padding:2px 6px}
+.pl-n.at{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pl-n.at .pl-at{margin:0}
