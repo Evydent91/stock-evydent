@@ -1024,7 +1024,7 @@
       g += '<div class="fi-ed"><b>' + JOURS[cj] + ' ' + (ck === 'am' ? 'matin' : 'après-midi') + '</b>' + demiEdit(cj, ck, (t[cj] || {})[ck]) + '<div class="fi-rac"><button class="btn l sm" data-act="pfcopiejour" data-j="' + cj + '">Copier le ' + JOURS[cj].toLowerCase() + ' sur toute la semaine</button></div></div>';
       return '<p class="mu fi-intro">Touchez une case pour changer ' + (aDent(p.type) ? 'le dentiste ou le poste' : 'le poste') + ' et les horaires. ' + (ty.planning === false ? 'Hors planning : ces horaires servent seulement au pointage (heures prévues, retards, départs avant l’heure, coupure de midi déduite).' : 'Le planning de chaque semaine part de là.') + '</p>' + g;
     };
-    R.absences = function () { return nouv ? avant : '<h3 class="fi-h3">Congés</h3>' + blocConges(false, F.id, p) + '<h3 class="fi-h3">Formations</h3>' + blocConges(false, F.id, p, true) + '<h3 class="fi-h3">Jours off</h3>' + blocOffs(F); };
+    R.absences = function () { return nouv ? avant : (ty.contrat !== false && p.type !== 'interimaire' ? blocSoldeFiche(p) : '') + '<h3 class="fi-h3">Congés</h3>' + blocConges(false, F.id, p) + '<h3 class="fi-h3">Formations</h3>' + blocConges(false, F.id, p, true) + '<h3 class="fi-h3">Jours off</h3>' + blocOffs(F); };
     R.compte = function () {
       var x = (!pointagePret() ? '' : prof && (prof.role === 'referente' || prof.role === 'responsable') ? '<p class="mu">Pointage journalier : non concernée (' + LABEL[prof.role].toLowerCase() + ').</p>'
         : '<label class="row fi-pt"><input type="checkbox" data-pff="pointage"' + (p.pointage ? ' checked' : '') + ' style="width:22px;height:22px;flex:none"><span><b>Soumise au pointage journalier</b><span class="mu">Scanne le QR code du centre à l’arrivée et à la sortie (tuile « Pointer » de son application).</span></span></label>');
@@ -1068,6 +1068,7 @@
       if (k === 'contrat_h') v = Math.max(0, nb(String(v).replace(',', '.')));
       if (k === 'ecole_jour') v = v ? +v : null;
       if (k === 'repli') { F.d.regles = Object.assign({}, F.d.regles || {}); F.d.regles.repli = v; return; }
+      if (k === 'cp_droits' || k === 'cp_report') { F.d.regles = Object.assign({}, F.d.regles || {}); var nv = String(v).replace(',', '.').trim(); if (nv === '') delete F.d.regles[k]; else F.d.regles[k] = +nv; return; }
       F.d[k] = v;
     } else if (el.dataset.tr) {
       var p = el.dataset.tr.split('.'), t = F.d.trame = F.d.trame || {}, j = t[p[0]] = t[p[0]] || {}, c = j[p[1]] = j[p[1]] || {};
@@ -1347,6 +1348,65 @@
   function nomConge(c) { if (c.dentiste_id) { var d = dentById(c.dentiste_id); return d ? 'Dr ' + d.prenom : 'Dentiste'; } var p = persById(c.equipe_id); return p ? p.prenom : '?'; }
   function typeTxt(t) { var x = TYPES_C.filter(function (y) { return y[0] === t; })[0]; return x ? x[1] : t; }
   function congesAttente() { return (S.conges || []).filter(function (c) { return c.statut === 'attente'; }); }
+  // ---------- Solde de congés payés (période de référence, droits, report) ----------
+  function periodeCP(ref) {
+    var R = regles(), md = R.cp_debut || '06-01', y = +ref.slice(0, 4), d = y + '-' + md;
+    if (ref < d) d = (y - 1) + '-' + md;
+    var f = addJ((+d.slice(0, 4) + 1) + '-' + md, -1);
+    return { du: d, au: f };
+  }
+  function joursCP(p, du, au) {   // jours décomptés : lundi au vendredi hors fériés (ou jours de travail habituels de la personne)
+    var R = regles(), n = 0, d = du, i = 0, trav = R.cp_mode === 'travail';
+    while (d <= au && i++ < 800) {
+      var j = jourSem(d);
+      if (j >= 1 && j <= 5 && !ferie(d)) {
+        if (!trav || heuresTrame(p.trame) < 0.01) n++;
+        else { var t = (p.trame || {})[j] || {}; if (['am', 'pm'].some(function (k) { return t[k] && t[k].a && t[k].a !== 'OFF'; })) n++; }
+      }
+      d = addJ(d, 1);
+    }
+    return n;
+  }
+  function soldeCP(p, conges, ref) {
+    var R = regles(), P = periodeCP(ref || dIso(new Date())), rg = p.regles || {};
+    var droits = rg.cp_droits != null && rg.cp_droits !== '' ? +rg.cp_droits : +R.cp_droits || 0, report = +rg.cp_report || 0, pris = 0, att = 0;
+    (conges || []).forEach(function (c) {
+      if (String(c.equipe_id) !== String(p.id) || (c.type !== 'CP' && c.type !== 'AUTRE') || c.du > P.au || c.au < P.du) return;
+      var n = joursCP(p, c.du < P.du ? P.du : c.du, c.au > P.au ? P.au : c.au);
+      if (c.statut === 'accepte') pris += n; else if (c.statut === 'attente') att += n;
+    });
+    return { P: P, droits: droits, report: report, pris: pris, att: att, reste: droits + report - pris };
+  }
+  function txtJ(n) { n = Math.round(n * 10) / 10; return String(n).replace('.', ',') + ' j'; }
+  function blocSoldeFiche(p) {
+    var s = soldeCP(p, S.conges), R = regles(), rg = p.regles || {};
+    return '<h3 class="fi-h3">Solde de congés payés</h3><div class="cp-f"><div class="cp-k"><span><small>Droits</small><b>' + txtJ(s.droits) + '</b></span><span><small>Report</small><b>' + (s.report ? (s.report > 0 ? '+' : '') + txtJ(s.report) : '—') + '</b></span><span><small>Pris</small><b>' + txtJ(s.pris) + '</b></span><span><small>En attente</small><b>' + (s.att ? txtJ(s.att) : '—') + '</b></span><span class="cp-r"><small>Reste</small><b class="' + (s.reste < 0 ? 'ko-t' : 'ok-t') + '">' + txtJ(s.reste) + '</b></span></div>'
+      + '<p class="mu" style="margin:0;font-size:13.5px">Période du ' + dateCourte(s.P.du) + ' ' + s.P.du.slice(0, 4) + ' au ' + dateCourte(s.P.au) + ' ' + s.P.au.slice(0, 4) + '. Mis à jour à l’enregistrement de la fiche.</p>'
+      + '<div class="h-g2"><label class="mu">Droits de la période (jours)<input class="in" inputmode="decimal" data-pff="cp_droits" value="' + esc(rg.cp_droits != null ? fr(rg.cp_droits) : '') + '" placeholder="' + fr(R.cp_droits) + ' (règle générale)"></label>'
+      + '<label class="mu">Report ou ajustement (jours, + ou −)<input class="in" inputmode="decimal" data-pff="cp_report" value="' + esc(rg.cp_report != null ? fr(rg.cp_report) : '') + '" placeholder="0"></label></div></div>';
+  }
+  function vSoldesCP() {
+    var ps = (S.equipe || []).filter(function (p) { return p.actif && typeDe(p.type).contrat !== false && p.type !== 'interimaire'; }).sort(function (a, b) { return a.ordre - b.ordre; });
+    if (!ps.length) return '';
+    var P = periodeCP(dIso(new Date()));
+    return '<section class="cg2-carte cp-s"><div class="cp-t"><h2>Soldes de congés payés</h2><span class="mu">Période du ' + dateCourte(P.du) + ' ' + P.du.slice(0, 4) + ' au ' + dateCourte(P.au) + ' ' + P.au.slice(0, 4) + ' · ' + (regles().cp_mode === 'travail' ? 'jours de travail habituels' : 'jours ouvrés (lundi au vendredi)') + '</span></div>'
+      + '<div class="cp-g"><span class="cp-h">Personne</span><span class="cp-h">Droits</span><span class="cp-h">Report</span><span class="cp-h">Pris</span><span class="cp-h">En attente</span><span class="cp-h">Reste</span>'
+      + ps.map(function (p) {
+        var s = soldeCP(p, S.conges);
+        return '<button class="cp-n" data-pf="' + p.id + '" data-pfo="absences">' + esc(p.prenom) + '</button><span>' + txtJ(s.droits) + '</span><span class="mu">' + (s.report ? (s.report > 0 ? '+' : '') + txtJ(s.report) : '—') + '</span><span>' + txtJ(s.pris) + '</span><span class="' + (s.att ? 'warn-t' : 'mu') + '">' + (s.att ? txtJ(s.att) : '—') + '</span><b class="' + (s.reste < 0 ? 'ko-t' : s.reste - s.att < 0 ? 'warn-t' : 'ok-t') + '">' + txtJ(s.reste) + '</b>';
+      }).join('') + '</div><p class="mu cp-note">Droits et report se règlent dans la fiche de chaque personne (rubrique Absences) ; la valeur par défaut et le début de période dans Réglages › Règles des heures. Seuls les congés payés sont décomptés (pas la maladie ni la formation).</p></section>';
+  }
+  // Ce qui se passe si on accepte une demande : dentistes qui se retrouveraient seuls (planning recalculé avec ce congé)
+  function alerteConge(c) {
+    var jours = [], d = c.du, i = 0; while (d <= c.au && i++ < 120) { var j = jourSem(d); if (j >= 1 && j <= 5 && !ferie(d)) jours.push(d); d = addJ(d, 1); }
+    var cle = function (x) { return x.d.id + '|' + x.quand; }, avant = {};
+    JOUR_CACHE = {}; jours.forEach(function (iso) { avant[iso] = {}; dentistesSeuls(iso).seuls.forEach(function (x) { avant[iso][cle(x)] = 1; }); });
+    var tmp = Object.assign({}, c, { statut: 'accepte', id: -1 }); S.conges.push(tmp); JOUR_CACHE = {};
+    var out = [];
+    try { jours.forEach(function (iso) { var n = dentistesSeuls(iso).seuls.filter(function (x) { return !avant[iso][cle(x)]; }); if (n.length) out.push({ iso: iso, l: n }); }); }
+    finally { S.conges.splice(S.conges.indexOf(tmp), 1); JOUR_CACHE = {}; }
+    return out;
+  }
   function chevauche(c) {
     return (S.conges || []).filter(function (o) { return o.id !== c.id && o.equipe_id && (o.statut === 'accepte' || o.statut === 'attente') && o.du <= c.au && o.au >= c.du; });
   }
@@ -1361,10 +1421,18 @@
         return '<div class="card h-cg"><div class="h-cg-t"><span class="a-av p">' + initiale(p.prenom) + '</span><div><b>' + esc(p.prenom || '?') + ' · ' + periode(c.du, c.au) + '</b><span class="mu">' + n + ' ' + pl(n, 'jour') + ' de travail · demandé le ' + dateCourte(c.cree_le) + '</span></div></div>'
           + (c.mot ? '<p class="h-mot">« ' + esc(c.mot) + ' »</p>' : '')
           + (ch.length ? '<p class="warn-t" style="margin:0">Aussi absent' + (ch.length > 1 ? 's' : '') + ' sur cette période : ' + ch.map(function (o) { return esc(nomConge(o)) + ' (' + periode(o.du, o.au) + (o.statut === 'attente' ? ', en attente' : '') + ')'; }).join(', ') + '</p>' : '')
+          + (function () {
+            var out = '';
+            if (p.id && typeDe(p.type).contrat !== false && (c.type === 'CP' || c.type === 'AUTRE')) { var so = soldeCP(p, S.conges, c.du), nj = joursCP(p, c.du, c.au); out += '<p class="cg-solde">Solde de congés : <b>' + txtJ(so.reste) + '</b> → <b class="' + (so.reste - nj < 0 ? 'ko-t' : '') + '">' + txtJ(so.reste - nj) + '</b> après acceptation <span class="mu">(' + txtJ(nj) + ' décomptés)</span></p>'; }
+            var al = alerteConge(c);
+            out += al.length ? '<div class="cg-alerte">' + ico('attente', 18, 2.2) + '<span><b>Si vous acceptez, dentiste sans assistante :</b> ' + al.map(function (x) { return JC[jourSem(x.iso)].toLowerCase() + '. ' + dateCourte(x.iso) + ' : ' + x.l.map(function (y) { return 'Dr ' + esc(y.d.prenom) + (y.quand ? ' (' + y.quand + ')' : ''); }).join(', '); }).join(' · ') + '</span></div>'
+              : '<p class="cg-ok">' + ico('ok', 16, 2.6) + 'Aucun dentiste ne se retrouve seul : le planning prévoit un remplacement.</p>';
+            return out;
+          })()
           + '<div class="h-cg-b"><button class="a-btn blanc" data-crefus="' + c.id + '">Refuser</button><button class="a-btn vert" data-cok="' + c.id + '">Accepter</button></div></div>';
       }).join('') + '</section>';
     } else h += '<p class="cg2-ok">' + ico('ok', 18, 2.6) + 'Aucune demande de congés à valider.</p>';
-    h += vMoisConges();
+    h += vMoisConges() + vSoldesCP();
     return h + '<p class="a-aide">Pour saisir des congés, un arrêt ou une formation : touchez le nom de la personne ou du dentiste, ou ouvrez sa fiche dans Réglages.</p></div>';
   }
   // Congés : planning du mois, une ligne par personne, une colonne par jour ouvré ; les absences sont des barres nommées
@@ -1583,6 +1651,7 @@
     var h = hdA({ back: ['data-tab="moi"', 'Moi'], t: 'Mes congés', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
     if (S.mesConges == null) return h + '<p class="a-vide">Chargement…</p></div>';
     if (!S.moiEq) return h + '<p class="a-note warn">Votre compte n’est pas encore relié à une fiche du planning : demandez à la référente de le faire (Réglages › L’équipe).</p></div>';
+    if (typeDe(S.moiEq.type).contrat !== false && S.moiEq.type !== 'interimaire') { var so = soldeCP(S.moiEq, S.mesConges); h += '<div class="card cp-moi"><span class="mu">Il me reste</span><b class="' + (so.reste < 0 ? 'ko-t' : '') + '">' + txtJ(so.reste) + '</b><span class="mu">de congés payés sur ' + txtJ(so.droits + so.report) + (so.att ? ' · ' + txtJ(so.att) + ' en attente' : '') + '<br>période jusqu’au ' + dateCourte(so.P.au) + ' ' + so.P.au.slice(0, 4) + '</span></div>'; }
     h += '<button class="a-btn gold h-centre" data-tab="mdemande">' + ico('plus', 22, 2.2) + 'Demander des congés</button><h2 class="a-jour">Mes demandes</h2>';
     var l = S.mesConges.filter(function (c) { return c.statut !== 'annule' && String(c.equipe_id) === String(S.moiEq.id); });
     if (!l.length) return h + '<p class="a-vide">Aucune demande pour l’instant.</p></div>';
@@ -1601,6 +1670,7 @@
     h += '<div class="card h-dm"><label class="mu">' + (D.un ? 'Le' : 'Du') + '<input class="in" type="date" id="dmdu" min="' + dIso(new Date()) + '" value="' + esc(D.du) + '"></label>'
       + (D.un ? '' : '<label class="mu">Au (inclus)<input class="in" type="date" id="dmau" min="' + esc(D.du || dIso(new Date())) + '" value="' + esc(D.au) + '"></label>')
       + (n != null ? '<p style="margin:0"><b>' + n + ' ' + pl(n, 'jour') + ' de travail</b> <span class="mu">(d’après vos jours habituels)</span></p>' : '')
+      + (n != null && S.moiEq && typeDe(S.moiEq.type).contrat !== false && S.moiEq.type !== 'interimaire' ? (function () { var so = soldeCP(S.moiEq, S.mesConges, D.du), nj = joursCP(S.moiEq, D.du, au); return '<p class="cg-solde" style="margin:0">Solde : ' + txtJ(so.reste - so.att) + ' → <b class="' + (so.reste - so.att - nj < 0 ? 'ko-t' : '') + '">' + txtJ(so.reste - so.att - nj) + '</b> après cette demande <span class="mu">(' + txtJ(nj) + ' de congés payés)</span></p>'; })() : '')
       + '<label class="mu">Un petit mot (facultatif)<textarea class="in" rows="2" id="dmmot">' + esc(D.mot) + '</textarea></label></div>'
       + '<p class="a-aide">La référente et la responsable reçoivent la demande ; la première qui répond décide. Vous verrez la réponse dans « Mes congés ».</p>';
     return h + '</div>';
@@ -1622,7 +1692,7 @@
   // Case enregistrée (table planning) sinon case calculée : jour férié > congés acceptés > semaine type.
   var ABS = ['CP', 'ARRET', 'ECOLE', 'FORMATION', 'FERIE'];
   var ABS_TXT = { CP: 'Congés', ARRET: 'Maladie', ECOLE: 'École', FORMATION: 'Formation', FERIE: 'Férié' };
-  var REGLES_DEF = { CP: 9, ARRET: 9, ECOLE: 7, FORMATION: 9, FERIE: 9, ferie: 'habituel', depuis: '2026-11-02', pt_reliquat: true, pt_tol: 5, pt_retards: 3, pt_ecart: 2, pt_tol_dep: 5, pt_departs: 3 };
+  var REGLES_DEF = { CP: 9, ARRET: 9, ECOLE: 7, FORMATION: 9, FERIE: 9, ferie: 'habituel', depuis: '2026-11-02', pt_reliquat: true, pt_tol: 5, pt_retards: 3, pt_ecart: 2, pt_tol_dep: 5, pt_departs: 3, cp_droits: 25, cp_debut: '06-01', cp_mode: 'ouvres' };
   function regles() { return Object.assign({}, REGLES_DEF, S.regles || {}); }
   function addJ(iso, n) { var d = dDe(iso); d.setDate(d.getDate() + n); return dIso(d); }
   function lundiDe(iso) { var d = dDe(iso), j = d.getDay() || 7; d.setDate(d.getDate() - j + 1); return dIso(d); }
@@ -2940,6 +3010,10 @@
     h += '<h2 class="a-jour">Jour férié</h2><div class="a-liste">'
       + '<label class="a-li"><input type="radio" name="rgferie" data-rgf="habituel"' + (R.ferie !== 'tous' ? ' checked' : '') + '><span class="a-it-n"><b>Compte seulement si elle travaille ce jour-là d’habitude</b></span></label>'
       + '<label class="a-li"><input type="radio" name="rgferie" data-rgf="tous"' + (R.ferie === 'tous' ? ' checked' : '') + '><span class="a-it-n"><b>Compte pour tout le monde</b></span></label></div>';
+    h += '<h2 class="a-jour">Congés payés</h2><div class="a-liste">'
+      + '<label class="a-li"><span class="a-it-n"><b>Droits par période</b><span>jours de congés payés par défaut (réglable personne par personne dans sa fiche)</span></span><span class="h-hval"><input class="in" inputmode="decimal" data-rg="cp_droits" value="' + esc(fr(R.cp_droits)) + '"> j</span></label>'
+      + '<label class="a-li"><span class="a-it-n"><b>Début de la période</b><span>la période dure un an à partir de ce jour</span></span><select class="in" data-rg="cp_debut" style="max-width:170px">' + MOIS.map(function (mo, i) { var v = ('0' + (i + 1)).slice(-2) + '-01'; return '<option value="' + v + '"' + ((R.cp_debut || '06-01') === v ? ' selected' : '') + '>1er ' + mo + '</option>'; }).join('') + '</select></label>'
+      + '<label class="a-li"><span class="a-it-n"><b>Jours décomptés</b><span>pour une semaine de congés</span></span><select class="in" data-rg="cp_mode" style="max-width:250px"><option value="ouvres"' + (R.cp_mode !== 'travail' ? ' selected' : '') + '>Jours ouvrés (lundi au vendredi)</option><option value="travail"' + (R.cp_mode === 'travail' ? ' selected' : '') + '>Jours de travail habituels de la personne</option></select></label></div>';
     h += '<h2 class="a-jour">Reliquat</h2><div class="a-liste"><label class="a-li"><span class="a-it-n"><b>Compté à partir du</b><span>les semaines d’avant ne comptent pas</span></span><input class="in" type="date" data-rg="depuis" value="' + esc(R.depuis || '') + '" style="max-width:170px"></label></div>';
     if (pointagePret()) h += '<h2 class="a-jour">Pointage</h2><div class="a-liste">'
       + '<label class="a-li"><span class="a-it-n"><b>Le reliquat utilise le temps pointé</b><span>Journée pointée en entier : temps réel ; sinon : heures prévues au planning. Décoché : tout revient au planning.</span></span><input type="checkbox" data-rg="pt_reliquat"' + (R.pt_reliquat !== false ? ' checked' : '') + ' style="width:22px;height:22px;flex:none"></label>'
@@ -2970,6 +3044,8 @@
     ['CP', 'ARRET', 'ECOLE', 'FORMATION', 'FERIE'].forEach(function (a) { var el = document.querySelector('[data-rg="' + a + '"]'); var v = el ? nb(String(el.value).replace(',', '.')) : R[a]; o[a] = Math.max(0, v || 0); });
     var f = document.querySelector('[data-rgf="tous"]'); o.ferie = f && f.checked ? 'tous' : 'habituel';
     var dp = document.querySelector('[data-rg="depuis"]'); o.depuis = dp && dp.value || R.depuis;
+    var cd = document.querySelector('[data-rg="cp_droits"]'), cdb = document.querySelector('[data-rg="cp_debut"]'), cm = document.querySelector('[data-rg="cp_mode"]');
+    o.cp_droits = cd ? Math.max(0, nb(String(cd.value).replace(',', '.')) || 0) : R.cp_droits; o.cp_debut = cdb ? cdb.value : R.cp_debut; o.cp_mode = cm ? cm.value : R.cp_mode;
     var pr = document.querySelector('[data-rg="pt_reliquat"]'); o.pt_reliquat = pr ? pr.checked : R.pt_reliquat !== false;
     [['pt_tol', 5], ['pt_retards', 3], ['pt_ecart', 2], ['pt_tol_dep', 5], ['pt_departs', 3]].forEach(function (z) { var el = document.querySelector('[data-rg="' + z[0] + '"]'); var v = el ? nb(String(el.value).replace(',', '.')) : R[z[0]]; o[z[0]] = isNaN(v) || v == null ? z[1] : Math.max(0, v); });
     sb.from('parametres').upsert({ cle: 'regles_heures', valeur: o }, { onConflict: 'cle' }).then(function (r) {
@@ -4487,7 +4563,7 @@
     if (d.act === 'eannule') { S.eqEdit = null; render(); return; }
     if (d.esave) return sauverProfil(d.esave);
     if (d.ereinit) return reinitMdp(d.ereinit);
-    if (d.pf) return ouvrirPers(d.pf);
+    if (d.pf) { ouvrirPers(d.pf); if (d.pfo && S.pf) { S.pf.onglet = d.pfo; render(); } return; }
     if (d.dent) return ouvrirDent(d.dent);
     if (d.act === 'pfnew') return ouvrirPers('new');
     if (d.act === 'dfnew') return ouvrirDent('new');

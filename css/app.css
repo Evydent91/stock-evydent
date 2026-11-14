@@ -1415,3 +1415,18 @@ button.lien{border:none;background:none;padding:0;font:inherit;font-weight:700;c
 .ob-cartes{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
 .ob-c{display:flex;flex-direction:column;gap:10px;margin:0}
 .ob-t{display:flex;gap:12px;align-items:center}.ob-t > div{display:flex;flex-direction:column}
+/* Congés : soldes et alerte avant d'accepter */
+.cg-solde{margin:0;font-size:14.5px}.ko-t{color:var(--ko)}.ok-t{color:var(--ok)}
+.cg-alerte{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:#fdf0e6;color:#5a2b06;font-size:14px}.cg-alerte svg{flex:none;margin-top:2px;color:#9a4a0b}
+.cg-ok{margin:0;display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--ok)}
+.cp-s{display:flex;flex-direction:column;gap:10px}
+.cp-t{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}.cp-t h2{margin:0;font-size:18px}.cp-t .mu{font-size:13.5px}
+.cp-g{display:grid;grid-template-columns:minmax(120px,1.4fr) repeat(5,minmax(70px,1fr));column-gap:10px}
+.cp-g > *{padding:8px 4px;border-top:1px solid var(--soft);font-size:15px;display:flex;align-items:center}
+.cp-h{border-top:none!important;font-size:11.5px!important;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--mute)}
+.cp-n{border:none;background:none;font:inherit;font-weight:700;color:var(--ink);text-align:left;cursor:pointer;padding:8px 4px}
+.cp-note{margin:0;font-size:13px}
+.cp-f{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:14px;background:#fbfaf6;border:1px solid var(--soft)}
+.cp-k{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.cp-k span{display:flex;flex-direction:column}.cp-k small{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--mute)}.cp-k b{font-size:17px}
+.cp-moi{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px}.cp-moi b{font-size:34px;line-height:1.1}
+@media (max-width:560px){.cp-g{grid-template-columns:minmax(80px,1.2fr) repeat(5,minmax(44px,1fr));column-gap:4px}.cp-g > *{font-size:13.5px}.cp-k{grid-template-columns:repeat(3,minmax(0,1fr))}}
