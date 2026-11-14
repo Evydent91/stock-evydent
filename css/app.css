@@ -1739,3 +1739,20 @@ button.stk-k{cursor:pointer}
 .fo-c2{font-size:14.5px;color:var(--ink2)}.fo-c3{font-size:13.5px;color:var(--mute)}
 @media (max-width:1000px){.fo-g{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:700px){.fo-g{grid-template-columns:1fr}.fo-int{display:none}.ar-top{flex-wrap:wrap}.ar-new{width:100%}}
+
+/* Fiches article, fournisseur et détail de commande */
+.fx-back{display:inline-flex;align-items:center;gap:4px;min-height:44px;background:none;border:none;padding:0;margin:0 0 6px;color:var(--navy);font:inherit;font-weight:700;font-size:15.5px;cursor:pointer}
+.card.fx-top{border-radius:18px;box-shadow:0 1px 3px rgba(31,42,51,.08);border-top:5px solid var(--gold)}
+.fx-top h2{margin:0;font-family:var(--serif);font-weight:600;font-size:28px;line-height:1.15}
+.fx-w{display:flex;gap:16px;align-items:flex-start}
+.fx-a{flex:0 0 360px;display:flex;flex-direction:column;gap:12px;position:sticky;top:12px}
+.fx-a .ban{margin:0}
+.fx-m{flex:1;min-width:0;display:flex;flex-direction:column}
+.fx-g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}
+.card.fx-c{border-radius:18px;box-shadow:0 1px 3px rgba(31,42,51,.08)}
+.fx-h{margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7a6a2a}
+.fx-h .mu{text-transform:none;letter-spacing:0;font-weight:600;color:var(--mute)}
+.fx-act{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 12px}
+.fx-lignes .it{padding:12px 0}
+.fx-lignes .it-n b{font-size:15.5px}
+@media (max-width:900px){.fx-w{flex-direction:column;align-items:stretch}.fx-a{flex:none;position:static}.fx-g{grid-template-columns:1fr}}

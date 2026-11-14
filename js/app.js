@@ -3826,21 +3826,20 @@
   // Synthèse : y a-t-il du stock de cet article quelque part ?
   function synthStock(a) {
     var f = facteur(a), r = stockDe(a.id, 0), cabs = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(function (c) { return Math.abs(stockDe(a.id, c)) > 1e-9; });
-    if (Math.abs(r) < 1e-9 && !cabs.length) return '<div class="ban ok">📦 <b>Aucun stock</b> : réserve, cabinets et Sté à 0.</div>';
+    if (Math.abs(r) < 1e-9 && !cabs.length) return '<div class="ban ok"><b>Aucun stock</b> : réserve, cabinets et Sté à 0.</div>';
     var uc = cabs.reduce(function (t, c) { return t + stockDe(a.id, c); }, 0), cm = +a.cout_moyen || 0, val = r * cm + uc / f * cm, parts = [];
     if (Math.abs(r) > 1e-9) parts.push(fr(r) + ' ' + uRes(a) + ' en réserve');
     if (cabs.length) parts.push(fr(uc) + ' u. dans ' + cabs.length + ' cabinet' + (cabs.length > 1 ? 's' : '') + ' (' + cabs.map(function (c) { return c === 9 ? 'Sté' : c; }).join(', ') + ')');
-    return '<div class="ban warn">📦 <b>En stock</b> : ' + parts.join(' + ') + (cm ? ' · valeur ≈ ' + eur(val) : '') + '.</div>';
+    return '<div class="ban warn"><b>En stock</b> : ' + parts.join(' + ') + (cm ? ' · valeur ≈ ' + eur(val) : '') + '.</div>';
   }
   function vFicheArticle() {
     var F = S.fiche, a = F.d;
-    var h = '<button class="lnk" data-act="fclose">← Tous les articles</button>';
+    var h = '<button class="fx-back" data-act="fclose">' + ico('prec', 18, 2.4) + 'Tous les articles</button>';
     if (!a) return h + '<p class="mu">Chargement…</p>';
     if (F.edit) return h + synthStock(a) + vEditArticle();
     var f = facteur(a), cabs = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(function (c) { return stockDe(a.id, c); });
-    h += '<div class="card"><div class="row wrap"><div class="grow"><h2 style="margin:0">' + esc(a.nom) + '</h2><span class="mu">Réf. ' + (a.reference && !estSR(a) ? esc(a.reference) : '<span class="pill warn">SR</span>') + ' · ' + esc(S.fournisseurs[a.fournisseur_id] || 'SF') + (a.archive ? ' · <span class="pill ko">archivé</span>' : '') + '</span></div><button class="btn" data-act="aedit">✏️ Modifier</button></div></div>';
-    h += synthStock(a);
-    h += '<div class="card"><b>📦 Conditionnement et stock</b><dl class="dl">'
+    h += '<div class="fx-w"><aside class="fx-a"><div class="card fx-top"><div class="row wrap"><div class="grow"><h2>' + esc(a.nom) + '</h2><span class="mu">Réf. ' + (a.reference && !estSR(a) ? esc(a.reference) : '<span class="pill warn">SR</span>') + ' · ' + esc(S.fournisseurs[a.fournisseur_id] || 'SF') + (a.archive ? ' · <span class="pill ko">archivé</span>' : '') + '</span></div><button class="btn" data-act="aedit">Modifier</button></div></div>' + synthStock(a) + '</aside><div class="fx-m">';
+    h += '<div class="card fx-c"><h3 class="fx-h">Conditionnement et stock</h3><dl class="dl">'
       + '<dt>Conditionnement</dt><dd>' + condTxt(a) + (a.conditionnement === 'BOITE' && +a.qte_par_boite > 1 && !a.conso_verifiee ? ' <span class="pill warn">consommation à vérifier</span>' : '') + '</dd>'
       + '<dt>Réserve</dt><dd>' + fr(stockDe(a.id, 0)) + ' ' + uRes(a) + (f > 1 ? ' (' + fr(stockDe(a.id, 0) * f) + ' u.)' : '') + '</dd>'
       + '<dt>Cabinets</dt><dd>' + (cabs.length ? cabs.map(function (c) { return (c === 9 ? 'Sté' : 'cab. ' + c) + ' : ' + fr(stockDe(a.id, c)) + ' u.'; }).join(' · ') : 'aucun') + '</dd>'
@@ -3848,9 +3847,9 @@
       + '<dt>Type de soins</dt><dd>' + (a.type_soins ? esc(a.type_soins) : '<span class="mu">—</span>') + '</dd>'
       + '<dt>Seuil d’alerte</dt><dd>' + (a.sans_seuil ? 'aucun (voulu)' : +a.seuil > 0 ? fr(a.seuil) + ' ' + uRes(a) : '<span class="pill warn">à renseigner</span>') + '</dd>'
       + '<dt>Coût moyen</dt><dd>' + eur(a.cout_moyen) + ' / ' + (a.conditionnement === 'BOITE' ? 'boîte' : 'unité') + '</dd></dl>'
-      + (F.cor ? vCorrection() : '<button class="btn l sm" data-act="cor">🛠 Corriger les quantités sans impact financier</button>') + '</div>';
-    h += '<div class="card"><b>🚚 Fournisseurs et prix</b>' + (F.fo.length ? F.fo.map(function (x) { return '<div class="it"><div class="it-n"><b>' + (x.rang === 0 ? '★ ' : '') + esc(S.fournisseurs[x.fournisseur_id] || '?') + '</b><span>' + (x.reference ? 'réf. ' + esc(x.reference) + ' · ' : '') + eur(x.prix) + '</span></div></div>'; }).join('') : '<p class="mu">Aucun fournisseur (SF).</p>') + '</div>';
-    h += '<div class="card"><b>📈 Historique des prix</b>' + (F.hist.length ? '<div class="scroll"><table class="tbl tbl-p"><tbody>' + F.hist.map(function (p) { return '<tr><td>' + p.date_prix.split('-').reverse().join('/') + '</td><td>' + esc(S.fournisseurs[p.fournisseur_id] || '') + '</td><td class="n">' + eur(p.prix) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="mu">Aucun prix enregistré.</p>') + '</div>';
+      + (F.cor ? vCorrection() : '<button class="btn l sm" data-act="cor">Corriger les quantités sans impact financier</button>') + '</div>';
+    h += '<div class="card fx-c"><h3 class="fx-h">Fournisseurs et prix</h3>' + (F.fo.length ? F.fo.map(function (x) { return '<div class="it"><div class="it-n"><b>' + (x.rang === 0 ? '★ ' : '') + esc(S.fournisseurs[x.fournisseur_id] || '?') + '</b><span>' + (x.reference ? 'réf. ' + esc(x.reference) + ' · ' : '') + eur(x.prix) + '</span></div></div>'; }).join('') : '<p class="mu">Aucun fournisseur (SF).</p>') + '</div>';
+    h += '<div class="card fx-c"><h3 class="fx-h">Historique des prix</h3>' + (F.hist.length ? '<div class="scroll"><table class="tbl tbl-p"><tbody>' + F.hist.map(function (p) { return '<tr><td>' + p.date_prix.split('-').reverse().join('/') + '</td><td>' + esc(S.fournisseurs[p.fournisseur_id] || '') + '</td><td class="n">' + eur(p.prix) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="mu">Aucun prix enregistré.</p>') + '</div></div></div>';
     return h;
   }
   function vEditArticle() {
@@ -3975,18 +3974,18 @@
     return esc(v).replace(/\n/g, '<br>');
   }
   function vFicheFo() {
-    var F = S.fiche, f = F.d, h = '<button class="lnk" data-act="fclose">← Tous les fournisseurs</button>';
+    var F = S.fiche, f = F.d, h = '<button class="fx-back" data-act="fclose">' + ico('prec', 18, 2.4) + 'Tous les fournisseurs</button>';
     if (F.edit) {
-      h += '<div class="ban j0">✏️ <b>' + (F.id === 'new' ? 'Nouveau fournisseur' : 'Modification') + '</b> : rien n’est enregistré tant que vous ne touchez pas « Enregistrer ».</div>';
+      h += '<div class="ban j0"><b>' + (F.id === 'new' ? 'Nouveau fournisseur' : 'Modification') + '</b> : rien n’est enregistré tant que vous ne touchez pas « Enregistrer ».</div>';
       h += '<div class="card"><label class="mu">Nom du fournisseur<input class="in" data-fo-f="nom" value="' + esc(f.nom) + '"></label></div>';
       FOC.forEach(function (g) { h += '<div class="card"><b>' + g[0] + '</b><div class="g2" style="margin-top:6px">' + g[1].map(function (x) { return '<label class="mu">' + x[1] + (x[2] === 'area' ? '<textarea class="in" style="height:90px;padding:10px" data-fo-f="' + x[0] + '">' + esc(f[x[0]] || '') + '</textarea>' : '<input class="in" data-fo-f="' + x[0] + '" value="' + esc(f[x[0]] || '') + '">') + '</label>'; }).join('') + '</div></div>'; });
-      h += '<div class="card"><b>🔐 Compte sur le site du fournisseur</b> <span class="mu">(visible seulement par la responsable et la référente)</span><div class="g2" style="margin-top:6px"><label class="mu">Identifiant<input class="in" data-cpt-f="identifiant" value="' + esc((F.cpt || {}).identifiant || '') + '"></label><label class="mu">Mot de passe<input class="in" data-cpt-f="mot_de_passe" value="' + esc((F.cpt || {}).mot_de_passe || '') + '"></label></div></div>';
-      return h + '<div class="row wrap actrow"><button class="btn l" data-act="foannule">Annuler</button><button class="btn" data-act="fosave">Enregistrer</button>' + (F.id !== 'new' ? '<span class="grow"></span><button class="btn l sm" data-act="foarchive">' + (f.archive ? 'Réactiver' : 'Archiver') + '</button><button class="btn ko sm" data-act="fosuppr">🗑 Supprimer</button>' : '') + '</div>';
+      h += '<div class="card"><b>Compte sur le site du fournisseur</b> <span class="mu">(visible seulement par la responsable et la référente)</span><div class="g2" style="margin-top:6px"><label class="mu">Identifiant<input class="in" data-cpt-f="identifiant" value="' + esc((F.cpt || {}).identifiant || '') + '"></label><label class="mu">Mot de passe<input class="in" data-cpt-f="mot_de_passe" value="' + esc((F.cpt || {}).mot_de_passe || '') + '"></label></div></div>';
+      return h + '<div class="row wrap actrow"><button class="btn l" data-act="foannule">Annuler</button><button class="btn" data-act="fosave">Enregistrer</button>' + (F.id !== 'new' ? '<span class="grow"></span><button class="btn l sm" data-act="foarchive">' + (f.archive ? 'Réactiver' : 'Archiver') + '</button><button class="btn ko sm" data-act="fosuppr">Supprimer</button>' : '') + '</div>';
     }
-    h += '<div class="card row wrap"><div class="grow"><h2 style="margin:0">' + esc(f.nom) + '</h2>' + (f.archive ? '<span class="pill ko">archivée</span>' : '') + '</div><button class="btn" data-act="foedit">✏️ Modifier</button></div>';
-    FOC.forEach(function (g) { h += '<div class="card"><b>' + g[0] + '</b><dl class="dl">' + g[1].map(function (x) { return '<dt>' + x[1] + '</dt><dd>' + lienFo(x[2], f[x[0]]) + '</dd>'; }).join('') + '</dl></div>'; });
+    h += '<div class="card fx-top row wrap"><div class="grow"><h2>' + esc(f.nom) + '</h2>' + (f.archive ? '<span class="pill ko">archivée</span>' : '') + '</div><button class="btn" data-act="foedit">Modifier</button></div><div class="fx-g">';
+    FOC.forEach(function (g) { h += '<div class="card fx-c"><h3 class="fx-h">' + g[0] + '</h3><dl class="dl">' + g[1].map(function (x) { return '<dt>' + x[1] + '</dt><dd>' + lienFo(x[2], f[x[0]]) + '</dd>'; }).join('') + '</dl></div>'; });
     var c = F.cpt;
-    h += '<div class="card"><b>🔐 Compte sur le site du fournisseur</b>' + (c == null ? '<p class="mu">Chargement…</p>' : '<dl class="dl"><dt>Identifiant</dt><dd>' + (c.identifiant ? esc(c.identifiant) + ' <button class="btn l sm" data-copie="' + esc(c.identifiant) + '">📋</button>' : '<span class="mu">—</span>') + '</dd><dt>Mot de passe</dt><dd>' + (c.mot_de_passe ? esc(c.mot_de_passe) + ' <button class="btn l sm" data-copie="' + esc(c.mot_de_passe) + '">📋</button>' : '<span class="mu">—</span>') + '</dd></dl>') + '</div>';
+    h += '<div class="card fx-c"><h3 class="fx-h">Compte sur le site du fournisseur</h3>' + (c == null ? '<p class="mu">Chargement…</p>' : '<dl class="dl"><dt>Identifiant</dt><dd>' + (c.identifiant ? esc(c.identifiant) + ' <button class="btn l sm" data-copie="' + esc(c.identifiant) + '">Copier</button>' : '<span class="mu">—</span>') + '</dd><dt>Mot de passe</dt><dd>' + (c.mot_de_passe ? esc(c.mot_de_passe) + ' <button class="btn l sm" data-copie="' + esc(c.mot_de_passe) + '">Copier</button>' : '<span class="mu">—</span>') + '</dd></dl>') + '</div></div>';
     return h;
   }
   function sauverFo() {
@@ -4117,25 +4116,25 @@
   }
   function vCommande() {
     var F = S.fiche, c = S.commandes.filter(function (x) { return x.id === F.id; })[0];
-    var h = '<button class="lnk" data-act="fclose">← Toutes les commandes</button>';
+    var h = '<button class="fx-back" data-act="fclose">' + ico('prec', 18, 2.4) + 'Toutes les commandes</button>';
     if (!c) return h + '<p class="mu">Chargement…</p>';
     var li = S.lignes[c.id] || [], st = CST[c.statut] || ['', c.statut], ouverte = c.statut === 'attente' || c.statut === 'partielle';
-    h += '<div class="card row wrap"><div class="grow"><h2 style="margin:0">' + esc(S.fournisseurs[c.fournisseur_id] || 'Fournisseur supprimé') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</h2>' + (c.numero && !F.editNum ? '<div style="margin:8px 0"><button class="btn l sm" data-act="cnumedit">✏️ Modifier la référence</button></div>' : '<div class="row" style="margin:8px 0;max-width:460px"><input class="in" id="cnum" placeholder="Référence de la commande passée" value="' + esc(F.num != null ? F.num : c.numero || '') + '" aria-label="Référence de la commande"><button class="btn sm" data-act="cnumok">Enregistrer</button>' + (c.numero ? '<button class="btn l sm" data-act="cnumno">Annuler</button>' : '') + '</div>') + '<span class="mu">Commande du ' + c.date_commande.split('-').reverse().join('/') + '</span> <span class="pill ' + st[0] + '">' + st[1] + '</span></div>' + (ouverte ? '<button class="btn l sm" data-act="cclose">Clôturer</button>' : '') + '</div>';
+    h += '<div class="card fx-top row wrap"><div class="grow"><h2>' + esc(S.fournisseurs[c.fournisseur_id] || 'Fournisseur supprimé') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</h2>' + (c.numero && !F.editNum ? '<div style="margin:8px 0"><button class="btn l sm" data-act="cnumedit">Modifier la référence</button></div>' : '<div class="row" style="margin:8px 0;max-width:460px"><input class="in" id="cnum" placeholder="Référence de la commande passée" value="' + esc(F.num != null ? F.num : c.numero || '') + '" aria-label="Référence de la commande"><button class="btn sm" data-act="cnumok">Enregistrer</button>' + (c.numero ? '<button class="btn l sm" data-act="cnumno">Annuler</button>' : '') + '</div>') + '<span class="mu">Commande du ' + c.date_commande.split('-').reverse().join('/') + '</span> <span class="pill ' + st[0] + '">' + st[1] + '</span></div>' + (ouverte ? '<button class="btn l sm" data-act="cclose">Clôturer</button>' : '') + '</div>';
     if (ouverte) {
-      h += '<div class="row wrap" style="margin:0 0 10px"><label class="btn gold" style="display:inline-flex;align-items:center">📄 Importer la facture PDF<input type="file" accept="application/pdf,.pdf" id="impf" hidden></label><button class="btn l" data-act="caouvre">+ Ajouter un article</button></div>';
+      h += '<div class="fx-act"><label class="btn gold" style="display:inline-flex;align-items:center;gap:8px">' + ico('haut', 18, 2.2) + 'Importer la facture PDF<input type="file" accept="application/pdf,.pdf" id="impf" hidden></label><button class="btn l" data-act="caouvre">+ Ajouter un article</button></div>';
       if (F.imp) h += vImport(c);
       h += vAjoutLigne(c);
     }
-    h += '<div class="card"><b>Lignes' + (ouverte ? ' · saisir ce qui est arrivé' : '') + '</b>' + li.map(function (l) {
+    h += '<div class="card fx-c fx-lignes"><h3 class="fx-h">Lignes' + (ouverte ? ' <span class="mu">· saisir ce qui est arrivé</span>' : '') + '</h3>' + li.map(function (l) {
       var a = S.byId[l.article_id] || { nom: (l.article_nom || 'article') + ' (supprimé)' }, reste = Math.max(0, l.quantite - l.recu), r = F.rx[l.id] || {}, rf = a.id ? refChez(a, c.fournisseur_id) : '';
       return '<div class="it" style="flex-wrap:wrap"><div class="it-n"><b>' + esc(a.nom) + '</b><span style="display:block;font-weight:700;color:var(--ink2)">Réf. ' + (rf ? esc(rf) : '<span class="pill warn">SR</span>') + '</span><span>Commandé ' + fr(l.quantite) + ' · reçu ' + fr(l.recu) + (l.gratuit ? ' + ' + fr(l.gratuit) + ' offert(s)' : '') + ' · ' + eur(l.prix) + (l.reliquat_abandonne ? ' · <span class="pill">reliquat abandonné</span>' : reste && c.statut !== 'attente' ? ' · <span class="pill warn">reste ' + fr(reste) + '</span>' : '') + '</span></div>'
         + (ouverte && !l.reliquat_abandonne && a.id ? '<div class="row" style="gap:6px"><label class="mu" style="font-size:13px">Reçu<input class="in" style="width:80px;height:42px" inputmode="decimal" data-rxq="' + l.id + '" value="' + esc(r.q != null ? r.q : reste) + '"></label><label class="mu" style="font-size:13px">Offert<input class="in" style="width:70px;height:42px" inputmode="decimal" data-rxg="' + l.id + '" value="' + esc(r.g || '') + '" placeholder="0"></label>' + (reste ? '<button class="btn l sm" title="Ne plus attendre le reste" data-rxab="' + l.id + '">Abandonner le reste</button>' : '') + '</div>' : '') + '</div>';
     }).join('') + (ouverte ? '<div class="row" style="margin-top:12px"><span class="grow mu">Les quantités offertes entrent en stock sans valeur.</span><button class="btn" data-act="rxgo"' + (F.busy ? ' disabled' : '') + '>Réceptionner</button></div>' : '') + '</div>';
     var lots = {}; F.recs.forEach(function (m) { if (m.type === 'reception') (lots[m.lot] = lots[m.lot] || []).push(m); });
     var ks = Object.keys(lots);
-    if (ks.length) h += '<div class="card"><b>Réceptions</b>' + ks.map(function (k) {
+    if (ks.length) h += '<div class="card fx-c"><h3 class="fx-h">Réceptions</h3>' + ks.map(function (k) {
       var ms = lots[k], annule = ms.every(function (m) { return m.statut === 'annule'; });
-      return '<div class="it"><div class="it-n"><b>' + quand(ms[0].cree_le) + ' · ' + esc(ms[0].auteur_nom || '') + (annule ? ' <span class="pill">annulée</span>' : '') + '</b><span>' + ms.map(function (m) { var a = S.byId[m.article_id] || { nom: '?' }; return esc(a.nom) + ' × ' + fr(m.quantite - (m.gratuit || 0)) + (m.gratuit ? ' + ' + fr(m.gratuit) + ' offert(s)' : ''); }).join(', ') + '</span></div>' + (annule ? '' : '<button class="btn l sm" data-rxundo="' + k + '">↩️ Annuler</button>') + '</div>';
+      return '<div class="it"><div class="it-n"><b>' + quand(ms[0].cree_le) + ' · ' + esc(ms[0].auteur_nom || '') + (annule ? ' <span class="pill">annulée</span>' : '') + '</b><span>' + ms.map(function (m) { var a = S.byId[m.article_id] || { nom: '?' }; return esc(a.nom) + ' × ' + fr(m.quantite - (m.gratuit || 0)) + (m.gratuit ? ' + ' + fr(m.gratuit) + ' offert(s)' : ''); }).join(', ') + '</span></div>' + (annule ? '' : '<button class="btn l sm" data-rxundo="' + k + '">Annuler</button>') + '</div>';
     }).join('') + '</div>';
     return h;
   }
