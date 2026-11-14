@@ -1986,3 +1986,4 @@ button.stk-k{cursor:pointer}
 .dlg .dlg-ch.gr .dlg-c:first-child{grid-column:1/-1}.dlg .dlg-ch.gr .dlg-c{align-items:center;min-height:48px;padding:8px 12px}.dlg .dlg-ch.gr .dlg-c input[type=radio]{margin:0}.dlg .dlg-ch.gr .dlg-c small:empty{display:none}
 /* Planning (gestion) : planning des administratifs sous le planning des assistants, avec un interrupteur */
 .pl-adm{margin-top:18px;display:flex;flex-direction:column;gap:8px}.pl-adm h2{margin:0;font-family:var(--serif, 'EB Garamond', Georgia, serif);font-size:21px;font-weight:600}
+.rf-c .pl-pt{align-self:center;margin-top:0;flex:none}

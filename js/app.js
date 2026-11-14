@@ -640,6 +640,7 @@
       var corps = meme && refTravail(am) ? '<span class="rf-d' + cls(am) + '"' + st(am) + '><b>' + esc(refTxt(am.a)) + '</b><span>' + hCourt(am.de) + '–' + hCourt(pm.fi || am.fi) + '</span></span>'
         : meme ? '<span class="rf-d' + cls(am) + '">' + un(am) + '</span>'
         : '<span class="rf-d' + cls(am) + '"' + st(am) + '>' + un(am) + '</span><span class="rf-d' + cls(pm) + '"' + st(pm) + '>' + un(pm) + '</span>';
+      if (gestion() && S.plVoirPt) corps += badgePt(p, iso);
       return modif ? '<button class="rf-c" data-refc="' + p.id + '|' + iso + '" aria-label="' + esc(p.prenom) + ', ' + dateCourte(iso) + '">' + corps + '</button>' : '<div class="rf-c">' + corps + '</div>';
     };
     h += '<section class="cg2-carte rf-carte"><div class="rf-scroll"><div class="rf-g"><span class="cp-h">' + esc(nom) + '</span>' + js.map(function (iso) { return '<span class="rf-j' + (iso === dIso(new Date()) ? ' auj' : '') + '"><b>' + JOURS[jourSem(iso)] + '</b>' + dateCourte(iso) + '</span>'; }).join('')
