@@ -102,8 +102,9 @@
         vide(); return h;
       }).join('');
       bg.className = 'dlg-bg';
-      bg.innerHTML = '<div class="dlg' + (o.danger ? ' danger' : '') + '" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t"><h2 id="dlg-t">' + esc(o.titre) + '</h2>' + corps
+      bg.innerHTML = '<div class="dlg' + (o.danger ? ' danger' : '') + (o.large ? ' large' : '') + '" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t"><h2 id="dlg-t">' + esc(o.titre) + '</h2>' + corps
         + (o.choix ? '<div class="dlg-ch" role="radiogroup">' + o.choix.map(function (c, i) { return '<label class="dlg-c' + (c.off ? ' off' : '') + '"><input type="radio" name="dlgch" value="' + i + '"' + (c.on && !c.off ? ' checked' : '') + (c.off ? ' disabled' : '') + '><span><b>' + esc(c.t) + '</b><small>' + esc(c.s || '') + '</small>' + (c.date ? '<input type="date" class="dlg-d" data-dlgd="' + i + '" min="' + (c.min || '') + '" value="' + esc(c.date === true ? '' : c.date) + '" aria-label="' + esc(c.t) + '">' : '') + '</span></label>'; }).join('') + '</div>' : '')
+        + (o.html || '')
         + (S2 ? '<label class="dlg-l">' + esc(S2.label || '') + '<input id="dlg-in"' + (S2.type === 'nombre' ? ' inputmode="decimal"' : '') + ' autocomplete="off" value="' + esc(S2.valeur || '') + '"' + (S2.attendu ? ' placeholder="' + esc(S2.attendu) + '"' : '') + '></label>' : '')
         + '<div class="dlg-b">' + (o.seul ? '' : '<button type="button" class="btn l" data-dlg="0">' + esc(o.non || 'Annuler') + '</button>') + '<button type="button" class="btn' + (o.danger ? ' ko' : '') + '" data-dlg="1">' + esc(o.ok || 'Confirmer') + '</button></div></div>';
       document.body.appendChild(bg);
@@ -112,7 +113,7 @@
       var fin = function (v) { document.removeEventListener('keydown', cle, true); bg.remove(); if (prec && prec.focus) try { prec.focus(); } catch (e) {} res(v); };
       var oui = function () {
         if (bok.disabled) return;
-        if (o.choix) { var rr = bg.querySelector('input[name="dlgch"]:checked'); if (!rr) return; var ci = +rr.value, cc = o.choix[ci]; if (cc.date) { var dv = bg.querySelector('[data-dlgd="' + ci + '"]').value; if (!dv) { bg.querySelector('[data-dlgd="' + ci + '"]').focus(); return; } fin({ i: ci, v: cc.v, date: dv }); } else fin({ i: ci, v: cc.v }); return; }
+        if (o.choix) { var rr = bg.querySelector('input[name="dlgch"]:checked'); if (!rr) return; var ci = +rr.value, cc = o.choix[ci]; if (cc.date) { var dv = bg.querySelector('[data-dlgd="' + ci + '"]').value; if (!dv) { bg.querySelector('[data-dlgd="' + ci + '"]').focus(); return; } fin({ i: ci, v: cc.v, date: dv, texte: inp ? inp.value : null }); } else fin({ i: ci, v: cc.v, texte: inp ? inp.value : null }); return; }
         fin(S2 ? inp.value : true);
       };
       var non = function () { fin(S2 || o.choix ? null : false); };
@@ -128,7 +129,8 @@
         var b = e.target.closest('[data-dlg]'); if (b) { if (b.dataset.dlg === '1') oui(); else non(); return; }
         if (e.target === bg && !o.danger) non();
       });
-      if (inp) { inp.addEventListener('input', verif); verif(); inp.focus(); if (!S2.attendu) inp.select(); } else if (o.choix && bg.querySelector('input[name="dlgch"]:checked')) bg.querySelector('input[name="dlgch"]:checked').focus(); else (o.danger ? bg.querySelector('[data-dlg="0"]') || bok : bok).focus();
+      if (o.choix && o.onChoix) bg.addEventListener('change', function (e) { if (e.target.name === 'dlgch') o.onChoix(o.choix[+e.target.value], bg); });
+      if (inp && !o.choix) { inp.addEventListener('input', verif); verif(); inp.focus(); if (!S2.attendu) inp.select(); } else if (o.choix && bg.querySelector('input[name="dlgch"]:checked')) bg.querySelector('input[name="dlgch"]:checked').focus(); else (o.danger ? bg.querySelector('[data-dlg="0"]') || bok : bok).focus();
     });
   }
   function demander(titre, texte, ok, danger) { return fenetre({ titre: titre, texte: texte, ok: ok, danger: danger }); }
@@ -1640,6 +1642,52 @@
   }
   // Congés : planning du mois, une ligne par personne, une colonne par jour ouvré ; les absences sont des barres nommées
   var TYPE_CL = { CP: 'cp', ARRET: 'ar', FORMATION: 'fo', ECOLE: 'ec', AUTRE: 'cp' };
+  // Poser une absence en glissant sur la page Congés (gestion) : appui sur un jour, glisser jusqu'au dernier, relâcher
+  var CG_SEL = null;
+  function cgSurligner() {
+    document.querySelectorAll('.cg2-c.sel').forEach(function (e) { e.classList.remove('sel'); });
+    if (!CG_SEL) return;
+    var a = CG_SEL.a < CG_SEL.b ? CG_SEL.a : CG_SEL.b, b = CG_SEL.a < CG_SEL.b ? CG_SEL.b : CG_SEL.a;
+    document.querySelectorAll('.cg2-c[data-cgc^="' + CG_SEL.cle + '|"]').forEach(function (e) { var iso = e.dataset.cgc.split('|')[1]; if (iso >= a && iso <= b) e.classList.add('sel'); });
+  }
+  async function cgPoser(cle, a, b) {
+    var du = a < b ? a : b, au = a < b ? b : a, estD = cle[0] === 'd', id = cle.slice(1);
+    var qui = estD ? dentById(id) : persById(id); if (!qui) return;
+    var nom = estD ? 'Dr ' + qui.prenom : qui.type === 'interimaire' ? 'Intérimaire' : qui.prenom, n = joursTravail(qui, du, au, estD);
+    var base = { du: du, au: au }; base[estD ? 'dentiste_id' : 'equipe_id'] = estD ? +id : +id;
+    var info = function (ty) {
+      var c = Object.assign({ type: ty, id: -1 }, base), h = '';
+      if (!estD && ty === 'CP' && typeDe(qui.type).contrat !== false && qui.type !== 'interimaire') { var so = soldeCP(qui, S.conges, du), nj = joursCP(qui, du, au); h += '<p class="cg-solde">Solde de congés : <b>' + txtJ(so.reste) + '</b> → <b class="' + (so.reste - nj < 0 ? 'ko-t' : '') + '">' + txtJ(so.reste - nj) + '</b> après pose <span class="mu">(' + txtJ(nj) + ' décomptés)</span></p>'; }
+      if (!estD) { var al = alerteConge(c); h += al.length ? '<div class="cg-alerte">' + ico('attente', 18, 2.2) + '<span><b>Dentiste sans assistante :</b> ' + al.map(function (x) { return JC[jourSem(x.iso)].toLowerCase() + '. ' + dateCourte(x.iso) + ' : ' + x.l.map(function (y) { return 'Dr ' + esc(y.d.prenom) + (y.quand ? ' (' + y.quand + ')' : ''); }).join(', '); }).join(' · ') + '</span></div>' : '<p class="cg-ok">' + ico('ok', 16, 2.6) + 'Aucun dentiste ne se retrouve seul.</p>'; }
+      var ch = chevauche(c).filter(function (o) { return estD ? o.dentiste_id : true; });
+      h += '<p class="mu" style="margin:0;font-size:13.5px">' + (ch.length ? 'Aussi absent' + (ch.length > 1 ? 's' : '') + ' sur cette période : ' + ch.map(function (o) { return esc(nomConge(o)) + ' (' + periode(o.du, o.au) + (o.statut === 'attente' ? ', en attente' : '') + ')'; }).join(', ') : 'Personne d’autre n’est absent sur cette période.') + '</p>';
+      return h;
+    };
+    var r = await fenetre({ titre: nom + ' · ' + periode(du, au), texte: n + ' ' + pl(n, 'jour') + (estD ? ' de présence' : ' de travail') + ' dans la période.', ok: 'Poser les congés', large: true,
+      choix: [{ v: 'CP', t: 'Congés', on: true }, { v: 'ARRET', t: 'Maladie' }, { v: 'FORMATION', t: 'Formation' }],
+      html: '<div class="cgp-info">' + info('CP') + '</div>',
+      saisie: { label: 'Note (facultatif ; pour une formation : son intitulé)' },
+      onChoix: function (c, bg) { bg.querySelector('.cgp-info').innerHTML = info(c.v); bg.querySelector('[data-dlg="1"]').textContent = c.v === 'CP' ? 'Poser les congés' : c.v === 'ARRET' ? 'Poser l’arrêt' : 'Poser la formation'; } });
+    CG_SEL = null; cgSurligner();
+    if (!r) return;
+    var o = Object.assign({ type: r.v, statut: 'accepte', traite_par: S.me.id, traite_le: new Date().toISOString(), mot: (r.texte || '').trim() || null }, base);
+    sb.from('conges').insert(o).then(function (x) { if (x.error) throw x.error; toast('✔ ' + (r.v === 'CP' ? 'Congés posés' : r.v === 'ARRET' ? 'Arrêt posé' : 'Formation posée') + ' pour ' + nom); chargerPlan(); }).catch(function (e) { toast(msgErr(e)); });
+  }
+  document.addEventListener('pointerdown', function (e) {
+    var c = e.target.closest && e.target.closest('.cg2-c[data-cgc]'); if (!c || !gestion() || e.button > 0) return;
+    var x = c.dataset.cgc.split('|');
+    if (e.pointerType === 'touch') {   // téléphone : premier toucher = premier jour, second toucher = dernier jour
+      if (CG_SEL && CG_SEL.tap && CG_SEL.cle === x[0]) { var s0 = CG_SEL; CG_SEL.b = x[1]; cgSurligner(); cgPoser(s0.cle, s0.a, x[1]); return; }
+      CG_SEL = { cle: x[0], a: x[1], b: x[1], tap: true }; cgSurligner(); toast('Touchez le dernier jour (ou le même jour pour une seule journée)'); return;
+    }
+    e.preventDefault(); CG_SEL = { cle: x[0], a: x[1], b: x[1], drag: true }; cgSurligner();
+  });
+  document.addEventListener('pointermove', function (e) {
+    if (!CG_SEL || !CG_SEL.drag) return;
+    var el = document.elementFromPoint(e.clientX, e.clientY), c = el && el.closest && el.closest('.cg2-c[data-cgc]');
+    if (c) { var x = c.dataset.cgc.split('|'); if (x[0] === CG_SEL.cle && x[1] !== CG_SEL.b) { CG_SEL.b = x[1]; cgSurligner(); } }
+  });
+  document.addEventListener('pointerup', function () { if (CG_SEL && CG_SEL.drag) { var s0 = CG_SEL; s0.drag = false; cgPoser(s0.cle, s0.a, s0.b); } });
   function vMoisConges() {
     var auj = dIso(new Date()), M = S.cgMois = S.cgMois || auj.slice(0, 7), x = M.split('-'), dn = new Date(+x[0], +x[1], 0).getDate(), jours = [];
     for (var i = 1; i <= dn; i++) { var iso = M + '-' + ('0' + i).slice(-2), j = jourSem(iso); if (j >= 1 && j <= 5) jours.push(iso); }
@@ -1690,7 +1738,7 @@
       jours.forEach(function (iso) {
         var j = jourSem(iso), f = ferie(iso), trav = r.dent ? (r.dent.jours && r.dent.jours[j]) || dentExtra(r.dent, iso) : (function () { var tr = trameDe(r.p, iso), t = tr[j] || {}; return heuresTrame(tr) < 0.01 || (t.am && t.am.a && t.am.a !== 'OFF') || (t.pm && t.pm.a && t.pm.a !== 'OFF'); })();
         var ens = petit && dentR && absLe(r, iso) && absLe(dentR, iso);
-        out += '<span class="cg2-c' + (petit ? ' pt' : '') + (f ? ' fe' : !trav ? ' np' : '') + (iso === auj ? ' auj' : '') + (ens ? ' ens' : '') + '" style="grid-row:' + row + ';grid-column:' + col[iso] + '" title="' + esc(r.nom + ' · ' + JOURS[j].toLowerCase() + ' ' + dateCourte(iso) + (f ? ' · férié' : !trav ? ' · ne travaille pas ce jour-là' : '') + (ens ? ' · absent(e) en même temps que ' + dentR.nom : '')) + '"></span>';
+        out += '<span class="cg2-c' + (petit ? ' pt' : '') + (f ? ' fe' : !trav ? ' np' : '') + (iso === auj ? ' auj' : '') + (ens ? ' ens' : '') + '" data-cgc="' + (r.dent ? 'd' + r.dent.id : 'p' + r.p.id) + '|' + iso + '" style="grid-row:' + row + ';grid-column:' + col[iso] + '" title="' + esc(r.nom + ' · ' + JOURS[j].toLowerCase() + ' ' + dateCourte(iso) + (f ? ' · férié' : !trav ? ' · ne travaille pas ce jour-là' : '') + (ens ? ' · absent(e) en même temps que ' + dentR.nom : '')) + '"></span>';
       });
       r.l.forEach(function (c) {
         var seg = null, segs = [];
@@ -1716,7 +1764,7 @@
     if (col[auj]) g += '<span class="cg2-aujc" aria-hidden="true" style="grid-row:1/' + (rows.length + 1) + ';grid-column:' + col[auj] + '"></span>';
     else if (auj.slice(0, 7) === M) { var apres = jours.filter(function (d) { return d > auj; })[0]; if (apres && jourSem(apres) === 1 && col[apres] - 1 > 1) g += '<span class="cg2-aujw" title="Aujourd’hui : ' + esc(jourLong(auj)) + '" style="grid-row:1/' + (rows.length + 1) + ';grid-column:' + (col[apres] - 1) + '"><small>auj.</small></span>'; }
     if (!L.length) g += '<p class="a-vide" style="grid-row:2;grid-column:1/-1">Personne dans ce filtre.</p>';
-    h += '<section class="cg2-carte"><div class="cg2-scroll"><div class="cg2-g" style="grid-template-columns:' + tpl.join(' ') + ';grid-template-rows:' + rows.join(' ') + '">' + g + '</div></div>'
+    h += '<section class="cg2-carte"><p class="cg2-astuce">' + ico('suiv', 16, 2.4) + (telephone() ? 'Pour poser une absence : touchez le premier jour sur la ligne d’une personne, puis le dernier.' : 'Pour poser une absence : appuyez sur un jour de la ligne d’une personne et glissez jusqu’au dernier.') + '</p><div class="cg2-scroll"><div class="cg2-g" style="grid-template-columns:' + tpl.join(' ') + ';grid-template-rows:' + rows.join(' ') + '">' + g + '</div></div>'
       + (F === 'tous' || F === 'couples' ? '<p class="cg2-note"><i aria-hidden="true"></i>Contour doré : le dentiste et son assistant(e) attitré(e) sont absents le même jour.</p>' : '') + '</section>';
     return h;
   }
@@ -1754,7 +1802,8 @@
       var plus = '';
       if (estDent && c.statut === 'accepte') { var as = assistantesDe(id), noms = {}; Object.keys(as).forEach(function (j) { as[j].forEach(function (x) { noms[x] = 1; }); }); if (Object.keys(noms).length) plus = '<span>' + Object.keys(noms).map(esc).join(', ') + ' ' + (Object.keys(noms).length > 1 ? 'seront disponibles' : 'sera disponible') + ' pour un autre dentiste</span>'; }
       var quoi = formation ? (c.mot ? '<b class="h-fi">' + esc(c.mot) + '</b> · ' : '') : (c.type !== 'CP' ? typeTxt(c.type) + ' · ' : '');
-      var txt = '<span class="a-it-n"><b>' + periode(c.du, c.au) + ' ' + st + '</b><span>' + quoi + n + ' ' + pl(n, 'jour') + (estDent ? ' de présence' : ' de travail') + (!formation && c.mot ? ' · « ' + esc(c.mot) + ' »' : '') + '</span>' + plus + '</span>';
+      var qui2 = function (u) { return u ? esc(nomProfil(u) || '?') : ''; }, trace = c.demande_par ? 'demandée le ' + dateCourte(c.cree_le) + (c.traite_par && c.statut !== 'attente' ? ' · ' + (c.statut === 'refuse' ? 'refusée' : 'validée') + ' par ' + qui2(c.traite_par) : '') : c.traite_par ? 'posée par ' + qui2(c.traite_par) + (c.traite_le ? ' le ' + dateCourte(c.traite_le) : '') : '';
+      var txt = '<span class="a-it-n"><b>' + periode(c.du, c.au) + ' ' + st + '</b><span>' + quoi + n + ' ' + pl(n, 'jour') + (estDent ? ' de présence' : ' de travail') + (!formation && c.mot ? ' · « ' + esc(c.mot) + ' »' : '') + '</span>' + plus + (trace ? '<small class="cg-trace">' + trace + '</small>' : '') + '</span>';
       if (c.statut === 'attente') return '<div class="a-li' + (passe ? ' passe' : '') + '">' + txt + '<span class="h-mini"><button class="btn l sm" data-crefus="' + c.id + '">Refuser</button><button class="btn sm" data-cok="' + c.id + '">Accepter</button></span></div>';
       return '<button class="a-li h-cgl' + (passe ? ' passe' : '') + '" data-cmodif="' + c.id + '" data-cle="' + cle + '"' + (formation ? ' data-cform="1"' : '') + ' aria-label="Modifier">' + txt + '<span class="h-crayon">' + ico('crayon', 18, 2) + '</span></button>';
     }).join('');
