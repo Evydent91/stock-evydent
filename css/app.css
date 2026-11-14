@@ -1840,3 +1840,11 @@ button.stk-k{cursor:pointer}
 .cgp-info .cg-solde,.cgp-info .cg-ok,.cgp-info .cg-alerte{margin:0}
 .cg-trace{display:block;font-size:12.5px;color:var(--mute)}
 @media (max-width:560px){.dlg .dlg-ch{grid-template-columns:1fr}}
+/* Choix colorés (types d'absence) */
+.dlg-c.coul{flex-direction:column;align-items:center;justify-content:center;gap:6px;position:relative;padding:10px 8px}
+.dlg-c.coul input[type=radio]{position:absolute;opacity:0;pointer-events:none}
+.dlg-c.coul > span{align-items:center}
+.dlg-pas{display:block;width:34px;height:12px;border-radius:4px;background:var(--c)}
+.dlg-c.coul:has(input:checked){border-color:var(--c);border-width:2.5px;background:color-mix(in srgb,var(--c) 12%,#fff)}
+.dlg-c.coul:has(input:checked) b{color:var(--c)}
+.dlg-c.coul:has(input:focus-visible){outline:3px solid var(--gold);outline-offset:2px}

@@ -103,7 +103,7 @@
       }).join('');
       bg.className = 'dlg-bg';
       bg.innerHTML = '<div class="dlg' + (o.danger ? ' danger' : '') + (o.large ? ' large' : '') + '" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t"><h2 id="dlg-t">' + esc(o.titre) + '</h2>' + corps
-        + (o.choix ? '<div class="dlg-ch" role="radiogroup">' + o.choix.map(function (c, i) { return '<label class="dlg-c' + (c.off ? ' off' : '') + '"><input type="radio" name="dlgch" value="' + i + '"' + (c.on && !c.off ? ' checked' : '') + (c.off ? ' disabled' : '') + '><span><b>' + esc(c.t) + '</b><small>' + esc(c.s || '') + '</small>' + (c.date ? '<input type="date" class="dlg-d" data-dlgd="' + i + '" min="' + (c.min || '') + '" value="' + esc(c.date === true ? '' : c.date) + '" aria-label="' + esc(c.t) + '">' : '') + '</span></label>'; }).join('') + '</div>' : '')
+        + (o.choix ? '<div class="dlg-ch" role="radiogroup">' + o.choix.map(function (c, i) { return '<label class="dlg-c' + (c.off ? ' off' : '') + (c.coul ? ' coul' : '') + '"' + (c.coul ? ' style="--c:' + c.coul + '"' : '') + '>' + (c.coul ? '<i class="dlg-pas" aria-hidden="true"></i>' : '') + '<input type="radio" name="dlgch" value="' + i + '"' + (c.on && !c.off ? ' checked' : '') + (c.off ? ' disabled' : '') + '><span><b>' + esc(c.t) + '</b><small>' + esc(c.s || '') + '</small>' + (c.date ? '<input type="date" class="dlg-d" data-dlgd="' + i + '" min="' + (c.min || '') + '" value="' + esc(c.date === true ? '' : c.date) + '" aria-label="' + esc(c.t) + '">' : '') + '</span></label>'; }).join('') + '</div>' : '')
         + (o.html || '')
         + (S2 ? '<label class="dlg-l">' + esc(S2.label || '') + '<input id="dlg-in"' + (S2.type === 'nombre' ? ' inputmode="decimal"' : '') + ' autocomplete="off" value="' + esc(S2.valeur || '') + '"' + (S2.attendu ? ' placeholder="' + esc(S2.attendu) + '"' : '') + '></label>' : '')
         + '<div class="dlg-b">' + (o.seul ? '' : '<button type="button" class="btn l" data-dlg="0">' + esc(o.non || 'Annuler') + '</button>') + '<button type="button" class="btn' + (o.danger ? ' ko' : '') + '" data-dlg="1">' + esc(o.ok || 'Confirmer') + '</button></div></div>';
@@ -1664,7 +1664,7 @@
       return h;
     };
     var r = await fenetre({ titre: nom + ' · ' + periode(du, au), texte: n + ' ' + pl(n, 'jour') + (estD ? ' de présence' : ' de travail') + ' dans la période.', ok: 'Poser les congés', large: true,
-      choix: [{ v: 'CP', t: 'Congés', on: true }, { v: 'ARRET', t: 'Maladie' }, { v: 'FORMATION', t: 'Formation' }],
+      choix: [{ v: 'CP', t: 'Congés', on: true, coul: '#1d5fa0' }, { v: 'ARRET', t: 'Maladie', coul: '#a8521a' }, { v: 'FORMATION', t: 'Formation', coul: '#1f7a4d' }],
       html: '<div class="cgp-info">' + info('CP') + '</div>',
       saisie: { label: 'Note (facultatif ; pour une formation : son intitulé)' },
       onChoix: function (c, bg) { bg.querySelector('.cgp-info').innerHTML = info(c.v); bg.querySelector('[data-dlg="1"]').textContent = c.v === 'CP' ? 'Poser les congés' : c.v === 'ARRET' ? 'Poser l’arrêt' : 'Poser la formation'; } });
