@@ -63,6 +63,7 @@
   }
   function droit(k) {
     if (gestion()) return true; if (!S.me) return false;
+    if (k === 'stock' && refDe() && refDroit('stock')) return true;
     var pc = S.moiEq ? profilCode(S.moiEq) : null, code = pc && (pc !== 'assistante' && pc !== 'apprentie' || !S.me.fonction) ? pc : (S.me.fonction || pc || 'assistante');
     return !!roleEqDe(code)[k];
   }
@@ -521,6 +522,9 @@
     if (t === 'mplanning') return droit('planning');
     if (t === 'mconges' || t === 'mdemande') return droit('conges');
     if (t === 'moubli') return droit('pointage');
+    if (t === 'rplanning') return !!refDe() && refDroit('planning_voir');
+    if (t === 'rconges') return !!refDe() && refDroit('conges_voir');
+    if (t === 'rpointage') return !!refDe() && refDroit('pointage');
     return true;
   }
   function tuileA(tab, cls, ic, titre, sous, em) {
@@ -538,11 +542,179 @@
     if (!hl && droit('stock')) t.push(tuileA('mstock', 'ts', 'boite', 'Stock', 'Sortie, inventaire, retour', inventaireAFaire() ? 'Inventaire à faire ce mois-ci' : ''));
     if (!hl && droit('planning') && S.visible && S.visible.planning && S.moiEq) t.push(tuileA('mplanning', 'tp', 'histo', 'Mon planning', 'Mes jours, mon dentiste, mes horaires'));
     if (!hl && droit('conges')) { var att = (S.mesConges || []).filter(function (c) { return c.statut === 'attente'; }).length; t.push(tuileA('mconges', 'tc2', 'agenda', 'Mes congés', att ? att + ' demande' + (att > 1 ? 's' : '') + ' en attente' : 'Demander, suivre la réponse')); }
+    if (!hl && refDe()) {
+      var rn = refNom(), ratt = (S.conges || []).filter(function (c) { return c.statut === 'attente'; }).length;
+      if (refDroit('planning_voir')) t.push(tuileA('rplanning', 'tp', 'agenda', 'Planning ' + esc(rn), 'Postes, horaires, qui ferme le soir'));
+      if (refDroit('conges_voir')) t.push(tuileA('rconges', 'tc2', 'agenda', 'Congés · ' + esc(rn), ratt ? ratt + ' ' + pl(ratt, 'demande') + ' en attente' : 'Absences du mois, soldes'));
+      if (refDroit('pointage')) t.push(tuileA('rpointage', 'tp', 'qr', 'Pointage · ' + esc(rn), 'Arrivées et sorties de la semaine'));
+    }
     var seule = !t.length && pt;
     h += '<div class="a-corps' + (seule ? ' a-seule' : '') + '">' + vBienvenue() + pt + (t.length ? '<div class="tuiles a-tuiles">' + t.join('') + '</div>' : '');
     if (!pt && !t.length) h += '<div class="card"><b>Rien à afficher pour l’instant.</b><p class="mu" style="margin:6px 0 0">' + (droit('pointage') ? 'Votre fiche n’est pas encore soumise au pointage, ou votre compte n’est pas relié à votre fiche.' : 'Votre rôle n’a encore aucun outil. Voyez avec la référente.') + '</p></div>';
     return h + '</div>';
   }
+  // =====================================================================
+  // Référent(e) d'un profil (ex. « Référente administratif ») : planning, fermeture et congés de SON profil seulement
+  // (limite posée dans la base : migration 027). Droits réglables dans Réglages › Profils (parametres « ref_droits »).
+  // =====================================================================
+  var REF_DROITS = [
+    ['planning_voir', 'Voir le planning', 'postes, horaires et ligne « Fermeture du centre »', true],
+    ['planning_modif', 'Modifier le planning', 'changer une case, désigner qui ferme', true],
+    ['conges_voir', 'Voir les congés', 'mois, demandes en attente, soldes', true],
+    ['conges_valider', 'Valider les congés', 'accepter ou refuser à la place de la référente et de la responsable', false],
+    ['pointage', 'Voir le pointage', 'arrivées et sorties de la semaine', false],
+    ['stock', 'Accéder à la gestion de stock', 'sorties, inventaire, retours', false]
+  ];
+  function refDe() { return S.me && !gestion() && S.me.referent_de ? S.me.referent_de : null; }
+  function refDroit(k) { var D = S.refDroits || {}, def = REF_DROITS.filter(function (x) { return x[0] === k; })[0]; return D[k] != null ? !!D[k] : !!(def && def[3]); }
+  function refNom(code) { var x = profilDe(code || refDe()); return x ? String(x.n).split(' / ')[0].toLowerCase() : (code || refDe() || ''); }
+  function refPers() { var c = refDe(); return (S.equipe || []).filter(function (p) { return p.actif && p.type === c; }).sort(function (a, b) { return a.ordre - b.ordre; }); }
+  function chargerRef() {
+    var c = refDe(); if (!c) return Promise.resolve();
+    var depuis = dIso(new Date(Date.now() - 120 * 864e5)), ok = function (r) { return r && !r.error ? r.data || [] : []; };
+    return Promise.all([
+      sb.from('equipe').select('*').eq('type', c).order('ordre'),
+      sb.from('equipe_trames').select('id,equipe_id,depuis,trame,cree_le,cree_par').order('depuis'),
+      refDroit('planning_voir') ? sb.from('planning').select('*').gte('jour', depuis) : Promise.resolve({ data: [] }),
+      refDroit('conges_voir') ? sb.from('conges').select('*').gte('au', depuis).order('du') : Promise.resolve({ data: [] }),
+      refDroit('planning_voir') ? sb.from('fermetures').select('*').gte('jour', depuis) : Promise.resolve({ data: [] }),
+      sb.rpc('prenoms_fermeture'),
+      refDroit('pointage') ? sb.from('pointages').select('*').gte('jour', dIso(new Date(Date.now() - 45 * 864e5))) : Promise.resolve({ data: [] }),
+      sb.from('parametres').select('cle,valeur').in('cle', ['postes'])
+    ]).then(function (r) {
+      var eq = ok(r[0]), ids = {}; eq.forEach(function (p) { ids[p.id] = 1; });
+      S.equipe = eq; S.dentistes = S.dentistes || [];
+      var tv = {}; ok(r[1]).forEach(function (x) { if (ids[x.equipe_id]) (tv[x.equipe_id] = tv[x.equipe_id] || []).push(x); }); S.trames = tv;
+      var rows = {}; ok(r[2]).forEach(function (x) { if (ids[x.equipe_id]) rows[cleCase(x.equipe_id, String(x.jour).slice(0, 10), x.demi)] = x; });
+      S.conges = ok(r[3]).filter(function (x) { return ids[x.equipe_id]; });
+      var fm = {}; ok(r[4]).forEach(function (x) { fm[String(x.jour).slice(0, 10)] = x; });
+      ok(r[7]).forEach(function (x) { if (x.cle === 'postes' && Array.isArray(x.valeur)) S.postes = x.valeur; });
+      S.ref = { ok: !r[0].error, rows: rows, ferm: fm, noms: ok(r[5]), pts: ok(r[6]).filter(function (x) { return ids[x.equipe_id]; }), absent: !!(r[4] && r[4].error) };
+      if (!S.refSem) { var auj = new Date(), wd = auj.getDay(); S.refSem = lundiDe(dIso(wd === 6 || wd === 0 ? new Date(auj.getTime() + 2 * 864e5) : auj)); }
+      render();
+    }).catch(function (e) { S.ref = { ok: false, rows: {}, ferm: {}, noms: [], pts: [] }; toast(msgErr(e)); render(); });
+  }
+  // Case d'un jour pour une personne du profil : saisie du planning, sinon congé accepté, férié, semaine type
+  function refCase(p, iso, demi) {
+    var x = S.ref && S.ref.rows[cleCase(p.id, iso, demi)];
+    if (x) return { a: x.aff, de: hm(x.debut), fi: hm(x.fin), saisi: 1 };
+    if (ferie(iso)) return { a: 'FERIE' };
+    var c = congeLe(p.id, iso); if (c) return { a: c.type === 'AUTRE' ? 'CP' : c.type };
+    if (offLe(p, iso, demi)) return { a: 'OFF' };
+    var t = ((trameDe(p, iso) || {})[jourSem(iso)] || {})[demi === 'AM' ? 'am' : 'pm'];
+    return t && t.a ? { a: t.a, de: t.de || null, fi: t.fi || null } : { a: 'OFF' };
+  }
+  function refTravail(c) { return c && c.a && c.a !== 'OFF' && ABS.indexOf(c.a) < 0 && c.a !== 'FERIE' && c.a !== 'ECOLE'; }
+  function hCourt(t) { if (!t) return ''; var m = /^(\d{1,2}):(\d{2})/.exec(t); return m ? +m[1] + 'h' + (m[2] === '00' ? '' : m[2]) : t; }
+  function refTxt(a) { return a === 'CP' ? 'Congés' : a === 'ARRET' ? 'Maladie' : a === 'FORMATION' ? 'Formation' : a === 'FERIE' ? 'Férié' : a === 'OFF' ? 'OFF' : affTxt(a); }
+  // Fermeture proposée : la personne du profil qui finit la dernière ce jour-là
+  function refFermeAuto(iso) {
+    var best = null;
+    refPers().forEach(function (p) { ['AM', 'PM'].forEach(function (d) { var c = refCase(p, iso, d); if (refTravail(c) && c.fi && (!best || c.fi > best.heure)) best = { equipe_id: p.id, nom: p.prenom, heure: c.fi, auto: 1 }; }); });
+    return best;
+  }
+  function refFerme(iso) { var f = S.ref && S.ref.ferm[iso]; return f && (f.nom || f.equipe_id) ? { equipe_id: f.equipe_id, nom: f.nom, heure: f.heure } : refFermeAuto(iso); }
+  function refJours() { var L = S.refSem || lundiDe(dIso(new Date())), l = []; for (var i = 0; i < 5; i++) l.push(addJ(L, i)); return l; }
+  function vRefPlanning() {
+    var js = refJours(), ps = refPers(), modif = refDroit('planning_modif'), nom = refNom();
+    var h = hdA({ back: ['data-tab="maison"', 'Accueil'], t: 'Planning ' + esc(nom), cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps rf">';
+    if (!S.ref) return h + '<p class="mu">Chargement…</p></div>';
+    h += '<div class="rf-bar"><button class="h-rond clair2" data-refsem="-1" aria-label="Semaine précédente">' + ico('prec', 20, 2.4) + '</button><b>Semaine du ' + dateCourte(js[0]) + ' au ' + dateCourte(js[4]) + '</b><button class="h-rond clair2" data-refsem="1" aria-label="Semaine suivante">' + ico('suiv', 20, 2.4) + '</button>'
+      + (modif ? '<span class="mu">Touchez une case pour changer le poste ou les horaires</span>' : '<span class="mu">Lecture seule</span>') + '</div>';
+    if (!ps.length) return h + '<div class="card"><b>Personne dans ce profil pour l’instant.</b><p class="mu" style="margin:6px 0 0">La référente ou la responsable doit créer les fiches au profil « ' + esc(nom) + ' ».</p></div></div>';
+    var cel = function (p, iso) {
+      var am = refCase(p, iso, 'AM'), pm = refCase(p, iso, 'PM'), meme = am.a === pm.a, un = function (c) { return refTravail(c) ? '<b>' + esc(refTxt(c.a)) + '</b><span>' + hCourt(c.de) + (c.fi ? '–' + hCourt(c.fi) : '') + '</span>' : '<b>' + esc(refTxt(c.a)) + '</b>'; };
+      var cls = function (c) { return refTravail(c) ? ' tr' : c.a === 'OFF' ? ' off' : c.a === 'FERIE' ? ' fe' : ' ab ab-' + c.a; }, st = function (c) { return refTravail(c) ? ' style="' + pastelPoste(c.a) + '"' : ''; };
+      var corps = meme && refTravail(am) ? '<span class="rf-d' + cls(am) + '"' + st(am) + '><b>' + esc(refTxt(am.a)) + '</b><span>' + hCourt(am.de) + '–' + hCourt(pm.fi || am.fi) + '</span></span>'
+        : meme ? '<span class="rf-d' + cls(am) + '">' + un(am) + '</span>'
+        : '<span class="rf-d' + cls(am) + '"' + st(am) + '>' + un(am) + '</span><span class="rf-d' + cls(pm) + '"' + st(pm) + '>' + un(pm) + '</span>';
+      return modif ? '<button class="rf-c" data-refc="' + p.id + '|' + iso + '" aria-label="' + esc(p.prenom) + ', ' + dateCourte(iso) + '">' + corps + '</button>' : '<div class="rf-c">' + corps + '</div>';
+    };
+    h += '<section class="cg2-carte rf-carte"><div class="rf-scroll"><div class="rf-g"><span class="cp-h">' + esc(nom) + '</span>' + js.map(function (iso) { return '<span class="rf-j' + (iso === dIso(new Date()) ? ' auj' : '') + '"><b>' + JOURS[jourSem(iso)] + '</b>' + dateCourte(iso) + '</span>'; }).join('')
+      + ps.map(function (p) { return '<span class="rf-n"><b>' + esc(p.prenom) + '</b><small>' + (p.contrat_h ? fr(p.contrat_h) + ' h' : '') + '</small></span>' + js.map(function (iso) { return cel(p, iso); }).join(''); }).join('')
+      + '<span class="rf-n rf-fl"><b>Fermeture du centre</b><small>qui ferme le soir</small></span>' + js.map(function (iso) {
+        var f = ferie(iso) ? null : refFerme(iso), corps = ferie(iso) ? '<b>Férié</b>' : f ? '<b>' + esc(f.nom || '?') + '</b><span>' + (f.heure ? hCourt(f.heure) : '') + (f.auto ? ' · proposé' : '') + '</span>' : '<b>À désigner</b><span>personne ne finit tard</span>';
+        var cl = 'rf-f' + (ferie(iso) ? ' fe' : f ? (f.auto ? ' auto' : '') : ' vide');
+        return modif && !ferie(iso) ? '<button class="' + cl + '" data-reff="' + iso + '">' + corps + '</button>' : '<div class="' + cl + '">' + corps + '</div>';
+      }).join('') + '</div></div></section>';
+    return h + '<p class="a-aide">Seules les personnes au profil « ' + esc(nom) + ' » apparaissent ici. La ligne « Fermeture » propose la personne qui finit la dernière ; touchez la case pour désigner quelqu’un d’autre. Une case orange signale un soir sans personne désignée.</p></div>';
+  }
+  async function refOuvrirCase(v) {
+    var x = v.split('|'), p = persById(x[0]), iso = x[1]; if (!p || !refDroit('planning_modif')) return;
+    var am = refCase(p, iso, 'AM'), pm = refCase(p, iso, 'PM'), codes = postes().filter(function (q) { return !q.retire; }).map(function (q) { return [q.code, q.n]; }).concat([['OFF', 'OFF (ne travaille pas)']]);
+    var sel = function (id, c) { var cur = refTravail(c) || c.a === 'OFF' ? c.a : 'OFF'; return '<select class="in" id="' + id + '">' + codes.map(function (q) { return '<option value="' + q[0] + '"' + (q[0] === cur ? ' selected' : '') + '>' + esc(q[1]) + '</option>'; }).join('') + '</select>'; };
+    var lig = function (t, k, c, d1, d2) { return '<div class="rf-ed"><b>' + t + '</b>' + sel('rf' + k + 'a', c) + '<input class="in" type="time" id="rf' + k + 'd" value="' + esc(c.de || (refTravail(c) ? d1 : '')) + '" aria-label="' + t + ' : début"><input class="in" type="time" id="rf' + k + 'f" value="' + esc(c.fi || (refTravail(c) ? d2 : '')) + '" aria-label="' + t + ' : fin"></div>'; };
+    var saisi = am.saisi || pm.saisi, E = null;
+    var r = await fenetre({ titre: p.prenom + ' · ' + JOURS[jourSem(iso)].toLowerCase() + ' ' + dateCourte(iso), html: lig('Matin', 'AM', am, '09:00', '13:00') + lig('Après-midi', 'PM', pm, '14:00', '19:00') + '<p class="mu" style="margin:6px 0 0;font-size:13.5px">Les congés et la maladie se posent dans la page Congés, par la référente ou la responsable.</p>', boutons: saisi ? [{ v: 'type', t: 'Revenir à la semaine type' }] : null, ok: 'Enregistrer',
+      lire: function (bg) { var o = E = {}; ['AM', 'PM'].forEach(function (k) { o[k] = { a: bg.querySelector('#rf' + k + 'a').value, de: bg.querySelector('#rf' + k + 'd').value || null, fi: bg.querySelector('#rf' + k + 'f').value || null }; }); return o; } });
+    if (!r) return;
+    if (r.bouton === 'type') {
+      return sb.from('planning').delete().eq('equipe_id', p.id).eq('jour', iso).then(function (q) { if (q.error) throw q.error; delete S.ref.rows[cleCase(p.id, iso, 'AM')]; delete S.ref.rows[cleCase(p.id, iso, 'PM')]; toast('✔ Semaine type rétablie'); render(); }).catch(function (e) { toast(msgErr(e)); });
+    }
+    E = E || {}; var rows = ['AM', 'PM'].map(function (d) { var c = E[d] || { a: 'OFF' }, tr = c.a !== 'OFF'; return { equipe_id: p.id, jour: iso, demi: d, aff: c.a || 'OFF', debut: tr ? c.de : null, fin: tr ? c.fi : null, modifie_par: S.me.id, modifie_le: new Date().toISOString() }; });
+    sb.from('planning').upsert(rows, { onConflict: 'equipe_id,jour,demi' }).then(function (q) { if (q.error) throw q.error; rows.forEach(function (x) { S.ref.rows[cleCase(x.equipe_id, x.jour, x.demi)] = x; }); toast('✔ Case enregistrée'); render(); }).catch(function (e) { toast(msgErr(e)); });
+  }
+  async function refOuvrirFerme(iso) {
+    if (!refDroit('planning_modif') && !gestion()) return;
+    var cur = S.ref.ferm[iso], auto = refFermeAuto(iso), c = refDe(), noms = (S.ref.noms || []).filter(function (n) { return n.type !== 'interimaire'; }).sort(function (a, b) { return (a.type === c ? 0 : 1) - (b.type === c ? 0 : 1); });
+    var choix = [{ v: '', t: auto ? 'Proposition : ' + auto.nom : 'Personne (à désigner)', s: auto ? 'finit à ' + hCourt(auto.heure) + ' · se met à jour avec le planning' : 'aucun horaire ce jour-là', on: !cur || !(cur.nom || cur.equipe_id) }]
+      .concat(noms.map(function (n) { return { v: String(n.id), t: n.prenom, s: n.type === c ? refNom() : 'autre équipe', on: !!cur && String(cur.equipe_id) === String(n.id) }; }));
+    var r = await fenetre({ titre: 'Qui ferme le ' + JOURS[jourSem(iso)].toLowerCase() + ' ' + dateCourte(iso) + ' ?', choix: choix, ok: 'Enregistrer', html: '<label class="mu" style="display:flex;flex-direction:column;gap:4px;margin-top:8px">Heure de fermeture (facultatif)<input class="in" type="time" id="rfh" value="' + esc((cur && cur.heure) || (auto && auto.heure) || '') + '"></label>', lire: function (bg) { return { h: bg.querySelector('#rfh').value || null }; } });
+    if (!r) return;
+    var q;
+    if (!r.v) q = sb.from('fermetures').delete().eq('jour', iso).then(function (x) { if (x.error) throw x.error; delete S.ref.ferm[iso]; });
+    else { var n = noms.filter(function (y) { return String(y.id) === String(r.v); })[0], row = { jour: iso, equipe_id: +r.v, nom: n ? n.prenom : null, heure: (r.extra && r.extra.h) || null, modifie_par: S.me.id, modifie_le: new Date().toISOString() }; q = sb.from('fermetures').upsert(row, { onConflict: 'jour' }).then(function (x) { if (x.error) throw x.error; S.ref.ferm[iso] = row; }); }
+    q.then(function () { toast('✔ Fermeture enregistrée'); render(); }).catch(function (e) { toast(msgErr(e)); });
+  }
+  function vRefConges() {
+    var nom = refNom(), h = hdA({ back: ['data-tab="maison"', 'Accueil'], t: 'Congés · ' + esc(nom), cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps cg2 cg2-2c rf-ro"><div class="cg2-cd">';
+    if (!S.ref) return h + '<p class="mu">Chargement…</p></div></div>';
+    var att = (S.conges || []).filter(function (c) { return c.statut === 'attente'; }), val = refDroit('conges_valider');
+    h += '<section class="cg2-carte cp-s"><div class="cp-t"><h2>Demandes en attente</h2>' + (att.length ? '<span class="pill or">' + att.length + '</span>' : '') + '</div>'
+      + (att.length ? att.map(function (c) { var p = persById(c.equipe_id); return '<div class="rf-dem"><b>' + esc(p ? p.prenom : '?') + ' · ' + periode(c.du, c.au) + '</b><span class="mu">' + (c.mot ? '« ' + esc(c.mot) + ' » · ' : '') + (val ? 'à valider' : 'en attente de la référente ou de la responsable') + '</span>'
+          + (val ? '<div class="h-cg-b"><button class="a-btn blanc" data-refcg="' + c.id + '|0">Refuser</button><button class="a-btn vert" data-refcg="' + c.id + '|1">Accepter</button></div>' : '') + '</div>'; }).join('') : '<p class="mu" style="margin:0">Aucune demande en attente.</p>') + '</section>';
+    h += vSoldesCP() + '</div><div class="cg2-cg">' + vMoisConges() + '</div>';
+    return h + '<p class="a-aide">Vous voyez les congés des personnes au profil « ' + esc(nom) + ' ». ' + (val ? '' : 'La validation reste à la référente et à la responsable. ') + 'Pour poser ou corriger une absence, voyez avec elles.</p></div>';
+  }
+  async function refRepondreConge(v) {
+    var x = v.split('|'), ok = x[1] === '1'; if (!refDroit('conges_valider')) return;
+    if (!(await demander(ok ? 'Accepter ces congés ?' : 'Refuser ces congés ?', '', ok ? 'Accepter' : 'Refuser', !ok))) return;
+    sb.from('conges').update({ statut: ok ? 'accepte' : 'refuse', traite_par: S.me.id, traite_le: new Date().toISOString() }).eq('id', +x[0]).select().then(function (r) {
+      if (r.error) throw r.error; if (!(r.data || []).length) throw new Error('Action non permise');
+      toast(ok ? '✔ Congés acceptés' : 'Congés refusés'); chargerRef();
+    }).catch(function (e) { toast(msgErr(e)); });
+  }
+  function vRefPointage() {
+    var js = refJours(), ps = refPers(), nom = refNom(), h = hdA({ back: ['data-tab="maison"', 'Accueil'], t: 'Pointage · ' + esc(nom), cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps rf">';
+    if (!S.ref) return h + '<p class="mu">Chargement…</p></div>';
+    var hh = function (t) { return t ? new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h') : '…'; };
+    h += '<div class="rf-bar"><button class="h-rond clair2" data-refsem="-1" aria-label="Semaine précédente">' + ico('prec', 20, 2.4) + '</button><b>Semaine du ' + dateCourte(js[0]) + ' au ' + dateCourte(js[4]) + '</b><button class="h-rond clair2" data-refsem="1" aria-label="Semaine suivante">' + ico('suiv', 20, 2.4) + '</button><span class="mu">Lecture seule</span></div>'
+      + '<section class="cg2-carte rf-carte"><div class="rf-scroll"><div class="rf-g"><span class="cp-h">' + esc(nom) + '</span>' + js.map(function (iso) { return '<span class="rf-j"><b>' + JOURS[jourSem(iso)] + '</b>' + dateCourte(iso) + '</span>'; }).join('')
+      + ps.map(function (p) { return '<span class="rf-n"><b>' + esc(p.prenom) + '</b></span>' + js.map(function (iso) { var x = (S.ref.pts || []).filter(function (q) { return String(q.equipe_id) === String(p.id) && String(q.jour).slice(0, 10) === iso; })[0]; return '<div class="rf-c"><span class="rf-d' + (x ? ' tr' : ' off') + '">' + (x ? '<b>' + hh(x.arrivee) + ' → ' + hh(x.sortie) + '</b>' : '<b>—</b>') + '</span></div>'; }).join(''); }).join('') + '</div></div></section>';
+    return h + '</div>';
+  }
+  // Réglages › Profils (gestion) : à qui le rôle est confié et ce qu'il permet
+  function carteReferent() {
+    var D = S.refDroits || {}, ps = (S.profils || []).filter(function (p) { return p.actif && p.role === 'assistante'; }), cur = ps.filter(function (p) { return p.referent_de; })[0];
+    var codes = profilsListe().filter(function (x) { return !x.base && !x.retire; }), code = (cur && cur.referent_de) || (S.refEdCode != null ? S.refEdCode : (codes.filter(function (x) { return x.code === 'administratif'; })[0] || codes[0] || {}).code) || '';
+    var h = '<section class="ro-carte"><div class="ro-t"><h2>Référent(e) d’un profil</h2><span class="mu">voit et organise seulement les personnes de son profil · jamais les dentistes ni les autres équipes</span></div>';
+    if (!codes.length) return h + '<p class="mu" style="margin:0">Créez d’abord un profil (par exemple « Administratif ») ci-dessus, puis revenez ici.</p></section>';
+    h += '<div class="h-g2"><label class="mu">Profil encadré<select class="in" id="rfcode">' + codes.map(function (x) { return '<option value="' + esc(x.code) + '"' + (x.code === code ? ' selected' : '') + '>' + esc(x.n) + '</option>'; }).join('') + '</select></label>'
+      + '<label class="mu">Compte du ou de la référent(e)<select class="in" id="rfqui"><option value="">— Personne pour l’instant —</option>' + ps.map(function (p) { return '<option value="' + p.id + '"' + (cur && cur.id === p.id ? ' selected' : '') + '>' + esc(p.nom) + '</option>'; }).join('') + '</select></label></div>'
+      + '<div class="a-liste">' + REF_DROITS.map(function (d) { var on = D[d[0]] != null ? !!D[d[0]] : d[3]; return '<label class="a-li"><span class="a-it-n"><b>' + d[1] + '</b><span>' + d[2] + '</span></span><input type="checkbox" role="switch" class="h-sw" data-rfd="' + d[0] + '"' + (on ? ' checked' : '') + ' aria-label="' + esc(d[1]) + '"><span class="pill' + (on ? ' ok' : '') + '">' + (on ? 'Oui' : 'Non') + '</span></label>'; }).join('') + '</div>'
+      + '<p class="mu" style="margin:0;font-size:13.5px">La personne garde aussi son appli habituelle (pointer, ses congés). Les changements s’appliquent à la prochaine ouverture de son appli.</p>'
+      + '<button class="a-btn navy" data-act="rfsave">Enregistrer le rôle de référent(e)</button></section>';
+    return h;
+  }
+  function sauverReferent() {
+    var D = {}; document.querySelectorAll('[data-rfd]').forEach(function (el) { D[el.dataset.rfd] = !!el.checked; });
+    var code = ($('rfcode') || {}).value || '', qui = ($('rfqui') || {}).value || '', anciens = (S.profils || []).filter(function (p) { return p.referent_de && p.id !== qui; });
+    var ps = [sb.from('parametres').upsert({ cle: 'ref_droits', valeur: D, modifie_le: new Date().toISOString() }, { onConflict: 'cle' }).then(function (r) { if (r.error) throw r.error; })]
+      .concat(anciens.map(function (p) { return sb.rpc('definir_referent', { p_profil: p.id, p_code: '' }).then(function (r) { if (r.error) throw r.error; p.referent_de = null; }); }));
+    if (qui) ps.push(sb.rpc('definir_referent', { p_profil: qui, p_code: code }).then(function (r) { if (r.error) throw r.error; var p = (S.profils || []).filter(function (y) { return y.id === qui; })[0]; if (p) p.referent_de = code; }));
+    Promise.all(ps).then(function () { S.refDroits = D; toast('✔ Rôle de référent(e) enregistré'); render(); }).catch(function (e) { toast(/definir_referent|ref_droits|schema cache/i.test(String(e && e.message)) ? 'Il manque la mise à jour 027 de la base' : msgErr(e)); });
+  }
+
   function vStockA() {
     var ds = derniereSortie(), mesAtt = (S.recents || []).filter(function (x) { return x.type === 'demande' && x.statut === 'attente' && x.auteur === S.me.id; });
     var h = hdA({ back: ['data-tab="maison"', 'Accueil'], t: 'Stock', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">'
@@ -754,7 +926,8 @@
 
   function renderA() {
     if (!ongletPermis(S.tab)) S.tab = 'maison';
-    var ecr = { maison: vMaison, mstock: vStockA, sortie: vSortieA, retour: vRetourA, inventaire: vInventaireA, histo: vHistoA, moi: vMoiA, compte: vCompteA, aide: vAideA, mconges: vMesCongesA, mdemande: vDemandeA, mplanning: vMonPlanningA, moubli: vOubliA }[S.tab];
+    var ecr = { maison: vMaison, mstock: vStockA, sortie: vSortieA, retour: vRetourA, inventaire: vInventaireA, histo: vHistoA, moi: vMoiA, compte: vCompteA, aide: vAideA, mconges: vMesCongesA, mdemande: vDemandeA, mplanning: vMonPlanningA, moubli: vOubliA, rplanning: vRefPlanning, rconges: vRefConges, rpointage: vRefPointage }[S.tab];
+    if (ecr && !ongletPermis(S.tab)) ecr = null;
     if (!ecr) { S.tab = 'maison'; ecr = vMaison; }
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
     h += '<div class="a-app">' + ecr() + '</div>' + vNavMobile();
@@ -1071,6 +1244,7 @@
       + '<div class="ro-add"><label class="mu">Nouveau profil<input class="in" id="pfnew" placeholder="Ex. : Secrétaire, Aide-dentaire, Stagiaire"></label><button class="btn" data-act="pfadd">+ Ajouter le profil</button></div></section>';
     h += '<section class="ro-carte"><div class="ro-t"><h2>Gestion</h2><span class="mu">tous les outils et les réglages · connexion avec un mot de passe</span></div>'
       + PROFILS_GESTION.map(function (r) { return '<div class="ro-ge"><span><b>' + r.n + '</b><span class="mu">Stock, planning, heures, pointage, congés, réglages · ne pointe pas</span></span><span class="pill or">tous les droits</span></div>'; }).join('') + '</section>';
+    h += carteReferent();
     var V = S.visible || {};
     h += '<div class="a-liste"><label class="a-li"><span class="a-it-n"><b>Avec le planning, leur reliquat d’heures</b><span>pour les profils qui ont la tuile Planning</span></span><input type="checkbox" role="switch" class="h-sw" data-vis="reliquat"' + (V.reliquat ? ' checked' : '') + ' aria-label="Afficher aussi le reliquat"><span class="pill' + (V.reliquat ? ' ok' : '') + '">' + (V.reliquat ? 'Activé' : 'Coupé') + '</span></label></div>';
     h += '<p class="a-aide">Planning, Dentiste et Contrat : la personne apparaît dans le planning des dentistes, peut être placée au fauteuil, a un reliquat d’heures. Cabinet : un cabinet est choisi pour son compte. Les tuiles s’appliquent à la prochaine ouverture de son appli ; la tuile Pointage apparaît aussi seulement si la fiche est « soumise au pointage ».</p>';
@@ -1626,11 +1800,11 @@
       sb.from('equipe').select('*').order('ordre'),
       sb.from('dentistes').select('*').order('ordre'),
       sb.from('conges').select('*').gte('au', dIso(new Date(Date.now() - 120 * 864e5))).order('du'),
-      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'simulation_pointage', 'postes', 'types_personnel', 'roles', 'profils', 'interim_semaines']),
+      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'simulation_pointage', 'postes', 'types_personnel', 'roles', 'profils', 'interim_semaines', 'ref_droits']),
       sb.from('equipe_trames').select('id,equipe_id,depuis,trame,cree_le,cree_par').order('depuis')
     ]).then(function (r) {
       if (r[4] && !r[4].error) { var tv = {}; (r[4].data || []).forEach(function (x) { (tv[x.equipe_id] = tv[x.equipe_id] || []).push(x); }); S.trames = tv; } else S.trames = null;
-      if (r[3] && !r[3].error) (r[3].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else if (x.cle === 'postes') S.postes = x.valeur; else if (x.cle === 'types_personnel') S.typesPers = x.valeur; else if (x.cle === 'roles') S.roles = x.valeur; else if (x.cle === 'profils') S.profilsP = Array.isArray(x.valeur) ? x.valeur : null; else if (x.cle === 'interim_semaines') S.interimSem = Array.isArray(x.valeur) ? x.valeur : []; else S.visible = x.valeur; });
+      if (r[3] && !r[3].error) (r[3].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else if (x.cle === 'postes') S.postes = x.valeur; else if (x.cle === 'types_personnel') S.typesPers = x.valeur; else if (x.cle === 'roles') S.roles = x.valeur; else if (x.cle === 'profils') S.profilsP = Array.isArray(x.valeur) ? x.valeur : null; else if (x.cle === 'ref_droits') S.refDroits = x.valeur || {}; else if (x.cle === 'interim_semaines') S.interimSem = Array.isArray(x.valeur) ? x.valeur : []; else S.visible = x.valeur; });
       if (!Array.isArray(S.roles)) S.roles = S.roles || [];
       if (r[0].error || r[1].error) { S.equipe = null; S.dentistes = null; } else { S.equipe = r[0].data; S.dentistes = r[1].data; }
       S.conges = r[2] && !r[2].error ? r[2].data : [];
@@ -1980,7 +2154,7 @@
     var L = [], titreB = function (t, sous) { L.push({ gr: t, sous: sous }); };
     var parDent = {}; ass.forEach(function (r) { var a = attitre(r.p); if (a) (parDent[a] = parDent[a] || []).push(r); });
     if (F === 'tous' || F === 'couples') {
-      titreB('Dentistes et leur assistant(e)', 'la ligne fine sous chaque dentiste : son assistant(e) attitré(e)');
+      if (!refDe()) titreB('Dentistes et leur assistant(e)', 'la ligne fine sous chaque dentiste : son assistant(e) attitré(e)');
       de.forEach(function (r, ci) { L.push({ r: r, cp: ci }); (parDent[r.dent.id] || []).forEach(function (a) { L.push({ r: a, petit: true, cp: ci }); }); });
       var seuls = ass.filter(function (r) { return !attitre(r.p); });
       if (seuls.length) { titreB('Assistant(e)s sans dentiste attitré'); seuls.forEach(function (r) { L.push({ r: r }); }); }
@@ -2161,16 +2335,17 @@
   function chargerMesConges() {
     if (gestion() || !S.me) return Promise.resolve();
     return Promise.all([sb.from('equipe').select('*').eq('profil_id', S.me.id).maybeSingle(), sb.from('conges').select('*').order('du', { ascending: false }).limit(60),
-      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'roles', 'simulation_pointage', 'profils'])]).then(function (r) {
+      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'roles', 'simulation_pointage', 'profils', 'ref_droits'])]).then(function (r) {
       S.moiEq = r[0].error ? null : r[0].data; S.mesConges = r[1].error ? [] : r[1].data || []; S.mesCongesOk = !r[0].error;
       if (S.moiEq && S.moiEq.pointage) { chargerMonPointage(); chargerMesOublis(); }
       chargerClos();
       var vuR = false;
-      if (r[2] && !r[2].error) (r[2].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'roles') { S.roles = Array.isArray(x.valeur) ? x.valeur : []; vuR = true; } else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else if (x.cle === 'profils') S.profilsP = Array.isArray(x.valeur) ? x.valeur : null; else if (x.cle === 'interim_semaines') S.interimSem = Array.isArray(x.valeur) ? x.valeur : []; else S.visible = x.valeur; });
+      if (r[2] && !r[2].error) (r[2].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'roles') { S.roles = Array.isArray(x.valeur) ? x.valeur : []; vuR = true; } else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else if (x.cle === 'profils') S.profilsP = Array.isArray(x.valeur) ? x.valeur : null; else if (x.cle === 'ref_droits') S.refDroits = x.valeur || {}; else if (x.cle === 'interim_semaines') S.interimSem = Array.isArray(x.valeur) ? x.valeur : []; else S.visible = x.valeur; });
       if (!vuR) S.roles = [];
       if (!(r[2] && !r[2].error && (r[2].data || []).some(function (x) { return x.cle === 'simulation_pointage' && x.valeur === true; }))) S.simOn = false;
       if (S.tab !== 'maison' && !ongletPermis(S.tab)) S.tab = 'maison';
       memoriserHorsLigne(); envoyerAttentePt();
+      if (refDe()) chargerRef();
       render();
     }, function () { S.moiEq = null; S.mesConges = []; render(); });
   }
@@ -5421,6 +5596,11 @@
     if (d.act === 'rgsave') return sauverRegles();
     if (d.cok) return repondre(d.cok, true);
     if (d.canok) return repondreAnnul(d.canok, true);
+    if (d.refsem) { S.refSem = addJ(S.refSem || lundiDe(dIso(new Date())), 7 * +d.refsem); render(); return; }
+    if (d.refc) return refOuvrirCase(d.refc);
+    if (d.reff) return refOuvrirFerme(d.reff);
+    if (d.refcg) return refRepondreConge(d.refcg);
+    if (d.act === 'rfsave') return sauverReferent();
     if (d.cpdep) { S.cpDep = d.cpdep === '1'; S.cpDepV = {}; render(); return; }
     if (d.cpdok) return sauverDepartCP();
     if (d.cpbv) { lsSet('evy-cp-bascule-' + d.cpbv, '1'); render(); return; }

@@ -1,8 +1,14 @@
 // Journal des versions (affiché dans Plus, pour la référente et la responsable).
 // Types : Majeure (changement profond), Mineure (nouvelle fonction), Correctif (réparation).
 // c = changements visibles ; x = opérations sur les données (pour la responsable).
-window.JOURNAL = [{v:"2.4.1",t:"Mineure",n:"Accueil de la référente et de la responsable revu",d:"14 novembre 2026",
-c:["Accueil : nouvelle tuile « Congés » à côté de Stock, Planning et Pointage ; elle indique le nombre de demandes à valider. Sur ordinateur, les quatre tuiles tiennent sur une ligne.",
+window.JOURNAL = [{v:"2.4.1",t:"Mineure",n:"Accueil revu, Congés sur un écran, rôle « Référent(e) d’un profil »",d:"14 novembre 2026",
+x:["027_referent_profil.sql : rôle de référent(e) d’un profil (droits limités à son profil dans la base) et table des fermetures du centre. À lancer sur la base avant d’attribuer le rôle."],
+c:["Nouveau rôle « Référent(e) d’un profil » (Réglages › Profils, en bas) : on choisit le profil encadré (ex. Administratif) et le compte de la personne. Elle garde son appli habituelle et gagne deux tuiles : « Planning » de son équipe et « Congés » de son équipe. Elle ne voit jamais les dentistes ni les autres équipes : la limite est posée dans la base, pas seulement à l’écran.",
+ "Planning de son équipe : une ligne par personne du profil, poste et horaires du lundi au vendredi, d’après la semaine type, les congés acceptés et les jours fériés. Si l’option est allumée, elle touche une case pour changer le poste et les horaires du matin et de l’après-midi, ou revenir à la semaine type.",
+ "Ligne « Fermeture du centre » : l’application propose chaque soir la personne du profil qui finit la dernière (« proposé »). En touchant la case, on désigne quelqu’un d’autre, y compris une personne d’une autre équipe (seul son prénom apparaît), avec l’heure. Un soir sans personne s’affiche en orange.",
+ "Congés de son équipe : le mois, les demandes en attente et les soldes, en lecture seule. La validation reste à la référente et à la responsable, sauf si l’option « Valider les congés » est allumée.",
+ "Six interrupteurs règlent le rôle : voir le planning, le modifier, voir les congés (allumés) ; valider les congés, voir le pointage de la semaine, accéder au stock (éteints, prêts à servir).",
+ "Accueil : nouvelle tuile « Congés » à côté de Stock, Planning et Pointage ; elle indique le nombre de demandes à valider. Sur ordinateur, les quatre tuiles tiennent sur une ligne.",
  "Accueil : la ligne « Réglages » est retirée (la roue en haut à droite suffit). « Mot de passe » et « Changer » quittent le bas de l’écran pour le bandeau du haut : un cadenas, la roue, puis « Prénom · changer » (un rond doré avec l’initiale sur téléphone).",
  "Accueil sur téléphone : Stock et Congés sont les deux grandes tuiles. Planning et Pointage, à ouvrir sur ordinateur, descendent en bas en deux petites pastilles grises.",
  "Accueil : les alertes (demandes de congés à traiter, oublis de pointage à valider) s’affichent maintenant sous les tuiles.",
