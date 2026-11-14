@@ -982,7 +982,7 @@
     var F = S.pf; if (!F) { S.tab = 'pequipe'; return vPEquipe(); }
     var p = F.d, nouv = F.id === 'new', t = p.trame || {}, tot = heuresTrame(t), c = +p.contrat_h || 0, ty = typeDe(p.type), tel = telephone();
     var prof = p.profil_id ? S.profils.filter(function (x) { return x.id === p.profil_id; })[0] : null;
-    var ONG = [['infos', 'Infos et contrat'], ['semaine', 'Semaine type'], ['absences', 'Absences'], ['compte', 'Compte et pointage'], ['regles', 'Règles et consigne']];
+    var horsPl = ty.planning === false, ONG = [['infos', 'Infos et contrat'], ['semaine', horsPl ? 'Horaires habituels' : 'Semaine type'], ['absences', 'Absences'], ['compte', 'Compte et pointage'], ['regles', 'Règles et consigne']];
     var og = nouv ? 'infos' : F.onglet || (tel ? null : 'semaine');
     var h = '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" ' + (tel && og && !nouv ? 'data-pfong=""' : 'data-tab="pequipe"') + '>' + ico('prec', 22, 2.4) + (tel && og && !nouv ? esc(p.prenom || 'Fiche') : 'L’équipe') + '</button><h1>' + (nouv ? 'Nouvelle fiche' : tel && og ? ONG.filter(function (o) { return o[0] === og; })[0][1] : esc(p.prenom || '…')) + '</h1><span class="a-cale"></span></div></header><div class="a-corps h-fiche fi">';
     // --- résumé
@@ -1019,7 +1019,7 @@
       });
       g += '</div><div class="h-total ' + (ecT ? 'warn' : 'ok') + '"><span>Total de la semaine type</span><b>' + fh(tot) + (c ? ' / ' + fh(c) + ' · ' + (ecT ? relTxt(tot - c) : 'équilibré') : '') + '</b></div>';
       g += '<div class="fi-ed"><b>' + JOURS[cj] + ' ' + (ck === 'am' ? 'matin' : 'après-midi') + '</b>' + demiEdit(cj, ck, (t[cj] || {})[ck]) + '<div class="fi-rac"><button class="btn l sm" data-act="pfcopiejour" data-j="' + cj + '">Copier le ' + JOURS[cj].toLowerCase() + ' sur toute la semaine</button></div></div>';
-      return '<p class="mu fi-intro">Touchez une case pour changer ' + (aDent(p.type) ? 'le dentiste ou le poste' : 'le poste') + ' et les horaires. Le planning de chaque semaine part de là.</p>' + g;
+      return '<p class="mu fi-intro">Touchez une case pour changer ' + (aDent(p.type) ? 'le dentiste ou le poste' : 'le poste') + ' et les horaires. ' + (ty.planning === false ? 'Hors planning : ces horaires servent seulement au pointage (heures prévues, retards, départs avant l’heure, coupure de midi déduite).' : 'Le planning de chaque semaine part de là.') + '</p>' + g;
     };
     R.absences = function () { return nouv ? avant : '<h3 class="fi-h3">Congés</h3>' + blocConges(false, F.id, p) + '<h3 class="fi-h3">Formations</h3>' + blocConges(false, F.id, p, true) + '<h3 class="fi-h3">Jours off</h3>' + blocOffs(F); };
     R.compte = function () {
@@ -1914,6 +1914,7 @@
   function fMin(m) { return Math.floor(m / 60) + 'h' + ('0' + (m % 60)).slice(-2); }
   // Temps effectif d'une journée : sortie − arrivée, moins la coupure de midi prévue au planning (seulement la partie
   // comprise entre l'arrivée et la sortie)
+  function sansHoraires(p) { return p.type !== 'interimaire' && heuresTrame(p.trame) < 0.01; }   // aucun horaire habituel saisi : ni « repos », ni heures prévues
   function calculJour(p, iso, r) {
     var am = caseEff(p, iso, 'AM'), pm = caseEff(p, iso, 'PM'), trav = function (c) { return c.a && c.a !== 'OFF' && ABS.indexOf(c.a) < 0; };
     // École et formation : comptées dans le prévu et dans le temps effectif (heures de la règle), sans pointage
@@ -1921,7 +1922,7 @@
     var hEF = (compte(am) ? heuresDemi(p, iso, 'AM', am) : 0) + (compte(pm) ? heuresDemi(p, iso, 'PM', pm) : 0);
     var travH = (trav(am) ? dureeDemi(am) : 0) + (trav(pm) ? dureeDemi(pm) : 0), prevu = travH + hEF, absTxt = ABS.indexOf(am.a) >= 0 ? ABS_TXT[am.a] : ABS.indexOf(pm.a) >= 0 ? ABS_TXT[pm.a] : null;
     var hor = [trav(am) && am.de ? ft(am.de) + '–' + ft(am.fi) : compte(am) ? ABS_TXT[am.a] + (am.a === pm.a ? '' : ' le matin') : '', trav(pm) && pm.de ? ft(pm.de) + '–' + ft(pm.fi) : compte(pm) && pm.a !== am.a ? ABS_TXT[pm.a] + ' l’après-midi' : ''].filter(Boolean).join(' · ');
-    var o = { prevu: prevu, hEF: hEF, hor: hor || (absTxt || (am.off || pm.off ? 'Jour off' : 'Ne travaille pas')), absTxt: absTxt, travaille: travH > 0, pauseMin: 0, effMin: !travH && hEF ? Math.round(hEF * 60) : null };
+    var o = { prevu: prevu, hEF: hEF, hor: hor || (absTxt || (am.off || pm.off ? 'Jour off' : sansHoraires(p) ? 'Horaires non renseignés' : 'Ne travaille pas')), absTxt: absTxt, travaille: travH > 0, pauseMin: 0, effMin: !travH && hEF ? Math.round(hEF * 60) : null };
     var p1 = trav(am) ? enMin(am.fi) : null, p2 = trav(pm) ? enMin(pm.de) : null;
     if (r && r.arrivee && r.sortie) {
       var a = minLoc(r.arrivee), b = minLoc(r.sortie); if (b < a) b = a;
@@ -1979,6 +1980,8 @@
     if (G.err) h += '<div class="ban warn">' + esc(G.err) + '</div>';
     var tous = (S.equipe || []).filter(function (e) { return e.actif && e.pointage; }), ps = trierPt(tous);
     if (!tous.length) return h + '<div class="card"><b>Personne n’est soumis au pointage pour l’instant.</b><p class="mu" style="margin:6px 0 0">Cochez « Soumise au pointage journalier » dans la fiche de chaque assistante concernée (Réglages › L’équipe).</p></div></div>' + (S.ptQR ? vQR() : '');
+    var sh = ps.filter(sansHoraires);
+    if (sh.length) h += '<div class="ban info">' + sh.map(function (p) { return '<button class="lien" data-pf="' + p.id + '">' + esc(p.prenom) + '</button>'; }).join(', ') + ' ' + (sh.length > 1 ? 'n’ont' : 'n’a') + ' pas encore d’horaires habituels : les heures pointées s’affichent, mais sans heures prévues, ni retard, ni oubli signalé. À renseigner dans la fiche (rubrique ' + (function () { var hp = sh.filter(function (p) { return typeDe(p.type).planning === false; }).length; return hp === sh.length ? '« Horaires habituels »' : hp ? '« Semaine type » ou « Horaires habituels »' : '« Semaine type »'; })() + ').</div>';
     h += boutonsCatPt(tous) + (G.mode === 'jour' ? vPointageJour(ps, J) : vPointageSemaine(ps, L));
     if (CONFIG.env === 'dev') h += '<div class="sim"><b>Simulation (site de test uniquement)</b><span class="mu">Autorise les assistantes à pointer avec un jour et une heure choisis (encadré « Simulation » sous leur tuile Pointer), pour tester sans attendre le lendemain. N’existe pas sur le vrai site.</span><button class="btn sm' + (S.simOn ? ' l' : '') + '" data-act="simgestion" aria-pressed="' + !!S.simOn + '">' + (S.simOn ? 'Heure simulée autorisée · Couper' : 'Autoriser l’heure simulée') + '</button></div>';
     return h + '<p class="a-aide">Temps effectif = sortie − arrivée, moins la coupure de midi prévue au planning ce jour-là (seulement la partie passée entre l’arrivée et la sortie). Écart de la semaine : sur les journées pointées en entier. Touchez une ligne ou une case pour corriger un oubli : la correction est signée.</p></div>' + (S.ptEd ? vPtEdit() : '') + (S.ptQR ? vQR() : '') + (S.ptLog ? vPtLog() : '');
@@ -2189,10 +2192,10 @@
         var iso = addJ(L, k), r = S.ptg.rows[p.id + '|' + iso], c = calculJour(p, iso, r), et = etatPointage(p, iso, r, c);
         tp += c.prevu; if (c.effMin != null) { te += c.effMin; tpp += c.prevu; } else if (c.travaille && iso < auj) manq++;
         var bs = bornesPrevues(p, iso), tl = +regles().pt_tol || 0, rt = r && r.arrivee && bs.d != null && minLoc(r.arrivee) - bs.d > tl, dp = r && r.sortie && bs.f != null && bs.f - minLoc(r.sortie) > (+regles().pt_tol_dep || 0);
-        h += '<button class="pt-sc' + (rt || dp ? ' mal' : '') + '" data-pted="' + p.id + '|' + iso + '">' + (c.effMin != null ? '<b>' + fh(c.effMin / 60) + '</b><small>' + (r && r.arrivee && r.sortie ? hTs(r.arrivee).replace(' h ', 'h') + '–' + hTs(r.sortie).replace(' h ', 'h') + (c.hEF ? ' + ' + c.absTxt.toLowerCase() : '') : esc(c.absTxt || '')) + '</small>' + (rt || dp ? '<span class="pt-mal">' + (rt ? '▲ retard ' + fMinCourt(minLoc(r.arrivee) - bs.d) : '') + (rt && dp ? ' · ' : '') + (dp ? '▼ parti ' + fMinCourt(bs.f - minLoc(r.sortie)) + ' avant' : '') + '</span>' : '') : et ? '<span class="pt-et ' + et.k + '">' + et.t + '</span>' : '<small class="mu">' + esc(c.absTxt || (c.travaille ? '—' : 'repos')) + '</small>') + '</button>';
+        h += '<button class="pt-sc' + (rt || dp ? ' mal' : '') + '" data-pted="' + p.id + '|' + iso + '">' + (c.effMin != null ? '<b>' + fh(c.effMin / 60) + '</b><small>' + (r && r.arrivee && r.sortie ? hTs(r.arrivee).replace(' h ', 'h') + '–' + hTs(r.sortie).replace(' h ', 'h') + (c.hEF ? ' + ' + c.absTxt.toLowerCase() : '') : esc(c.absTxt || '')) + '</small>' + (rt || dp ? '<span class="pt-mal">' + (rt ? '▲ retard ' + fMinCourt(minLoc(r.arrivee) - bs.d) : '') + (rt && dp ? ' · ' : '') + (dp ? '▼ parti ' + fMinCourt(bs.f - minLoc(r.sortie)) + ' avant' : '') + '</span>' : '') : et ? '<span class="pt-et ' + et.k + '">' + et.t + '</span>' : '<small class="mu">' + esc(c.absTxt || (c.travaille || sansHoraires(p) ? '—' : 'repos')) + '</small>') + '</button>';
       }
       var ec = te / 60 - tpp;
-      h += '<b>' + fh(te / 60) + '</b><span>' + fh(tp) + '</span><span class="pt-ec"><b class="' + hrCouleur(tpp ? ec : null) + '">' + (!tpp ? '—' : Math.abs(ec) < 0.01 ? '0 h' : relTxt(ec)) + '</b>' + (manq ? '<small class="ko">' + manq + ' jour' + (manq > 1 ? 's' : '') + ' sans pointage complet</small>' : '') + '</span></div>';
+      h += '<b>' + fh(te / 60) + '</b><span>' + (sansHoraires(p) ? '—' : fh(tp)) + '</span><span class="pt-ec"><b class="' + hrCouleur(tpp ? ec : null) + '">' + (!tpp ? '—' : Math.abs(ec) < 0.01 ? '0 h' : relTxt(ec)) + '</b>' + (manq ? '<small class="ko">' + manq + ' jour' + (manq > 1 ? 's' : '') + ' sans pointage complet</small>' : '') + '</span></div>';
     });
     return h + '</div></div></section>';
   }
