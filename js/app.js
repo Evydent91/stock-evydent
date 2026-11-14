@@ -1124,8 +1124,8 @@
       + resumeProfil(p)
       + (typeDe(p.type).contrat === false ? '' : '<label class="mu">Heures du contrat par semaine<input class="in" inputmode="decimal" data-pff="contrat_h" value="' + esc(fr(p.contrat_h)) + '"></label>')
       + (p.statut === 'apprentie' ? '<label class="mu">Jour d’école par défaut<select class="in" data-pff="ecole_jour"><option value="">—</option>' + [1, 2, 3, 4, 5].map(function (j) { return '<option value="' + j + '"' + (+p.ecole_jour === j ? ' selected' : '') + '>' + JOURS[j] + '</option>'; }).join('') + '</select></label>' : '')
-      + '<label class="row" style="grid-column:1/-1"><input type="checkbox" data-pff="actif"' + (p.actif ? ' checked' : '') + ' style="width:20px;height:20px;flex:none"><span>Fait partie de l’équipe <span class="mu">(décocher pour une ancienne : elle reste dans l’historique)</span></span></label></div>';
-      + '</div>' + (R.compte ? '<h3 class="fi-h3">Pointage et compte</h3>' + R.compte() : ''); };
+      + '<label class="row" style="grid-column:1/-1"><input type="checkbox" data-pff="actif"' + (p.actif ? ' checked' : '') + ' style="width:20px;height:20px;flex:none"><span>Fait partie de l’équipe <span class="mu">(décocher pour une ancienne : elle reste dans l’historique)</span></span></label></div>'
+      + (R.compte ? '<h3 class="fi-h3">Pointage et compte</h3>' + R.compte() : ''); };
     R.semaine = function () {
       var cel = F.cel || '1.am', cx = cel.split('.'), cj = +cx[0], ck = cx[1];
       var g = '<div class="fi-sem"><span></span>' + [1, 2, 3, 4, 5].map(function (j) { var hj = heuresJour(t, j); return '<span class="fi-sj"><b>' + JC[j] + '</b><small>' + (hj ? fh(hj) : '—') + '</small></span>'; }).join('');
