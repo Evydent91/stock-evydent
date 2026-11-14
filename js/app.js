@@ -106,14 +106,16 @@
         + (o.choix ? '<div class="dlg-ch" role="radiogroup">' + o.choix.map(function (c, i) { return '<label class="dlg-c' + (c.off ? ' off' : '') + (c.coul ? ' coul' : '') + '"' + (c.coul ? ' style="--c:' + c.coul + '"' : '') + '>' + (c.coul ? '<i class="dlg-pas" aria-hidden="true"></i>' : '') + '<input type="radio" name="dlgch" value="' + i + '"' + (c.on && !c.off ? ' checked' : '') + (c.off ? ' disabled' : '') + '><span><b>' + esc(c.t) + '</b><small>' + esc(c.s || '') + '</small>' + (c.date ? '<input type="date" class="dlg-d" data-dlgd="' + i + '" min="' + (c.min || '') + '" value="' + esc(c.date === true ? '' : c.date) + '" aria-label="' + esc(c.t) + '">' : '') + '</span></label>'; }).join('') + '</div>' : '')
         + (o.html || '')
         + (S2 ? '<label class="dlg-l">' + esc(S2.label || '') + '<input id="dlg-in"' + (S2.type === 'nombre' ? ' inputmode="decimal"' : '') + ' autocomplete="off" value="' + esc(S2.valeur || '') + '"' + (S2.attendu ? ' placeholder="' + esc(S2.attendu) + '"' : '') + '></label>' : '')
-        + '<div class="dlg-b">' + (o.seul ? '' : '<button type="button" class="btn l" data-dlg="0">' + esc(o.non || 'Annuler') + '</button>') + '<button type="button" class="btn' + (o.danger ? ' ko' : '') + '" data-dlg="1">' + esc(o.ok || 'Confirmer') + '</button></div></div>';
+        + (o.boutons ? '<div class="dlg-b dlg-bs">' + o.boutons.map(function (b, i) { return '<button type="button" class="btn ' + (b.cls || 'l') + '" data-dlgb="' + i + '">' + esc(b.t) + '</button>'; }).join('') + '</div>' : '')
+        + (o.boutons && o.sansOk ? '' : '<div class="dlg-b">' + (o.seul ? '' : '<button type="button" class="btn l" data-dlg="0">' + esc(o.non || 'Annuler') + '</button>') + '<button type="button" class="btn' + (o.danger ? ' ko' : '') + '" data-dlg="1">' + esc(o.ok || 'Confirmer') + '</button></div>') + '</div>';
       document.body.appendChild(bg);
-      var inp = bg.querySelector('#dlg-in'), bok = bg.querySelector('[data-dlg="1"]');
+      var inp = bg.querySelector('#dlg-in'), bok = bg.querySelector('[data-dlg="1"]') || bg.querySelector('[data-dlgb]');
       var verif = function () { if (S2 && S2.attendu) bok.disabled = norm(inp.value.trim()) !== norm(String(S2.attendu).trim()); };
       var fin = function (v) { document.removeEventListener('keydown', cle, true); bg.remove(); if (prec && prec.focus) try { prec.focus(); } catch (e) {} res(v); };
       var oui = function () {
         if (bok.disabled) return;
-        if (o.choix) { var rr = bg.querySelector('input[name="dlgch"]:checked'); if (!rr) return; var ci = +rr.value, cc = o.choix[ci]; if (cc.date) { var dv = bg.querySelector('[data-dlgd="' + ci + '"]').value; if (!dv) { bg.querySelector('[data-dlgd="' + ci + '"]').focus(); return; } fin({ i: ci, v: cc.v, date: dv, texte: inp ? inp.value : null }); } else fin({ i: ci, v: cc.v, texte: inp ? inp.value : null }); return; }
+        if (o.lire) { var ex = o.lire(bg); if (ex === false) return; }
+        if (o.choix) { var rr = bg.querySelector('input[name="dlgch"]:checked'); if (!rr) return; var ci = +rr.value, cc = o.choix[ci]; if (cc.date) { var dv = bg.querySelector('[data-dlgd="' + ci + '"]').value; if (!dv) { bg.querySelector('[data-dlgd="' + ci + '"]').focus(); return; } fin({ i: ci, v: cc.v, date: dv, texte: inp ? inp.value : null, extra: ex }); } else fin({ i: ci, v: cc.v, texte: inp ? inp.value : null, extra: ex }); return; }
         fin(S2 ? inp.value : true);
       };
       var non = function () { fin(S2 || o.choix ? null : false); };
@@ -126,6 +128,7 @@
       document.addEventListener('keydown', cle, true);
       bg.addEventListener('click', function (e) {
         e.stopPropagation();
+        var bb = e.target.closest('[data-dlgb]'); if (bb) { fin({ bouton: o.boutons[+bb.dataset.dlgb].v }); return; }
         var b = e.target.closest('[data-dlg]'); if (b) { if (b.dataset.dlg === '1') oui(); else non(); return; }
         if (e.target === bg && !o.danger) non();
       });
@@ -1650,6 +1653,35 @@
     var a = CG_SEL.a < CG_SEL.b ? CG_SEL.a : CG_SEL.b, b = CG_SEL.a < CG_SEL.b ? CG_SEL.b : CG_SEL.a;
     document.querySelectorAll('.cg2-c[data-cgc^="' + CG_SEL.cle + '|"]').forEach(function (e) { var iso = e.dataset.cgc.split('|')[1]; if (iso >= a && iso <= b) e.classList.add('sel'); });
   }
+  async function cgAbsence(id) {
+    var c = (S.conges || []).filter(function (x) { return String(x.id) === String(id); })[0]; if (!c) return;
+    var estD = !!c.dentiste_id, qui = estD ? dentById(c.dentiste_id) : persById(c.equipe_id); if (!qui) return;
+    var nom = estD ? 'Dr ' + qui.prenom : qui.type === 'interimaire' ? 'Intérimaire' : qui.prenom, n = joursTravail(qui, c.du, c.au, estD);
+    var lib = c.type === 'FORMATION' ? 'Formation' + (c.mot ? ' : ' + c.mot : '') : typeTxt(c.type), att = c.statut === 'attente';
+    var tr = c.demande_par ? 'Demandée le ' + dateCourte(c.cree_le) + (c.traite_par && !att ? ' · validée par ' + (nomProfil(c.traite_par) || '?') : '') : c.traite_par ? 'Posée par ' + (nomProfil(c.traite_par) || '?') + (c.traite_le ? ' le ' + dateCourte(c.traite_le) : '') : '';
+    var bts = att ? [{ v: 'ok', t: 'Accepter', cls: 'vert' }, { v: 'refus', t: 'Refuser', cls: 'l' }] : [{ v: 'modif', t: 'Modifier', cls: '' }, { v: 'suppr', t: 'Supprimer', cls: 'ko' }];
+    bts.push({ v: 'fiche', t: estD ? 'Voir la fiche du dentiste' : 'Voir la fiche', cls: 'l' });
+    var r = await fenetre({ titre: nom + ' · ' + periode(c.du, c.au), texte: lib + (att ? ' · en attente de validation' : '') + '\n' + n + ' ' + pl(n, 'jour') + (estD ? ' de présence' : ' de travail') + (c.type !== 'FORMATION' && c.mot ? '\n« ' + c.mot + ' »' : '') + (tr ? '\n' + tr : ''), boutons: bts, non: 'Fermer', ok: 'Fermer', sansOk: false, seul: true });
+    if (!r || !r.bouton) return;
+    if (r.bouton === 'ok') return repondre(c.id, true);
+    if (r.bouton === 'refus') return repondre(c.id, false);
+    if (r.bouton === 'fiche') { if (estD) ouvrirDent(c.dentiste_id); else { ouvrirPers(c.equipe_id); if (S.pf) { S.pf.onglet = 'absences'; render(); } } return; }
+    if (r.bouton === 'suppr') {
+      if (!(await demander('Supprimer cette absence ?', nom + ' · ' + lib + ' · ' + periode(c.du, c.au) + '\n\nElle disparaît du planning, de la fiche et du solde de congés.', 'Supprimer', true))) return;
+      var rd = await sb.from('conges').delete().eq('id', c.id); if (rd.error) { toast(msgErr(rd.error)); return; }
+      toast('Absence supprimée'); chargerPlan(); return;
+    }
+    // Modifier : type, dates, note
+    var m = await fenetre({ titre: 'Modifier · ' + nom, texte: '', ok: 'Enregistrer', large: true,
+      choix: [{ v: 'CP', t: 'Congés', on: c.type === 'CP' || c.type === 'AUTRE', coul: '#1d5fa0' }, { v: 'ARRET', t: 'Maladie', on: c.type === 'ARRET', coul: '#a8521a' }, { v: 'FORMATION', t: 'Formation', on: c.type === 'FORMATION', coul: '#1f7a4d' }],
+      html: '<div class="h-g2 dlg-dates"><label class="dlg-l">Du<input type="date" id="dlg-du" value="' + c.du + '"></label><label class="dlg-l">Au<input type="date" id="dlg-au" value="' + c.au + '"></label></div>',
+      saisie: { label: 'Note (facultatif ; pour une formation : son intitulé)', valeur: c.mot || '' },
+      lire: function (bg) { var du = bg.querySelector('#dlg-du').value, au = bg.querySelector('#dlg-au').value || du; if (!du) { bg.querySelector('#dlg-du').focus(); return false; } if (au < du) { toast('La date de fin est avant la date de début'); return false; } return { du: du, au: au }; } });
+    if (!m) return;
+    var rm = await sb.from('conges').update({ type: m.v, du: m.extra.du, au: m.extra.au, mot: (m.texte || '').trim() || null }).eq('id', c.id);
+    if (rm.error) { toast(msgErr(rm.error)); return; }
+    toast('✔ Absence modifiée'); chargerPlan();
+  }
   async function cgPoser(cle, a, b) {
     var du = a < b ? a : b, au = a < b ? b : a, estD = cle[0] === 'd', id = cle.slice(1);
     var qui = estD ? dentById(id) : persById(id); if (!qui) return;
@@ -1745,7 +1777,7 @@
         jours.forEach(function (iso) { var dedans = c.du <= iso && c.au >= iso; if (dedans && (!seg || jourSem(iso) === 1)) { seg = { a: iso, b: iso }; segs.push(seg); } else if (dedans) seg.b = iso; else seg = null; });
         segs.forEach(function (sg, si) {
           var cl = c.statut === 'attente' ? 'at' : TYPE_CL[c.type] || 'cp', lib = c.type === 'FORMATION' ? (c.mot || 'Formation') : typeTxt(c.type);
-          out += '<button class="cg2-b ' + cl + (petit ? ' pt' : '') + '" ' + r.ouv + ' style="grid-row:' + row + ';grid-column:' + col[sg.a] + '/' + (col[sg.b] + 1) + '" title="' + esc(r.nom + ' · ' + lib + ' ' + periode(c.du, c.au) + (c.statut === 'attente' ? ' · en attente' : '')) + '"><span>' + (si === 0 && !petit ? esc(lib) + (c.statut === 'attente' ? ' ?' : '') : '') + '</span></button>';
+          out += '<button class="cg2-b ' + cl + (petit ? ' pt' : '') + '" data-cgb="' + c.id + '" style="grid-row:' + row + ';grid-column:' + col[sg.a] + '/' + (col[sg.b] + 1) + '" title="' + esc(r.nom + ' · ' + lib + ' ' + periode(c.du, c.au) + (c.statut === 'attente' ? ' · en attente' : '')) + '"><span>' + (si === 0 && !petit ? esc(lib) + (c.statut === 'attente' ? ' ?' : '') : '') + '</span></button>';
         });
       });
       return out;
@@ -5162,6 +5194,7 @@
     if (d.canok) return repondreAnnul(d.canok, true);
     if (d.canko) return repondreAnnul(d.canko, false);
     if (d.cannd) return demanderAnnul(d.cannd);
+    if (d.cgb) return cgAbsence(d.cgb);
     if (d.cannr) { var cgR = +d.cannr; demander('Retirer la demande d’annulation ?', 'Vos congés restent posés comme prévu.', 'Retirer la demande').then(function (ok) { if (!ok) return; sb.rpc('retirer_annulation_conges', { p_id: cgR }).then(function (r) { if (r.error) throw r.error; toast('Demande d’annulation retirée'); chargerMesConges(); }).catch(function (e) { toast(msgErr(e)); }); }); return; }
     if (d.crefus) return repondre(d.crefus, false);
     if ((d.act && d.act.slice(0, 3) === 'off') || d.offmod || d.offj || d.offd || d.offr || d.offn) { if (actionOff(d)) return; }

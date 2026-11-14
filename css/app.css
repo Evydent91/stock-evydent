@@ -1848,3 +1848,8 @@ button.stk-k{cursor:pointer}
 .dlg-c.coul:has(input:checked){border-color:var(--c);border-width:2.5px;background:color-mix(in srgb,var(--c) 12%,#fff)}
 .dlg-c.coul:has(input:checked) b{color:var(--c)}
 .dlg-c.coul:has(input:focus-visible){outline:3px solid var(--gold);outline-offset:2px}
+/* Fenêtre d'une absence posée */
+.dlg-bs{justify-content:flex-start;margin-top:10px}
+.btn.vert{background:var(--ok);color:#fff}
+.dlg-dates{margin:4px 0 0;gap:10px}
+.dlg-dates input{height:44px;border:1.5px solid var(--line);border-radius:10px;padding:0 10px;font:inherit;font-size:15px;color:var(--ink)}
