@@ -1255,3 +1255,37 @@ button.lien{border:none;background:none;padding:0;font:inherit;font-weight:700;c
   .ro-n{grid-column:1/-1;margin-bottom:4px}.ro-a{grid-column:1/-1;justify-content:flex-start;margin-top:4px}
   .ro-c{justify-content:flex-start;gap:10px;font-size:15px;min-height:44px}.ro-cl{display:inline}
 }
+/* Page QR code de pointage */
+.a-corps.qrp{flex-direction:row;flex-wrap:wrap;align-items:flex-start;gap:18px}
+.qrp-g{flex:1 1 380px;min-width:0;background:#fff;border-radius:18px;box-shadow:0 1px 3px rgba(31,42,51,.08);padding:22px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.qrp-st{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:700;padding:5px 14px;border-radius:999px;background:var(--okbg);color:var(--ok)}
+.qrp-st i{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.qrp-cadre{padding:16px;border-radius:22px;background:#fff;border:4px solid var(--gold)}
+.qrp-cadre svg{display:block;width:260px;height:260px;max-width:60vw;max-height:60vw}
+.qrp-ref{font-size:14px;text-align:center}.qrp-ref b{color:var(--ink)}
+.qrp-act{width:100%;display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.qrp-act .a-btn{display:flex;align-items:center;justify-content:center;gap:8px}
+.qrp-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.qrp-2 .btn{white-space:nowrap;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px}
+.qrp-n{font-size:13px;text-align:center}
+.qrp-d{flex:999 1 480px;min-width:0;display:flex;flex-direction:column;gap:14px}
+.qrp-k{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.qrp-k > div{background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(31,42,51,.08);padding:12px 14px;display:flex;flex-direction:column;min-width:0}
+.qrp-k small{font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--mute)}
+.qrp-k b{font-size:24px}.qrp-k b.ko{color:var(--ko)}.qrp-k span{font-size:13.5px;color:var(--mute)}
+.qrp-c{background:#fff;border-radius:18px;box-shadow:0 1px 3px rgba(31,42,51,.08);overflow:hidden}
+.qrp-ct{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:14px 16px 8px}.qrp-ct h2{margin:0;font-size:18px}
+.qrp-l{display:grid;grid-template-columns:70px 1fr auto;gap:10px;align-items:center;padding:9px 16px;border-top:1px solid var(--soft);font-size:15px}
+.qrp-h{display:flex;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid var(--soft);font-size:15px}
+.qrp-h b{width:56px;flex:none}.qrp-h > span:nth-child(2){flex:1}.qrp-h.ancien{color:var(--mute)}.qrp-h.ancien b{color:var(--ink)}
+.qrp-plus{margin:0;padding:10px 16px 14px;font-size:14px}
+.qrp-regen{background:#fff;border-radius:18px;border:1.5px solid #f2d3cd;padding:14px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.qrp-regen > span{flex:1 1 260px;display:flex;flex-direction:column;gap:2px}.qrp-regen > span > span{font-size:13.5px;color:var(--mute)}
+.qrp-plein{position:fixed;inset:0;z-index:300;background:var(--navy);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center}
+.qrp-plein small{font-size:14px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.qrp-plein h2{margin:0;font-family:var(--serif);font-weight:600;font-size:48px}
+.qrp-pc{background:#fff;padding:20px;border-radius:24px;border:5px solid var(--gold)}
+.qrp-pc svg{display:block;width:min(70vh,80vw);height:min(70vh,80vw)}
+.qrp-plein p{margin:0;font-size:18px;color:#d9dee3}
+.qrp-pf{position:absolute;top:16px;right:16px;width:52px;height:52px;border-radius:50%;border:none;background:rgba(255,255,255,.14);color:#fff;display:grid;place-items:center;cursor:pointer}
+@media (max-width:560px){.qrp-k{grid-template-columns:1fr 1fr}.qrp-k > div:last-child{grid-column:1/-1}}

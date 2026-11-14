@@ -385,6 +385,9 @@
     aide: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14M12 17.5v.01"/>',
     moi: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
     refaire: '<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/>',
+    imprimer: '<path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M8 14h8v7H8z"/>',
+    plein: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    telecharger: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
     code: '<rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
     tel: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>',
     changer: '<path d="M16 3l4 4-4 4M20 7H9M8 21l-4-4 4-4M4 17h11"/>',
@@ -680,7 +683,7 @@
 
   // ---------- Accueil de la référente et de la responsable (2 tuiles), Réglages, Équipe, Dentistes ----------
   // Écrans de la maquette « Accueil référente et responsable ». Chaque écran a son en-tête bleu.
-  var HUB = ['hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles'];
+  var HUB = ['hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr'];
   var JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'], JC = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
   // Affectations possibles d'une demi-journée (en plus des dentistes)
   // Postes (modifiables dans Réglages › Postes) ; École et « Ne travaille pas » sont fixes
@@ -1281,10 +1284,10 @@
       + '<div class="a-corps"><div class="card pc-msg">' + ico('agenda', 34) + '<b>À ouvrir sur ordinateur</b><p class="mu">Le planning et le tableau des heures se gèrent sur un écran de PC. Sur téléphone, vous pouvez gérer les congés et les réglages.</p><button class="btn" data-tab="hub">Retour à l’accueil</button></div></div>';
   }
   function renderH() {
-    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPVisible, ppostes: vPPostes, ptypes: vPTypes, pqui: vPQui, proles: vPRoles }[S.tab] || vHub;
+    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPVisible, ppostes: vPPostes, ptypes: vPTypes, pqui: vPQui, proles: vPRoles, pqr: vPQR }[S.tab] || vHub;
     if ((S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage') && telephone()) ecr = vSurPC;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
-    h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || (S.tab === 'pconges' && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
+    h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || (S.tab === 'pconges' && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
     if (S.tab === 'pfiche') h += vBarPFiche();
     if (S.tab === 'dfiche') h += vBarDFiche();
     return h;
@@ -2064,7 +2067,7 @@
       + [['En avance / à l’heure', 'ok', cA[0]], ['1 à ' + tol + ' min', 'tol', cA[1]], ['Retard (+' + tol + ' min)', 'ret', cA[2]]].map(function (z) { return '<div class="pb-dist"><span>' + z[0] + '</span><span class="pb-db"><i class="' + z[1] + '" style="width:' + Math.round(z[2] / tA * 100) + '%"></i></span><b>' + z[2] + '</b></div>'; }).join('') + '</section></aside></div>';
     return h + '</div>' + modalesPt();
   }
-  function modalesPt() { return (S.ptEd ? vPtEdit() : '') + (S.ptQR ? vQR() : '') + (S.ptLog ? vPtLog() : ''); }
+  function modalesPt() { return (S.ptEd ? vPtEdit() : '') + (S.ptLog ? vPtLog() : ''); }   // le QR code a maintenant sa page (Réglages › QR code)
   function vPtBordDetail(x, W) {
     var p = x.p, c = +p.contrat_h || 0, auj = dIso(new Date()), tol = +regles().pt_tol || 0, som = function (l) { return l.reduce(function (a, b) { return a + b.m; }, 0); };
     var h = '<div class="hr-kpis">'
@@ -2203,6 +2206,66 @@
       + '<button class="a-btn navy" data-act="ptimprimer">' + ico('sortie', 20, 2) + 'Imprimer l’affiche (A4)</button></div></div>'
       + '<div class="qr-regen"><span><b>Régénérer le QR code</b><span>L’ancien cessera de fonctionner aussitôt (si une photo a circulé). Il faudra réimprimer l’affiche.</span></span><button class="qr-rb" data-act="ptregen">' + ico('refaire', 18, 2) + 'Régénérer…</button></div></div></div>';
   }
+  // ---------- Réglages › QR code de pointage (page) ----------
+  function ouvrirPageQR(retour) {
+    S.qrP = { retour: retour || 'reglages', ev: null }; S.tab = 'pqr'; S.tabChoisi = true; ouvrirQR(); chargerEvQR(); window.scrollTo(0, 0);
+  }
+  function chargerEvQR() {
+    var de = addJ(dIso(new Date()), -7), P = S.qrP;
+    Promise.all([
+      toutLire('pointage_journal', 'evenement,jour,quand,equipe_id,qr_ref,detail,profil_id', function (q) { return q.gte('quand', dDe(de).toISOString()); }),
+      toutLire('pointage_journal', 'evenement,quand,qr_ref,detail,profil_id', function (q) { return q.eq('evenement', 'QR_REGENERE'); })
+    ]).then(function (r) { if (S.qrP === P) { P.ev = r[0] || []; P.hist = r[1] || []; render(); } })
+      .catch(function () { if (S.qrP === P) { P.ev = []; P.hist = []; P.sansJournal = true; render(); } });
+  }
+  function vPQR() {
+    var P = S.qrP || { retour: 'reglages' }, Q = S.ptQR || { charge: true };
+    var h = hdA({ back: ['data-tab="' + P.retour + '"', P.retour === 'pointage' ? 'Pointage' : 'Réglages'], t: telephone() ? 'QR code' : 'QR code de pointage', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps qrp">';
+    if (!pointagePret()) return h + '<div class="ban warn">La mise à jour 016 de la base (pointage) n’est pas encore faite.</div></div>';
+    if (Q.charge) return h + '<p class="a-vide">Chargement…</p></div>';
+    if (Q.err) return h + '<div class="ban warn">' + esc(Q.err) + '</div></div>';
+    var auj = dIso(new Date()), ev = P.ev || [], jour = ev.filter(function (e) { return dIso(new Date(e.quand)) === auj; });
+    var sc = jour.filter(function (e) { return /^(ARRIVEE|SORTIE)$/.test(e.evenement); }).sort(function (a, b) { return a.quand < b.quand ? 1 : -1; });
+    var nA = sc.filter(function (e) { return e.evenement === 'ARRIVEE'; }).length, dern = ev.filter(function (e) { return /^(ARRIVEE|SORTIE)$/.test(e.evenement); }).sort(function (a, b) { return a.quand < b.quand ? 1 : -1; })[0];
+    var refus = ev.filter(function (e) { return /^(QR_PERIME|SANS_FICHE|NON_SOUMIS|SIMULATION_COUPEE)$/.test(e.evenement); });
+    var qui = function (e) { var p = e.equipe_id ? persById(e.equipe_id) : null; return p ? p.prenom : '—'; };
+    var hh = function (ts) { return hTs(ts); };
+    // colonne gauche : le QR code et ses actions
+    h += '<section class="qrp-g"><span class="qrp-st"><i aria-hidden="true"></i>En service' + (Q.numero ? ' · n° ' + Q.numero : '') + '</span>'
+      + '<div class="qrp-cadre">' + qrSvg(urlPointage(Q.jeton), 280) + '</div>'
+      + '<span class="mu qrp-ref">Réf. <b>' + esc(refQR(Q)) + '</b> · créé le ' + dateCourte(Q.cree_le) + ' à ' + hTs(Q.cree_le) + '</span>'
+      + '<div class="qrp-act"><button class="a-btn navy" data-act="ptimprimer">' + ico('imprimer', 20, 2) + 'Imprimer l’affiche A4</button>'
+      + '<div class="qrp-2"><button class="btn l" data-act="qrplein">' + ico('plein', 18, 2) + 'Plein écran</button><button class="btn l" data-act="qrpng">' + ico('telecharger', 18, 2) + 'Image (PNG)</button></div>'
+      + '<span class="mu qrp-n">Plein écran : pour une tablette posée à l’accueil, à la place de l’affiche.</span></div></section>';
+    // colonne droite
+    h += '<div class="qrp-d"><section class="qrp-k">'
+      + '<div><small>Scans aujourd’hui</small><b>' + (P.ev ? sc.length : '…') + '</b><span>' + (P.ev ? nA + ' ' + pl(nA, 'arrivée') + ' · ' + (sc.length - nA) + ' ' + pl(sc.length - nA, 'sortie') : '') + '</span></div>'
+      + '<div><small>Dernier scan</small><b>' + (dern ? (dIso(new Date(dern.quand)) === auj ? hh(dern.quand) : dateCourte(dIso(new Date(dern.quand)))) : '—') + '</b><span>' + (dern ? esc(qui(dern)) + ' · ' + (dern.evenement === 'ARRIVEE' ? 'arrivée' : 'sortie') : 'aucun sur 7 jours') + '</span></div>'
+      + '<div><small>Refusés (7 jours)</small><b class="' + (refus.length ? 'ko' : '') + '">' + refus.length + '</b><span>' + (refus.length ? esc(EVT_PT[refus[0].evenement] || '') + (refus.length > 1 ? '…' : '') : 'aucun') + '</span></div></section>';
+    h += '<section class="qrp-c"><div class="qrp-ct"><h2>Aujourd’hui à l’accueil</h2><button class="lien" data-act="qrlog">Ouvrir le journal</button></div>'
+      + (!P.ev ? '<p class="a-vide">Chargement…</p>' : sc.length ? sc.slice(0, 12).map(function (e) { return '<div class="qrp-l"><b>' + hh(e.quand) + '</b><span>' + esc(qui(e)) + '</span><span class="pt-ev ' + (e.evenement === 'ARRIVEE' ? 'ok' : 'neutre') + '">' + (e.evenement === 'ARRIVEE' ? 'Arrivée' : 'Sortie') + '</span></div>'; }).join('') + (sc.length > 12 ? '<p class="mu qrp-plus">+ ' + (sc.length - 12) + ' autres dans le journal</p>' : '') : '<p class="mu qrp-plus">Aucun scan aujourd’hui.</p>') + '</section>';
+    var hist = (P.hist || []).slice().sort(function (a, b) { return a.quand < b.quand ? 1 : -1; });
+    h += '<section class="qrp-c"><div class="qrp-ct"><h2>Historique des QR codes</h2></div>'
+      + '<div class="qrp-h"><b>' + esc(Q.numero ? 'n° ' + Q.numero : 'actuel') + '</b><span>depuis le ' + dateCourte(Q.cree_le) + (hist[0] && hist[0].profil_id ? ' · par ' + esc(nomProfil(hist[0].profil_id) || '?') : '') + '</span><span class="pill ok">en service</span></div>'
+      + hist.map(function (e, i) { var anc = /remplace (.+)$/.exec(e.detail || ''), fin = dateCourte(dIso(new Date(e.quand))), deb = hist[i + 1] ? dateCourte(dIso(new Date(hist[i + 1].quand))) : null; return anc && anc[1] !== '—' ? '<div class="qrp-h ancien"><b>' + esc(anc[1].split(' · ')[0]) + '</b><span>' + (deb ? 'du ' + deb + ' ' : '') + 'au ' + fin + '</span><span class="pill">remplacé</span></div>' : ''; }).join('')
+      + (P.sansJournal ? '<p class="mu qrp-plus">L’historique demande la mise à jour 018 de la base.</p>' : '') + '</section>';
+    h += '<section class="qrp-regen"><span><b>Régénérer le QR code</b><span>À faire si une photo du QR code a circulé. L’ancien cesse de fonctionner aussitôt : il faudra réimprimer l’affiche.</span></span><button class="qr-rb" data-act="ptregen">' + ico('refaire', 18, 2) + 'Régénérer…</button></section></div>';
+    h += '</div>';
+    if (S.qrPlein) h += '<div class="qrp-plein" role="dialog" aria-modal="true" aria-label="QR code en plein écran"><button class="qrp-pf" data-act="qrpleinx" aria-label="Fermer le plein écran">' + ico('croix', 24, 2.4) + '</button><small>Espace dentaire Val d’Yerres</small><h2>Pointage</h2><div class="qrp-pc">' + qrSvg(urlPointage(Q.jeton), 520) + '</div><p>En arrivant et en partant : tuile « Pointage » de l’appli, puis scannez</p></div>';
+    if (S.ptLog) h += vPtLog();
+    return h;
+  }
+  function telechargerPNG() {
+    var Q = S.ptQR; if (!Q || !Q.jeton) return;
+    var svg = qrSvg(urlPointage(Q.jeton), 1000); if (!/xmlns=/.test(svg)) svg = svg.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+    var img = new Image(), url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+    img.onload = function () {
+      var c = document.createElement('canvas'); c.width = 1100; c.height = 1100; var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 1100, 1100); x.drawImage(img, 50, 50, 1000, 1000); URL.revokeObjectURL(url);
+      var a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = 'qr-pointage-' + (Q.numero ? 'n' + Q.numero + '-' : '') + String(Q.jeton).slice(0, 6) + '.png'; document.body.appendChild(a); a.click(); a.remove(); toast('✔ Image téléchargée');
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); toast('Image impossible à créer'); };
+    img.src = url;
+  }
   function refQR(Q) { return (Q.numero ? 'n° ' + Q.numero + ' · ' : '') + String(Q.jeton || '').slice(0, 6); }
   // Journal du pointage (fichier texte) : tous les événements d'une période, avec la référence du QR code
   var EVT_PT = { ARRIVEE: 'Arrivée', SORTIE: 'Sortie', DOUBLON: 'Doublon (ignoré)', QR_PERIME: 'QR périmé', NON_SOUMIS: 'Non soumis', SANS_FICHE: 'Compte non relié', SIMULATION_COUPEE: 'Simulation refusée', CORRECTION: 'Correction', EFFACEMENT: 'Effacement', QR_REGENERE: 'QR régénéré' };
@@ -2287,7 +2350,7 @@
   }
   function regenererQR() {
     if (!confirm('Créer un nouveau QR code ? L’ancien ne fonctionnera plus : il faudra réimprimer l’affiche.')) return;
-    sb.rpc('regenerer_qr').then(function (r) { if (r.error) throw r.error; toast('✔ Nouveau QR code créé'); ouvrirQR(); }).catch(function (e) { toast(msgErr(e)); });
+    sb.rpc('regenerer_qr').then(function (r) { if (r.error) throw r.error; toast('✔ Nouveau QR code créé'); ouvrirQR(); if (S.tab === 'pqr') chargerEvQR(); }).catch(function (e) { toast(msgErr(e)); });
   }
   function celluleJour(p, iso) {
     var am = caseEff(p, iso, 'AM'), pm = caseEff(p, iso, 'PM'), ab = function (c) { return ABS.indexOf(c.a) >= 0; };
@@ -4203,13 +4266,17 @@
     if (d.act === 'pfcopiejour' && S.pf) { var tj = S.pf.d.trame = S.pf.d.trame || {}, src = JSON.parse(JSON.stringify(tj[d.j] || {})); for (var jj2 = 1; jj2 <= 5; jj2++) if (String(jj2) !== String(d.j)) tj[jj2] = JSON.parse(JSON.stringify(src)); toast('Copié sur toute la semaine · pensez à enregistrer'); render(); return; }
     if ((d.roret != null || /^(roadd|rosave)$/.test(d.act || '')) && actionRoles(d)) return;
     if ((d.poup != null || d.podown != null || d.poret != null || d.tyret != null || /^(poadd|posave|tyadd|tysave)$/.test(d.act || '')) && actionReglages(d)) return;
-    if (d.act === 'rgqr') { S.tab = 'pointage'; S.ptg = S.ptg || { mode: 'semaine', jour: dIso(new Date()), rows: {} }; ouvrirQR(); return; }
+    if (d.act === 'rgqr') return ouvrirPageQR('reglages');
     if (d.act === 'scan') return ouvrirScanner();
     if (d.ptsens && S.ptRes && S.ptRes.choix) return envoyerPointage(S.ptRes.choix, d.ptsens);
     if (d.act === 'simraz') { S.sim = null; try { sessionStorage.removeItem('evy-sim'); } catch (e) {} chargerMonPointage(); render(); return; }
     if (d.act === 'simscan') { var jt0 = ''; try { jt0 = localStorage.getItem('evy-jeton-test') || ''; } catch (e) {} if (jt0) { JETON_QR = jt0; pointerQR(); } return; }
     if (d.act === 'simgestion') return basculerSimulation();
-    if (d.act === 'ptqr') return ouvrirQR();
+    if (d.act === 'ptqr') return ouvrirPageQR('pointage');
+    if (d.act === 'qrplein') { S.qrPlein = true; render(); return; }
+    if (d.act === 'qrpleinx') { S.qrPlein = false; render(); return; }
+    if (d.act === 'qrpng') return telechargerPNG();
+    if (d.act === 'qrlog') { var a0 = dIso(new Date()); S.ptLog = { du: addJ(a0, -6), au: a0 }; chargerJournalPt(); return; }
     if (d.act === 'ptlog' && S.ptg) { var lL = lundiDe(S.ptg.jour); S.ptLog = S.ptg.mode === 'jour' ? { du: S.ptg.jour, au: S.ptg.jour } : { du: lL, au: addJ(lL, 6) }; chargerJournalPt(); return; }
     if (d.act === 'ptlogfermer') { S.ptLog = null; render(); return; }
     if (d.act === 'ptlogok' && S.ptLog) return exporterJournalPt();
