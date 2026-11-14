@@ -1841,7 +1841,7 @@
 
   // Référente / responsable : congés à valider
   function vPConges() {
-    var h = hdA({ back: ACC_H, t: 'Congés', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps cg2">';
+    var h = hdA({ back: ACC_H, t: 'Congés', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps cg2' + (S.cpDep ? '' : ' cg2-2c') + '"><div class="cg2-cd">';
     var att = congesAttente().sort(function (a, b) { return a.du < b.du ? -1 : 1; });
     if (att.length) {
       h += '<section class="cg2-att"><h2 class="cg2-t">À valider <span>' + att.length + '</span></h2>' + att.map(function (c) {
@@ -1868,7 +1868,7 @@
         + '<p class="mu" style="margin:0;font-size:14px">Si vous acceptez, les congés sont retirés du planning et la personne travaille selon sa semaine type.</p>'
         + '<div class="h-cg-b"><button class="a-btn blanc" data-canko="' + c.id + '">Garder les congés</button><button class="a-btn vert" data-canok="' + c.id + '">Accepter l’annulation</button></div></div>';
     }).join('') + '</section>';
-    h += vMoisConges() + vSoldesCP();
+    h += vSoldesCP() + '</div><div class="cg2-cg">' + vMoisConges() + '</div>';
     return h + '<p class="a-aide">Pour saisir des congés, un arrêt ou une formation : touchez le nom de la personne ou du dentiste, ou ouvrez sa fiche dans Réglages.</p></div>';
   }
   // Congés : planning du mois, une ligne par personne, une colonne par jour ouvré ; les absences sont des barres nommées
@@ -1989,11 +1989,11 @@
     if (F === 'ass') { titreB('Assistant(e)s'); ass.forEach(function (r) { L.push({ r: r }); }); }
     ordreAutres.forEach(function (c) { if (F === 'tous' || F === 'cat:' + c) { titreB(autres[c].n); autres[c].l.forEach(function (r) { L.push({ r: r }); }); } });
     // grille
-    var rows = ['44px'], g = '', row = 1;
+    var rows = ['var(--cg2-rh,44px)'], g = '', row = 1;
     g += '<span class="cg2-coin" style="grid-row:1;grid-column:1"></span>' + jours.map(function (iso) { var j = jourSem(iso), f = ferie(iso); return '<span class="cg2-h' + (iso === auj ? ' auj' : '') + (f ? ' fe' : '') + '" style="grid-row:1;grid-column:' + col[iso] + '"><small>' + JC[j] + '</small><b>' + (+iso.slice(8)) + '</b></span>'; }).join('');
     var absLe = function (r, iso) { return r.l.some(function (c) { return c.du <= iso && c.au >= iso; }); };
     var ligne = function (r, petit, dentR) {
-      row++; rows.push(petit ? '24px' : '34px');
+      row++; rows.push(petit ? 'var(--cg2-rp,24px)' : 'var(--cg2-r,34px)');
       var n = nbJ(r), out = '<button class="cg2-n' + (petit ? ' pt' : '') + (enCouple ? ' bd' : '') + '" ' + r.ouv + ' style="grid-row:' + row + ';grid-column:1"><b>' + (petit ? '<i aria-hidden="true">↳</i>' : '') + esc(r.nom) + '</b>' + (n ? '<small>' + n + ' j</small>' : '') + '</button>';
       jours.forEach(function (iso) {
         var j = jourSem(iso), f = ferie(iso), trav = r.dent ? (r.dent.jours && r.dent.jours[j]) || dentExtra(r.dent, iso) : (function () { var tr = trameDe(r.p, iso), t = tr[j] || {}; return heuresTrame(tr) < 0.01 || (t.am && t.am.a && t.am.a !== 'OFF') || (t.pm && t.pm.a && t.pm.a !== 'OFF'); })();
