@@ -2088,7 +2088,7 @@
     if (sh.length) h += '<div class="ban info">' + sh.map(function (p) { return '<button class="lien" data-pf="' + p.id + '">' + esc(p.prenom) + '</button>'; }).join(', ') + ' ' + (sh.length > 1 ? 'n’ont' : 'n’a') + ' pas encore d’horaires habituels : les heures pointées s’affichent, mais sans heures prévues, ni retard, ni oubli signalé. À renseigner dans la fiche (rubrique ' + (function () { var hp = sh.filter(function (p) { return typeDe(p.type).planning === false; }).length; return hp === sh.length ? '« Horaires habituels »' : hp ? '« Semaine type » ou « Horaires habituels »' : '« Semaine type »'; })() + ').</div>';
     h += boutonsCatPt(tous) + (G.mode === 'jour' ? vPointageJour(ps, J) : vPointageSemaine(ps, L));
     if (CONFIG.env === 'dev') h += '<div class="sim"><b>Simulation (site de test uniquement)</b><span class="mu">Autorise les assistantes à pointer avec un jour et une heure choisis (encadré « Simulation » sous leur tuile Pointer), pour tester sans attendre le lendemain. N’existe pas sur le vrai site.</span><button class="btn sm' + (S.simOn ? ' l' : '') + '" data-act="simgestion" aria-pressed="' + !!S.simOn + '">' + (S.simOn ? 'Heure simulée autorisée · Couper' : 'Autoriser l’heure simulée') + '</button></div>';
-    return h + '<p class="a-aide">Temps effectif = sortie − arrivée, moins la coupure de midi prévue au planning ce jour-là (seulement la partie passée entre l’arrivée et la sortie). Écart de la semaine : sur les journées pointées en entier. Touchez une ligne ou une case pour corriger un oubli : la correction est signée.</p></div>' + (S.ptEd ? vPtEdit() : '') + (S.ptQR ? vQR() : '') + (S.ptLog ? vPtLog() : '');
+    return h + '<p class="a-aide">Temps effectif = sortie − arrivée, moins la coupure de midi prévue au planning ce jour-là (seulement la partie passée entre l’arrivée et la sortie). Écart de la semaine : sur les journées pointées en entier. Touchez une ligne ou une case pour corriger un oubli : la correction est signée.</p></div>' + modalesPt();
   }
   // ---------- Tableau de bord du pointage ----------
   function bornesPrevues(p, iso) {   // début et fin prévus (minutes) des demi-journées travaillées
@@ -2134,7 +2134,7 @@
   // En-tête commun aux vues du pointage : chaque bouton garde toujours la même place (emplacements réservés)
   function enTetePt(o) {
     var B = S.ptg && S.ptg.bord, bord = o.mode === 'bord', sel = bord && B && B.sel;
-    return '<header class="a-hd fixe pl-hd pt-hd"><div class="a-hd-row"><button class="a-back" data-' + (sel ? 'ptbsel=""' : 'tab="hub"') + '>' + ico('prec', 22, 2.4) + (sel ? 'Tableau de bord' : 'Accueil') + '</button><h1>' + (sel ? esc((persById(B.sel) || {}).prenom || '') : 'Pointage') + '</h1><span class="pl-hbtns"><button class="pl-imp" data-act="ptlog">' + ico('histo', 18, 2) + '<span class="m-hide">Journal</span></button><button class="pl-imp" data-act="ptqr">' + ico('qr', 18, 2) + '<span class="m-hide">QR code</span></button></span></div>'
+    return '<header class="a-hd fixe pl-hd pt-hd"><div class="a-hd-row"><button class="a-back" data-' + (sel ? 'ptbsel=""' : 'tab="hub"') + '>' + ico('prec', 22, 2.4) + (sel ? 'Tableau de bord' : 'Accueil') + '</button><h1>' + (sel ? esc((persById(B.sel) || {}).prenom || '') : 'Pointage') + '</h1><span class="pl-hbtns"><button class="pl-imp" data-act="ptexp">' + ico('telecharger', 18, 2) + '<span class="m-hide">Exporter</span></button><button class="pl-imp" data-act="ptlog">' + ico('histo', 18, 2) + '<span class="m-hide">Journal</span></button><button class="pl-imp" data-act="ptqr">' + ico('qr', 18, 2) + '<span class="m-hide">QR code</span></button></span></div>'
       + '<div class="pt-nav"><div class="hr-seg pt-s1" role="group" aria-label="Affichage">' + [['jour', 'Jour'], ['semaine', 'Semaine'], ['bord', 'Tableau de bord']].map(function (m) { return '<button data-ptmode="' + m[0] + '" aria-pressed="' + (o.mode === m[0]) + '"' + (o.mode === m[0] ? ' class="on"' : '') + '>' + m[1] + '</button>'; }).join('') + '</div>'
       + '<div class="hr-seg pt-s2' + (bord ? '' : ' cache') + '" role="group" aria-label="Période"' + (bord ? '' : ' aria-hidden="true"') + '>' + [['semaine', 'Semaine'], ['mois', 'Mois'], ['depuis', 'Depuis le début']].map(function (m) { var on = bord && B && B.per === m[0]; return '<button data-ptbper="' + m[0] + '"' + (bord ? '' : ' tabindex="-1"') + ' aria-pressed="' + !!on + '"' + (on ? ' class="on2"' : '') + '>' + m[1] + '</button>'; }).join('') + '</div>'
       + '<div class="pt-per"><button class="h-rond' + (o.fleches ? '' : ' cache') + '" data-' + o.nav + '="-1" aria-label="Précédent"' + (o.fleches ? '' : ' tabindex="-1"') + '>' + ico('prec', 20, 2.4) + '</button><span class="pt-titre"><b>' + o.titre + '</b></span><button class="h-rond' + (o.fleches ? '' : ' cache') + '" data-' + o.nav + '="1" aria-label="Suivant"' + (o.fleches ? '' : ' tabindex="-1"') + '>' + ico('suiv', 20, 2.4) + '</button></div>'
@@ -2143,7 +2143,7 @@
   }
   function enteteBord(B, titre, sous) {
     var nav = B.per === 'depuis' ? '<span class="hr-titre"><b>' + titre + '</b></span>' : '<button class="h-rond" data-ptbnav="-1" aria-label="Précédent">' + ico('prec', 20, 2.4) + '</button><span class="hr-titre"><b>' + titre + '</b></span><button class="h-rond" data-ptbnav="1" aria-label="Suivant">' + ico('suiv', 20, 2.4) + '</button>';
-    return '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" data-' + (B.sel ? 'ptbsel=""' : 'tab="hub"') + '>' + ico('prec', 22, 2.4) + (B.sel ? 'Tableau de bord' : 'Accueil') + '</button><h1>' + (B.sel ? esc((persById(B.sel) || {}).prenom || '') : 'Pointage') + '</h1><span class="pl-hbtns"><button class="pl-imp" data-act="ptlog">' + ico('histo', 18, 2) + '<span class="m-hide">Journal</span></button><button class="pl-imp" data-act="ptqr">' + ico('qr', 18, 2) + '<span class="m-hide">QR code</span></button></span></div>'
+    return '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" data-' + (B.sel ? 'ptbsel=""' : 'tab="hub"') + '>' + ico('prec', 22, 2.4) + (B.sel ? 'Tableau de bord' : 'Accueil') + '</button><h1>' + (B.sel ? esc((persById(B.sel) || {}).prenom || '') : 'Pointage') + '</h1><span class="pl-hbtns"><button class="pl-imp" data-act="ptexp">' + ico('telecharger', 18, 2) + '<span class="m-hide">Exporter</span></button><button class="pl-imp" data-act="ptlog">' + ico('histo', 18, 2) + '<span class="m-hide">Journal</span></button><button class="pl-imp" data-act="ptqr">' + ico('qr', 18, 2) + '<span class="m-hide">QR code</span></button></span></div>'
       + '<div class="hr-nav"><div class="hr-seg" role="group" aria-label="Affichage">' + [['jour', 'Jour'], ['semaine', 'Semaine'], ['bord', 'Tableau de bord']].map(function (m) { return '<button data-ptmode="' + m[0] + '" aria-pressed="' + (m[0] === 'bord') + '"' + (m[0] === 'bord' ? ' class="on"' : '') + '>' + m[1] + '</button>'; }).join('') + '</div>'
       + '<div class="hr-seg" role="group" aria-label="Période">' + [['semaine', 'Semaine'], ['mois', 'Mois'], ['depuis', 'Depuis le début']].map(function (m) { return '<button data-ptbper="' + m[0] + '" aria-pressed="' + (B.per === m[0]) + '"' + (B.per === m[0] ? ' class="on2"' : '') + '>' + m[1] + '</button>'; }).join('') + '</div>'
       + '<div class="hr-per">' + nav + '</div></div><p class="hr-sous">' + sous + (regles().pt_reliquat !== false ? ' · <b class="or">Le reliquat utilise le temps pointé</b>' : ' · le reliquat utilise le planning') + '</p></header>';
@@ -2223,7 +2223,7 @@
       + [['En avance / à l’heure', 'ok', cA[0]], ['1 à ' + tol + ' min', 'tol', cA[1]], ['Retard (+' + tol + ' min)', 'ret', cA[2]]].map(function (z) { return '<div class="pb-dist"><span>' + z[0] + '</span><span class="pb-db"><i class="' + z[1] + '" style="width:' + Math.round(z[2] / tA * 100) + '%"></i></span><b>' + z[2] + '</b></div>'; }).join('') + '</section></aside></div>';
     return h + '</div>' + modalesPt();
   }
-  function modalesPt() { return (S.ptEd ? vPtEdit() : '') + (S.ptLog ? vPtLog() : ''); }   // le QR code a maintenant sa page (Réglages › QR code)
+  function modalesPt() { return (S.ptEd ? vPtEdit() : '') + (S.ptLog ? vPtLog() : '') + (S.ptExp ? vPtExport() : ''); }   // le QR code a maintenant sa page (Réglages › QR code)
   function vPtBordDetail(x, W) {
     var p = x.p, c = +p.contrat_h || 0, auj = dIso(new Date()), tol = +regles().pt_tol || 0, som = function (l) { return l.reduce(function (a, b) { return a + b.m; }, 0); };
     var h = '<div class="hr-kpis">'
@@ -2410,6 +2410,91 @@
     if (S.qrPlein) h += '<div class="qrp-plein" role="dialog" aria-modal="true" aria-label="QR code en plein écran"><button class="qrp-pf" data-act="qrpleinx" aria-label="Fermer le plein écran">' + ico('croix', 24, 2.4) + '</button><small>Espace dentaire Val d’Yerres</small><h2>Pointage</h2><div class="qrp-pc">' + qrSvg(urlPointage(Q.jeton), 520) + '</div><p>En arrivant et en partant : tuile « Pointage » de l’appli, puis scannez</p></div>';
     if (S.ptLog) h += vPtLog();
     return h;
+  }
+  // ---------- Export mensuel du pointage (Excel : synthèse + détail jour par jour) ----------
+  function vPtExport() {
+    var E = S.ptExp, auj = dIso(new Date()), ms = [];
+    for (var i = 0; i < 12; i++) { var d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); ms.push(d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2)); }
+    var tous = (S.equipe || []).filter(function (e) { return e.actif && e.pointage; }), cs = catsPt(tous);
+    return '<div class="pl-modal" role="dialog" aria-modal="true" aria-label="Exporter le pointage"><button class="pl-fond" data-act="ptexpx" aria-label="Fermer"></button><div class="pl-fen">'
+      + '<div class="pl-ft"><span class="a-av p">' + ico('telecharger', 20) + '</span><div><b>Exporter le pointage</b><span class="mu">Fichier Excel du mois, pour la paie</span></div><button class="h-rond gris" data-act="ptexpx" aria-label="Fermer">' + ico('croix', 20, 2.4) + '</button></div>'
+      + '<label class="mu">Mois<select class="in" id="ptexpm">' + ms.map(function (m) { return '<option value="' + m + '"' + (E.mois === m ? ' selected' : '') + '>' + nomMois(m).replace(/^./, function (c) { return c.toUpperCase(); }) + (m === auj.slice(0, 7) ? ' (en cours)' : '') + '</option>'; }).join('') + '</select></label>'
+      + (cs.length > 1 ? '<label class="mu">Qui<select class="in" id="ptexpc"><option value="">Tout le monde (' + tous.length + ')</option>' + cs.map(function (c) { return '<option value="' + esc(c.k) + '"' + (E.cat === c.k ? ' selected' : '') + '>' + esc(c.n) + ' (' + c.nb + ')</option>'; }).join('') + '</select></label>' : '')
+      + '<p class="mu" style="margin:0;font-size:14px">Deux feuilles : <b>Synthèse</b> (une ligne par personne : heures prévues, réelles, écart, retards, départs avant l’heure, oublis, corrections) et <b>Détail</b> (chaque jour : horaires prévus, arrivée, sortie, pause déduite, temps effectif, remarques).</p>'
+      + '<div class="pl-btns"><button class="a-btn blanc" data-act="ptexpx">Annuler</button><button class="a-btn navy" data-act="ptexpok"' + (E.busy ? ' disabled' : '') + '>' + (E.busy ? 'Préparation…' : 'Exporter') + '</button></div></div></div>';
+  }
+  function exporterPointage() {
+    var E = S.ptExp, m = $('ptexpm').value, cz = $('ptexpc') ? $('ptexpc').value : ''; E.mois = m; E.cat = cz;
+    var x = m.split('-'), dn = new Date(+x[0], +x[1], 0).getDate(), jours = [];
+    for (var i = 1; i <= dn; i++) { var iso = m + '-' + ('0' + i).slice(-2), j = jourSem(iso); if (j >= 1 && j <= 5) jours.push(iso); }
+    var de = jours[0], a = jours[jours.length - 1];
+    E.busy = true; render();
+    Promise.all([toutLire('planning', '*', function (q) { return q.gte('jour', de).lte('jour', a); }), toutLire('pointages', '*', function (q) { return q.gte('jour', de).lte('jour', a); })]).then(function (r) {
+      r[0].forEach(function (y) { S.pl.rows[cleCase(y.equipe_id, String(y.jour).slice(0, 10), y.demi)] = y; });
+      var G = S.ptg = S.ptg || { mode: 'semaine', jour: dIso(new Date()), rows: {} }; G.rows = G.rows || {};
+      r[1].forEach(function (y) { G.rows[y.equipe_id + '|' + String(y.jour).slice(0, 10)] = y; });
+      JOUR_CACHE = {};
+      var ps = trierPt((S.equipe || []).filter(function (e) { return e.actif && e.pointage; })).filter(function (p) { return !cz || catPt(p).k === cz; });
+      return XLSX_EVY.creerMiseEnForme(feuillesPointage(m, jours, ps));
+    }).then(function (blob) {
+      telecharger(blob, nomFichier(norm('pointage-' + nomMois(m)).replace(/ /g, '-')));
+      S.ptExp = null; toast('✔ Pointage exporté'); render();
+    }).catch(function (e) { E.busy = false; toast(msgErr(e)); render(); });
+  }
+  function feuillesPointage(m, jours, ps) {
+    var R = regles(), tol = +R.pt_tol || 0, tolD = +R.pt_tol_dep || 0, auj = dIso(new Date()), titreM = nomMois(m).toUpperCase();
+    var H = { gras: true, bord: 'fin', fond: '2B3E4C', coul: 'FFFFFF', retour: true, ali: 'center' }, B = { bord: 'fin' }, HM = { bord: 'fin', fmt: '[h]:mm' }, HMS = { bord: 'fin', fmt: '[h]:mm;-[h]:mm' };
+    // Synthèse
+    var c1 = [], put1 = function (r, c, v, st) { c1.push({ r: r, c: c, v: v, st: st }); };
+    put1(0, 0, 'POINTAGE · ' + titreM + ' · Espace dentaire Val d’Yerres', { gras: true, taille: 14, ali: 'left' });
+    put1(1, 0, 'Exporté le ' + dateCourte(auj) + ' · tolérance retard ' + tol + ' min, départ ' + tolD + ' min · ' + (R.pt_reliquat !== false ? 'le reliquat utilise le temps pointé' : 'le reliquat utilise le planning'), { taille: 9, coul: '595959', ali: 'left' });
+    var tete = ['Personne', 'Catégorie', 'Contrat / sem.', 'Jours prévus', 'Jours pointés en entier', 'Heures prévues', 'Heures réelles', 'Écart', 'Retards', 'Retards (min)', 'Départs avant l’heure', 'Départs (min)', 'Oublis', 'Corrections à la main', 'Jours non comptés'];
+    tete.forEach(function (t, i) { put1(3, i, t, H); });
+    // Détail
+    var c2 = [], put2 = function (r, c, v, st) { c2.push({ r: r, c: c, v: v, st: st }); }, r2 = 2;
+    put2(0, 0, 'POINTAGE JOUR PAR JOUR · ' + titreM, { gras: true, taille: 14, ali: 'left' });
+    ['Personne', 'Date', 'Prévu au planning', 'Heures prévues', 'Arrivée', 'Sortie', 'Pause déduite', 'Temps effectif', 'Écart', 'Remarques'].forEach(function (t, i) { put2(r2, i, t, H); }); r2++;
+    var tot = { prevu: 0, reel: 0 }, r1 = 4;
+    ps.forEach(function (p, ip) {
+      var s = { jP: 0, jC: 0, prevu: 0, reel: 0, ret: 0, retM: 0, dep: 0, depM: 0, oub: 0, cor: 0, ign: 0 }, fond = ip % 2 ? { fond: 'F6F3EC' } : {};
+      jours.forEach(function (iso) {
+        var r = ptRow(p.id, iso), c = calculJour(p, iso, r), b = bornesPrevues(p, iso), rem = [];
+        if (!c.travaille && c.effMin == null && !r) return;
+        if (c.travaille) s.jP++;
+        var complet = r && r.arrivee && r.sortie;
+        if (complet) { s.jC++; if (r.ignorer) { s.ign++; rem.push('non compté (prévu gardé)'); } else { s.reel += c.effMin / 60; s.prevu += c.prevu; } }
+        else if (!c.travaille && c.effMin != null) { s.reel += c.effMin / 60; s.prevu += c.prevu; }
+        if (r && r.arrivee && b.d != null) { var dr = minLoc(r.arrivee) - b.d; if (dr > tol) { s.ret++; s.retM += dr; rem.push('retard ' + dr + ' min'); } }
+        if (r && r.sortie && b.f != null) { var dp = b.f - minLoc(r.sortie); if (dp > tolD) { s.dep++; s.depM += dp; rem.push('parti ' + dp + ' min avant'); } }
+        if (c.travaille && iso < auj && !complet) { s.oub++; rem.push(!r ? 'aucun pointage' : !r.arrivee ? 'arrivée manquante' : 'sortie manquante'); }
+        if (r && r.corrige_par) { s.cor++; rem.push('corrigé par ' + (nomProfil(r.corrige_par) || '?') + (r.note ? ' (' + r.note + ')' : '')); }
+        if (c.hEF) rem.push((c.absTxt || 'école') + ' ' + fh(c.hEF));
+        var ec = c.effMin != null ? c.effMin / 60 - c.prevu : null, st = Object.assign({}, B, fond), stH = Object.assign({}, HM, fond), stE = Object.assign({}, HMS, fond);
+        put2(r2, 0, p.type === 'interimaire' ? 'Intérimaire' : p.prenom, Object.assign({ gras: true }, st));
+        put2(r2, 1, JC[jourSem(iso)] + ' ' + dDe(iso).toLocaleDateString('fr-FR'), st);
+        put2(r2, 2, c.hor, st);
+        put2(r2, 3, c.prevu ? { h: c.prevu } : null, stH);
+        put2(r2, 4, r && r.arrivee ? { h: minLoc(r.arrivee) / 60 } : null, Object.assign({}, st, { fmt: 'h:mm' }));
+        put2(r2, 5, r && r.sortie ? { h: minLoc(r.sortie) / 60 } : null, Object.assign({}, st, { fmt: 'h:mm' }));
+        put2(r2, 6, complet && c.pauseMin ? { h: c.pauseMin / 60 } : null, stH);
+        put2(r2, 7, c.effMin != null ? { h: c.effMin / 60 } : null, stH);
+        put2(r2, 8, ec == null ? null : Math.abs(ec) < 0.01 ? '0' : relTxt(ec), Object.assign({ ali: 'center' }, st));
+        put2(r2, 9, rem.join(' · '), Object.assign({ retour: true, ali: 'left' }, st));
+        r2++;
+      });
+      var ct = +p.contrat_h || 0, st1 = Object.assign({}, B, fond);
+      [p.type === 'interimaire' ? 'Intérimaire' : p.prenom, catPt(p).n, ct ? { h: ct } : null, s.jP, s.jC, { h: s.prevu }, { h: s.reel }, Math.abs(s.reel - s.prevu) < 0.01 ? '0' : relTxt(s.reel - s.prevu), s.ret, s.retM, s.dep, s.depM, s.oub, s.cor, s.ign].forEach(function (v, i) {
+        put1(r1, i, v, Object.assign({}, st1, i === 0 ? { gras: true } : {}, i === 2 || i === 5 || i === 6 ? { fmt: '[h]:mm' } : i === 7 ? { gras: true, ali: 'center' } : {}));
+      });
+      tot.prevu += s.prevu; tot.reel += s.reel; r1++;
+    });
+    var T = { gras: true, bord: 'moyen', fond: 'EDE6CF' };
+    put1(r1, 0, 'TOTAL', T); for (var k = 1; k < tete.length; k++) put1(r1, k, k === 5 ? { h: tot.prevu } : k === 6 ? { h: tot.reel } : k === 7 ? (Math.abs(tot.reel - tot.prevu) < 0.01 ? '0' : relTxt(tot.reel - tot.prevu)) : null, Object.assign({}, T, k === 5 || k === 6 ? { fmt: '[h]:mm' } : k === 7 ? { ali: 'center' } : {}));
+    put1(r1 + 2, 0, 'Heures réelles = journées pointées en entier (sortie − arrivée − coupure de midi prévue) + école et formation. Écart = réelles − prévues sur ces mêmes journées.', { taille: 9, coul: '595959', ali: 'left' });
+    return [
+      { nom: 'Synthèse ' + MOIS_XL[+m.slice(5) - 1], cases: c1, fusions: ['A1:O1', 'A2:O2'], larg: [16, 16, 11, 9, 11, 11, 11, 10, 8, 9, 11, 10, 8, 11, 10], haut: { 0: 24, 3: 32 }, figer: true, paysage: true },
+      { nom: 'Détail ' + MOIS_XL[+m.slice(5) - 1], cases: c2, fusions: ['A1:J1'], larg: [14, 13, 22, 10, 9, 9, 10, 11, 9, 48], haut: { 0: 24, 2: 30 }, figer: true, paysage: true }
+    ];
   }
   function telechargerPNG() {
     var Q = S.ptQR; if (!Q || !Q.jeton) return;
@@ -4430,6 +4515,9 @@
     if (d.act === 'simraz') { S.sim = null; try { sessionStorage.removeItem('evy-sim'); } catch (e) {} chargerMonPointage(); render(); return; }
     if (d.act === 'simscan') { var jt0 = ''; try { jt0 = localStorage.getItem('evy-jeton-test') || ''; } catch (e) {} if (jt0) { JETON_QR = jt0; pointerQR(); } return; }
     if (d.act === 'simgestion') return basculerSimulation();
+    if (d.act === 'ptexp') { var mE = S.ptg && S.ptg.mode === 'bord' && S.ptg.bord && S.ptg.bord.per === 'mois' ? S.ptg.bord.mois : (S.ptg ? addJ(lundiDe(S.ptg.jour), 2).slice(0, 7) : dIso(new Date()).slice(0, 7)); S.ptExp = { mois: mE, cat: S.ptg && S.ptg.cat || '' }; render(); return; }
+    if (d.act === 'ptexpx') { S.ptExp = null; render(); return; }
+    if (d.act === 'ptexpok' && S.ptExp) return exporterPointage();
     if (d.act === 'obenvoi') return envoyerOubli();
     if (d.obsens) { S.oub = S.oub || {}; S.oub.jour = $('objour').value; S.oub.heure = $('obheure').value; S.oub.mot = $('obmot').value; S.oub.sens = d.obsens; render(); return; }
     if (d.obannule) { sb.rpc('annuler_oubli', { p_id: +d.obannule }).then(function (r) { if (r.error) throw r.error; toast('Signalement annulé'); chargerMesOublis(); }).catch(function (e) { toast(msgErr(e)); }); return; }
