@@ -1852,7 +1852,7 @@
   // Case enregistrée (table planning) sinon case calculée : jour férié > congés acceptés > semaine type.
   var ABS = ['CP', 'ARRET', 'ECOLE', 'FORMATION', 'FERIE'];
   var ABS_TXT = { CP: 'Congés', ARRET: 'Maladie', ECOLE: 'École', FORMATION: 'Formation', FERIE: 'Férié' };
-  var REGLES_DEF = { CP: 9, ARRET: 9, ECOLE: 7, FORMATION: 9, FERIE: 9, ferie: 'habituel', depuis: '2026-11-02', pt_reliquat: true, pt_tol: 5, pt_retards: 3, pt_ecart: 2, pt_tol_dep: 5, pt_departs: 3, cp_droits: 25, cp_debut: '06-01', cp_mode: 'ouvres' };
+  var REGLES_DEF = { CP: 9, ARRET: 9, ECOLE: 7, FORMATION: 9, FERIE: 9, ferie: 'habituel', depuis: '2026-11-30', pt_reliquat: true, pt_tol: 5, pt_retards: 3, pt_ecart: 2, pt_tol_dep: 5, pt_departs: 3, cp_droits: 25, cp_debut: '06-01', cp_mode: 'ouvres' };
   function regles() { return Object.assign({}, REGLES_DEF, S.regles || {}); }
   function addJ(iso, n) { var d = dDe(iso); d.setDate(d.getDate() + n); return dIso(d); }
   function lundiDe(iso) { var d = dDe(iso), j = d.getDay() || 7; d.setDate(d.getDate() - j + 1); return dIso(d); }
@@ -1992,7 +1992,7 @@
   // ---------- Tableau de bord des heures ----------
   // Période : une semaine, un mois (les semaines dont le jeudi tombe dans le mois) ou depuis la date de départ du reliquat.
   function hrSemaines(H) {
-    var dep = lundiDe(regles().depuis || '2026-11-02'), auj = lundiDe(dIso(new Date())), l = [];
+    var dep = lundiDe(regles().depuis || '2026-11-30'), auj = lundiDe(dIso(new Date())), l = [];
     if (H.mode === 'semaine') return [H.lundi];
     if (H.mode === 'depuis') { for (var L = dep; L <= auj && l.length < 260; L = addJ(L, 7)) l.push(L); return l.length ? l : [auj]; }
     var x = H.mois.split('-'), d1 = H.mois + '-01', dn = dIso(new Date(+x[0], +x[1], 0));
@@ -2031,7 +2031,7 @@
     var W = hrSemaines(H), der = W[W.length - 1], titre, sous;
     if (H.mode === 'semaine') { titre = 'Semaine du ' + periode(H.lundi, addJ(H.lundi, 4)).replace(/^du /, ''); sous = ''; }
     else if (H.mode === 'mois') { titre = nomMois(H.mois).replace(/^./, function (c) { return c.toUpperCase(); }); sous = W.length + ' semaine' + (W.length > 1 ? 's' : '') + ' · ' + periode(W[0], addJ(der, 4)); }
-    else { titre = 'Depuis le ' + dateCourte(regles().depuis || '2026-11-02'); sous = W.length + ' semaine' + (W.length > 1 ? 's' : '') + ' · jusqu’à cette semaine'; }
+    else { titre = 'Depuis le ' + dateCourte(regles().depuis || '2026-11-30'); sous = W.length + ' semaine' + (W.length > 1 ? 's' : '') + ' · jusqu’à cette semaine'; }
     var nav = H.mode === 'depuis' ? '<span class="hr-titre"><b>' + titre + '</b></span>'
       : '<button class="h-rond" data-hrnav="-1" aria-label="Précédent">' + ico('prec', 20, 2.4) + '</button><span class="hr-titre"><b>' + titre + '</b></span><button class="h-rond" data-hrnav="1" aria-label="Suivant">' + ico('suiv', 20, 2.4) + '</button>';
     var h = '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" data-' + (H.sel ? 'hrsel=""' : 'tab="planning"') + '>' + ico('prec', 22, 2.4) + (H.sel ? 'Heures' : 'Planning') + '</button><h1>' + (H.sel ? esc((persById(H.sel) || {}).prenom || 'Heures') : 'Heures') + '</h1><span class="hr-vide"></span></div>'
@@ -2063,7 +2063,7 @@
         + '<span class="hr-rel"><span class="hr-barre"><i class="hr-zero"></i>' + (r.rel != null && Math.abs(r.rel) >= 0.01 ? '<i class="hr-v ' + cl + '" style="' + (r.rel > 0 ? 'left' : 'right') + ':50%;width:' + pct.toFixed(1) + '%"></i>' : '') + '</span><small class="' + cl + '">' + (r.rel == null ? 'pas de contrat' : Math.abs(r.rel) < 0.01 ? 'à jour' : relTxt(r.rel) + (r.rel > 0 ? ' · à alléger' : ' · à rattraper')) + '</small></span>'
         + '<span class="hr-mini" role="img" aria-label="' + esc(wsem.map(fh).join(', ')) + '">' + (r.c ? '<i class="hr-ligne"></i>' : '') + wsem.map(function (v) { var ht = Math.max(3, Math.round(v / (r.c || 39) * 30)); return '<i class="' + (!v ? 'z' : !r.c || Math.abs(v - r.c) < 0.01 ? '' : v > r.c ? 'plus' : 'moins') + '" style="height:' + Math.min(40, ht) + 'px"></i>'; }).join('') + '</span></button>';
     });
-    h += '</div></div><p class="a-aide">Ligne pointillée : le contrat de la semaine. Reliquat à gauche : heures à rattraper ; à droite : heures à alléger (cumulé depuis le ' + dateCourte(regles().depuis || '2026-11-02') + ', Réglages › Heures).</p></section>';
+    h += '</div></div><p class="a-aide">Ligne pointillée : le contrat de la semaine. Reliquat à gauche : heures à rattraper ; à droite : heures à alléger (cumulé depuis le ' + dateCourte(regles().depuis || '2026-11-30') + ', Réglages › Heures).</p></section>';
     // À surveiller + absences
     var al = R.filter(function (r) { return r.rel != null && Math.abs(r.rel) >= 0.25; }).sort(function (a, b) { return Math.abs(b.rel) - Math.abs(a.rel); });
     var seulsN = 0, parD = {};
@@ -2430,7 +2430,7 @@
   function vPtBord() {
     var G = S.ptg, B = G.bord = G.bord || { per: 'mois', mois: addJ(lundiDe(dIso(new Date())), 3).slice(0, 7), lundi: lundiDe(dIso(new Date())), sel: null };
     var W = hrSemaines({ mode: B.per, mois: B.mois, lundi: B.lundi }), der = W[W.length - 1];
-    var titre = B.per === 'semaine' ? 'Semaine du ' + periode(B.lundi, addJ(B.lundi, 4)).replace(/^du /, '') : B.per === 'mois' ? nomMois(B.mois).replace(/^./, function (c) { return c.toUpperCase(); }) : 'Depuis le ' + dateCourte(regles().depuis || '2026-11-02');
+    var titre = B.per === 'semaine' ? 'Semaine du ' + periode(B.lundi, addJ(B.lundi, 4)).replace(/^du /, '') : B.per === 'mois' ? nomMois(B.mois).replace(/^./, function (c) { return c.toUpperCase(); }) : 'Depuis le ' + dateCourte(regles().depuis || '2026-11-30');
     var tous = (S.equipe || []).filter(function (e) { return e.actif && e.pointage; }), ps = trierPt(tous);
     var sous = W.length + ' semaine' + (W.length > 1 ? 's' : '') + ' · ' + periode(W[0], addJ(der, 4)) + ' · ' + ps.length + ' ' + pl(ps.length, 'personne') + ' soumise' + (ps.length > 1 ? 's' : '') + ' au pointage';
     var auj0 = dIso(new Date()), estCourant = B.per === 'semaine' ? B.lundi === lundiDe(auj0) : B.per === 'mois' ? B.mois === addJ(lundiDe(auj0), 3).slice(0, 7) : true;
@@ -3127,7 +3127,7 @@
   }
   function moisPropose() {   // de novembre 2026 (départ du planning) à 6 mois après aujourd'hui
     var l = [], t = new Date(), d = new Date(2026, 10, 1), fin = new Date(t.getFullYear(), t.getMonth() + 6, 1);
-    var dep = dDe(regles().depuis || '2026-11-02'); if (dep < d) d = new Date(dep.getFullYear(), dep.getMonth(), 1);
+    var dep = dDe(regles().depuis || '2026-11-30'); if (dep < d) d = new Date(dep.getFullYear(), dep.getMonth(), 1);
     for (; d <= fin && l.length < 36; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) l.push(d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2));
     return l;
   }
