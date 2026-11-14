@@ -642,7 +642,7 @@
 
   // ---------- Accueil de la référente et de la responsable (2 tuiles), Réglages, Équipe, Dentistes ----------
   // Écrans de la maquette « Accueil référente et responsable ». Chaque écran a son en-tête bleu.
-  var HUB = ['hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes'];
+  var HUB = ['hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui'];
   var JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'], JC = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
   // Affectations possibles d'une demi-journée (en plus des dentistes)
   // Postes (modifiables dans Réglages › Postes) ; École et « Ne travaille pas » sont fixes
@@ -723,8 +723,8 @@
         it('Ce que voient les assistantes', 'Leur planning' + (S.visible && S.visible.planning ? ' (affiché)' : ' (coupé)') + ', leur reliquat', 'data-tab="pvisible"')])
       + bloc('Q', 'b3', 'Pointage', 'Arrivées, sorties, temps effectif', [
         it('QR code', 'Afficher, imprimer, régénérer', 'data-act="rgqr"'),
-        it('Calcul et alertes', (R.pt_reliquat !== false ? 'Reliquat sur le temps pointé' : 'Reliquat sur le planning') + ' · tolérance ' + R.pt_tol + ' min', 'data-tab="pregles"'),
-        it('Qui pointe', np + ' ' + pl(np, 'personne') + ' soumise' + (np > 1 ? 's' : '') + ' · case dans chaque fiche', 'data-tab="pequipe"')])
+        it('Calcul et alertes', (R.pt_reliquat !== false ? 'Reliquat sur le temps pointé' : 'Reliquat sur le planning') + ' · retard ' + R.pt_tol + ' min · départ ' + R.pt_tol_dep + ' min', 'data-tab="pregles"'),
+        it('Qui pointe', np + ' ' + pl(np, 'personne') + ' soumise' + (np > 1 ? 's' : '') + ', avec ou sans compte', 'data-tab="pqui"')])
       + bloc('C', 'b4', 'Congés', 'Demandes et absences', [
         it('Demandes et planning des congés', 'À valider, congés du mois', 'data-tab="pconges"')])
       + bloc('S', 'b5', 'Gestion de stock', 'Articles, commandes, inventaire', [
@@ -797,6 +797,33 @@
         + '<label class="a-li"' + (V.planning ? '' : ' style="opacity:.6"') + '><span class="a-it-n"><b>Leur reliquat d’heures</b><span>possible seulement si le planning est affiché</span></span><input type="checkbox" role="switch" class="h-sw" data-vis="reliquat"' + (V.reliquat ? ' checked' : '') + (V.planning ? '' : ' disabled') + ' aria-label="Les assistantes voient leur reliquat"><span class="pill' + (V.reliquat ? ' ok' : '') + '">' + (V.reliquat ? 'Activé' : 'Coupé') + '</span></label>'; })()
       + '</div><p class="a-aide">Tant que c’est coupé, le planning n’est visible que par la référente et la responsable. Les demandes de congés restent toujours possibles pour les assistantes.</p>';
     return h + '</div>';
+  }
+
+  // ---------- Réglages › Qui pointe ----------
+  function vPQui() {
+    var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'Qui pointe', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    if (!pointagePret()) return h + '<div class="ban warn">La mise à jour 016 de la base (pointage) n’est pas encore faite.</div></div>';
+    var ps = (S.equipe || []).filter(function (p) { return p.actif; }).sort(function (a, b) { return (a.ordre - b.ordre) || (a.id - b.id); });
+    var oui = ps.filter(function (p) { return p.pointage; }), non = ps.filter(function (p) { return !p.pointage; });
+    var sansC = oui.filter(function (p) { return !p.profil_id; });
+    var ligne = function (p) {
+      var prof = p.profil_id ? (S.profils || []).filter(function (x) { return x.id === p.profil_id; })[0] : null;
+      var compte = p.profil_id ? '<span class="qp-c ok">' + ico('ok', 14, 2.8) + (prof && prof.identifiant ? 'compte « ' + esc(prof.identifiant) + ' »' : 'compte relié') + '</span>'
+        : '<span class="qp-c ' + (p.pointage ? 'ko' : 'mu') + '">' + (p.pointage ? 'Pas de compte : ne peut pas scanner' : 'pas de compte') + '</span>';
+      return '<div class="qp-l' + (p.pointage ? ' on' : '') + '"><span class="a-av p">' + initiale(p.prenom) + '</span><span class="qp-n"><b>' + esc(p.prenom) + '</b><span>' + esc(nomType(p)) + '</span>' + compte + '</span>'
+        + '<button class="btn l sm" data-pf="' + p.id + '">Fiche</button><label class="qp-sw"><input type="checkbox" role="switch" class="h-sw" data-qp="' + p.id + '"' + (p.pointage ? ' checked' : '') + ' aria-label="' + esc(p.prenom) + ' soumis au pointage"><span>' + (p.pointage ? 'Pointe' : 'Non') + '</span></label></div>';
+    };
+    h += '<p class="a-aide" style="margin-top:0">Les personnes activées scannent le QR code en arrivant et en partant, avec leur compte sur leur téléphone. L’interrupteur s’enregistre tout de suite.</p>'
+      + '<div class="qp-kpis"><div><b>' + oui.length + '</b><span>pointe' + (oui.length > 1 ? 'nt' : '') + '</span></div><div><b>' + non.length + '</b><span>ne pointe' + (non.length > 1 ? 'nt' : '') + ' pas</span></div><div class="' + (sansC.length ? 'ko' : 'ok') + '"><b>' + sansC.length + '</b><span>sans compte parmi celles qui pointent</span></div></div>';
+    if (sansC.length) h += '<div class="ban warn">' + sansC.map(function (p) { return esc(p.prenom); }).join(', ') + ' ' + (sansC.length > 1 ? 'doivent pointer mais n’ont' : 'doit pointer mais n’a') + ' pas de compte de connexion : à créer dans la fiche, rubrique « Compte et pointage ».</div>';
+    h += '<h2 class="a-jour">Pointent (' + oui.length + ')</h2><div class="a-liste qp">' + (oui.length ? oui.map(ligne).join('') : '<p class="a-vide">Personne pour l’instant.</p>') + '</div>';
+    h += '<h2 class="a-jour">Ne pointent pas (' + non.length + ')</h2><div class="a-liste qp">' + (non.length ? non.map(ligne).join('') : '<p class="a-vide">Tout le monde pointe.</p>') + '</div>';
+    return h + '<p class="a-aide">Les anciennes ne sont pas listées. La référente et la responsable ne pointent pas.</p></div>';
+  }
+  function basculerPointage(id, v) {
+    var p = persById(id); if (!p) return; p.pointage = v; render();
+    sb.from('equipe').update({ pointage: v }).eq('id', p.id).then(function (r) { if (r.error) throw r.error; toast('✔ ' + p.prenom + (v ? ' pointe' : ' ne pointe plus')); })
+      .catch(function (e) { p.pointage = !v; render(); toast(msgErr(e)); });
   }
 
   // --- L'équipe ---
@@ -1174,7 +1201,7 @@
       + '<div class="a-corps"><div class="card pc-msg">' + ico('agenda', 34) + '<b>À ouvrir sur ordinateur</b><p class="mu">Le planning et le tableau des heures se gèrent sur un écran de PC. Sur téléphone, vous pouvez gérer les congés et les réglages.</p><button class="btn" data-tab="hub">Retour à l’accueil</button></div></div>';
   }
   function renderH() {
-    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPVisible, ppostes: vPPostes, ptypes: vPTypes }[S.tab] || vHub;
+    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPVisible, ppostes: vPPostes, ptypes: vPTypes, pqui: vPQui }[S.tab] || vHub;
     if ((S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage') && telephone()) ecr = vSurPC;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
     h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || (S.tab === 'pconges' && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
@@ -1386,7 +1413,7 @@
   // Case enregistrée (table planning) sinon case calculée : jour férié > congés acceptés > semaine type.
   var ABS = ['CP', 'ARRET', 'ECOLE', 'FORMATION', 'FERIE'];
   var ABS_TXT = { CP: 'Congés', ARRET: 'Maladie', ECOLE: 'École', FORMATION: 'Formation', FERIE: 'Férié' };
-  var REGLES_DEF = { CP: 9, ARRET: 9, ECOLE: 7, FORMATION: 9, FERIE: 9, ferie: 'habituel', depuis: '2026-11-02', pt_reliquat: true, pt_tol: 5, pt_retards: 3, pt_ecart: 2 };
+  var REGLES_DEF = { CP: 9, ARRET: 9, ECOLE: 7, FORMATION: 9, FERIE: 9, ferie: 'habituel', depuis: '2026-11-02', pt_reliquat: true, pt_tol: 5, pt_retards: 3, pt_ecart: 2, pt_tol_dep: 5, pt_departs: 3 };
   function regles() { return Object.assign({}, REGLES_DEF, S.regles || {}); }
   function addJ(iso, n) { var d = dDe(iso); d.setDate(d.getDate() + n); return dIso(d); }
   function lundiDe(iso) { var d = dDe(iso), j = d.getDay() || 7; d.setDate(d.getDate() - j + 1); return dIso(d); }
@@ -1829,7 +1856,7 @@
     return { d: d, f: f };
   }
   function statsPt(p, W) {
-    var R = regles(), tol = +R.pt_tol || 0, auj = dIso(new Date()), o = { p: p, jT: 0, jC: 0, sortieM: [], arriveeM: [], aucun: [], ret: [], dep: [], arr: [], reel: 0, prevu: 0, sem: [], ign: 0 };
+    var R = regles(), tol = +R.pt_tol || 0, tolD = +R.pt_tol_dep || 0, auj = dIso(new Date()), o = { p: p, jT: 0, jC: 0, sortieM: [], arriveeM: [], aucun: [], ret: [], dep: [], arr: [], reel: 0, prevu: 0, sem: [], ign: 0 };
     W.forEach(function (L) {
       var er = 0, ep = 0;
       for (var k = 0; k < 5; k++) {
@@ -1845,7 +1872,7 @@
         else if (r && r.sortie) o.arriveeM.push(iso);
         else if (iso < auj) o.aucun.push(iso);
         if (r && r.arrivee && b.d != null) { var ma = minLoc(r.arrivee), dr = ma - b.d; o.arr.push(dr); if (dr > tol) o.ret.push({ iso: iso, m: dr }); }
-        if (r && r.sortie && b.f != null) { var df = b.f - minLoc(r.sortie); if (df > tol) o.dep.push({ iso: iso, m: df }); }
+        if (r && r.sortie && b.f != null) { var df = b.f - minLoc(r.sortie); if (df > tolD) o.dep.push({ iso: iso, m: df }); }
       }
       o.sem.push({ L: L, e: er - ep, ok: ep > 0 });
     });
@@ -1902,7 +1929,7 @@
       + '<div class="hr-kpi"><span class="hr-k">Pointages complets</span><b class="' + (pc >= 95 ? 'ok' : 'plus') + '">' + (jT ? pc + ' %' : '—') + '</b><span>' + (jT ? jC + ' ' + pl(jC, 'journée') + ' sur ' + jT + ' travaillée' + (jT > 1 ? 's' : '') : 'aucune journée travaillée pointable') + '</span></div>'
       + '<div class="hr-kpi"><span class="hr-k">Oublis</span><b class="' + (oub ? 'ko' : 'ok') + '">' + oub + '</b><span>' + (dO || 'aucun oubli') + '</span></div>'
       + '<div class="hr-kpi"><span class="hr-k">Retards</span><b class="' + (ret.length ? 'plus' : 'ok') + '">' + ret.length + '</b><span>' + (ret.length ? fh(som(ret) / 60) + ' cumulées · ' : '') + 'tolérance ' + tol + ' min</span></div>'
-      + '<div class="hr-kpi"><span class="hr-k">Départs avant l’heure</span><b class="' + (dep.length ? 'plus' : 'ok') + '">' + dep.length + '</b><span>' + (dep.length ? fh(som(dep) / 60) + ' cumulées' : 'aucun') + '</span></div>'
+      + '<div class="hr-kpi"><span class="hr-k">Départs avant l’heure</span><b class="' + (dep.length ? 'plus' : 'ok') + '">' + dep.length + '</b><span>' + (dep.length ? fh(som(dep) / 60) + ' cumulées · ' : '') + 'tolérance ' + (+R.pt_tol_dep || 0) + ' min</span></div>'
       + '<div class="hr-kpi"><span class="hr-k">Réel / prévu · équipe</span><b>' + fh(reel) + '</b><span>pour ' + fh(prevu) + ' prévues · <b class="' + hrCouleur(reel - prevu) + '">' + (Math.abs(reel - prevu) < 0.01 ? '0 h' : relTxt(reel - prevu)) + '</b></span></div></section>';
     // tableau par personne
     h += '<div class="hr-cols"><section class="hr-carte hr-tab"><div class="hr-ct"><h2>Par personne</h2><span class="mu">Touchez une ligne pour le détail jour par jour</span></div><div class="hr-scroll"><div class="pb-grille"><div class="pb-l hr-tete"><span>Personne</span><span>Jours pointés</span><span>Oublis</span><span>Retards</span><span>Départs tôt</span><span>Arrivée moy.</span><span>Réel</span><span>Prévu</span><span>Écart</span></div>';
@@ -1910,7 +1937,7 @@
       h += '<button class="pb-l" data-ptbsel="' + x.p.id + '"><span class="hr-p"><span class="a-av">' + esc((x.p.prenom || '?')[0]) + '</span><b>' + esc(x.p.type === 'interimaire' ? 'Intérimaire' : x.p.prenom) + '</b></span>'
         + '<span>' + x.jC + ' / ' + x.jT + (x.ign ? '<small>' + x.ign + ' non compté' + (x.ign > 1 ? 's' : '') + '</small>' : '') + '</span><b class="' + (x.oublis ? 'ko' : 'mu') + '">' + x.oublis + '</b>'
         + '<span><b class="' + (x.ret.length >= (+R.pt_retards || 3) ? 'plus' : '') + '">' + x.ret.length + '</b><small>' + (x.ret.length ? som(x.ret) + ' min' : '—') + '</small></span>'
-        + '<b class="' + (x.dep.length ? 'plus' : 'mu') + '">' + x.dep.length + '</b><span>' + (x.arrMoy != null ? fMin(x.arrMoy).replace('h', ' h ') : '—') + '</span>'
+        + '<span><b class="' + (x.dep.length >= (+R.pt_departs || 3) ? 'plus' : x.dep.length ? '' : 'mu') + '">' + x.dep.length + '</b><small>' + (x.dep.length ? som(x.dep) + ' min' : '—') + '</small></span><span>' + (x.arrMoy != null ? fMin(x.arrMoy).replace('h', ' h ') : '—') + '</span>'
         + '<b>' + fh(x.reel) + '</b><span>' + fh(x.prevu) + '</span><b class="' + hrCouleur(x.prevu ? x.ecart : null) + '">' + (!x.prevu ? '—' : Math.abs(x.ecart) < 0.01 ? '0 h' : relTxt(x.ecart)) + '</b></button>';
     });
     h += '</div></div>';
@@ -1924,12 +1951,13 @@
     }).join('') + '</div><p class="mu" style="margin:0;font-size:13.5px">Au-dessus du trait : plus d’heures que prévu (orange) ; en dessous : moins (bleu). Gris : pas de journée pointée.</p></div></section>';
     // à surveiller : regroupé par sujet, du plus urgent au moins urgent
     var jb = G.jb, sq = function (d) { return JC[jourSem(d)].toLowerCase() + '. ' + dDe(d).getDate() + '/' + (dDe(d).getMonth() + 1); };
-    var grp = { oublis: [], retards: [], ecarts: [], refus: [], corr: [] };
+    var grp = { oublis: [], retards: [], departs: [], ecarts: [], refus: [], corr: [] };
     X.forEach(function (x) {
       x.sortieM.forEach(function (d) { grp.oublis.push({ q: x.p.prenom, t: 'sortie manquante', w: sq(d), a: 'data-pted="' + x.p.id + '|' + d + '"', k: d }); });
       x.arriveeM.forEach(function (d) { grp.oublis.push({ q: x.p.prenom, t: 'arrivée manquante', w: sq(d), a: 'data-pted="' + x.p.id + '|' + d + '"', k: d }); });
       x.aucun.forEach(function (d) { grp.oublis.push({ q: x.p.prenom, t: 'aucun pointage', w: sq(d), a: 'data-pted="' + x.p.id + '|' + d + '"', k: d }); });
       if (x.ret.length >= (+R.pt_retards || 3)) grp.retards.push({ q: x.p.prenom, t: x.ret.length + ' retards · ' + som(x.ret) + ' min', w: '', a: 'data-ptbsel="' + x.p.id + '"' });
+      if (x.dep.length >= (+R.pt_departs || 3)) grp.departs.push({ q: x.p.prenom, t: x.dep.length + ' départs avant l’heure · ' + som(x.dep) + ' min', w: '', a: 'data-ptbsel="' + x.p.id + '"' });
       x.sem.forEach(function (z) { if (z.ok && Math.abs(z.e) > (+R.pt_ecart || 2)) grp.ecarts.push({ q: x.p.prenom, t: relTxt(z.e) + (z.e > 0 ? ' en plus' : ' en moins'), w: 'sem. ' + dDe(z.L).getDate() + '/' + (dDe(z.L).getMonth() + 1), a: 'data-ptbsel="' + x.p.id + '"' }); });
     });
     grp.oublis.sort(function (a, b) { return a.k < b.k ? 1 : -1; });
@@ -1938,8 +1966,8 @@
       if (/^(QR_PERIME|SANS_FICHE|NON_SOUMIS|SIMULATION_COUPEE)$/.test(e.evenement)) grp.refus.push({ q: q, t: (EVT_PT[e.evenement] || e.evenement).toLowerCase(), w: w, a: 'data-act="ptlog"' });
       else if (e.evenement === 'CORRECTION' || e.evenement === 'EFFACEMENT') grp.corr.push({ q: q, t: e.evenement === 'CORRECTION' ? 'correction' : 'effacement', w: w, a: 'data-act="ptlog"' });
     });
-    var SV = G.surv = G.surv || { ouvert: { oublis: true, retards: true }, tout: {} };
-    var defs = [['oublis', 'Oublis à compléter', 'ko'], ['retards', 'Retards répétés', 'plus'], ['ecarts', 'Écarts de semaine', 'moins'], ['refus', 'Scans refusés', 'neutre'], ['corr', 'Corrections à la main', 'neutre']];
+    var SV = G.surv = G.surv || { ouvert: { oublis: true, retards: true, departs: true }, tout: {} };
+    var defs = [['oublis', 'Oublis à compléter', 'ko'], ['retards', 'Retards répétés', 'plus'], ['departs', 'Départs anticipés répétés', 'plus'], ['ecarts', 'Écarts de semaine', 'moins'], ['refus', 'Scans refusés', 'neutre'], ['corr', 'Corrections à la main', 'neutre']];
     var nTot = defs.reduce(function (a, d) { return a + grp[d[0]].length; }, 0);
     h += '<aside class="hr-cote"><section class="hr-carte sv"><div class="sv-t"><h2>À surveiller</h2><span class="mu">' + (nTot ? nTot + ' ' + pl(nTot, 'point') : 'rien à signaler') + '</span></div>'
       + defs.filter(function (d) { return grp[d[0]].length; }).map(function (d) {
@@ -1960,6 +1988,7 @@
       + '<div class="hr-kpi ' + hrCouleur(x.prevu ? x.ecart : null) + '-bg"><span class="hr-k">Écart de la période</span><b class="' + hrCouleur(x.prevu ? x.ecart : null) + '">' + (!x.prevu ? '—' : Math.abs(x.ecart) < 0.01 ? '0 h' : relTxt(x.ecart)) + '</b><span>' + fh(x.reel) + ' réelles · ' + fh(x.prevu) + ' prévues</span></div>'
       + '<div class="hr-kpi"><span class="hr-k">Contrat</span><b>' + (c ? fh(c * W.length) : '—') + '</b><span>' + (c ? fh(c) + ' × ' + W.length + ' semaine' + (W.length > 1 ? 's' : '') : 'pas de contrat') + '</span></div>'
       + '<div class="hr-kpi"><span class="hr-k">Retards</span><b class="' + (x.ret.length ? 'plus' : 'ok') + '">' + x.ret.length + (x.ret.length ? ' · ' + som(x.ret) + ' min' : '') + '</b><span>' + (x.arrMoy != null ? 'arrivée moyenne ' + fMin(x.arrMoy).replace('h', ' h ') : 'aucune arrivée pointée') + '</span></div>'
+      + '<div class="hr-kpi"><span class="hr-k">Départs avant l’heure</span><b class="' + (x.dep.length ? 'plus' : 'ok') + '">' + x.dep.length + (x.dep.length ? ' · ' + som(x.dep) + ' min' : '') + '</b><span>tolérance ' + (+regles().pt_tol_dep || 0) + ' min</span></div>'
       + '<div class="hr-kpi"><span class="hr-k">Oublis</span><b class="' + (x.oublis ? 'ko' : 'ok') + '">' + x.oublis + '</b><span>' + (x.oublis ? [x.sortieM.length ? x.sortieM.length + ' sortie(s)' : '', x.arriveeM.length ? x.arriveeM.length + ' arrivée(s)' : '', x.aucun.length ? x.aucun.length + ' jour(s) sans pointage' : ''].filter(Boolean).join(' · ') : 'aucun') + '</span></div></div>';
     // jour par jour
     h += '<section class="hr-carte hr-tab"><div class="hr-ct"><h2>Jour par jour</h2><span class="mu">Touchez un jour pour corriger</span></div><div class="hr-scroll"><div class="pd-grille"><div class="pd-l hr-tete"><span>Jour</span><span>Prévu</span><span>Arrivée</span><span>Sortie</span><span>Réel</span><span>Prévu</span><span>Écart</span><span>Remarques</span></div>';
@@ -1969,7 +1998,7 @@
         var cj = calculJour(p, iso, r), b = bornesPrevues(p, iso), tg = [];
         if (!cj.travaille && cj.effMin == null && !r) continue;
         if (r && r.arrivee && b.d != null && minLoc(r.arrivee) - b.d > tol) tg.push(['Retard ' + (minLoc(r.arrivee) - b.d) + ' min', 'ret']);
-        if (r && r.sortie && b.f != null && b.f - minLoc(r.sortie) > tol) tg.push(['Départ ' + (b.f - minLoc(r.sortie)) + ' min avant', 'ret']);
+        if (r && r.sortie && b.f != null && b.f - minLoc(r.sortie) > (+regles().pt_tol_dep || 0)) tg.push(['Départ ' + (b.f - minLoc(r.sortie)) + ' min avant', 'ret']);
         if (r && r.arrivee && !r.sortie && iso < auj) tg.push(['Sortie manquante', 'ko']);
         if (r && r.sortie && !r.arrivee) tg.push(['Arrivée manquante', 'ko']);
         if (!r && cj.travaille && iso < auj) tg.push(['Aucun pointage', 'ko']);
@@ -1996,7 +2025,7 @@
   // Heure d'arrivée ou de sortie, avec « +12 min de retard » / « parti 20 min avant » en couleur
   function celHeure(ts, prevu, sens) {
     if (!ts) return '<b class="pt-h0">—</b>';
-    var m = minLoc(ts), tol = +regles().pt_tol || 0, d = prevu == null ? null : sens === 'a' ? m - prevu : prevu - m, mauvais = d != null && d > tol;
+    var m = minLoc(ts), tol = +(sens === 'a' ? regles().pt_tol : regles().pt_tol_dep) || 0, d = prevu == null ? null : sens === 'a' ? m - prevu : prevu - m, mauvais = d != null && d > tol;
     var lib = d == null || Math.abs(d) < 1 ? '' : sens === 'a' ? (d > 0 ? 'retard ' + fMinCourt(d) : 'avance ' + fMinCourt(-d)) : (d > 0 ? 'parti ' + fMinCourt(d) + ' avant' : 'parti ' + fMinCourt(-d) + ' après');
     return '<span class="pt-hc' + (mauvais ? ' mal' : '') + '"><b>' + (mauvais ? '<i aria-hidden="true">' + (sens === 'a' ? '▲' : '▼') + '</i>' : '') + hTs(ts) + '</b>' + (lib ? '<small>' + lib + '</small>' : '') + '</span>';
   }
@@ -2024,7 +2053,7 @@
       for (var k = 0; k < 5; k++) {
         var iso = addJ(L, k), r = S.ptg.rows[p.id + '|' + iso], c = calculJour(p, iso, r), et = etatPointage(p, iso, r, c);
         tp += c.prevu; if (c.effMin != null) { te += c.effMin; tpp += c.prevu; } else if (c.travaille && iso < auj) manq++;
-        var bs = bornesPrevues(p, iso), tl = +regles().pt_tol || 0, rt = r && r.arrivee && bs.d != null && minLoc(r.arrivee) - bs.d > tl, dp = r && r.sortie && bs.f != null && bs.f - minLoc(r.sortie) > tl;
+        var bs = bornesPrevues(p, iso), tl = +regles().pt_tol || 0, rt = r && r.arrivee && bs.d != null && minLoc(r.arrivee) - bs.d > tl, dp = r && r.sortie && bs.f != null && bs.f - minLoc(r.sortie) > (+regles().pt_tol_dep || 0);
         h += '<button class="pt-sc' + (rt || dp ? ' mal' : '') + '" data-pted="' + p.id + '|' + iso + '">' + (c.effMin != null ? '<b>' + fh(c.effMin / 60) + '</b><small>' + (r && r.arrivee && r.sortie ? hTs(r.arrivee).replace(' h ', 'h') + '–' + hTs(r.sortie).replace(' h ', 'h') + (c.hEF ? ' + ' + c.absTxt.toLowerCase() : '') : esc(c.absTxt || '')) + '</small>' + (rt || dp ? '<span class="pt-mal">' + (rt ? '▲ retard ' + fMinCourt(minLoc(r.arrivee) - bs.d) : '') + (rt && dp ? ' · ' : '') + (dp ? '▼ parti ' + fMinCourt(bs.f - minLoc(r.sortie)) + ' avant' : '') + '</span>' : '') : et ? '<span class="pt-et ' + et.k + '">' + et.t + '</span>' : '<small class="mu">' + esc(c.absTxt || (c.travaille ? '—' : 'repos')) + '</small>') + '</button>';
       }
       var ec = te / 60 - tpp;
@@ -2512,8 +2541,13 @@
     h += '<h2 class="a-jour">Reliquat</h2><div class="a-liste"><label class="a-li"><span class="a-it-n"><b>Compté à partir du</b><span>les semaines d’avant ne comptent pas</span></span><input class="in" type="date" data-rg="depuis" value="' + esc(R.depuis || '') + '" style="max-width:170px"></label></div>';
     if (pointagePret()) h += '<h2 class="a-jour">Pointage</h2><div class="a-liste">'
       + '<label class="a-li"><span class="a-it-n"><b>Le reliquat utilise le temps pointé</b><span>Journée pointée en entier : temps réel ; sinon : heures prévues au planning. Décoché : tout revient au planning.</span></span><input type="checkbox" data-rg="pt_reliquat"' + (R.pt_reliquat !== false ? ' checked' : '') + ' style="width:22px;height:22px;flex:none"></label>'
-      + '<label class="a-li"><span class="a-it-n"><b>Tolérance de retard</b><span>Une arrivée compte comme un retard au-delà de (minutes)</span></span><span class="h-hval"><input class="in" inputmode="numeric" data-rg="pt_tol" value="' + esc(String(R.pt_tol)) + '"> min</span></label>'
-      + '<label class="a-li"><span class="a-it-n"><b>Alerte retards répétés</b><span>« À surveiller » à partir de, sur la période</span></span><span class="h-hval"><input class="in" inputmode="numeric" data-rg="pt_retards" value="' + esc(String(R.pt_retards)) + '"></span></label>'
++ '</div><h3 class="rg-sous">Retards</h3><div class="a-liste">'
+      + '<label class="a-li"><span class="a-it-n"><b>Tolérance de retard</b><span>Une arrivée compte comme un retard au-delà de</span></span><span class="h-hval"><input class="in" inputmode="numeric" data-rg="pt_tol" value="' + esc(String(R.pt_tol)) + '"> min</span></label>'
+      + '<label class="a-li"><span class="a-it-n"><b>Alerte retards répétés</b><span>« À surveiller » à partir de ce nombre de retards sur la période</span></span><span class="h-hval"><input class="in" inputmode="numeric" data-rg="pt_retards" value="' + esc(String(R.pt_retards)) + '"> fois</span></label>'
+      + '</div><h3 class="rg-sous">Départs anticipés</h3><div class="a-liste">'
+      + '<label class="a-li"><span class="a-it-n"><b>Tolérance de départ anticipé</b><span>Une sortie compte comme un départ avant l’heure au-delà de</span></span><span class="h-hval"><input class="in" inputmode="numeric" data-rg="pt_tol_dep" value="' + esc(String(R.pt_tol_dep)) + '"> min</span></label>'
+      + '<label class="a-li"><span class="a-it-n"><b>Alerte départs anticipés répétés</b><span>« À surveiller » à partir de ce nombre de départs avant l’heure sur la période</span></span><span class="h-hval"><input class="in" inputmode="numeric" data-rg="pt_departs" value="' + esc(String(R.pt_departs)) + '"> fois</span></label>'
+      + '</div><h3 class="rg-sous">Écarts</h3><div class="a-liste">'
       + '<label class="a-li"><span class="a-it-n"><b>Alerte écart de la semaine</b><span>« À surveiller » si réel − prévu dépasse (heures)</span></span><span class="h-hval"><input class="in" inputmode="decimal" data-rg="pt_ecart" value="' + esc(fr(R.pt_ecart)) + '"> h</span></label></div>'
       + '<p class="a-aide">Une journée particulière peut être exclue depuis sa correction (« Ne pas compter ce pointage »).</p>';
     h += '<button class="a-btn navy" data-act="rgsave">Enregistrer les règles générales</button>';
@@ -2535,7 +2569,7 @@
     var f = document.querySelector('[data-rgf="tous"]'); o.ferie = f && f.checked ? 'tous' : 'habituel';
     var dp = document.querySelector('[data-rg="depuis"]'); o.depuis = dp && dp.value || R.depuis;
     var pr = document.querySelector('[data-rg="pt_reliquat"]'); o.pt_reliquat = pr ? pr.checked : R.pt_reliquat !== false;
-    [['pt_tol', 5], ['pt_retards', 3], ['pt_ecart', 2]].forEach(function (z) { var el = document.querySelector('[data-rg="' + z[0] + '"]'); var v = el ? nb(String(el.value).replace(',', '.')) : R[z[0]]; o[z[0]] = isNaN(v) || v == null ? z[1] : Math.max(0, v); });
+    [['pt_tol', 5], ['pt_retards', 3], ['pt_ecart', 2], ['pt_tol_dep', 5], ['pt_departs', 3]].forEach(function (z) { var el = document.querySelector('[data-rg="' + z[0] + '"]'); var v = el ? nb(String(el.value).replace(',', '.')) : R[z[0]]; o[z[0]] = isNaN(v) || v == null ? z[1] : Math.max(0, v); });
     sb.from('parametres').upsert({ cle: 'regles_heures', valeur: o }, { onConflict: 'cle' }).then(function (r) {
       if (r.error) throw r.error; S.regles = o; if (S.pl) S.pl.de = null; toast('✔ Règles enregistrées'); render();
     }).catch(function (e) { toast(msgErr(e)); });
@@ -4160,6 +4194,7 @@
     if (t.dataset && t.dataset.plk && S.pl && S.pl.cas) { majCase(t); if (t.tagName === 'SELECT') render(); return; }
     if (t.id === 'plimpf') { var fp = t.files && t.files[0]; t.value = ''; importerPlanning(fp); return; }
     if (t.dataset && t.dataset.vis) { basculerVisible(t.dataset.vis, t.checked); return; }
+    if (t.dataset && t.dataset.qp) { basculerPointage(t.dataset.qp, t.checked); return; }
     if ((t.id === 'dmdu' || t.id === 'dmau') && S.dm) { S.dm[t.id === 'dmdu' ? 'du' : 'au'] = t.value; if (t.id === 'dmdu' && S.dm.au && S.dm.au < t.value) S.dm.au = t.value; var mm = $('dmmot'); if (mm) S.dm.mot = mm.value; render(); return; }
     if (t.id === 'caint' && S.cAjout) { S.cAjout.mot = t.value; return; }
     if ((t.id === 'cadu' || t.id === 'caau' || t.id === 'catype') && S.cAjout) { S.cAjout[t.id === 'cadu' ? 'du' : t.id === 'caau' ? 'au' : 'type'] = t.value; if (t.id === 'cadu' && !S.cAjout.au) { S.cAjout.au = t.value; render(); } return; }

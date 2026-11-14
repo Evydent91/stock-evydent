@@ -1176,3 +1176,18 @@ button.pb-l:hover,button.pd-l:hover{background:var(--ivory)}
 .fi-rub > span{flex:1;display:flex;flex-direction:column;gap:2px}.fi-rub b{font-size:16px}.fi-rub small{font-size:14px;color:var(--mute)}
 @media (max-width:560px){.fi .h-total{flex-wrap:wrap;gap:2px 10px}.fi .h-total b{white-space:nowrap}.fi-sem{grid-template-columns:62px repeat(5,minmax(0,1fr));gap:4px}.fi-c{min-height:56px}.fi-c b{font-size:12px}.fi-c small{font-size:10.5px}.fi-res{flex-direction:row;flex-wrap:wrap;text-align:left;justify-content:flex-start}.fi-avt{width:54px;height:54px;font-size:28px}}
 .po-add label.ty-n{flex-direction:row}.ty-n{display:flex;align-items:center;gap:10px;font-size:15px;text-align:left;min-height:36px}.ty-n input{width:20px;height:20px;flex:none}
+/* Réglages : sous-titres et page « Qui pointe » */
+.rg-sous{margin:14px 2px 6px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.qp-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.qp-kpis > div{background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(31,42,51,.08);padding:12px 14px;display:flex;flex-direction:column}
+.qp-kpis b{font-size:26px;line-height:1.1}.qp-kpis span{font-size:13.5px;color:var(--mute)}
+.qp-kpis .ko b{color:var(--ko)}.qp-kpis .ok b{color:var(--ok)}
+.qp .qp-l{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--soft);background:#fff}
+.qp .qp-l:last-child{border-bottom:none}
+.qp-n{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.qp-n b{font-size:16px}.qp-n > span{font-size:13.5px;color:var(--mute)}
+.qp-c{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600}
+.qp-c.ok{color:var(--ok)}.qp-c.ko{color:var(--ko)}.qp-c.mu{color:var(--mute);font-weight:400}
+.qp-sw{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;font-weight:700;color:var(--mute);min-width:56px;cursor:pointer}
+.qp-l.on .qp-sw{color:var(--navy)}
+@media (max-width:560px){.qp-kpis b{font-size:22px}.qp .qp-l{padding:10px 12px;gap:10px}.qp .btn.sm{display:none}}
