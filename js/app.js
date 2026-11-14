@@ -815,12 +815,12 @@
       + '<div><h1>Bonjour ' + esc(S.me.nom) + '</h1><p>' + LABEL[S.me.role] + ' · ' + j + '</p></div></header>';
     var ca = congesAttente().length + congesAnnul().length;
     h += '<div class="a-corps h-corps">' + vBienvenue()
-      + ((S.oublis || []).length ? '<button class="h-alerte" data-tab="pointage">' + ico('attente', 22) + '<span><b>' + S.oublis.length + ' ' + pl(S.oublis.length, 'oubli') + ' de pointage</b> ' + pl(S.oublis.length, 'signalé') + ' à valider</span>' + ico('suiv', 20, 2.2) + '</button>' : '')
-      + (ca ? '<button class="h-alerte" data-tab="pconges">' + ico('attente', 22) + '<span><b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à traiter</span>' + ico('suiv', 20, 2.4) + '</button>' : '')
       + '<div class="h-tuiles">'
       + '<button class="h-tuile fonce" data-tab="accueil"><span class="ti">' + ico('boite', 34) + '</span><span class="tt"><b>Gestion de stock</b><span>' + (sous.length ? sous.join(' · ') : 'Sorties, inventaires, commandes') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
       + (telephone() ? '' : '<button class="h-tuile" data-tab="planning"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span>Qui travaille, avec quel dentiste, et les heures</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>' + tuilePointage())
       + '<button class="h-tuile cg" data-tab="pconges"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Congés</b><span' + (ca ? ' class="h-av-t"' : '') + '>' + (ca ? ca + ' ' + pl(ca, 'demande') + ' à valider' : 'Demandes, absences du mois, soldes') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button></div>'
+      + ((S.oublis || []).length ? '<button class="h-alerte" data-tab="pointage">' + ico('attente', 22) + '<span><b>' + S.oublis.length + ' ' + pl(S.oublis.length, 'oubli') + ' de pointage</b> ' + pl(S.oublis.length, 'signalé') + ' à valider</span>' + ico('suiv', 20, 2.2) + '</button>' : '')
+      + (ca ? '<button class="h-alerte" data-tab="pconges">' + ico('attente', 22) + '<span><b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à traiter</span>' + ico('suiv', 20, 2.4) + '</button>' : '')
       + (telephone() ? '<div class="h-pc"><span class="h-pc-l">À ouvrir sur ordinateur</span><div class="h-pc-g"><span>' + ico('agenda', 20) + '<b>Planning</b></span><span>' + ico('qr', 20) + '<b>Pointage</b></span></div></div>' : '')
       + '</div>';
     return h;
