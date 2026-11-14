@@ -4025,34 +4025,42 @@
   function vCommandes() {
     if (S.fiche && S.fiche.type === 'commande') return vCommande();
     var sub = S.cmdSub || 'sug', ouvertes = S.commandes.filter(function (c) { return c.statut === 'attente' || c.statut === 'partielle'; });
-    var h = '<h2>Commandes</h2><div class="chips" style="margin:0 0 12px">'
-      + [['sug', 'À commander'], ['enc', 'En cours' + (ouvertes.length ? ' · ' + ouvertes.length : '')], ['new', '+ Nouvelle commande'], ['his', 'Historique']].map(function (x) { return '<button class="chip' + (sub === x[0] ? ' on' : '') + '" data-csub="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
+    var h = '<div class="cm-top"><span class="cm-seg" role="tablist" aria-label="Commandes">'
+      + [['sug', 'À commander'], ['enc', 'En cours' + (ouvertes.length ? ' · ' + ouvertes.length : '')], ['his', 'Historique']].map(function (x) { return '<button role="tab" aria-selected="' + (sub === x[0]) + '" class="' + (sub === x[0] ? 'on' : '') + '" data-csub="' + x[0] + '">' + x[1] + '</button>'; }).join('')
+      + '</span><span class="grow"></span><button class="cm-new' + (sub === 'new' ? ' on' : '') + '" data-csub="new">+ Nouvelle commande</button></div>';
     if (sub === 'sug') return h + vSuggestions();
     if (sub === 'new') return h + vNouvelleCommande();
     var l = sub === 'enc' ? ouvertes : S.commandes.filter(function (c) { return c.statut === 'recue' || c.statut === 'close'; });
     if (!l.length) return h + '<p class="mu">' + (sub === 'enc' ? 'Aucune commande en cours.' : 'Aucune commande reçue pour l’instant.') + '</p>';
-    return h + '<div class="card">' + l.map(function (c) {
+    return h + '<section class="cm-l">' + l.map(function (c) {
       var li = S.lignes[c.id] || [], tot = li.reduce(function (t, x) { return t + x.quantite * x.prix; }, 0), st = CST[c.statut] || ['', c.statut];
-      return '<button class="it lrow" data-copen="' + c.id + '"><span class="it-n"><b>' + esc(S.fournisseurs[c.fournisseur_id] || 'Fournisseur supprimé') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</b><span>' + c.date_commande.split('-').reverse().join('/') + ' · ' + li.length + ' ligne(s) · ' + eur(tot) + '</span></span><span class="pill ' + st[0] + '">' + st[1] + '</span></button>';
-    }).join('') + '</div>';
+      return '<button class="cm-c" data-copen="' + c.id + '"><span class="cm-cn"><b>' + esc(S.fournisseurs[c.fournisseur_id] || 'Fournisseur supprimé') + (c.numero ? ' <span class="mu">· n° ' + esc(c.numero) + '</span>' : '') + '</b><span>Commandée le ' + c.date_commande.split('-').reverse().join('/') + ' · ' + li.length + ' ligne' + (li.length > 1 ? 's' : '') + '</span></span><b class="cm-ct">' + eur(tot) + '</b><span class="pill ' + st[0] + '">' + st[1] + '</span>' + ico('suiv', 18, 2.4) + '</button>';
+    }).join('') + '</section>';
   }
   function vSuggestions() {
     var parF = {};
     S.articles.filter(function (a) { return filtreStock(a, 'commander'); }).forEach(function (a) { var k = a.fournisseur_id || 0; (parF[k] = parF[k] || []).push(a); });
-    var ks = Object.keys(parF).sort(function (x, y) { return (S.fournisseurs[x] || 'zz').localeCompare(S.fournisseurs[y] || 'zz'); });
+    var ks = Object.keys(parF).sort(function (x, y) { return (+x ? 0 : 1) - (+y ? 0 : 1) || (S.fournisseurs[x] || 'zz').localeCompare(S.fournisseurs[y] || 'zz'); });
     if (!ks.length) return '<p class="mu">Rien à commander : aucun article sous son seuil d’alerte.</p>';
-    return '<p class="mu">Articles au seuil d’alerte ou en dessous, regroupés par fournisseur principal. Quantité proposée : de quoi remonter à deux fois le seuil (modifiable). Une quantité à 0 retire l’article. Les articles déjà couverts par une commande en cours n’apparaissent plus ici. Touchez un fournisseur pour voir ses articles.</p>' + ks.map(function (k) {
-      var fid = +k, arts = parF[k], tot = 0, ouvert = !!S.sugOpen[k], nR = arts.filter(function (a) { return stockDe(a.id, 0) <= 0; }).length;
-      arts.forEach(function (a) { var key = fid + ':' + a.id, q = S.sugQ[key] != null ? S.sugQ[key] : qteSuggeree(a); tot += (nb(String(q).replace(',', '.')) || 0) * prixChez(a, fid); });
-      var h = '<div class="card"><button class="lrow row" style="border:none;padding:4px 0" data-sugopen="' + k + '" aria-expanded="' + ouvert + '"><span class="grow"><b>' + esc(S.fournisseurs[fid] || 'Fournisseur à renseigner (SF)') + '</b><br><span class="mu" style="font-size:14px">' + arts.length + ' article(s)' + (nR ? ' · <span class="pill ko">' + nR + ' en rupture</span>' : '') + ' · ' + eur(tot) + ' TTC</span></span><span style="font-size:20px">' + (ouvert ? '▴' : '▾') + '</span></button>';
-      if (!ouvert) return h + '</div>';
-      h += arts.map(function (a) {
-        var key = fid + ':' + a.id, q = S.sugQ[key] != null ? S.sugQ[key] : qteSuggeree(a), p = prixChez(a, fid), enc = enCoursPour(a.id), rf = refChez(a, fid);
-        return '<div class="it"><div class="it-n"><b>' + esc(a.nom) + (rf ? '<span class="ref">' + esc(rf) + '</span>' : '') + '</b><span>Réserve ' + fr(stockDe(a.id, 0)) + ' / seuil ' + fr(a.seuil) + ' ' + uRes(a) + (stockDe(a.id, 0) <= 0 ? ' · <span class="pill ko">rupture</span>' : '') + (enc ? ' · <span class="pill warn">' + fr(enc) + ' déjà en commande</span>' : '') + ' · ' + eur(p) + '</span></div>'
-          + '<div class="stp"><input inputmode="decimal" data-sugq="' + key + '" value="' + esc(q) + '" aria-label="Quantité à commander"></div></div>';
-      }).join('');
-      return h + '<div class="row wrap" style="margin-top:8px"><span class="grow mu">Total estimé : <b>' + eur(tot) + '</b> TTC</span>' + (fid ? '<button class="btn sm" data-cfrom="' + fid + '">Créer la commande</button>' : '<span class="mu">Renseignez le fournisseur des articles pour commander</span>') + '</div></div>';
+    var qDe = function (fid, a) { var key = fid + ':' + a.id; return S.sugQ[key] != null ? S.sugQ[key] : qteSuggeree(a); };
+    var totDe = function (k) { var fid = +k, t = 0; parF[k].forEach(function (a) { t += (nb(String(qDe(fid, a)).replace(',', '.')) || 0) * prixChez(a, fid); }); return t; };
+    var sel = ks.indexOf(String(S.sugSel)) >= 0 ? String(S.sugSel) : ks[0];
+    var h = '<div class="cm-sug"><aside class="cm-fos"><p class="mu">Articles au seuil ou en dessous, par fournisseur principal. Ceux déjà commandés n’apparaissent plus.</p>' + ks.map(function (k) {
+      var arts = parF[k], nR = arts.filter(function (a) { return stockDe(a.id, 0) <= 0; }).length;
+      return '<button class="cm-fo' + (k === sel ? ' on' : '') + '" data-sugsel="' + k + '" aria-pressed="' + (k === sel) + '"><span class="cm-fo1"><b>' + esc(+k ? S.fournisseurs[k] || '?' : 'Fournisseur à renseigner') + '</b><b>' + eur(totDe(k)) + '</b></span><span class="cm-fo2">' + arts.length + ' article' + (arts.length > 1 ? 's' : '') + (nR ? '<span class="pill ko">' + nR + ' en rupture</span>' : '') + '</span></button>';
+    }).join('') + '</aside>';
+    var fid = +sel, arts = parF[sel], tot = totDe(sel);
+    h += '<section class="cm-d"><div class="cm-dh"><h3>' + esc(fid ? S.fournisseurs[fid] || '?' : 'Fournisseur à renseigner') + '</h3><span class="mu">Quantité proposée : de quoi remonter à deux fois le seuil. 0 retire l’article.</span></div>'
+      + '<div class="cm-g cm-gh" aria-hidden="true"><span>Article</span><span>Réserve / seuil</span><span>À commander</span><span>Total TTC</span></div>';
+    h += arts.map(function (a) {
+      var key = fid + ':' + a.id, q = qDe(fid, a), p = prixChez(a, fid), enc = enCoursPour(a.id), rf = refChez(a, fid), r = stockDe(a.id, 0), qn = nb(String(q).replace(',', '.')) || 0;
+      return '<div class="cm-g' + (qn ? '' : ' zero') + '"><span class="cm-a"><b>' + esc(a.nom) + '</b><span>' + (rf ? esc(rf) + ' · ' : '') + eur(p) + ' l’unité' + (enc ? ' · <span class="pill warn">' + fr(enc) + ' déjà en commande</span>' : '') + '</span></span>'
+        + '<span class="cm-r"><b class="' + (r <= 0 ? 'ko' : 'warn') + '">' + fr(r) + ' ' + uRes(a) + '</b> <span class="mu">/ ' + fr(a.seuil) + '</span></span>'
+        + '<span class="cm-st"><button class="cm-pm" data-sugstep="' + key + '|-1" aria-label="Un de moins">−</button><input inputmode="decimal" data-sugq="' + key + '" value="' + esc(q) + '" aria-label="Quantité à commander : ' + esc(a.nom) + '"><button class="cm-pm" data-sugstep="' + key + '|1" aria-label="Un de plus">+</button></span>'
+        + '<b class="cm-t">' + (qn ? eur(qn * p) : '—') + '</b></div>';
     }).join('');
+    h += '<div class="cm-df"><span class="grow">' + arts.length + ' article' + (arts.length > 1 ? 's' : '') + ' · <b>Total ' + eur(tot) + ' TTC</b></span>' + (fid ? '<button class="btn cm-go" data-cfrom="' + fid + '">Créer la commande ' + esc(S.fournisseurs[fid] || '') + '</button>' : '<span class="mu">Renseignez le fournisseur de ces articles (Articles › fiche) pour pouvoir commander.</span>') + '</div></section></div>';
+    return h;
   }
   function creerCommande(fid, lignes, numero) {
     lignes = lignes.filter(function (l) { return l.quantite > 0; });
@@ -4797,6 +4805,8 @@
     if (d.eedit) { S.eqEdit = d.eedit; render(); return; }
     if (d.csub) { S.cmdSub = d.csub; S.fiche = null; render(); return; }
     if (d.sugopen) { S.sugOpen[d.sugopen] = !S.sugOpen[d.sugopen]; render(); return; }
+    if (d.sugsel != null) { S.sugSel = d.sugsel; render(); return; }
+    if (d.sugstep) { var sp = d.sugstep.split('|'), sk = sp[0], sf = +sk.split(':')[0], sa = S.byId[+sk.split(':')[1]], cur = S.sugQ[sk] != null ? nb(String(S.sugQ[sk]).replace(',', '.')) || 0 : (sa ? qteSuggeree(sa) : 0); S.sugQ[sk] = Math.max(0, Math.round((cur + +sp[1]) * 100) / 100); render(); return; }
     if (d.cfrom) return depuisSuggestion(+d.cfrom);
     if (d.copen) { ouvrirCommande(+d.copen); window.scrollTo(0, 0); return; }
     if (d.ncadd) { if (!S.nc.l.some(function (l) { return l.article_id === +d.ncadd; })) { var aa = S.byId[d.ncadd]; S.nc.l.push({ article_id: +d.ncadd, quantite: 1, prix: prixChez(aa, +S.nc.fid) }); } S.nc.q = ''; render(); return; }
@@ -4981,6 +4991,7 @@
   });
   document.addEventListener('change', function (e) {
     var t = e.target; if (!S.me) return;
+    if (t.dataset && t.dataset.sugq) { S.sugQ[t.dataset.sugq] = t.value; render(); return; }
     if (t.dataset && (t.dataset.pff || t.dataset.tr) && S.pf) { majPers(t); if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); return; }
     if (t.dataset && t.dataset.dff && S.df) { S.df.d[t.dataset.dff] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox') render(); return; }
     if (t.dataset && S.postesEd && (t.dataset.pon != null || t.dataset.poxl != null || t.dataset.poc != null)) { var pe = S.postesEd[+(t.dataset.pon || t.dataset.poxl || t.dataset.poc)]; if (t.dataset.pon != null) pe.n = t.value.trim() || pe.n; else if (t.dataset.poxl != null) pe.xl = t.value.trim(); else pe.coul = t.value.replace('#', '').toUpperCase(); return; }
