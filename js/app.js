@@ -399,6 +399,7 @@
     loupe: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     croix: '<path d="M6 6l12 12M18 6L6 18"/>',
+    cadenas: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>',
     reglage: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68 1.65 1.65 0 0 0 10 3.17V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
     agenda: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7 14h3M14 14h3M7 17.5h3"/>',
     equipe: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2.2.6 3.5 2.4 3.5 5.2"/>',
@@ -1296,7 +1297,7 @@
       if (!Array.isArray(S.roles)) S.roles = S.roles || [];
       if (r[0].error || r[1].error) { S.equipe = null; S.dentistes = null; } else { S.equipe = r[0].data; S.dentistes = r[1].data; }
       S.conges = r[2] && !r[2].error ? r[2].data : [];
-      chargerOublis();
+      chargerOublis(); chargerClos();
       render();
     }, function () { S.equipe = null; S.dentistes = null; render(); });
   }
@@ -1639,6 +1640,7 @@
       sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'roles', 'simulation_pointage'])]).then(function (r) {
       S.moiEq = r[0].error ? null : r[0].data; S.mesConges = r[1].error ? [] : r[1].data || []; S.mesCongesOk = !r[0].error;
       if (S.moiEq && S.moiEq.pointage) { chargerMonPointage(); chargerMesOublis(); }
+      chargerClos();
       var vuR = false;
       if (r[2] && !r[2].error) (r[2].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'roles') { S.roles = Array.isArray(x.valeur) ? x.valeur : []; vuR = true; } else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else S.visible = x.valeur; });
       if (!vuR) S.roles = [];
@@ -1797,11 +1799,14 @@
   }
   function heuresSemPrevu(p, lundi) { var s0 = 0; for (var k = 0; k < 5; k++) s0 += heuresJPrevu(p, addJ(lundi, k)); return s0; }
   function ptRow(eid, iso) { return S.ptg && S.ptg.rows ? S.ptg.rows[eid + '|' + iso] : null; }
-  function heuresSem(p, lundi) { var s = 0; for (var k = 0; k < 5; k++) s += heuresJ(p, addJ(lundi, k)); return s; }
+  function heuresSem(p, lundi) { var fg = typeof figeDe === 'function' ? figeDe(lundi, p) : null; if (fg && fg.ret != null) return +fg.ret; var s = 0; for (var k = 0; k < 5; k++) s += heuresJ(p, addJ(lundi, k)); return s; }
   // Reliquat avant la semaine affichée : somme des (heures faites − contrat) depuis la date de départ
   function reliquatAvant(p, lundi) {
     var c = +p.contrat_h || 0, w = lundiDe(regles().depuis || lundi), s = 0;
     if (!c) return 0;
+    // une semaine clôturée fige le reliquat : on repart de la dernière avant ce lundi
+    var dern = S.clos ? Object.keys(S.clos).filter(function (L0) { return L0 < lundi && L0 >= w && S.clos[L0].figes && S.clos[L0].figes[p.id] && S.clos[L0].figes[p.id].rel != null; }).sort().pop() : null;
+    if (dern) { s = +S.clos[dern].figes[p.id].rel; w = addJ(dern, 7); }
     for (var i = 0; w < lundi && i < 260; i++, w = addJ(w, 7)) s += heuresSem(p, w) - c;
     return s;
   }
@@ -2664,6 +2669,68 @@
     if (!confirm('Créer un nouveau QR code ? L’ancien ne fonctionnera plus : il faudra réimprimer l’affiche.')) return;
     sb.rpc('regenerer_qr').then(function (r) { if (r.error) throw r.error; toast('✔ Nouveau QR code créé'); ouvrirQR(); if (S.tab === 'pqr') chargerEvQR(); }).catch(function (e) { toast(msgErr(e)); });
   }
+  // ---------- Clôture de semaine (mise à jour 023) ----------
+  function chargerClos() {
+    return sb.from('semaines_cloturees').select('*').then(function (r) {
+      if (r.error) { S.clos = null; return; }
+      var o = {}; (r.data || []).forEach(function (x) { o[String(x.lundi).slice(0, 10)] = x; }); S.clos = o; JOUR_CACHE = {}; render();
+    }, function () { S.clos = null; });
+  }
+  function semClose(L) { return S.clos ? S.clos[L] || null : null; }
+  function jourClos(iso) { return !!semClose(lundiDe(iso)); }
+  function figeDe(L, p) { var c = semClose(L); return c && c.figes && c.figes[p.id] ? c.figes[p.id] : null; }
+  function ptSem(p, L) {   // temps pointé de la semaine (journées pointées en entier, école et formation comprises)
+    var s = 0, n = 0; for (var k = 0; k < 5; k++) { var iso = addJ(L, k), r = ptRow(p.id, iso), c = calculJour(p, iso, r); if (c.effMin != null) { s += c.effMin / 60; n++; } }
+    return { h: s, n: n };
+  }
+  function badgePt(p, iso) {   // étiquette sous une case du planning : pointé et écart
+    if (!p.pointage) return '';
+    var auj = dIso(new Date()), r = ptRow(p.id, iso), c = calculJour(p, iso, r);
+    if (r && r.arrivee && r.sortie) {
+      var ec = c.effMin / 60 - c.prevu, k = Math.abs(ec) < 0.09 ? 'ok' : ec < 0 ? 'moins' : 'plus';
+      return '<small class="pl-pt ' + k + '">pointé ' + fh(c.effMin / 60) + (k === 'ok' ? '' : ' · ' + (Math.abs(ec) < 1 ? (ec > 0 ? '+' : '−') + Math.round(Math.abs(ec) * 60) + ' min' : relTxt(ec))) + '</small>';
+    }
+    if (r && r.arrivee && iso < auj) return '<small class="pl-pt ko">sortie manquante</small>';
+    if (r && r.sortie && !r.arrivee) return '<small class="pl-pt ko">arrivée manquante</small>';
+    if (r && r.arrivee) return '<small class="pl-pt n">arrivée ' + hTs(r.arrivee) + '</small>';
+    if (c.travaille && iso < auj) return '<small class="pl-pt ko">aucun pointage</small>';
+    return '';
+  }
+  function aRegler(L) {   // oublis à régler avant de clôturer
+    var auj = dIso(new Date()), l = [];
+    persPlanning().filter(function (p) { return p.pointage; }).forEach(function (p) {
+      for (var k = 0; k < 5; k++) { var iso = addJ(L, k); if (iso >= auj) continue; var r = ptRow(p.id, iso), c = calculJour(p, iso, r), et = etatPointage(p, iso, r, c); if (et && et.k === 'ko') l.push({ p: p, iso: iso, t: et.t.toLowerCase(), act: 'data-clocor="' + iso + '"', lien: 'Corriger' }); }
+    });
+    (S.oublis || []).forEach(function (o) { if (lundiDe(o.jour) === L) { var p = persById(o.equipe_id) || {}; l.push({ p: p, iso: o.jour, t: 'oubli signalé (' + (o.sens === 'arrivee' ? 'arrivée' : 'sortie') + ' à ' + ft(String(o.heure).slice(0, 5)) + ')', act: 'data-clocor="' + o.jour + '"', lien: 'Valider' }); }
+    });
+    return l;
+  }
+  function vCloture() {
+    var L = S.plClo.L, ps = persPlanning(), A = aRegler(L);
+    var h = '<div class="pl-modal" role="dialog" aria-modal="true" aria-label="Clôturer la semaine"><button class="pl-fond" data-act="clox" aria-label="Fermer"></button><div class="pl-fen clo-f">'
+      + '<header class="qr-hd"><span class="qr-ic">' + ico('cadenas', 22, 2.2) + '</span><span class="qr-ht"><b>Clôturer la semaine du ' + periode(L, addJ(L, 4)).replace(/^du /, '') + '</b><span>Les heures sont figées et le reliquat de chacun est arrêté</span></span><button class="qr-x" data-act="clox" aria-label="Fermer">' + ico('croix', 20, 2.4) + '</button></header><div class="clo-c">';
+    if (A.length) h += '<div class="clo-a"><b>À régler avant de clôturer (conseillé)</b>' + A.map(function (x) { return '<div><span>' + esc(x.p.prenom || '?') + ' · ' + JOURS[jourSem(x.iso)].toLowerCase() + ' ' + dateCourte(x.iso) + ' · ' + esc(x.t) + '</span><button class="lien" ' + x.act + '>' + x.lien + '</button></div>'; }).join('') + '</div>';
+    else h += '<p class="cg-ok">' + ico('ok', 16, 2.6) + 'Aucun oubli de pointage à régler cette semaine.</p>';
+    h += '<div class="clo-t"><span class="clo-h">Personne</span><span class="clo-h">Planning</span><span class="clo-h">Pointé</span><span class="clo-h">Retenu</span><span class="clo-h">Reliquat après</span>'
+      + ps.map(function (p) {
+        var c = +p.contrat_h || 0, ret = heuresSem(p, L), pt = p.pointage ? ptSem(p, L) : null, rel = c ? reliquatAvant(p, L) + ret - c : null;
+        return '<b>' + esc(p.type === 'interimaire' ? 'Intérimaire' : p.prenom) + '</b><span>' + fh(heuresSemPrevu(p, L)) + '</span><span>' + (pt ? fh(pt.h) + (pt.n < 5 ? ' <small class="mu">(' + pt.n + ' j)</small>' : '') : '<span class="mu">ne pointe pas</span>') + '</span><b>' + fh(ret) + '</b><b class="' + (rel == null ? 'mu' : hrCouleur(rel)) + '">' + (rel == null ? '—' : Math.abs(rel) < 0.01 ? 'à jour' : relTxt(rel)) + '</b>';
+      }).join('') + '</div>'
+      + '<p class="mu" style="margin:0;font-size:13.5px">« Retenu » : le temps pointé pour les journées pointées en entier, sinon le planning (même règle que le reliquat). Une semaine clôturée ne se modifie plus (cases du planning et pointages en lecture seule). La référente ou la responsable peut la rouvrir ; c’est noté dans le journal.</p>'
+      + '<div class="pl-btns"><button class="a-btn blanc" data-act="clox">Annuler</button><button class="a-btn navy" data-act="clook"' + (S.plClo.busy ? ' disabled' : '') + '>' + (S.plClo.busy ? 'Clôture…' : 'Clôturer la semaine') + '</button></div></div></div></div>';
+    return h;
+  }
+  function cloturerSemaine() {
+    var L = S.plClo.L, figes = {};
+    persPlanning().forEach(function (p) { var c = +p.contrat_h || 0, ret = heuresSem(p, L); figes[p.id] = { ret: Math.round(ret * 1000) / 1000, rel: c ? Math.round((reliquatAvant(p, L) + ret - c) * 1000) / 1000 : null }; });
+    S.plClo.busy = true; render();
+    sb.rpc('cloturer_semaine', { p_lundi: L, p_figes: figes }).then(function (r) { if (r.error) throw r.error; S.plClo = null; toast('✔ Semaine clôturée'); chargerClos(); })
+      .catch(function (e) { S.plClo.busy = false; toast(msgErr(e)); render(); });
+  }
+  function rouvrirSemaine(L) {
+    if (!confirm('Rouvrir la semaine du ' + periode(L, addJ(L, 4)).replace(/^du /, '') + ' ? Les cases et les pointages pourront de nouveau être modifiés, et le reliquat sera recalculé.')) return;
+    sb.rpc('rouvrir_semaine', { p_lundi: L }).then(function (r) { if (r.error) throw r.error; toast('Semaine rouverte'); chargerClos(); }).catch(function (e) { toast(msgErr(e)); });
+  }
   function celluleJour(p, iso) {
     var am = caseEff(p, iso, 'AM'), pm = caseEff(p, iso, 'PM'), ab = function (c) { return ABS.indexOf(c.a) >= 0; };
     var cls = 'pl-c', h;
@@ -2676,7 +2743,8 @@
     var rg = am.r || pm.r, dpt = pm.a && pm.a.slice(0, 2) === 'D:' ? dentById(pm.a.slice(2)) : null, hd = dpt && dpt.jours && dpt.jours[jourSem(iso)];
     if (typeof hd === 'string' && hd) h += '<small class="pl-r dep">Dr ' + esc(dpt.prenom) + ' part à ' + ft(hd) + '</small>';
     if (rg) { cls += ' reg'; h += '<small class="pl-r">' + esc(affTxt(rg)) + ' absent</small>'; }
-    return '<button class="' + cls + '" data-plc="' + p.id + '|' + iso + '" aria-label="' + esc(p.prenom) + ', ' + JOURS[jourSem(iso)] + '">' + h + '</button>';
+    if (S.plVoirPt) h += badgePt(p, iso);
+    return '<button class="' + cls + (jourClos(iso) ? ' clos' : '') + '" data-plc="' + p.id + '|' + iso + '" aria-label="' + esc(p.prenom) + ', ' + JOURS[jourSem(iso)] + '">' + h + '</button>';
   }
   // Dentistes présents qui travaillent sans assistante ce jour-là (journée entière, matin ou après-midi)
   function dentistesSeuls(iso) {
@@ -2703,10 +2771,14 @@
     var h = '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" data-tab="hub">' + ico('prec', 22, 2.4) + 'Accueil</button><h1>Planning</h1>'
       + '<span class="pl-hbtns"><button class="pl-imp" data-tab="heures">' + ico('graph', 18, 2.2) + '<span class="m-hide">Heures</span></button><button class="pl-imp" data-act="plexp">' + ico('sortie', 18) + '<span class="m-hide">Exporter</span></button><label class="pl-imp">' + ico('boite', 18) + '<span class="m-hide">Importer l’Excel</span><input type="file" id="plimpf" accept=".xlsm,.xlsx" hidden></label></span></div>'
       + '<div class="pl-nav"><span class="pl-g"></span><button class="h-rond" data-plsem="-7" aria-label="Semaine précédente">' + ico('prec', 20, 2.4) + '</button>' + titreCal(titre, L) + '<button class="h-rond" data-plsem="7" aria-label="Semaine suivante">' + ico('suiv', 20, 2.4) + '</button>'
-      + '<span class="pl-g d">' + (lundiDe(auj) !== L ? '<button class="pl-auj" data-plsem="0">Cette semaine</button>' : '') + '</span></div></header>';
+      + '<span class="pl-g d">' + (lundiDe(auj) !== L ? '<button class="pl-auj" data-plsem="0">Cette semaine</button>' : '') + '</span></div>'
+      + '<div class="pl-outils"><div class="hr-seg" role="group" aria-label="Heures affichées"><button data-plpt="0" aria-pressed="' + !S.plVoirPt + '"' + (!S.plVoirPt ? ' class="on"' : '') + '>Planning seul</button><button data-plpt="1" aria-pressed="' + !!S.plVoirPt + '"' + (S.plVoirPt ? ' class="on"' : '') + '>Planning + pointé</button></div>'
+      + (S.clos === null || S.clos === undefined ? '<span></span>' : semClose(L) ? '<span class="pl-clos">' + ico('cadenas', 16, 2.4) + 'Clôturée</span>' : '<button class="pl-clob" data-act="clo"' + (addJ(L, 4) >= auj ? ' disabled title="La semaine n’est pas terminée"' : '') + '>' + ico('cadenas', 18, 2.2) + 'Clôturer la semaine</button>') + '</div></header>';
     h += '<div class="a-corps pl-corps">';
     if (!planPret()) return h + '<div class="ban warn">Les mises à jour 009 à 011 de la base ne sont pas encore faites.</div></div>';
     if (S.plImp) h += vImportPlanning();
+    var sc = semClose(L);
+    if (sc) h += '<div class="clo-ban">' + ico('cadenas', 20, 2.2) + '<span><b>Semaine clôturée le ' + dateCourte(String(sc.cloture_le).slice(0, 10)) + (sc.cloture_par ? ' par ' + esc(nomProfil(sc.cloture_par) || '?') : '') + '</b><span>Heures figées : les cases et les pointages de cette semaine ne se modifient plus.</span></span><button class="btn l" data-clorouv="' + L + '">Rouvrir…</button></div>';
     if (P.charge) h += '<p class="mu">Chargement…</p>';
     h += '<div class="pl-scroll"><div class="pl-grille"><div class="pl-tete pl-nom">Assistantes</div>';
     for (var k = 0; k < 5; k++) { var iso = addJ(L, k), fe = ferie(iso); h += '<div class="pl-tete' + (iso === auj ? ' auj' : '') + '"><b>' + JOURS[k + 1] + '</b><span>' + dateCourte(iso) + (fe ? ' · <em>' + fe + '</em>' : '') + '</span></div>'; }
@@ -2715,7 +2787,11 @@
       h += '<div class="pl-nom"><span class="a-av p">' + initiale(p.prenom) + '</span><span><b>' + esc(p.prenom) + '</b><small>' + (p.type === 'interimaire' ? 'intérimaire' : (p.statut === 'apprentie' ? 'apprentie · ' : '') + fh(+p.contrat_h || 0)) + '</small></span></div>';
       for (var k2 = 0; k2 < 5; k2++) h += celluleJour(p, addJ(L, k2));
       var hs = heuresSem(p, L), c = +p.contrat_h || 0;
-      if (!c) h += '<div class="pl-h"><span><b>' + fh(hs) + '</b></span></div>';
+      if (S.plVoirPt) {
+        var pt = p.pointage ? ptSem(p, L) : null, rl = c ? reliquatAvant(p, L) + hs - c : null, eP = pt ? pt.h - heuresSemPrevu(p, L) : 0;
+        h += '<div class="pl-h pl-h4"><span>Planning</span><b>' + fh(heuresSemPrevu(p, L)) + '</b><span>Pointé</span><b class="' + (pt && pt.n ? hrCouleur(Math.abs(eP) < 0.09 ? 0 : eP) : 'mu') + '">' + (!pt ? '—' : pt.n ? fh(pt.h) : '—') + '</b><span>Contrat</span><b>' + (c ? fh(c) : '—') + '</b><span class="pl-h4r">Reliquat</span><b class="pl-h4r ' + (rl == null ? 'mu' : hrCouleur(Math.abs(rl) < 0.01 ? 0 : rl)) + '">' + (rl == null ? '—' : Math.abs(rl) < 0.01 ? 'à jour' : relTxt(rl)) + '</b></div>';
+      }
+      else if (!c) h += '<div class="pl-h"><span><b>' + fh(hs) + '</b></span></div>';
       else {
         var r = reliquatAvant(p, L) + hs - c;
         h += '<div class="pl-h"><span><b>' + fh(hs) + '</b> / ' + fh(c) + '</span>' + (Math.abs(r) < 0.01 ? '<span class="ok">à jour</span>' : r < 0 ? '<span class="moins">' + relTxt(r) + ' · à rattraper</span>' : '<span class="plus">' + relTxt(r) + ' · à alléger</span>') + '</div>';
@@ -2727,7 +2803,7 @@
     h += '</div></div>';
     h += '<div class="pl-notes"><span class="pl-n vert"><b>Semaine remplie automatiquement</b> d’après les fiches (semaine type, école, congés acceptés, jours fériés, règle d’or) : corrigez seulement les exceptions.</span>'
       + '<span class="pl-n">Touchez une case pour choisir le dentiste et les heures. Reliquat : heures faites moins heures du contrat, cumulées depuis le ' + dateCourte(regles().depuis) + ' (Réglages › Règles des heures).</span></div>';
-    return h + '</div>' + (P.cas ? vCasePlanning() : '') + (S.plExp ? vExportPlanning() : '');
+    return h + '</div>' + (P.cas ? vCasePlanning() : '') + (S.plExp ? vExportPlanning() : '') + (S.plClo ? vCloture() : '');
   }
 
   // Fenêtre d'une case (une personne, un jour)
@@ -2736,6 +2812,7 @@
   }
   function ouvrirCase(v) {
     var x = v.split('|'), p = persById(x[0]); if (!p) return;
+    if (jourClos(x[1])) { toast('Semaine clôturée : rouvrez-la pour la modifier'); return; }
     var am = caseEff(p, x[1], 'AM'), pm = caseEff(p, x[1], 'PM');
     S.pl.cas = { eid: p.id, jour: x[1], r: am.r || pm.r || null, jc: am.a === pm.a, AM: { a: am.a, de: am.de, fi: am.fi, h: am.h != null ? am.h : null }, PM: { a: pm.a, de: pm.de, fi: pm.fi, h: pm.h != null ? pm.h : null }, enreg: !!(S.pl.rows[cleCase(p.id, x[1], 'AM')] || S.pl.rows[cleCase(p.id, x[1], 'PM')]) };
     render();
@@ -4595,6 +4672,12 @@
     if (d.act === 'ptexp') { var mE = S.ptg && S.ptg.mode === 'bord' && S.ptg.bord && S.ptg.bord.per === 'mois' ? S.ptg.bord.mois : (S.ptg ? addJ(lundiDe(S.ptg.jour), 2).slice(0, 7) : dIso(new Date()).slice(0, 7)); S.ptExp = { mois: mE, cat: S.ptg && S.ptg.cat || '' }; render(); return; }
     if (d.act === 'ptexpx') { S.ptExp = null; render(); return; }
     if (d.act === 'ptexpok' && S.ptExp) return exporterPointage();
+    if (d.plpt != null) { S.plVoirPt = d.plpt === '1'; render(); return; }
+    if (d.act === 'clo' && S.pl) { S.plClo = { L: S.pl.lundi }; render(); return; }
+    if (d.act === 'clox') { S.plClo = null; render(); return; }
+    if (d.act === 'clook' && S.plClo) return cloturerSemaine();
+    if (d.clorouv) return rouvrirSemaine(d.clorouv);
+    if (d.clocor) { S.plClo = null; S.ptg = S.ptg || { rows: {} }; S.ptg.mode = 'jour'; S.ptg.jour = d.clocor; S.tab = 'pointage'; S.tabChoisi = true; render(); window.scrollTo(0, 0); return; }
     if (d.act === 'obenvoi') return envoyerOubli();
     if (d.obsens) { S.oub = S.oub || {}; S.oub.jour = $('objour').value; S.oub.heure = $('obheure').value; S.oub.mot = $('obmot').value; S.oub.sens = d.obsens; render(); return; }
     if (d.obannule) { sb.rpc('annuler_oubli', { p_id: +d.obannule }).then(function (r) { if (r.error) throw r.error; toast('Signalement annulé'); chargerMesOublis(); }).catch(function (e) { toast(msgErr(e)); }); return; }
@@ -4619,6 +4702,7 @@
     if (d.ptbnav != null && d.ptbnav !== '' && S.ptg && S.ptg.bord) { var Bn = S.ptg.bord, bn = +d.ptbnav; if (!bn) { Bn.lundi = lundiDe(dIso(new Date())); Bn.mois = addJ(Bn.lundi, 3).slice(0, 7); render(); return; } if (Bn.per === 'semaine') Bn.lundi = addJ(Bn.lundi, 7 * bn); else { var bx = Bn.mois.split('-'), bd = new Date(+bx[0], +bx[1] - 1 + bn, 1); Bn.mois = bd.getFullYear() + '-' + ('0' + (bd.getMonth() + 1)).slice(-2); } render(); return; }
     if (d.ptbsel != null && S.ptg && S.ptg.bord) { S.ptg.bord.sel = d.ptbsel || null; render(); window.scrollTo(0, 0); return; }
     if (d.ptnav != null && d.ptnav !== '' && S.ptg) { var pn = +d.ptnav, G = S.ptg; if (!pn) G.jour = dIso(new Date()); else if (G.mode === 'semaine') G.jour = addJ(lundiDe(G.jour), 7 * pn); else { var jx = addJ(G.jour, pn); while (jourSem(jx) < 1 || jourSem(jx) > 5) jx = addJ(jx, pn); G.jour = jx; } render(); return; }
+    if (d.pted && S.ptg && jourClos(d.pted.split('|')[1])) { toast('Semaine clôturée : rouvrez-la dans le planning pour corriger'); return; }
     if (d.pted && S.ptg) { var pe = d.pted.split('|'); S.ptEd = { eid: pe[0], jour: pe[1] }; render(); return; }
     if (d.act === 'ptedfermer') { S.ptEd = null; render(); return; }
     if (d.act === 'ptsave' && S.ptEd) return sauverPointage(false);
