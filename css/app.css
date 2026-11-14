@@ -1721,3 +1721,21 @@ button.stk-k{cursor:pointer}
   .hi-r{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"m q" "d p";gap:4px 10px;padding:10px 12px}
   .hi-m{grid-area:m}.hi-q{grid-area:q;text-align:right}.hi-d{grid-area:d}.hi-p{grid-area:p;text-align:right;font-size:13px}
 }
+
+/* Articles */
+.ar-top{display:flex;gap:12px;align-items:center;margin:0 0 12px}
+.ar-new{min-height:46px;flex:none}
+.ar-f{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:0 0 4px}
+.ar-f .chips{margin:0}
+.ar-x{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13.5px}
+.ar-x .iv-b{min-height:40px;font-size:14px}
+/* Fournisseurs */
+.fo-int{font-size:14px}
+.fo-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.fo-c{text-align:left;background:#fff;border:2px solid transparent;border-radius:16px;box-shadow:0 1px 3px rgba(31,42,51,.08);padding:14px 16px;display:flex;flex-direction:column;gap:6px;font:inherit;color:var(--ink);cursor:pointer}
+.fo-c:hover{border-color:var(--line)}
+.fo-c1{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.fo-c1 b{font-size:17px}
+.fo-c2{font-size:14.5px;color:var(--ink2)}.fo-c3{font-size:13.5px;color:var(--mute)}
+@media (max-width:1000px){.fo-g{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:700px){.fo-g{grid-template-columns:1fr}.fo-int{display:none}.ar-top{flex-wrap:wrap}.ar-new{width:100%}}

@@ -3795,12 +3795,12 @@
     var q = norm(S.artQ), f = S.artF || 'tous';
     var base = f === 'archive' ? S.archives : S.articles;
     var l = base.filter(function (a) { return (f === 'tous' || f === 'archive' || (f === 'ste' ? a.lieu_ste === true : f === 'nolieu' ? a.lieu_cabinets === false && a.lieu_ste !== true : filtreStock(a, f))) && (!q || norm(a.nom + ' ' + (a.reference || '') + ' ' + (S.fournisseurs[a.fournisseur_id] || '')).indexOf(q) >= 0); });
-    var h = '<h2>Articles</h2><div class="card row wrap"><input class="in grow" id="aq" type="search" placeholder="Rechercher un article, une référence, un fournisseur" value="' + esc(S.artQ) + '"><button class="btn" data-act="anew">+ Nouvel article</button></div>'
-      + '<div class="chips" style="margin:0 0 10px">' + Object.keys(AF).map(function (k) { return '<button class="chip' + (f === k ? ' on' : '') + '" data-af="' + k + '">' + AF[k] + '</button>'; }).join('') + '</div>'
-      + '<div class="row wrap" style="margin:0 0 10px"><button class="btn l sm" data-act="aexp">⬇️ Exporter Excel</button><label class="btn l sm" style="display:inline-flex;align-items:center">⬆️ Importer Excel<input type="file" id="aimpf" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label><span class="mu">Modifier les fiches en masse</span></div>'
+    var h = '<div class="ar-top"><label class="stk-q st-q">' + ico('loupe', 18, 2.2) + '<input id="aq" type="search" placeholder="Article, référence, fournisseur" value="' + esc(S.artQ) + '" aria-label="Rechercher un article"></label><button class="btn ar-new" data-act="anew">+ Nouvel article</button></div>'
+      + '<div class="ar-f"><span class="chips">' + Object.keys(AF).map(function (k) { return '<button class="chip' + (f === k ? ' on' : '') + '" data-af="' + k + '" aria-pressed="' + (f === k) + '">' + AF[k] + '</button>'; }).join('') + '</span>'
+      + '<span class="ar-x"><span class="mu">Modifier en masse :</span><button class="iv-b" data-act="aexp">' + ico('telecharger', 17, 2.2) + 'Exporter Excel</button><label class="iv-b">' + ico('haut', 17, 2.2) + 'Importer Excel<input type="file" id="aimpf" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label></span></div>'
       + (S.artImp ? vImportArticles() : '')
-      + '<p class="mu">' + l.length + ' article(s)</p>';
-    h += '<div class="card">' + l.slice(0, S.artMax || 100).map(function (a) {
+      + '<div class="sect st-sect">' + l.length + ' article' + (l.length > 1 ? 's' : '') + (f !== 'tous' ? ' · ' + AF[f] : '') + '</div>';
+    h += '<div class="card liste st-l">' + l.slice(0, S.artMax || 100).map(function (a) {
       return '<button class="it lrow" data-aopen="' + a.id + '"><span class="it-n"><b>' + esc(a.nom) + (a.reference && !estSR(a) ? '<span class="ref">' + esc(a.reference) + '</span>' : ' <span class="pill warn">SR</span>') + '</b><span>' + esc(S.fournisseurs[a.fournisseur_id] || 'SF') + ' · ' + condTxt(a) + ' · réserve ' + fr(stockDe(a.id, 0)) + ' ' + uRes(a) + (a.lieu_ste === true ? ' · ' + (a.lieu_cabinets !== false ? 'cabinets + Sté' : 'Sté') : a.lieu_cabinets === false ? ' · <span class="pill warn">sans lieu</span>' : '') + (a.type_soins ? ' · ' + esc(a.type_soins) : '') + '</span></span><span aria-hidden="true">›</span></button>';
     }).join('') + '</div>';
     if (l.length > (S.artMax || 100)) h += '<button class="btn l" style="width:100%" data-act="amore">Afficher plus</button>';
@@ -3954,12 +3954,11 @@
   function vFournisseurs() {
     if (S.fiche && S.fiche.type === 'fournisseur') return vFicheFo();
     var l = S.fournListe.filter(function (f) { return !!f.archive === !!S.foArch; });
-    var h = '<h2>Fournisseurs</h2><div class="card row wrap"><span class="grow mu">Une fiche par fournisseur : compte client, contacts, commercial, conditions.</span><button class="btn" data-act="fonew">+ Nouveau fournisseur</button></div>'
-      + '<label class="row" style="margin:0 0 10px"><input type="checkbox" id="foarch"' + (S.foArch ? ' checked' : '') + ' style="width:20px;height:20px"> Voir les fiches archivées</label>';
-    return h + '<div class="card">' + (l.length ? l.map(function (f) {
+    var h = '<div class="cm-top"><span class="cm-seg" role="tablist" aria-label="Fiches"><button role="tab" aria-selected="' + !S.foArch + '" class="' + (!S.foArch ? 'on' : '') + '" data-foarch="0">Fournisseurs actifs</button><button role="tab" aria-selected="' + !!S.foArch + '" class="' + (S.foArch ? 'on' : '') + '" data-foarch="1">Archivés</button></span><span class="grow mu fo-int">Une fiche par fournisseur : compte client, contacts, commercial, conditions.</span><button class="cm-new" data-act="fonew">+ Nouveau fournisseur</button></div>';
+    return h + (l.length ? '<section class="fo-g">' + l.map(function (f) {
       var na = S.articles.filter(function (a) { return a.fournisseur_id === f.id; }).length, manque = !f.n_client || !f.telephone || !f.email;
-      return '<button class="it lrow" data-foopen="' + f.id + '"><span class="it-n"><b>' + esc(f.nom) + '</b><span>' + na + ' article(s) en principal' + (f.n_client ? ' · client n° ' + esc(f.n_client) : '') + (f.telephone ? ' · ' + esc(f.telephone) : '') + '</span></span>' + (manque ? '<span class="pill warn">à compléter</span>' : '<span class="pill ok">complète</span>') + '</button>';
-    }).join('') : '<p class="mu">Aucune fiche.</p>') + '</div>';
+      return '<button class="fo-c" data-foopen="' + f.id + '"><span class="fo-c1"><b>' + esc(f.nom) + '</b>' + (manque ? '<span class="pill warn">à compléter</span>' : '<span class="pill ok">complète</span>') + '</span><span class="fo-c2"><b>' + na + '</b> article' + (na > 1 ? 's' : '') + ' en principal</span><span class="fo-c3">' + (f.n_client ? 'Client n° ' + esc(f.n_client) : '<span class="mu">N° client à renseigner</span>') + (f.telephone ? ' · ' + esc(f.telephone) : '') + '</span></button>';
+    }).join('') + '</section>' : '<p class="mu">Aucune fiche.</p>');
   }
   function ouvrirFo(id) {
     var f = id === 'new' ? { nom: '' } : JSON.parse(JSON.stringify(S.fournListe.filter(function (x) { return x.id === id; })[0] || {}));
@@ -4804,6 +4803,7 @@
     if (d.act === 'vider') { S.sortie.panier = {}; S.sortie.voir = false; render(); return; }
     if (d.plus) { setQte(d.plus, (S.sortie.panier[d.plus] || 0) + 1); S.sortie.msg = null; render(); return; }
     if (d.moins) { setQte(d.moins, (S.sortie.panier[d.moins] || 0) - 1); render(); return; }
+    if (d.foarch != null) { S.foArch = d.foarch === '1'; render(); return; }
     if (d.scab) { S.sortie.cab = +d.scab; render(); return; }
     if (d.htous != null) { var ht = d.htous === '1'; if (ht !== !!S.histTous) { S.histTous = ht; render(); chargerHisto(); } return; }
     if (d.rcab) { S.ret.cab = +d.rcab; render(); return; }
