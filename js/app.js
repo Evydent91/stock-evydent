@@ -920,28 +920,19 @@
     return (p.statut === 'apprentie' ? 'Apprentie' : 'Qualifiée') + (p.ecole_jour ? ' · école le ' + JOURS[p.ecole_jour].toLowerCase() : '') + (parts.length ? ' · ' + parts.join(', ') : '');
   }
   function lignePers(p) {
-    var ty = typeDe(p.type), auPl = ty.planning !== false, aContrat = ty.contrat !== false && p.type !== 'interimaire';
-    var h = heuresTrame(p.trame), c = +p.contrat_h || 0, vide = auPl && p.type !== 'interimaire' && h < 0.01;
-    var ecart = auPl && aContrat && c && !vide && Math.abs(h - c) > 0.01;
+    var ty = typeDe(p.type), aContrat = ty.contrat !== false && p.type !== 'interimaire', c = +p.contrat_h || 0;
     var prof = p.profil_id ? (S.profils || []).filter(function (x) { return x.id === p.profil_id; })[0] : null;
-    var sous = [nomType(p) === 'Assistante' ? 'Qualifiée' : nomType(p)];
-    if (aContrat && c) sous.push(fh(c) + ' / semaine');
+    var sous = [];
+    if (aContrat && c) sous.push('contrat ' + fh(c));
     if (p.statut === 'apprentie' && p.ecole_jour) sous.push('école le ' + JOURS[p.ecole_jour].toLowerCase());
-    var sem = '';
-    if (auPl && p.type !== 'interimaire' && !vide) {
-      sem = '<span class="eq-sem" aria-label="Semaine type">' + [1, 2, 3, 4, 5].map(function (j) {
-        var x = (p.trame || {})[j] || {}, a = x.am && x.am.a || 'OFF', b = x.pm && x.pm.a || 'OFF', v = a !== 'OFF' ? a : b;
-        var k = function (z) { return !z || z === 'OFF' ? 'j-off' : z === 'ECOLE' ? 'j-ec' : z.slice(0, 2) === 'D:' ? 'j-de' : 'j-po'; };
-        var nm = function (z) { return z === 'OFF' ? 'Off' : affTxt(z).replace(/^Dr /, ''); };
-        var txt = a === b || b === 'OFF' || a === 'OFF' ? nm(v) : nm(a) + ' / ' + nm(b);
-        return '<span class="eq-j ' + k(v) + (a !== b && a !== 'OFF' && b !== 'OFF' ? ' mix' : '') + '" title="' + JOURS[j] + ' : ' + esc(nm(a)) + ' le matin, ' + esc(nm(b)) + ' l’après-midi"><small>' + JC[j] + '</small><b>' + esc(txt) + '</b></span>';
-      }).join('') + '</span>';
-    } else if (p.type === 'interimaire') sem = '<span class="eq-note">Selon les besoins</span>';
-    else if (!auPl) sem = '<span class="eq-note">N’apparaît pas dans le planning</span>';
-    else if (vide) sem = '<span class="eq-note warn">Semaine type à remplir</span>';
-    var badges = (p.pointage ? '<span class="eq-b or">Pointe</span>' : '') + (prof ? '<span class="eq-b ok">' + ico('ok', 13, 2.8) + 'Compte</span>' : '<span class="eq-b">Sans compte</span>') + (ecart ? '<span class="eq-b warn" title="Semaine type ' + fh(h) + ' pour un contrat de ' + fh(c) + '">Semaine ' + fh(h) + ' au lieu de ' + fh(c) + '</span>' : '');
-    return '<button class="eq-l" data-pf="' + p.id + '"><span class="a-av p">' + initiale(p.prenom) + '</span><span class="eq-id"><b>' + esc(p.prenom) + '</b><span>' + esc(sous.join(' · ')) + '</span></span>'
-      + '<span class="eq-badges">' + badges + '</span>' + sem + '<span class="eq-go">' + ico('suiv', 20, 2.2) + '</span></button>';
+    if (ty.planning === false) sous.push('hors planning');
+    var tyTxt = p.type === 'assistante' || !p.type ? (p.statut === 'apprentie' ? 'Assistante · apprentie' : 'Assistante · qualifiée') : ty.n;
+    var nc = 0, cel = function (lab, val, cls) { nc++; return '<span class="eq-cel c' + nc + '"><small>' + lab + '</small><span class="eq-v' + (cls ? ' ' + cls : '') + '">' + val + '</span></span>'; };
+    return '<button class="eq-l" data-pf="' + p.id + '"><span class="a-av p">' + initiale(p.prenom) + '</span><span class="eq-id"><b>' + esc(p.prenom) + '</b>' + (sous.length ? '<span>' + esc(sous.join(' · ')) + '</span>' : '') + '</span>'
+      + cel('Type', esc(tyTxt))
+      + cel('Rôle', prof ? esc(nomRole(prof)) + (prof.actif === false ? ' (désactivé)' : '') : 'Pas de compte', prof ? 'role' : 'aucun')
+      + cel('Pointage', p.pointage ? 'Pointe' : 'Non', p.pointage ? 'pt' : 'aucun')
+      + '<span class="eq-go">' + ico('suiv', 20, 2.2) + '</span></button>';
   }
   function groupesEquipe(l) {
     var G = [], idx = {};
