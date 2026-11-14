@@ -138,7 +138,7 @@
       if (!S.me || !S.me.actif) { S.loading = false; render(); return; }
       if (S.sortie.cab == null) S.sortie.cab = S.me.cabinet || 1;
       if (S.ret.cab == null) S.ret.cab = S.me.cabinet || 1;
-      if (!gestion() && ['maison', 'mstock', 'sortie', 'retour', 'inventaire', 'histo', 'compte', 'aide', 'moi'].indexOf(S.tab) < 0) S.tab = 'maison';
+      if (!gestion() && ['maison', 'mstock', 'sortie', 'retour', 'inventaire', 'histo', 'compte', 'aide', 'moi', 'moubli'].indexOf(S.tab) < 0) S.tab = 'maison';
       if (S.inv.emp == null && S.me.cabinet) choisirEmp(S.me.cabinet);
       if (!S.tabChoisi) S.tab = gestion() ? 'hub' : 'maison';
       S.histTous = gestion();
@@ -444,6 +444,7 @@
     if (['sortie', 'retour', 'inventaire', 'histo', 'mstock'].indexOf(t) >= 0) return droit('stock');
     if (t === 'mplanning') return droit('planning');
     if (t === 'mconges' || t === 'mdemande') return droit('conges');
+    if (t === 'moubli') return droit('pointage');
     return true;
   }
   function tuileA(tab, cls, ic, titre, sous, em) {
@@ -454,6 +455,7 @@
     var h = '<header class="a-hd a-maison"><div class="a-mh-top"><img src="assets/logo-evydent.jpg" alt="Evydent"><span class="grow">Espace dentaire Val d’Yerres</span></div>'
       + '<div><h1>Bonjour ' + esc(S.me.nom) + '</h1><p>' + esc(nomRole(S.me)) + (S.me.cabinet && droit('cab') ? ' · cabinet ' + S.me.cabinet : '') + ' · ' + j + '</p></div></header>';
     var pt = droit('pointage') ? tuilePointer() : '', t = [];
+    if (pt) { var obA = (S.mesOublis || []).filter(function (o) { return o.statut === 'attente'; }).length; pt += '<button class="ob-lien" data-tab="moubli">' + ico('attente', 18, 2.2) + 'J’ai oublié de pointer' + (obA ? ' <span>' + obA + ' en attente</span>' : '') + '</button>'; }
     if (droit('stock')) t.push(tuileA('mstock', 'ts', 'boite', 'Stock', 'Sortie, inventaire, retour', inventaireAFaire() ? 'Inventaire à faire ce mois-ci' : ''));
     if (droit('planning') && S.visible && S.visible.planning && S.moiEq) t.push(tuileA('mplanning', 'tp', 'histo', 'Mon planning', 'Mes jours, mon dentiste, mes horaires'));
     if (droit('conges')) { var att = (S.mesConges || []).filter(function (c) { return c.statut === 'attente'; }).length; t.push(tuileA('mconges', 'tc2', 'agenda', 'Mes congés', att ? att + ' demande' + (att > 1 ? 's' : '') + ' en attente' : 'Demander, suivre la réponse')); }
@@ -673,7 +675,7 @@
 
   function renderA() {
     if (!ongletPermis(S.tab)) S.tab = 'maison';
-    var ecr = { maison: vMaison, mstock: vStockA, sortie: vSortieA, retour: vRetourA, inventaire: vInventaireA, histo: vHistoA, moi: vMoiA, compte: vCompteA, aide: vAideA, mconges: vMesCongesA, mdemande: vDemandeA, mplanning: vMonPlanningA }[S.tab];
+    var ecr = { maison: vMaison, mstock: vStockA, sortie: vSortieA, retour: vRetourA, inventaire: vInventaireA, histo: vHistoA, moi: vMoiA, compte: vCompteA, aide: vAideA, mconges: vMesCongesA, mdemande: vDemandeA, mplanning: vMonPlanningA, moubli: vOubliA }[S.tab];
     if (!ecr) { S.tab = 'maison'; ecr = vMaison; }
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
     h += '<div class="a-app">' + ecr() + '</div>' + vNavMobile();
@@ -731,6 +733,7 @@
       + '<div><h1>Bonjour ' + esc(S.me.nom) + '</h1><p>' + LABEL[S.me.role] + ' · ' + j + '</p></div></header>';
     var ca = congesAttente().length;
     h += '<div class="a-corps h-corps">' + vBienvenue()
+      + ((S.oublis || []).length ? '<button class="h-alerte" data-tab="pointage">' + ico('attente', 22) + '<span><b>' + S.oublis.length + ' ' + pl(S.oublis.length, 'oubli') + ' de pointage</b> ' + pl(S.oublis.length, 'signalé') + ' à valider</span>' + ico('suiv', 20, 2.2) + '</button>' : '')
       + (ca ? '<button class="h-alerte" data-tab="pconges">' + ico('attente', 22) + '<span><b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à valider</span>' + ico('suiv', 20, 2.4) + '</button>' : '')
       + '<div class="h-tuiles">'
       + '<button class="h-tuile fonce" data-tab="accueil"><span class="ti">' + ico('boite', 34) + '</span><span class="tt"><b>Gestion de stock</b><span>' + (sous.length ? sous.join(' · ') : 'Sorties, inventaires, commandes') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
@@ -1292,6 +1295,7 @@
       if (!Array.isArray(S.roles)) S.roles = S.roles || [];
       if (r[0].error || r[1].error) { S.equipe = null; S.dentistes = null; } else { S.equipe = r[0].data; S.dentistes = r[1].data; }
       S.conges = r[2] && !r[2].error ? r[2].data : [];
+      chargerOublis();
       render();
     }, function () { S.equipe = null; S.dentistes = null; render(); });
   }
@@ -1501,12 +1505,72 @@
   }
 
   // Assistante : mes congés et demande
+  // ---------- Oubli de pointage signalé par l'assistante (mise à jour 022) ----------
+  function chargerMesOublis() {
+    if (gestion() || !S.me) return Promise.resolve();
+    return sb.from('pointage_oublis').select('*').order('cree_le', { ascending: false }).limit(30).then(function (r) { S.mesOublis = r.error ? false : r.data || []; render(); }, function () { S.mesOublis = false; render(); });
+  }
+  function chargerOublis() {
+    if (!gestion()) return Promise.resolve();
+    return sb.from('pointage_oublis').select('*').eq('statut', 'attente').order('jour').then(function (r) { S.oublis = r.error ? null : r.data || []; render(); }, function () { S.oublis = null; });
+  }
+  function joursOubli() {   // aujourd'hui et les 14 jours d'avant, du lundi au vendredi
+    var l = [], d = dIso(maintenantPt());
+    for (var i = 0; i <= 14; i++) { var x = addJ(d, -i), j = jourSem(x); if (j >= 1 && j <= 5) l.push(x); }
+    return l;
+  }
+  function libJourOubli(x) { var a = dIso(maintenantPt()); return x === a ? 'Aujourd’hui' : x === addJ(a, -1) ? 'Hier' : JC[jourSem(x)] + '. ' + dateCourte(x); }
+  function vOubliA() {
+    var O = S.oub = S.oub || { jour: dIso(maintenantPt()), sens: 'arrivee', heure: '', mot: '' };
+    var h = hdA({ back: ['data-tab="maison"', 'Accueil'], t: 'Oubli', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    if (S.mesOublis === false) return h + '<p class="a-note warn">Cette fonction n’est pas encore activée (mise à jour 022 de la base). Prévenez la référente de vive voix.</p></div>';
+    h += '<p class="a-aide" style="margin-top:0">Vous avez oublié de scanner le QR code ? Indiquez l’heure réelle : la référente la vérifie et l’enregistre.</p>'
+      + '<div class="card ob-f"><label class="mu">Jour<select class="in" id="objour">' + joursOubli().map(function (x) { return '<option value="' + x + '"' + (O.jour === x ? ' selected' : '') + '>' + libJourOubli(x) + '</option>'; }).join('') + '</select></label>'
+      + '<div class="h-choix"><button class="' + (O.sens === 'arrivee' ? 'on' : '') + '" data-obsens="arrivee">Mon arrivée</button><button class="' + (O.sens === 'sortie' ? 'on' : '') + '" data-obsens="sortie">Ma sortie</button></div>'
+      + '<label class="mu">Heure ' + (O.sens === 'arrivee' ? 'd’arrivée' : 'de sortie') + '<input class="in" type="time" id="obheure" value="' + esc(O.heure) + '"></label>'
+      + '<label class="mu">Petit mot (facultatif)<textarea class="in" rows="2" id="obmot" placeholder="Ex. : téléphone déchargé">' + esc(O.mot) + '</textarea></label>'
+      + '<button class="a-btn gold" data-act="obenvoi"' + (O.busy ? ' disabled' : '') + '>' + (O.busy ? 'Envoi…' : 'Envoyer à la référente') + '</button></div>';
+    var l = (S.mesOublis || []).filter(function (o) { return o.statut !== 'annule'; });
+    h += '<h2 class="a-jour">Mes signalements</h2>' + (S.mesOublis == null ? '<p class="a-vide">Chargement…</p>' : !l.length ? '<p class="a-vide">Aucun signalement.</p>' : '<div class="a-liste">' + l.map(function (o) {
+      var ic = o.statut === 'attente' ? ['attente', ' orange'] : o.statut === 'accepte' ? ['ok', ' vert'] : ['croix', ''];
+      var st = o.statut === 'attente' ? '<span class="warn">en attente de la référente</span>' : o.statut === 'accepte' ? '<span class="ok">enregistré</span>' : '<span>refusé' + (o.reponse ? ' · « ' + esc(o.reponse) + ' »' : '') + '</span>';
+      return '<div class="a-ev"><span class="a-evi' + ic[1] + '">' + ico(ic[0], 20, 2.4) + '</span><div class="a-it-n"><b>' + libJourOubli(o.jour) + ' · ' + (o.sens === 'arrivee' ? 'arrivée' : 'sortie') + ' à ' + ft(String(o.heure).slice(0, 5)) + '</b>' + (o.mot ? '<span>« ' + esc(o.mot) + ' »</span>' : '') + st + '</div>'
+        + (o.statut === 'attente' ? '<button class="a-lien" data-obannule="' + o.id + '">Annuler</button>' : '') + '</div>';
+    }).join('') + '</div>');
+    return h + '</div>';
+  }
+  function envoyerOubli() {
+    var O = S.oub; O.jour = $('objour').value; O.heure = $('obheure').value; O.mot = $('obmot').value;
+    if (!O.heure) { toast('Indiquez l’heure'); return; }
+    O.busy = true; render();
+    sb.rpc('signaler_oubli', { p_jour: O.jour, p_sens: O.sens, p_heure: O.heure, p_mot: O.mot || null }).then(function (r) {
+      if (r.error) throw r.error; S.oub = null; toast('✔ Envoyé à la référente'); chargerMesOublis();
+    }).catch(function (e) { O.busy = false; toast(msgErr(e)); render(); });
+  }
+  // Côté gestion : les oublis signalés à valider (en haut du pointage)
+  function blocOublis() {
+    var l = S.oublis || []; if (!l.length) return '';
+    return '<section class="ob-att"><h2 class="cg2-t">Oublis signalés à valider <span>' + l.length + '</span></h2><div class="ob-cartes">' + l.map(function (o) {
+      var p = persById(o.equipe_id) || {}, r = ptRow(o.equipe_id, o.jour), b = bornesPrevues(p, o.jour), prev = o.sens === 'arrivee' ? b.d : b.f;
+      var actuel = r ? 'pointé : ' + (r.arrivee ? hTs(r.arrivee) : '—') + ' → ' + (r.sortie ? hTs(r.sortie) : '—') : 'aucun pointage ce jour-là';
+      return '<div class="card ob-c"><div class="ob-t"><span class="a-av p">' + initiale(p.prenom) + '</span><div><b>' + esc(p.prenom || '?') + ' · ' + (o.sens === 'arrivee' ? 'arrivée' : 'sortie') + ' à ' + ft(String(o.heure).slice(0, 5)) + '</b><span class="mu">' + jourLong(o.jour) + ' · ' + actuel + (prev != null ? ' · prévu ' + fMin(prev) : '') + '</span></div></div>'
+        + (o.mot ? '<p class="h-mot">« ' + esc(o.mot) + ' »</p>' : '')
+        + '<div class="h-cg-b"><button class="a-btn blanc" data-obrefus="' + o.id + '">Refuser</button><button class="a-btn vert" data-obok="' + o.id + '">Enregistrer l’heure</button></div></div>';
+    }).join('') + '</div></section>';
+  }
+  function repondreOubli(id, ok) {
+    var rep = null;
+    if (!ok) { rep = prompt('Motif du refus (facultatif, la personne le verra) :', ''); if (rep === null) return; }
+    sb.rpc('repondre_oubli', { p_id: +id, p_accepte: ok, p_reponse: rep }).then(function (r) {
+      if (r.error) throw r.error; toast(ok ? '✔ Heure enregistrée' : 'Signalement refusé'); chargerOublis(); if (S.ptg) { S.ptg.charges = null; chargerPointages(true); }
+    }).catch(function (e) { toast(msgErr(e)); chargerOublis(); });
+  }
   function chargerMesConges() {
     if (gestion() || !S.me) return Promise.resolve();
     return Promise.all([sb.from('equipe').select('*').eq('profil_id', S.me.id).maybeSingle(), sb.from('conges').select('*').order('du', { ascending: false }).limit(60),
       sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'roles'])]).then(function (r) {
       S.moiEq = r[0].error ? null : r[0].data; S.mesConges = r[1].error ? [] : r[1].data || []; S.mesCongesOk = !r[0].error;
-      if (S.moiEq && S.moiEq.pointage) chargerMonPointage();
+      if (S.moiEq && S.moiEq.pointage) { chargerMonPointage(); chargerMesOublis(); }
       var vuR = false;
       if (r[2] && !r[2].error) (r[2].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'roles') { S.roles = Array.isArray(x.valeur) ? x.valeur : []; vuR = true; } else S.visible = x.valeur; });
       if (!vuR) S.roles = [];
@@ -2019,6 +2083,7 @@
     if (G.err) h += '<div class="ban warn">' + esc(G.err) + '</div>';
     var tous = (S.equipe || []).filter(function (e) { return e.actif && e.pointage; }), ps = trierPt(tous);
     if (!tous.length) return h + '<div class="card"><b>Personne n’est soumis au pointage pour l’instant.</b><p class="mu" style="margin:6px 0 0">Cochez « Soumise au pointage journalier » dans la fiche de chaque assistante concernée (Réglages › L’équipe).</p></div></div>' + (S.ptQR ? vQR() : '');
+    h += blocOublis();
     var sh = ps.filter(sansHoraires);
     if (sh.length) h += '<div class="ban info">' + sh.map(function (p) { return '<button class="lien" data-pf="' + p.id + '">' + esc(p.prenom) + '</button>'; }).join(', ') + ' ' + (sh.length > 1 ? 'n’ont' : 'n’a') + ' pas encore d’horaires habituels : les heures pointées s’affichent, mais sans heures prévues, ni retard, ni oubli signalé. À renseigner dans la fiche (rubrique ' + (function () { var hp = sh.filter(function (p) { return typeDe(p.type).planning === false; }).length; return hp === sh.length ? '« Horaires habituels »' : hp ? '« Semaine type » ou « Horaires habituels »' : '« Semaine type »'; })() + ').</div>';
     h += boutonsCatPt(tous) + (G.mode === 'jour' ? vPointageJour(ps, J) : vPointageSemaine(ps, L));
@@ -2097,7 +2162,7 @@
     chargerJournalBord(W[0], addJ(der, 6));
     var X = ps.map(function (p) { return statsPt(p, W); });
     if (B.sel) { var x0 = X.filter(function (x) { return String(x.p.id) === String(B.sel); })[0]; if (x0) return h + vPtBordDetail(x0, W) + '</div>' + modalesPt(); B.sel = null; }
-    h += boutonsCatPt(tous);
+    h += blocOublis() + boutonsCatPt(tous);
     var R = regles(), tol = +R.pt_tol || 0, jT = 0, jC = 0, sM = 0, aM = 0, nA = 0, ret = [], dep = [], reel = 0, prevu = 0, arr = [];
     X.forEach(function (x) { jT += x.jT; jC += x.jC; sM += x.sortieM.length; aM += x.arriveeM.length; nA += x.aucun.length; ret = ret.concat(x.ret); dep = dep.concat(x.dep); reel += x.reel; prevu += x.prevu; arr = arr.concat(x.arr); });
     var som = function (l) { return l.reduce(function (a, b) { return a + b.m; }, 0); }, oub = sM + aM + nA, pc = jT ? Math.round(jC / jT * 100) : 100;
@@ -2883,7 +2948,7 @@
   function vNavMobile() {
     if (!gestion()) {
       if (enTache()) return '';
-      var cur = ['compte', 'mconges', 'mdemande', 'mplanning'].indexOf(S.tab) >= 0 ? 'moi' : S.tab;
+      var cur = ['compte', 'mconges', 'mdemande', 'mplanning'].indexOf(S.tab) >= 0 ? 'moi' : S.tab === 'moubli' ? 'maison' : S.tab;
       var nv = ['maison', 'histo', 'aide', 'moi'].filter(function (t) { return t !== 'histo' || droit('stock'); });
       if (S.tab === 'mstock') cur = 'maison';
       return '<nav class="bnav a4' + (nv.length === 3 ? ' a3' : '') + '" aria-label="Menu principal">' + nv.map(function (t) {
@@ -4365,6 +4430,11 @@
     if (d.act === 'simraz') { S.sim = null; try { sessionStorage.removeItem('evy-sim'); } catch (e) {} chargerMonPointage(); render(); return; }
     if (d.act === 'simscan') { var jt0 = ''; try { jt0 = localStorage.getItem('evy-jeton-test') || ''; } catch (e) {} if (jt0) { JETON_QR = jt0; pointerQR(); } return; }
     if (d.act === 'simgestion') return basculerSimulation();
+    if (d.act === 'obenvoi') return envoyerOubli();
+    if (d.obsens) { S.oub = S.oub || {}; S.oub.jour = $('objour').value; S.oub.heure = $('obheure').value; S.oub.mot = $('obmot').value; S.oub.sens = d.obsens; render(); return; }
+    if (d.obannule) { sb.rpc('annuler_oubli', { p_id: +d.obannule }).then(function (r) { if (r.error) throw r.error; toast('Signalement annulé'); chargerMesOublis(); }).catch(function (e) { toast(msgErr(e)); }); return; }
+    if (d.obok) return repondreOubli(d.obok, true);
+    if (d.obrefus) return repondreOubli(d.obrefus, false);
     if (d.ptcat != null && S.ptg) { S.ptg.cat = d.ptcat || null; render(); return; }
     if (d.act === 'ptqr') return ouvrirPageQR('pointage');
     if (d.act === 'qrplein') { S.qrPlein = true; render(); return; }

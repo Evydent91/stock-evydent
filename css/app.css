@@ -1406,3 +1406,12 @@ button.lien{border:none;background:none;padding:0;font:inherit;font-weight:700;c
 .cg2-aujw small{font-size:10px;font-weight:700;color:#7a6a2a;white-space:nowrap;margin-top:4px}
 .cg2-c.np{background:#e7e1d1;border-color:#e7e1d1}
 .cg2-c.auj.np{border:2px solid var(--gold);background:rgba(231,225,209,.8)}
+/* Oubli de pointage */
+.ob-lien{align-self:center;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border:none;background:none;font:inherit;font-size:15px;font-weight:700;color:var(--navy);text-decoration:underline;cursor:pointer}
+.ob-lien span{text-decoration:none;font-size:12.5px;padding:2px 8px;border-radius:999px;background:#fdf0e6;color:#9a4a0b}
+.ob-f{display:flex;flex-direction:column;gap:12px}
+.ob-f label{display:flex;flex-direction:column;gap:4px}
+.ob-att{display:flex;flex-direction:column;gap:8px}
+.ob-cartes{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
+.ob-c{display:flex;flex-direction:column;gap:10px;margin:0}
+.ob-t{display:flex;gap:12px;align-items:center}.ob-t > div{display:flex;flex-direction:column}
