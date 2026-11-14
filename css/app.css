@@ -1332,3 +1332,12 @@ button.lien{border:none;background:none;padding:0;font:inherit;font-weight:700;c
   .eq-v{white-space:normal;font-size:14px}
 }
 
+/* Pointage : pastilles par catégorie et boutons de tri */
+.a-av.c1{background:#cfe0f3;color:#1d4f86}.a-av.c2{background:#cdeedd;color:#17643f}.a-av.c3{background:#e3d6f3;color:#4a2f73}
+.a-av.c4{background:#f8d9c4;color:#8a3d0c}.a-av.c5{background:#f6d3df;color:#8a2348}.a-av.c6{background:#dde3e8;color:#333d46}
+.pt-pas{width:12px;height:12px;border-radius:50%;flex:none;background:var(--gold)}
+.pt-pas.c1{background:#5b8fc9}.pt-pas.c2{background:#3f9b6c}.pt-pas.c3{background:#8a67b8}.pt-pas.c4{background:#d9874e}.pt-pas.c5{background:#c9587f}.pt-pas.c6{background:#8a939b}
+.pt-cats{display:flex;gap:8px;flex-wrap:wrap}
+.pt-cats button{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:999px;border:1.5px solid var(--line);background:#fff;font:inherit;font-size:14.5px;font-weight:600;color:var(--ink);cursor:pointer}
+.pt-cats button span{font-size:12.5px;font-weight:700;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--soft);display:inline-grid;place-items:center}
+.pt-cats button.on{background:var(--navy);border-color:var(--navy);color:#fff}.pt-cats button.on span{background:rgba(255,255,255,.18);color:#fff}

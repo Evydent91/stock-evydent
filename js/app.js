@@ -1940,6 +1940,35 @@
     if (iso === auj && maintenant < 12 * 60) return { t: 'Pas encore pointé', k: 'at' };
     return { t: 'Aucun pointage', k: 'ko' };
   }
+  // Catégories du pointage (pastilles de couleur et tri) : rôle ajouté du compte, sinon type de personnel ; les assistantes d'abord
+  var CAT_COUL = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6'];
+  function catPt(p) {
+    if (p.type === 'interimaire') return { k: 'interimaire', n: 'Intérimaire', o: 90 };
+    var prof = p.profil_id ? (S.profils || []).filter(function (x) { return x.id === p.profil_id; })[0] : null;
+    if (prof && prof.role === 'assistante' && prof.fonction) return { k: 'r:' + prof.fonction, n: roleEqDe(prof.fonction).n, o: 10 };
+    if (p.type && p.type !== 'assistante') return { k: 't:' + p.type, n: typeDe(p.type).n, o: 10 };
+    return { k: 'assistante', n: 'Assistantes', o: 0 };
+  }
+  function catsPt(ps) {   // catégories présentes, triées, avec leur couleur
+    var m = {}, l = [];
+    ps.forEach(function (p) { var c = catPt(p); if (!m[c.k]) { m[c.k] = c; c.nb = 0; l.push(c); } m[c.k].nb++; });
+    l.sort(function (a, b) { return a.o - b.o || a.n.localeCompare(b.n); });
+    var i = 0; l.forEach(function (c) { c.coul = c.k === 'assistante' ? 'c0' : CAT_COUL[i++ % CAT_COUL.length]; });
+    return l;
+  }
+  function trierPt(ps) {   // assistantes en haut, puis les autres catégories ; filtre choisi par les boutons
+    var cs = catsPt(ps), rang = {}; cs.forEach(function (c, i) { rang[c.k] = i; });
+    S.ptCat = {}; cs.forEach(function (c) { S.ptCat[c.k] = c; });
+    var f = S.ptg && S.ptg.cat; if (f && !rang.hasOwnProperty(f)) f = S.ptg.cat = null;
+    return ps.filter(function (p) { return !f || catPt(p).k === f; }).sort(function (a, b) { return rang[catPt(a).k] - rang[catPt(b).k] || a.ordre - b.ordre; });
+  }
+  function boutonsCatPt(tous) {
+    var cs = catsPt(tous); if (cs.length < 2) return '';
+    var f = S.ptg && S.ptg.cat;
+    return '<div class="pt-cats" role="group" aria-label="Trier par catégorie"><button data-ptcat=""' + (!f ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"') + '>Tous <span>' + tous.length + '</span></button>'
+      + cs.map(function (c) { return '<button data-ptcat="' + esc(c.k) + '"' + (f === c.k ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"') + '><i class="pt-pas ' + c.coul + '" aria-hidden="true"></i>' + esc(c.n) + ' <span>' + c.nb + '</span></button>'; }).join('') + '</div>';
+  }
+  function avPt(p) { var c = (S.ptCat || {})[catPt(p).k]; return '<span class="a-av' + (c && c.coul !== 'c0' ? ' ' + c.coul : '') + '" title="' + esc(c ? c.n : '') + '">' + esc((p.prenom || '?')[0]) + '</span>'; }
   function vPointage() {
     var G = S.ptg = S.ptg || { mode: 'semaine', jour: dIso(new Date()), rows: {} }, J = G.jour, L = lundiDe(J);
     if (G.mode === 'bord') return vPtBord();
@@ -1948,9 +1977,9 @@
     if (!pointagePret()) return h + '<div class="ban warn">La mise à jour 016 de la base (pointage) n’est pas encore faite.</div></div>' + (S.ptQR ? vQR() : '');
     if (assurerPlage(addJ(L, 6)) || S.pl.chargeH || chargerPointages() || G.charge) return h + '<p class="a-vide">Chargement…</p></div>';
     if (G.err) h += '<div class="ban warn">' + esc(G.err) + '</div>';
-    var ps = (S.equipe || []).filter(function (e) { return e.actif && e.pointage; }).sort(function (a, b) { return (a.type === 'interimaire') - (b.type === 'interimaire') || a.ordre - b.ordre; });
-    if (!ps.length) return h + '<div class="card"><b>Personne n’est soumis au pointage pour l’instant.</b><p class="mu" style="margin:6px 0 0">Cochez « Soumise au pointage journalier » dans la fiche de chaque assistante concernée (Réglages › L’équipe).</p></div></div>' + (S.ptQR ? vQR() : '');
-    h += G.mode === 'jour' ? vPointageJour(ps, J) : vPointageSemaine(ps, L);
+    var tous = (S.equipe || []).filter(function (e) { return e.actif && e.pointage; }), ps = trierPt(tous);
+    if (!tous.length) return h + '<div class="card"><b>Personne n’est soumis au pointage pour l’instant.</b><p class="mu" style="margin:6px 0 0">Cochez « Soumise au pointage journalier » dans la fiche de chaque assistante concernée (Réglages › L’équipe).</p></div></div>' + (S.ptQR ? vQR() : '');
+    h += boutonsCatPt(tous) + (G.mode === 'jour' ? vPointageJour(ps, J) : vPointageSemaine(ps, L));
     if (CONFIG.env === 'dev') h += '<div class="sim"><b>Simulation (site de test uniquement)</b><span class="mu">Autorise les assistantes à pointer avec un jour et une heure choisis (encadré « Simulation » sous leur tuile Pointer), pour tester sans attendre le lendemain. N’existe pas sur le vrai site.</span><button class="btn sm' + (S.simOn ? ' l' : '') + '" data-act="simgestion" aria-pressed="' + !!S.simOn + '">' + (S.simOn ? 'Heure simulée autorisée · Couper' : 'Autoriser l’heure simulée') + '</button></div>';
     return h + '<p class="a-aide">Temps effectif = sortie − arrivée, moins la coupure de midi prévue au planning ce jour-là (seulement la partie passée entre l’arrivée et la sortie). Écart de la semaine : sur les journées pointées en entier. Touchez une ligne ou une case pour corriger un oubli : la correction est signée.</p></div>' + (S.ptEd ? vPtEdit() : '') + (S.ptQR ? vQR() : '') + (S.ptLog ? vPtLog() : '');
   }
@@ -2016,7 +2045,7 @@
     var G = S.ptg, B = G.bord = G.bord || { per: 'mois', mois: addJ(lundiDe(dIso(new Date())), 3).slice(0, 7), lundi: lundiDe(dIso(new Date())), sel: null };
     var W = hrSemaines({ mode: B.per, mois: B.mois, lundi: B.lundi }), der = W[W.length - 1];
     var titre = B.per === 'semaine' ? 'Semaine du ' + periode(B.lundi, addJ(B.lundi, 4)).replace(/^du /, '') : B.per === 'mois' ? nomMois(B.mois).replace(/^./, function (c) { return c.toUpperCase(); }) : 'Depuis le ' + dateCourte(regles().depuis || '2026-11-02');
-    var ps = (S.equipe || []).filter(function (e) { return e.actif && e.pointage; }).sort(function (a, b) { return (a.type === 'interimaire') - (b.type === 'interimaire') || a.ordre - b.ordre; });
+    var tous = (S.equipe || []).filter(function (e) { return e.actif && e.pointage; }), ps = trierPt(tous);
     var sous = W.length + ' semaine' + (W.length > 1 ? 's' : '') + ' · ' + periode(W[0], addJ(der, 4)) + ' · ' + ps.length + ' ' + pl(ps.length, 'personne') + ' soumise' + (ps.length > 1 ? 's' : '') + ' au pointage';
     var auj0 = dIso(new Date()), estCourant = B.per === 'semaine' ? B.lundi === lundiDe(auj0) : B.per === 'mois' ? B.mois === addJ(lundiDe(auj0), 3).slice(0, 7) : true;
     var h = enTetePt({ mode: 'bord', titre: titre, nav: 'ptbnav', fleches: B.per !== 'depuis', auj: estCourant ? '' : B.per === 'semaine' ? 'Cette semaine' : 'Ce mois-ci', sous: sous + (regles().pt_reliquat !== false ? ' · <b class="or">Le reliquat utilise le temps pointé</b>' : ' · le reliquat utilise le planning') }) + '<div class="a-corps hr-corps">';
@@ -2026,6 +2055,7 @@
     chargerJournalBord(W[0], addJ(der, 6));
     var X = ps.map(function (p) { return statsPt(p, W); });
     if (B.sel) { var x0 = X.filter(function (x) { return String(x.p.id) === String(B.sel); })[0]; if (x0) return h + vPtBordDetail(x0, W) + '</div>' + modalesPt(); B.sel = null; }
+    h += boutonsCatPt(tous);
     var R = regles(), tol = +R.pt_tol || 0, jT = 0, jC = 0, sM = 0, aM = 0, nA = 0, ret = [], dep = [], reel = 0, prevu = 0, arr = [];
     X.forEach(function (x) { jT += x.jT; jC += x.jC; sM += x.sortieM.length; aM += x.arriveeM.length; nA += x.aucun.length; ret = ret.concat(x.ret); dep = dep.concat(x.dep); reel += x.reel; prevu += x.prevu; arr = arr.concat(x.arr); });
     var som = function (l) { return l.reduce(function (a, b) { return a + b.m; }, 0); }, oub = sM + aM + nA, pc = jT ? Math.round(jC / jT * 100) : 100;
@@ -2039,7 +2069,7 @@
     // tableau par personne
     h += '<div class="hr-cols"><section class="hr-carte hr-tab"><div class="hr-ct"><h2>Par personne</h2><span class="mu">Touchez une ligne pour le détail jour par jour</span></div><div class="hr-scroll"><div class="pb-grille"><div class="pb-l hr-tete"><span>Personne</span><span>Jours pointés</span><span>Oublis</span><span>Retards</span><span>Départs tôt</span><span>Arrivée moy.</span><span>Réel</span><span>Prévu</span><span>Écart</span></div>';
     X.forEach(function (x) {
-      h += '<button class="pb-l" data-ptbsel="' + x.p.id + '"><span class="hr-p"><span class="a-av">' + esc((x.p.prenom || '?')[0]) + '</span><b>' + esc(x.p.type === 'interimaire' ? 'Intérimaire' : x.p.prenom) + '</b></span>'
+      h += '<button class="pb-l" data-ptbsel="' + x.p.id + '"><span class="hr-p">' + avPt(x.p) + '<b>' + esc(x.p.type === 'interimaire' ? 'Intérimaire' : x.p.prenom) + '</b></span>'
         + '<span>' + x.jC + ' / ' + x.jT + (x.ign ? '<small>' + x.ign + ' non compté' + (x.ign > 1 ? 's' : '') + '</small>' : '') + '</span><b class="' + (x.oublis ? 'ko' : 'mu') + '">' + x.oublis + '</b>'
         + '<span><b class="' + (x.ret.length >= (+R.pt_retards || 3) ? 'plus' : '') + '">' + x.ret.length + '</b><small>' + (x.ret.length ? som(x.ret) + ' min' : '—') + '</small></span>'
         + '<span><b class="' + (x.dep.length >= (+R.pt_departs || 3) ? 'plus' : x.dep.length ? '' : 'mu') + '">' + x.dep.length + '</b><small>' + (x.dep.length ? som(x.dep) + ' min' : '—') + '</small></span><span>' + (x.arrMoy != null ? fMin(x.arrMoy).replace('h', ' h ') : '—') + '</span>'
@@ -2140,7 +2170,7 @@
     ps.forEach(function (p) {
       var r = S.ptg.rows[p.id + '|' + J], c = calculJour(p, J, r), et = etatPointage(p, J, r, c), ec = c.effMin != null ? c.effMin / 60 - c.prevu : null, b = bornesPrevues(p, J);
       if (c.effMin != null) { tot += c.effMin; totP += c.prevu; }
-      h += '<button class="pt-l" data-pted="' + p.id + '|' + J + '"><span class="hr-p"><span class="a-av">' + esc((p.prenom || '?')[0]) + '</span><span><b>' + esc(p.type === 'interimaire' ? 'Intérimaire' : p.prenom) + '</b>' + (r && r.corrige_par ? '<small>corrigé par ' + esc(nomProfil(r.corrige_par) || '?') + '</small>' : r && r.note ? '<small>' + esc(r.note) + '</small>' : '') + '</span></span>'
+      h += '<button class="pt-l" data-pted="' + p.id + '|' + J + '"><span class="hr-p">' + avPt(p) + '<span><b>' + esc(p.type === 'interimaire' ? 'Intérimaire' : p.prenom) + '</b>' + (r && r.corrige_par ? '<small>corrigé par ' + esc(nomProfil(r.corrige_par) || '?') + '</small>' : r && r.note ? '<small>' + esc(r.note) + '</small>' : '') + '</span></span>'
         + '<span class="pt-prev"><b>' + esc(c.hor) + '</b>' + (c.prevu ? '<em>= ' + fh(c.prevu) + '</em>' : '') + '</span>'
         + celHeure(r && r.arrivee, b.d, 'a') + celHeure(r && r.sortie, b.f, 's')
         + '<span>' + (c.effMin != null ? (c.pauseMin ? fMin(c.pauseMin) : '0h00') : '') + '</span>'
@@ -2154,7 +2184,7 @@
     var auj = dIso(new Date());
     ps.forEach(function (p) {
       var te = 0, tp = 0, tpp = 0, manq = 0;
-      h += '<div class="pt-s"><span class="hr-p"><span class="a-av">' + esc((p.prenom || '?')[0]) + '</span><b>' + esc(p.type === 'interimaire' ? 'Intérimaire' : p.prenom) + '</b></span>';
+      h += '<div class="pt-s"><span class="hr-p">' + avPt(p) + '<b>' + esc(p.type === 'interimaire' ? 'Intérimaire' : p.prenom) + '</b></span>';
       for (var k = 0; k < 5; k++) {
         var iso = addJ(L, k), r = S.ptg.rows[p.id + '|' + iso], c = calculJour(p, iso, r), et = etatPointage(p, iso, r, c);
         tp += c.prevu; if (c.effMin != null) { te += c.effMin; tpp += c.prevu; } else if (c.travaille && iso < auj) manq++;
@@ -4291,6 +4321,7 @@
     if (d.act === 'simraz') { S.sim = null; try { sessionStorage.removeItem('evy-sim'); } catch (e) {} chargerMonPointage(); render(); return; }
     if (d.act === 'simscan') { var jt0 = ''; try { jt0 = localStorage.getItem('evy-jeton-test') || ''; } catch (e) {} if (jt0) { JETON_QR = jt0; pointerQR(); } return; }
     if (d.act === 'simgestion') return basculerSimulation();
+    if (d.ptcat != null && S.ptg) { S.ptg.cat = d.ptcat || null; render(); return; }
     if (d.act === 'ptqr') return ouvrirPageQR('pointage');
     if (d.act === 'qrplein') { S.qrPlein = true; render(); return; }
     if (d.act === 'qrpleinx') { S.qrPlein = false; render(); return; }
