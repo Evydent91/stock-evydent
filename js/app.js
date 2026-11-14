@@ -2973,6 +2973,24 @@
     if (!x.seuls.length) return '<div class="pl-seul ok"><b>Aucun</b><span>' + x.pres + ' ' + pl(x.pres, 'présent') + ' · tous assistés</span></div>';
     return '<div class="pl-seul"><b>' + x.seuls.length + ' ' + (x.seuls.length > 1 ? 'seuls' : 'seul') + '</b>' + x.seuls.map(function (s2) { return '<span>Dr ' + esc(s2.d.prenom) + (s2.quand ? ' (' + s2.quand + ')' : '') + '</span>'; }).join('') + '<small>' + x.pres + ' ' + pl(x.pres, 'présent') + '</small></div>';
   }
+  // Qui est en stérilisation ce jour-là (planning + personnel hors planning), matin et après-midi
+  function steLe(iso) {
+    var r = { AM: [], PM: [] };
+    (S.equipe || []).filter(function (p) { return p.actif; }).forEach(function (p) {
+      var pl = typeDe(p.type).planning !== false;
+      ['AM', 'PM'].forEach(function (k) { var c = pl ? caseEff(p, iso, k) : caseBase(p, iso, k); if (c.a === 'STE') r[k].push(p.type === 'interimaire' ? 'Intérimaire' : p.prenom || '?'); });
+    });
+    return r;
+  }
+  function celluleSte(iso) {
+    if (ferie(iso)) return '<div class="pl-seul vide"><span>Férié</span></div>';
+    if (!dentistesSeuls(iso).pres) return '<div class="pl-seul vide"><span>Aucun dentiste</span></div>';
+    var x = steLe(iso), am = x.AM, pm = x.PM, noms = function (l) { return l.map(esc).join(', '); };
+    if (!am.length && !pm.length) return '<div class="pl-seul"><b>Personne</b><span>de la journée</span></div>';
+    if (!am.length || !pm.length) return '<div class="pl-seul"><b>Personne ' + (!am.length ? 'le matin' : 'l’après-midi') + '</b><span>' + (am.length ? 'matin : ' + noms(am) : 'après-midi : ' + noms(pm)) + '</span></div>';
+    var meme = am.join() === pm.join();
+    return '<div class="pl-seul ok">' + (meme ? '<b>' + noms(am) + '</b><small>toute la journée</small>' : '<span>matin : <b>' + noms(am) + '</b></span><span>après-midi : <b>' + noms(pm) + '</b></span>') + '</div>';
+  }
   function vPlanning() {
     if (!S.pl || (!S.pl.de && !S.pl.charge && !S.pl.err)) { chargerSemaine(); if (!S.pl.rows || !S.pl.de) return '<div class="a-corps"><p class="a-vide">Chargement…</p></div>'; }
     var P = S.pl, L = P.lundi, ps = persPlanning(), auj = dIso(new Date());
@@ -3009,6 +3027,9 @@
     });
     h += '<div class="pl-nom pl-seul-t"><span class="a-av d">' + ico('dent', 16) + '</span><span><b>Dentistes seuls</b><small>sans assistante</small></span></div>';
     for (var k3 = 0; k3 < 5; k3++) h += celluleSeuls(addJ(L, k3));
+    h += '<div class="pl-h"></div>';
+    h += '<div class="pl-nom pl-seul-t"><span class="a-av d">' + ico('refaire', 16) + '</span><span><b>La Sté</b><small>qui est en stérilisation</small></span></div>';
+    for (var k4 = 0; k4 < 5; k4++) h += celluleSte(addJ(L, k4));
     h += '<div class="pl-h"></div>';
     h += '</div></div>';
     h += '<div class="pl-notes"><span class="pl-n vert"><b>Semaine remplie automatiquement</b> d’après les fiches (semaine type, école, congés acceptés, jours fériés, règle d’or) : corrigez seulement les exceptions.</span>'
