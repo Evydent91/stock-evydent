@@ -103,14 +103,20 @@
       }).join('');
       bg.className = 'dlg-bg';
       bg.innerHTML = '<div class="dlg' + (o.danger ? ' danger' : '') + '" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t"><h2 id="dlg-t">' + esc(o.titre) + '</h2>' + corps
+        + (o.choix ? '<div class="dlg-ch" role="radiogroup">' + o.choix.map(function (c, i) { return '<label class="dlg-c' + (c.off ? ' off' : '') + '"><input type="radio" name="dlgch" value="' + i + '"' + (c.on && !c.off ? ' checked' : '') + (c.off ? ' disabled' : '') + '><span><b>' + esc(c.t) + '</b><small>' + esc(c.s || '') + '</small>' + (c.date ? '<input type="date" class="dlg-d" data-dlgd="' + i + '" min="' + (c.min || '') + '" value="' + esc(c.date === true ? '' : c.date) + '" aria-label="' + esc(c.t) + '">' : '') + '</span></label>'; }).join('') + '</div>' : '')
         + (S2 ? '<label class="dlg-l">' + esc(S2.label || '') + '<input id="dlg-in"' + (S2.type === 'nombre' ? ' inputmode="decimal"' : '') + ' autocomplete="off" value="' + esc(S2.valeur || '') + '"' + (S2.attendu ? ' placeholder="' + esc(S2.attendu) + '"' : '') + '></label>' : '')
         + '<div class="dlg-b">' + (o.seul ? '' : '<button type="button" class="btn l" data-dlg="0">' + esc(o.non || 'Annuler') + '</button>') + '<button type="button" class="btn' + (o.danger ? ' ko' : '') + '" data-dlg="1">' + esc(o.ok || 'Confirmer') + '</button></div></div>';
       document.body.appendChild(bg);
       var inp = bg.querySelector('#dlg-in'), bok = bg.querySelector('[data-dlg="1"]');
       var verif = function () { if (S2 && S2.attendu) bok.disabled = norm(inp.value.trim()) !== norm(String(S2.attendu).trim()); };
       var fin = function (v) { document.removeEventListener('keydown', cle, true); bg.remove(); if (prec && prec.focus) try { prec.focus(); } catch (e) {} res(v); };
-      var oui = function () { if (bok.disabled) return; fin(S2 ? inp.value : true); };
-      var non = function () { fin(S2 ? null : false); };
+      var oui = function () {
+        if (bok.disabled) return;
+        if (o.choix) { var rr = bg.querySelector('input[name="dlgch"]:checked'); if (!rr) return; var ci = +rr.value, cc = o.choix[ci]; if (cc.date) { var dv = bg.querySelector('[data-dlgd="' + ci + '"]').value; if (!dv) { bg.querySelector('[data-dlgd="' + ci + '"]').focus(); return; } fin({ i: ci, v: cc.v, date: dv }); } else fin({ i: ci, v: cc.v }); return; }
+        fin(S2 ? inp.value : true);
+      };
+      var non = function () { fin(S2 || o.choix ? null : false); };
+      bg.addEventListener('focusin', function (e) { var dd = e.target.closest && e.target.closest('[data-dlgd]'); if (dd) { var rr = bg.querySelector('input[name="dlgch"][value="' + dd.dataset.dlgd + '"]'); if (rr) rr.checked = true; } });
       var cle = function (e) {
         if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); non(); }
         else if (e.key === 'Enter' && e.target === inp) { e.preventDefault(); e.stopPropagation(); oui(); }
@@ -122,7 +128,7 @@
         var b = e.target.closest('[data-dlg]'); if (b) { if (b.dataset.dlg === '1') oui(); else non(); return; }
         if (e.target === bg && !o.danger) non();
       });
-      if (inp) { inp.addEventListener('input', verif); verif(); inp.focus(); if (!S2.attendu) inp.select(); } else (o.danger ? bg.querySelector('[data-dlg="0"]') || bok : bok).focus();
+      if (inp) { inp.addEventListener('input', verif); verif(); inp.focus(); if (!S2.attendu) inp.select(); } else if (o.choix && bg.querySelector('input[name="dlgch"]:checked')) bg.querySelector('input[name="dlgch"]:checked').focus(); else (o.danger ? bg.querySelector('[data-dlg="0"]') || bok : bok).focus();
     });
   }
   function demander(titre, texte, ok, danger) { return fenetre({ titre: titre, texte: texte, ok: ok, danger: danger }); }
@@ -1077,7 +1083,7 @@
   function ouvrirPers(id) {
     var p = id === 'new' ? nouvellePers() : S.equipe.filter(function (x) { return String(x.id) === String(id); })[0];
     if (!p) return;
-    S.pf = { id: id, d: JSON.parse(JSON.stringify(p)) }; S.eqNew = null; S.eqEdit = null; S.tab = 'pfiche'; render(); window.scrollTo(0, 0);
+    S.pf = { id: id, d: JSON.parse(JSON.stringify(p)) }; var vf = versionsTrame(p); if (vf.length) S.pf.d.trame = JSON.parse(JSON.stringify(vf[vf.length - 1].trame || {})); S.eqNew = null; S.eqEdit = null; S.tab = 'pfiche'; render(); window.scrollTo(0, 0);
   }
   function optAff(cur, sansDent) {
     var ds = (S.dentistes || []).filter(function (d) { return (d.actif && !sansDent) || 'D:' + d.id === cur; }).sort(function (a, b) { return a.ordre - b.ordre; });
@@ -1132,7 +1138,7 @@
       });
       g += '</div><div class="h-total ' + (ecT ? 'warn' : 'ok') + '"><span>Total de la semaine type</span><b>' + fh(tot) + (c ? ' / ' + fh(c) + ' · ' + (ecT ? relTxt(tot - c) : 'équilibré') : '') + '</b></div>';
       g += '<div class="fi-ed"><b>' + JOURS[cj] + ' ' + (ck === 'am' ? 'matin' : 'après-midi') + '</b>' + demiEdit(cj, ck, (t[cj] || {})[ck]) + '<div class="fi-rac"><button class="btn l sm" data-act="pfcopiejour" data-j="' + cj + '">Copier le ' + JOURS[cj].toLowerCase() + ' sur toute la semaine</button></div></div>';
-      return '<p class="mu fi-intro">Touchez une case pour changer ' + (aDent(p.type) ? 'le dentiste ou le poste' : 'le poste') + ' et les horaires. ' + (ty.planning === false ? 'Hors planning : ces horaires servent seulement au pointage (heures prévues, retards, départs avant l’heure, coupure de midi déduite).' : 'Le planning de chaque semaine part de là.') + '</p>' + g;
+      return bandeauVersions(F) + '<p class="mu fi-intro">Touchez une case pour changer ' + (aDent(p.type) ? 'le dentiste ou le poste' : 'le poste') + ' et les horaires. ' + (ty.planning === false ? 'Hors planning : ces horaires servent seulement au pointage (heures prévues, retards, départs avant l’heure, coupure de midi déduite).' : 'Le planning de chaque semaine part de là.') + '</p>' + g;
     };
     R.absences = function () { return nouv ? avant : (ty.contrat !== false && p.type !== 'interimaire' ? blocSoldeFiche(p) : '') + '<h3 class="fi-h3">Congés</h3>' + blocConges(false, F.id, p) + '<h3 class="fi-h3">Formations</h3>' + blocConges(false, F.id, p, true) + '<h3 class="fi-h3">Jours off</h3>' + blocOffs(F); };
     R.compte = function () {
@@ -1291,6 +1297,52 @@
     if (!maj) return Promise.resolve();
     return sb.from('profils').update(maj).eq('id', prof.id).then(function (r) { if (r.error) throw r.error; Object.assign(prof, maj); if (maj.role) toast('Compte passé en ' + P.n + ' : pensez à lui donner un mot de passe (Comptes de connexion › Réinitialiser)'); });
   }
+  // Versions de la semaine type (fiche)
+  var DEBUT_TRAMES = '2000-01-03';
+  function suiteVer(v, x) { var i = v.indexOf(x); return i >= 0 && i < v.length - 1 ? v[i + 1] : null; }
+  function periodeVer(v, x) { var n = suiteVer(v, x); return (x === v[0] ? (n ? 'jusqu’au ' + dateCourte(addJ(n.depuis, -1)) : 'depuis le début') : (n ? 'du ' + dateCourte(x.depuis) + ' au ' + dateCourte(addJ(n.depuis, -1)) : 'depuis le ' + dateCourte(x.depuis))); }
+  function verFigee(v, x) { var n = suiteVer(v, x); return Object.keys(S.clos || {}).some(function (L) { return L >= (x === v[0] ? DEBUT_TRAMES : x.depuis) && (!n || L < n.depuis); }); }
+  function derniereClose() { return Object.keys(S.clos || {}).sort().pop() || null; }
+  function bandeauVersions(F) {
+    if (F.id === 'new' || !S.trames) return '';
+    var v = versionsTrame({ id: F.id }), auj = dIso(new Date());
+    if (v.length < 2) return '<div class="tv-ban">' + ico('agenda', 20, 2.2) + '<span class="grow"><b>Une seule semaine type pour l’instant</b><span>Quand vous enregistrerez un changement, vous choisirez à partir de quelle semaine il s’applique : les semaines d’avant ne bougeront pas.</span></span></div>';
+    var cur = versionDe({ id: F.id }, auj), ed = F.ver ? v.filter(function (x) { return x.depuis === F.ver; })[0] || v[v.length - 1] : v[v.length - 1];
+    var etat = function (x) { return x === cur ? ['ok', 'actuelle'] : x.depuis > auj ? ['info', 'à venir'] : verFigee(v, x) ? ['', 'figée'] : ['', 'ancienne']; };
+    return '<div class="tv-ban">' + ico('agenda', 20, 2.2) + '<span class="grow"><b>' + (ed === cur ? 'Semaine type en vigueur ' : 'Version affichée : ') + periodeVer(v, ed) + '</b><span>' + (verFigee(v, ed) ? 'Cette version couvre une semaine clôturée : elle ne peut plus être modifiée.' : 'Les semaines d’avant gardent l’ancienne semaine type, dans le planning comme dans les heures.') + '</span></span>'
+      + '<label class="tv-sel">Voir la version<select class="in" id="pfver">' + v.slice().reverse().map(function (x) { var e = etat(x); return '<option value="' + x.depuis + '"' + (x === ed ? ' selected' : '') + '>' + periodeVer(v, x) + ' (' + e[1] + ')</option>'; }).join('') + '</select></label></div>'
+      + '<details class="tv-l"><summary>Les ' + v.length + ' versions de la semaine type</summary>' + v.slice().reverse().map(function (x) { var e = etat(x); return '<div class="tv-i"><i class="' + (x === cur ? 'on' : '') + '"></i><span class="grow"><b>' + periodeVer(v, x) + '</b><small>' + (x.depuis === DEBUT_TRAMES ? 'version de départ' : 'enregistrée le ' + dateCourte(x.cree_le) + (x.cree_par ? ' par ' + esc(nomProfil(x.cree_par) || '?') : '')) + '</small></span><span class="pill ' + e[0] + '">' + e[1] + '</span></div>'; }).join('') + '</details>';
+  }
+  // Demande la date d'effet et enregistre la version ; renvoie la semaine type à garder dans la fiche (la dernière version), ou null si annulé
+  async function versionnerTrame(F, nouvelle) {
+    var eid = F.id, v = versionsTrame({ id: eid }), orig = persById(eid) || {}, auj = dIso(new Date()), L0 = lundiDe(auj), dc = derniereClose(), min = dc ? addJ(dc, 7) : null;
+    var ed = F.ver ? v.filter(function (x) { return x.depuis === F.ver; })[0] : null;
+    if (ed && ed !== v[v.length - 1]) {   // correction d'une ancienne version encore ouverte
+      if (verFigee(v, ed)) { toast('Cette version couvre une semaine clôturée : elle ne peut plus être modifiée'); return null; }
+      if (!(await demander('Corriger la version ' + periodeVer(v, ed) + ' ?', 'Seules les semaines de cette période changent.', 'Corriger'))) return null;
+      var r0 = await sb.from('equipe_trames').update({ trame: nouvelle }).eq('id', ed.id); if (r0.error) throw r0.error;
+      return v[v.length - 1].trame || {};
+    }
+    var ok = function (d) { return !min || d >= min; };
+    var ch = await fenetre({ titre: 'À partir de quelle semaine ?', texte: 'La nouvelle semaine type de ' + (F.d.prenom || '') + ' s’appliquera à partir de la semaine choisie. Les semaines d’avant ne bougent pas.\n\nLes semaines clôturées ne changent jamais. Les cases déjà modifiées à la main dans le planning gardent leur valeur.', ok: 'Appliquer', choix: [
+      { v: L0, t: 'Cette semaine', s: 'à partir du lundi ' + dateCourte(L0) + (ok(L0) ? '' : ' · impossible : semaine clôturée'), on: ok(L0), off: !ok(L0) },
+      { v: addJ(L0, 7), t: 'La semaine prochaine', s: 'à partir du lundi ' + dateCourte(addJ(L0, 7)), on: !ok(L0) },
+      { v: 'autre', t: 'Une autre semaine…', s: 'choisissez un jour : la semaine commencera le lundi' + (min ? ' (après le ' + dateCourte(addJ(min, -3)) + ', dernière semaine clôturée)' : ''), date: true, min: min || '' },
+      { v: 'debut', t: 'Depuis le début', s: 'pour corriger une erreur de saisie' + (dc ? ' · impossible : des semaines sont clôturées' : ''), off: !!dc }
+    ] });
+    if (!ch) return null;
+    var D = ch.v === 'autre' ? lundiDe(ch.date) : ch.v;
+    if (D !== 'debut' && !ok(D)) { toast('Cette semaine est clôturée : choisissez une semaine après le ' + dateCourte(addJ(min, -3))); return null; }
+    if (!v.length) { var rb = await sb.from('equipe_trames').insert({ equipe_id: eid, depuis: DEBUT_TRAMES, trame: orig.trame || {} }); if (rb.error) throw rb.error; v = [{ depuis: DEBUT_TRAMES, trame: orig.trame || {} }]; }
+    if (D === 'debut') {
+      var rd = await sb.from('equipe_trames').delete().eq('equipe_id', eid).gt('depuis', DEBUT_TRAMES); if (rd.error) throw rd.error;
+      var ru = await sb.from('equipe_trames').update({ trame: nouvelle }).eq('equipe_id', eid).eq('depuis', DEBUT_TRAMES); if (ru.error) throw ru.error;
+      return nouvelle;
+    }
+    var ri = await sb.from('equipe_trames').upsert({ equipe_id: eid, depuis: D, trame: nouvelle }, { onConflict: 'equipe_id,depuis' }); if (ri.error) throw ri.error;
+    var dern = v[v.length - 1];
+    return D >= dern.depuis ? nouvelle : dern.trame || {};
+  }
   function sauverPers() {
     var F = S.pf, p = F.d;
     if (!String(p.prenom || '').trim()) { toast('Le prénom est obligatoire'); return; }
@@ -1298,13 +1350,20 @@
     var o = { prenom: String(p.prenom).trim(), type: p.type, statut: p.statut, contrat_h: +p.contrat_h || 0, ecole_jour: p.ecole_jour || null, actif: !!p.actif, trame: p.trame || {}, regles: p.regles || {}, consigne: String(p.consigne || '').trim() || null };
     if (pointagePret()) o.pointage = !!p.pointage;
     if (F.id === 'new') o.ordre = S.equipe.reduce(function (m, x) { return Math.max(m, x.ordre || 0); }, 0) + 1;
+    var vers = F.id !== 'new' && S.trames ? versionsTrame({ id: F.id }) : null, edV = vers && F.ver ? vers.filter(function (x) { return x.depuis === F.ver; })[0] : null;
+    var avantT = edV ? edV.trame || {} : (persById(F.id) || {}).trame || {}, change = vers && JSON.stringify(o.trame) !== JSON.stringify(avantT);
+    if (vers && !change) o.trame = (persById(F.id) || {}).trame || o.trame;
     F.busy = true; render();
-    (F.id === 'new' ? sb.from('equipe').insert(o).select().single() : sb.from('equipe').update(o).eq('id', F.id).select().single()).then(function (r) {
+    (change ? versionnerTrame(F, o.trame).then(function (garde) { if (garde == null) { F.busy = false; render(); return 'stop'; } o.trame = garde; }) : Promise.resolve()).then(function (st) {
+      if (st === 'stop') return 'stop';
+      return F.id === 'new' ? sb.from('equipe').insert(o).select().single() : sb.from('equipe').update(o).eq('id', F.id).select().single();
+    }).then(function (r) {
+      if (r === 'stop') return;
       if (r.error) throw r.error;
       var x = r.data || Object.assign({ id: F.id }, F.d, o);
-      F.busy = false; F.id = x.id; F.d = JSON.parse(JSON.stringify(x)); toast('✔ Fiche de ' + x.prenom + ' enregistrée'); chargerPlan();
+      F.busy = false; F.id = x.id; F.d = JSON.parse(JSON.stringify(x)); F.ver = null; toast('✔ Fiche de ' + x.prenom + ' enregistrée'); chargerPlan();
       return synchroCompte(x);
-    }).catch(function (e) { F.busy = false; toast(/type_check/.test(String(e && e.message)) ? 'Ce type de personnel demande la mise à jour 020 de la base' : msgErr(e)); render(); });
+    }).catch(function (e) { F.busy = false; toast(/type_check/.test(String(e && e.message)) ? 'Ce type de personnel demande la mise à jour 020 de la base' : msgErr(e)); chargerPlan(); render(); });
   }
   function lierCompte(fid, pid) {
     return sb.from('equipe').update({ profil_id: pid || null }).eq('id', fid).select().single().then(function (r) {
@@ -1419,8 +1478,10 @@
       sb.from('equipe').select('*').order('ordre'),
       sb.from('dentistes').select('*').order('ordre'),
       sb.from('conges').select('*').gte('au', dIso(new Date(Date.now() - 120 * 864e5))).order('du'),
-      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'simulation_pointage', 'postes', 'types_personnel', 'roles', 'profils', 'interim_semaines'])
+      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'simulation_pointage', 'postes', 'types_personnel', 'roles', 'profils', 'interim_semaines']),
+      sb.from('equipe_trames').select('id,equipe_id,depuis,trame,cree_le,cree_par').order('depuis')
     ]).then(function (r) {
+      if (r[4] && !r[4].error) { var tv = {}; (r[4].data || []).forEach(function (x) { (tv[x.equipe_id] = tv[x.equipe_id] || []).push(x); }); S.trames = tv; } else S.trames = null;
       if (r[3] && !r[3].error) (r[3].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else if (x.cle === 'postes') S.postes = x.valeur; else if (x.cle === 'types_personnel') S.typesPers = x.valeur; else if (x.cle === 'roles') S.roles = x.valeur; else if (x.cle === 'profils') S.profilsP = Array.isArray(x.valeur) ? x.valeur : null; else if (x.cle === 'interim_semaines') S.interimSem = Array.isArray(x.valeur) ? x.valeur : []; else S.visible = x.valeur; });
       if (!Array.isArray(S.roles)) S.roles = S.roles || [];
       if (r[0].error || r[1].error) { S.equipe = null; S.dentistes = null; } else { S.equipe = r[0].data; S.dentistes = r[1].data; }
@@ -1466,7 +1527,7 @@
       var j = d.getDay();
       if (j >= 1 && j <= 5) {
         if (dentiste) { if (qui.jours && qui.jours[j] || dentExtra(qui, dIso(d))) n++; }
-        else { var x = (qui.trame || {})[j] || {}, ok = ['am', 'pm'].some(function (k) { return x[k] && x[k].a && x[k].a !== 'OFF' && x[k].a !== 'ECOLE'; }); if (ok || !qui.trame || !Object.keys(qui.trame).length) n++; }
+        else { var tq = trameDe(qui, dIso(d)), x = tq[j] || {}, ok = ['am', 'pm'].some(function (k) { return x[k] && x[k].a && x[k].a !== 'OFF' && x[k].a !== 'ECOLE'; }); if (ok || !Object.keys(tq).length) n++; }
       }
       d.setDate(d.getDate() + 1);
     }
@@ -1490,8 +1551,9 @@
     while (d <= au && i++ < 800) {
       var j = jourSem(d);
       if (j >= 1 && j <= 5 && !ferie(d)) {
-        if (!trav || heuresTrame(p.trame) < 0.01) n++;
-        else { var t = (p.trame || {})[j] || {}; if (['am', 'pm'].some(function (k) { return t[k] && t[k].a && t[k].a !== 'OFF'; })) n++; }
+        var tpd = trameDe(p, d);
+        if (!trav || heuresTrame(tpd) < 0.01) n++;
+        else { var t = tpd[j] || {}; if (['am', 'pm'].some(function (k) { return t[k] && t[k].a && t[k].a !== 'OFF'; })) n++; }
       }
       d = addJ(d, 1);
     }
@@ -1623,7 +1685,7 @@
       row++; rows.push(petit ? '24px' : '34px');
       var n = nbJ(r), out = '<button class="cg2-n' + (petit ? ' pt' : '') + (enCouple ? ' bd' : '') + '" ' + r.ouv + ' style="grid-row:' + row + ';grid-column:1"><b>' + (petit ? '<i aria-hidden="true">↳</i>' : '') + esc(r.nom) + '</b>' + (n ? '<small>' + n + ' j</small>' : '') + '</button>';
       jours.forEach(function (iso) {
-        var j = jourSem(iso), f = ferie(iso), trav = r.dent ? (r.dent.jours && r.dent.jours[j]) || dentExtra(r.dent, iso) : (function () { var t = (r.p.trame || {})[j] || {}; return heuresTrame(r.p.trame) < 0.01 || (t.am && t.am.a && t.am.a !== 'OFF') || (t.pm && t.pm.a && t.pm.a !== 'OFF'); })();
+        var j = jourSem(iso), f = ferie(iso), trav = r.dent ? (r.dent.jours && r.dent.jours[j]) || dentExtra(r.dent, iso) : (function () { var tr = trameDe(r.p, iso), t = tr[j] || {}; return heuresTrame(tr) < 0.01 || (t.am && t.am.a && t.am.a !== 'OFF') || (t.pm && t.pm.a && t.pm.a !== 'OFF'); })();
         var ens = petit && dentR && absLe(r, iso) && absLe(dentR, iso);
         out += '<span class="cg2-c' + (petit ? ' pt' : '') + (f ? ' fe' : !trav ? ' np' : '') + (iso === auj ? ' auj' : '') + (ens ? ' ens' : '') + '" style="grid-row:' + row + ';grid-column:' + col[iso] + '" title="' + esc(r.nom + ' · ' + JOURS[j].toLowerCase() + ' ' + dateCourte(iso) + (f ? ' · férié' : !trav ? ' · ne travaille pas ce jour-là' : '') + (ens ? ' · absent(e) en même temps que ' + dentR.nom : '')) + '"></span>';
       });
@@ -1875,31 +1937,36 @@
   function cleCase(eid, iso, demi) { return eid + '|' + iso + '|' + demi; }
   function hm(t) { return t ? String(t).slice(0, 5) : null; }
   // Case de base : jour férié > congés / formation acceptés > semaine type
+  // Semaine type en vigueur à une date (versions datées, migration 025) ; sans versions : la semaine type de la fiche
+  function versionsTrame(p) { return (S.trames && p && S.trames[p.id]) || []; }
+  function versionDe(p, iso) { var v = versionsTrame(p), r = null; for (var i = 0; i < v.length; i++) { if (v[i].depuis <= iso) r = v[i]; } return r || v[0] || null; }
+  function trameDe(p, iso) { var v = iso ? versionDe(p, iso) : null; return v ? v.trame || {} : (p && p.trame) || {}; }
   function caseBase(p, iso, demi) {
     var j = jourSem(iso); if (j < 1 || j > 5) return { a: 'OFF', v: 1 };
     if (ferie(iso)) return { a: 'FERIE', v: 1 };
     var c = congeLe(p.id, iso);
     if (c) return { a: c.type === 'AUTRE' ? 'CP' : c.type, v: 1 };
     if (offLe(p, iso, demi)) return { a: 'OFF', v: 1, off: 1 };
-    var k = demi === 'AM' ? 'am' : 'pm', t = ((p.trame || {})[j] || {})[k];
+    var TR = trameDe(p, iso), k = demi === 'AM' ? 'am' : 'pm', t = (TR[j] || {})[k];
     // Jour en plus d'un dentiste : son assistante attitrée le suit toute la journée (sauf école), avec ses horaires habituels auprès de lui
-    var at = attitre(p), da = at && dentById(at);
-    var jt = (p.trame || {})[j] || {}, dejaAvec = ['am', 'pm'].some(function (z) { return jt[z] && jt[z].a === 'D:' + at; });
+    var at = attitre(p, iso), da = at && dentById(at);
+    var jt = TR[j] || {}, dejaAvec = ['am', 'pm'].some(function (z) { return jt[z] && jt[z].a === 'D:' + at; });
     if (da && !dejaAvec && dentExtra(da, iso) && dentPresent(da, iso) && !(t && t.a === 'ECOLE')) {
-      var hab = horairesAvec(p, 'D:' + at, k);
+      var hab = horairesAvec(p, 'D:' + at, k, iso);
       return { a: 'D:' + at, de: hab.de, fi: hab.fi, v: 1 };
     }
     return t && t.a ? { a: t.a, de: t.de || null, fi: t.fi || null, v: 1 } : { a: 'OFF', v: 1 };
   }
   // Dentiste attitré d'une assistante : celui avec qui elle travaille le plus dans sa semaine type (au moins 2 jours)
-  function attitre(p) {
-    var n = {}, best = null; if (!aDent(p.type)) return null;
-    Object.keys(p.trame || {}).forEach(function (j) { ['am', 'pm'].forEach(function (k) { var x = (p.trame[j] || {})[k]; if (x && x.a && x.a.slice(0, 2) === 'D:') n[x.a.slice(2)] = (n[x.a.slice(2)] || 0) + 1; }); });
+  function attitre(p, iso) {
+    var n = {}, best = null, T = iso ? trameDe(p, iso) : p.trame || {}; if (!aDent(p.type)) return null;
+    Object.keys(T).forEach(function (j) { ['am', 'pm'].forEach(function (k) { var x = (T[j] || {})[k]; if (x && x.a && x.a.slice(0, 2) === 'D:') n[x.a.slice(2)] = (n[x.a.slice(2)] || 0) + 1; }); });
     Object.keys(n).forEach(function (id) { if (n[id] >= 4 && (!best || n[id] > n[best])) best = id; });
     return best;
   }
-  function horairesAvec(p, aff, k) {
-    for (var j = 1; j <= 5; j++) { var x = ((p.trame || {})[j] || {})[k]; if (x && x.a === aff && x.de) return { de: x.de, fi: x.fi }; }
+  function horairesAvec(p, aff, k, iso) {
+    var T = iso ? trameDe(p, iso) : p.trame || {};
+    for (var j = 1; j <= 5; j++) { var x = (T[j] || {})[k]; if (x && x.a === aff && x.de) return { de: x.de, fi: x.fi }; }
     return { de: null, fi: null };
   }
   // Règle d'or (rapport d'organisation § 5A) : quand le dentiste d'une assistante est absent, elle couvre d'abord
@@ -1918,7 +1985,7 @@
       ps.forEach(function (p) {
         var r = rows[cleCase(p.id, iso, demi)], a = r ? r.aff : out[p.id][demi].a;
         if (a && a.slice(0, 2) === 'D:') pris[a] = 1;
-        var t = ((p.trame || {})[j] || {})[k]; if (t && t.a && t.a.slice(0, 2) === 'D:') trameA[t.a] = 1;
+        var t = ((trameDe(p, iso) || {})[j] || {})[k]; if (t && t.a && t.a.slice(0, 2) === 'D:') trameA[t.a] = 1;
       });
       var libres = (S.dentistes || []).filter(function (d) { return dentPresent(d, iso) && !pris['D:' + d.id]; })
         .sort(function (a, b) { return (trameA['D:' + a.id] ? 1 : 0) - (trameA['D:' + b.id] ? 1 : 0) || (a.ordre - b.ordre); });
@@ -1936,7 +2003,7 @@
   function caseCalc(p, iso, demi) { var o = jourCalc(iso)[p.id]; return o ? o[demi] : caseBase(p, iso, demi); }
   function caseEff(p, iso, demi) { var r = (S.pl && S.pl.rows || {})[cleCase(p.id, iso, demi)]; if (r && r.aff === 'OFF' && ferie(iso)) return { a: 'FERIE', h: r.heures != null ? +r.heures : null };   // férié importé « OFF » : compté comme férié
     return r ? { a: r.aff, de: hm(r.debut), fi: hm(r.fin), h: r.heures != null ? +r.heures : null } : caseCalc(p, iso, demi); }
-  function travailleHabituellement(p, iso, demi) { var t = ((p.trame || {})[jourSem(iso)] || {})[demi === 'AM' ? 'am' : 'pm']; return !!(t && t.a && t.a !== 'OFF'); }
+  function travailleHabituellement(p, iso, demi) { var t = ((trameDe(p, iso) || {})[jourSem(iso)] || {})[demi === 'AM' ? 'am' : 'pm']; return !!(t && t.a && t.a !== 'OFF'); }
   function heuresDemi(p, iso, demi, c) {
     c = c || caseEff(p, iso, demi);
     if (!c || !c.a || c.a === 'OFF') return 0;
@@ -2164,7 +2231,7 @@
     });
   }
   function milieuJournee(p, iso) {
-    var t = (p && p.trame || {})[jourSem(iso)] || {}, ok = function (c) { return c && c.a && c.a !== 'OFF' && c.de && c.fi; };
+    var t = (p ? trameDe(p, iso) : {})[jourSem(iso)] || {}, ok = function (c) { return c && c.a && c.a !== 'OFF' && c.de && c.fi; };
     var d = ok(t.am) ? enMin(t.am.de) : ok(t.pm) ? enMin(t.pm.de) : null, f = ok(t.pm) ? enMin(t.pm.fi) : ok(t.am) ? enMin(t.am.fi) : null;
     return d != null && f != null && f > d ? Math.round((d + f) / 2) : 13 * 60;
   }
@@ -3111,7 +3178,7 @@
     if (x[1] === 'a') c.h = null;
     if (x[1] === 'a') {
       if (!el.value || el.value === 'OFF' || ABS.indexOf(el.value) >= 0) { c.de = null; c.fi = null; }
-      else if (!c.de) { var p = persById(K.eid), t = (((p.trame || {})[jourSem(K.jour)] || {})[x[0] === 'AM' ? 'am' : 'pm']) || {}; c.de = t.de || (x[0] === 'AM' ? '09:00' : '14:00'); c.fi = t.fi || (x[0] === 'AM' ? '13:00' : '19:00'); }
+      else if (!c.de) { var p = persById(K.eid), t = (((trameDe(p, K.jour) || {})[jourSem(K.jour)] || {})[x[0] === 'AM' ? 'am' : 'pm']) || {}; c.de = t.de || (x[0] === 'AM' ? '09:00' : '14:00'); c.fi = t.fi || (x[0] === 'AM' ? '13:00' : '19:00'); }
     }
   }
   function sauverCase() {
@@ -5094,6 +5161,7 @@
   });
   document.addEventListener('change', function (e) {
     var t = e.target; if (!S.me) return;
+    if (t.id === 'pfver' && S.pf) { var vv = versionsTrame({ id: S.pf.id }).filter(function (x) { return x.depuis === t.value; })[0]; if (vv) { S.pf.ver = t.value; S.pf.d.trame = JSON.parse(JSON.stringify(vv.trame || {})); render(); } return; }
     if (t.dataset && t.dataset.sugq) { S.sugQ[t.dataset.sugq] = t.value; render(); return; }
     if (t.dataset && (t.dataset.pff || t.dataset.tr) && S.pf) { majPers(t); if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); return; }
     if (t.dataset && t.dataset.dff && S.df) { S.df.d[t.dataset.dff] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox') render(); return; }

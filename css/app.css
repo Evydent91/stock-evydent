@@ -1796,3 +1796,25 @@ button.stk-k{cursor:pointer}
 /* Planning : postes (Sté, Admin…) dans leur couleur pastel */
 .pl-c.on.pst span{opacity:1;color:#333d46}
 .pl-c.on.pst .pl-r,.pl-c.on.pst .pl-r.dep{color:#6b5d24}
+
+/* Fenêtre : choix par boutons radio */
+.dlg-ch{display:flex;flex-direction:column;gap:8px;margin:4px 0 6px}
+.dlg-c{display:flex;align-items:flex-start;gap:12px;padding:10px 14px;border-radius:12px;border:1.5px solid var(--line);cursor:pointer;min-height:52px}
+.dlg-c:has(input:checked){border-color:var(--navy);background:#f4f6f8}
+.dlg-c input[type=radio]{width:20px;height:20px;accent-color:var(--navy);margin:2px 0 0;flex:none}
+.dlg-c > span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dlg-c b{font-size:15.5px;color:var(--ink)}.dlg-c small{font-size:13.5px;color:var(--mute)}
+.dlg-c.off{opacity:.5;cursor:default}
+.dlg-d{margin-top:6px;height:42px;border:1.5px solid var(--line);border-radius:10px;padding:0 10px;font:inherit;font-size:15px;color:var(--ink);max-width:220px}
+/* Fiche : versions de la semaine type */
+.tv-ban{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fbfaf6;border:1.5px solid var(--gold);border-radius:14px;padding:10px 14px;margin:0 0 10px}
+.tv-ban > .ic{flex:none;color:#7a6a2a}
+.tv-ban .grow{display:flex;flex-direction:column;min-width:220px}
+.tv-ban .grow b{font-size:15.5px}.tv-ban .grow span{font-size:14px;color:var(--mute)}
+.tv-sel{display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:var(--mute)}
+.tv-sel .in{height:40px;min-width:220px}
+.tv-l{margin:0 0 12px;background:#fff;border:1px solid var(--soft);border-radius:12px;padding:0 12px}
+.tv-l summary{min-height:42px;display:flex;align-items:center;cursor:pointer;font-weight:700;font-size:14px;color:var(--ink2)}
+.tv-i{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--soft)}
+.tv-i i{width:11px;height:11px;border-radius:50%;background:var(--line);flex:none}.tv-i i.on{background:var(--gold)}
+.tv-i .grow{display:flex;flex-direction:column}.tv-i b{font-size:14.5px}.tv-i small{font-size:12.5px;color:var(--mute)}
