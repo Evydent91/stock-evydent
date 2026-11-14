@@ -2943,7 +2943,7 @@
       var demi = function (c) { return '<span class="pl-d' + (ab(c) ? ' abs' : c.a === 'OFF' ? ' off' : '') + '"><b>' + (c.off ? 'Off' : esc(nomAff(c.a))) + '</b>' + (c.de ? ' ' + ft(c.de) + '–' + ft(c.fi) : '') + '</span>'; };
       cls += ' mix'; h = demi(am) + demi(pm);
     }
-    var rg = am.r || pm.r, dpt = pm.a && pm.a.slice(0, 2) === 'D:' ? dentById(pm.a.slice(2)) : null, hd = dpt && dpt.jours && dpt.jours[jourSem(iso)];
+    var rg = am.r || pm.r, dpt = pm.a && pm.a.slice(0, 2) === 'D:' ? dentById(pm.a.slice(2)) : am.a && am.a.slice(0, 2) === 'D:' && pm.a === 'OFF' ? dentById(am.a.slice(2)) : null, hd = dpt && dpt.jours && dpt.jours[jourSem(iso)];
     if (typeof hd === 'string' && hd) h += '<small class="pl-r dep">Dr ' + esc(dpt.prenom) + ' part à ' + ft(hd) + '</small>';
     if (rg) { cls += ' reg'; h += '<small class="pl-r">' + esc(affTxt(rg)) + ' absent</small>'; }
     if (S.plVoirPt) h += badgePt(p, iso);
@@ -2959,6 +2959,9 @@
     var seuls = [];
     pres.forEach(function (d) {
       var cle = 'D:' + d.id, am = ps.some(function (p) { return caseEff(p, iso, 'AM').a === cle; }), pm = ps.some(function (p) { return caseEff(p, iso, 'PM').a === cle; });
+      // Départ anticipé du dentiste : l'après-midi est couvert si une assistante reste avec lui jusqu'à son départ (ou s'il part avant l'après-midi)
+      var hd = d.jours && d.jours[j]; hd = typeof hd === 'string' && hd ? hm(hd) : null;
+      if (!pm && hd) pm = hd <= '14:00' || ps.some(function (p) { return ['AM', 'PM'].some(function (k) { var c = caseEff(p, iso, k); return c.a === cle && c.fi && hm(c.fi) >= hd; }); });
       if (!am || !pm) seuls.push({ d: d, quand: !am && !pm ? '' : !am ? 'matin' : 'après-midi' });
     });
     return { pres: pres.length, seuls: seuls };
