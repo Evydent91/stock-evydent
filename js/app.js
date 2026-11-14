@@ -1783,15 +1783,21 @@
     if (S.mesConges == null) return h + '<p class="a-vide">Chargement…</p></div>';
     if (!S.moiEq) return h + '<p class="a-note warn">Votre compte n’est pas encore relié à une fiche du planning : demandez à la référente de le faire (Réglages › L’équipe).</p></div>';
     if (typeDe(S.moiEq.type).contrat !== false && S.moiEq.type !== 'interimaire') { var so = soldeCP(S.moiEq, S.mesConges); h += '<div class="card cp-moi"><span class="mu">Il me reste</span><b class="' + (so.reste < 0 ? 'ko-t' : '') + '">' + txtJ(so.reste) + '</b><span class="mu">de congés payés sur ' + txtJ(so.droits + so.report) + (so.att ? ' · ' + txtJ(so.att) + ' en attente' : '') + '<br>période jusqu’au ' + dateCourte(so.P.au) + ' ' + so.P.au.slice(0, 4) + '</span></div>'; }
-    h += '<button class="a-btn gold h-centre" data-tab="mdemande">' + ico('plus', 22, 2.2) + 'Demander des congés</button><h2 class="a-jour">Mes demandes</h2>';
+    h += '<button class="a-btn gold h-centre" data-tab="mdemande">' + ico('plus', 22, 2.2) + 'Demander des congés</button><h2 class="a-jour">En cours et à venir</h2>';
     var l = S.mesConges.filter(function (c) { return c.statut !== 'annule' && String(c.equipe_id) === String(S.moiEq.id); });
     if (!l.length) return h + '<p class="a-vide">Aucune demande pour l’instant.</p></div>';
-    return h + '<div class="a-liste">' + l.map(function (c) {
+    var auj = dIso(new Date()), enCours = l.filter(function (c) { return c.au >= auj; }).sort(function (x, y) { return x.du < y.du ? -1 : 1; }), passes = l.filter(function (c) { return c.au < auj; }).sort(function (x, y) { return x.du < y.du ? 1 : -1; });
+    var ligne = function (c) {
       var ic = c.statut === 'attente' ? ['attente', ' orange'] : c.statut === 'accepte' ? ['ok', ' vert'] : ['croix', ''];
       var st = c.statut === 'attente' ? '<span class="warn">en attente de validation</span>' : c.statut === 'accepte' ? '<span class="ok">accepté</span>' : '<span>refusé' + (c.reponse ? ' · « ' + esc(c.reponse) + ' »' : '') + '</span>';
       return '<div class="a-ev"><span class="a-evi' + ic[1] + '">' + ico(ic[0], 20, 2.4) + '</span><div class="a-it-n"><b>' + periode(c.du, c.au).replace(/^./, function (x) { return x.toUpperCase(); }) + '</b>' + (c.type !== 'CP' ? '<span>' + typeTxt(c.type) + '</span>' : '') + st + '</div>'
         + (c.statut === 'attente' ? '<button class="a-lien" data-cannule="' + c.id + '">Annuler</button>' : '') + '</div>';
-    }).join('') + '</div></div>';
+    };
+    h += enCours.length ? '<div class="a-liste">' + enCours.map(ligne).join('') + '</div>' : '<p class="a-vide">Aucun congé en cours ou à venir.</p>';
+    if (passes.length) h += '<details class="mc-passes"><summary>Congés passés <span>' + passes.length + '</span></summary><div class="mc-pl">' + passes.map(function (c) {
+      return '<div class="mc-p"><span>' + periode(c.du, c.au).replace(/^./, function (x) { return x.toUpperCase(); }) + (c.type !== 'CP' ? ' · ' + typeTxt(c.type) : '') + '</span><span class="' + (c.statut === 'accepte' ? 'ok' : c.statut === 'attente' ? 'warn' : 'mu') + '">' + (c.statut === 'accepte' ? (c.type === 'FORMATION' ? 'faite' : 'pris') : c.statut === 'attente' ? 'jamais validé' : 'refusé') + '</span></div>';
+    }).join('') + '</div></details>';
+    return h + '</div>';
   }
   function vDemandeA() {
     var D = S.dm = S.dm || { un: false, du: '', au: '', mot: '' };
