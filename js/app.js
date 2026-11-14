@@ -303,15 +303,7 @@
       placerTour(); return;
     }
     document.body.classList.remove('mode-a', 'ecran-ok');
-    var tabs = gestion() ? [['accueil', 'Accueil'], ['sortie', 'Sortie'], ['retour', 'Retour'], ['inventaire', 'Inventaire']] : [['maison', 'Accueil'], ['sortie', 'Sortie'], ['retour', 'Retour'], ['inventaire', 'Inventaire']];
-    if (gestion()) tabs.push(['demandes', 'Demandes' + (S.attente.length ? '<span class="badge">' + S.attente.length + '</span>' : '')], ['stock', 'Stock'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs']);
-    tabs.push(['histo', 'Historique']);
-    if (gestion()) tabs.push(['plus', 'Plus']);
-    tabs.push(['aide', '❓ Aide']);
-    var h = '<header class="top"><div class="top-in">' + (gestion() ? '<button class="btn l sm top-menu" data-tab="hub" aria-label="Menu principal">' + ico('maison', 18, 2.2) + '<span class="m-hide">Menu</span></button>' : '') + '<img src="assets/logo-evydent.jpg" alt="">'
-      + '<div class="top-who"><b><span class="nom">' + esc(S.me.nom) + '</span></b><span>' + nomRole(S.me) + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + '</span></div>'
-      + '<button class="btn l sm" data-tab="compte" title="Changer mon code" aria-label="Changer mon code">' + ico('code', 20, 2.2) + '</button><button class="btn l sm" data-act="out" aria-label="Changer de personne"><span class="m-hide">Changer de personne</span><span class="m-only avec-ic">' + ico('changer', 18, 2.2) + 'Changer</span></button></div>'
-      + '<nav class="tabs" aria-label="Menu">' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav></header>';
+    var h = vTopStock();
     if (S.nouvelleVersion) h += '<div class="ban ok" style="max-width:1100px;margin:10px auto 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1">Une nouvelle version de l’application est disponible (' + esc(S.nouvelleVersion) + ').</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>';
     h += '<main>' + vBienvenue() + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour, plus: vPlus, aide: vAide, maison: vMaison, moi: vMoiA }[S.tab] || vSortie)() + '</main>';
     h += '<p class="mu" style="text-align:center;font-size:12px;margin:0 0 90px">Version ' + esc(C.version || '') + '</p>';
@@ -3365,6 +3357,23 @@
   var NOMS = { accueil: 'Accueil', sortie: 'Sortie', retour: 'Retour', inventaire: 'Inventaire', demandes: 'Demandes', stock: 'Stock', commandes: 'Commandes', articles: 'Articles', fournisseurs: 'Fournisseurs', histo: 'Historique', equipe: 'Équipe', hub: 'Menu principal', plus: 'Plus', compte: 'Mon code', aide: 'Aide', maison: 'Accueil', moi: 'Moi' };
   function retourAcc(titre) { return '<div class="tache-hd">' + (!gestion() ? '<button class="retour-acc" data-act="accueil">' + ico('prec', 18, 2.6) + 'Accueil</button>' : '') + '<h2>' + titre + '</h2></div>'; }
   function enTache() { return !gestion() && ['sortie', 'retour', 'inventaire', 'mdemande'].indexOf(S.tab) >= 0; }
+  // En-tête de la gestion de stock : retour au menu, titre, onglets en deux groupes
+  function vTopStock() {
+    var g = gestion(), att = g ? S.attente.length : 0;
+    var g1 = (g ? [['accueil', 'Tableau de bord']] : []).concat([['sortie', 'Sortie'], ['retour', 'Retour'], ['inventaire', 'Inventaire']]);
+    if (g) g1.push(['demandes', 'Demandes' + (att ? '<span class="badge">' + att + '</span>' : '')]);
+    var g2 = g ? [['stock', 'Stock'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs'], ['histo', 'Historique'], ['plus', 'Plus']] : [['histo', 'Historique']];
+    var bt = function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; };
+    var titreTel = S.tab === 'accueil' ? 'Tableau de bord' : NOMS[S.tab] || 'Stock';
+    return '<header class="top t2"><div class="top-in">'
+      + '<span class="t2-g">' + (g ? '<button class="t2-back" data-tab="hub" aria-label="Menu principal">' + ico('prec', 20, 2.4) + '<span>Menu</span></button>' : '<button class="t2-back" data-tab="maison">' + ico('prec', 20, 2.4) + '<span>Accueil</span></button>') + '</span>'
+      + '<h1 class="t2-t"><span class="m-hide">Gestion de stock</span><span class="m-only">' + esc(titreTel) + '</span></h1>'
+      + '<span class="t2-d"><button class="t2-ic" data-tab="aide" aria-label="Aide" title="Aide">' + ico('aide', 20, 2.2) + '</button>'
+      + '<button class="t2-ic" data-tab="compte" aria-label="Changer mon ' + (g ? 'mot de passe' : 'code') + '" title="Changer mon ' + (g ? 'mot de passe' : 'code') + '">' + ico('cadenas', 19, 2.2) + '</button>'
+      + '<button class="t2-moi" data-act="out" aria-label="Changer de personne (' + esc(S.me.nom) + ')" title="' + esc(nomRole(S.me) + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '')) + '"><span class="t2-av" aria-hidden="true">' + esc((S.me.nom || '?').charAt(0).toUpperCase()) + '</span><span class="m-hide">' + esc(S.me.nom) + ' · changer</span></button></span></div>'
+      + '<nav class="tabs t2-nav" aria-label="Rubriques du stock"><span class="t2-gr"><span class="t2-lab">Au quotidien</span>' + g1.map(bt).join('') + '</span>'
+      + '<span class="t2-sep" aria-hidden="true"></span><span class="t2-gr"><span class="t2-lab">' + (g ? 'Gestion' : 'Suivi') + '</span>' + g2.map(bt).join('') + '</span></nav></header>';
+  }
   function vNavMobile() {
     if (!gestion()) {
       if (enTache()) return '';
@@ -3721,19 +3730,33 @@
 
   // ---------- Stock (gestion) ----------
   function vStock() {
-    var q = norm(S.stockQ), l = S.articles.filter(function (a) { return filtreStock(a, S.stockF) && (!q || norm(a.nom + ' ' + (a.reference || '') + ' ' + (S.fournisseurs[a.fournisseur_id] || '')).indexOf(q) >= 0); });
+    var q = norm(S.stockQ), F = S.stockF || '', l = S.articles.filter(function (a) { return filtreStock(a, F) && (!q || norm(a.nom + ' ' + (a.reference || '') + ' ' + (S.fournisseurs[a.fournisseur_id] || '')).indexOf(q) >= 0); });
     var val = S.articles.reduce(function (t, a) { return t + stockDe(a.id, 0) * (+a.cout_moyen || 0); }, 0);
-    var h = '<h2>Stock</h2><div class="tiles stk"><div class="tile"><b>' + S.articles.length + '</b><span>articles</span></div><div class="tile ok"><b>' + eur(val) + '</b><span>valeur de la réserve</span><small>au coût moyen TTC</small></div></div>'
-      + '<div class="card filtre"><input class="in" id="stq" type="search" placeholder="🔍 Article, référence, fournisseur" value="' + esc(S.stockQ) + '" aria-label="Rechercher"></div>'
-      + '<div class="chips" style="margin:0 0 10px"><button class="chip' + (!S.stockF ? ' on' : '') + '" data-go="stock:">Tous</button>' + Object.keys(STF).map(function (f) { return '<button class="chip' + (S.stockF === f ? ' on' : '') + '" data-go="stock:' + f + '">' + STF[f] + '</button>'; }).join('') + '</div>'
-      + (S.stockF ? '<p class="mu">' + l.length + ' article(s) · ' + STF[S.stockF] + '</p>' : '');
-    h += '<div class="scroll"><table class="tbl tbl-s"><thead><tr><th>Article</th><th class="n">Réserve</th><th class="n">Cabinets</th><th>État</th></tr></thead><tbody>';
+    var nb = function (f) { return S.articles.filter(function (a) { return filtreStock(a, f); }).length; };
+    var att = S.attente.length, h = '';
+    if (att) {
+      var m0 = S.attente[0], a0 = S.byId[m0.article_id] || { nom: '?' };
+      h += '<button class="stk-ban" data-tab="demandes"><span class="stk-ban-i">' + ico('ok', 18, 2.4) + '</span><span class="grow"><b>' + att + ' demande' + (att > 1 ? 's' : '') + ' à confirmer</b> <span class="mu">· ' + esc(a0.nom) + ' × ' + fr(m0.quantite) + ', ' + cabTxt(m0.emplacement_vers) + (m0.hors_cabinet ? ', hors cabinet' : '') + (att > 1 ? '…' : '') + '</span></span><b class="stk-ban-v">Voir</b></button>';
+    }
+    var k = function (f, v, lab, sous, cls) { return '<button class="stk-k ' + cls + (F === f ? ' on' : '') + '" data-go="stock:' + f + '" aria-pressed="' + (F === f) + '"><b>' + v + '</b><span>' + lab + '</span><small>' + sous + '</small></button>'; };
+    h += '<div class="stk-ks">' + k('', S.articles.length, 'articles', 'tous, sauf archivés', 'tous')
+      + '<div class="stk-k val"><b>' + eur(val) + '</b><span>valeur de la réserve</span><small>au coût moyen TTC</small></div>'
+      + k('commander', nb('commander'), 'à commander', 'au seuil ou en dessous', 'cmd') + k('rupture', nb('rupture'), 'en rupture', 'réserve à 0', 'rup') + '</div>';
+    h += '<section class="stk-l"><div class="stk-f"><label class="stk-q">' + ico('loupe', 18, 2.2) + '<input id="stq" type="search" placeholder="Article, référence, fournisseur" value="' + esc(S.stockQ) + '" aria-label="Rechercher"></label>'
+      + '<span class="stk-fl"><span class="mu">À compléter :</span>' + ['sr', 'sf', 'seuil'].map(function (f) { return '<button class="chip' + (F === f ? ' on' : '') + '" data-go="stock:' + (F === f ? '' : f) + '" aria-pressed="' + (F === f) + '">' + STF[f] + ' · ' + nb(f) + '</button>'; }).join('') + '</span></div>'
+      + (F || q ? '<p class="stk-n">' + l.length + ' article' + (l.length > 1 ? 's' : '') + (F ? ' · ' + STF[F] : '') + (F ? ' <button class="lien" data-go="stock:">tout afficher</button>' : '') + '</p>' : '')
+      + '<div class="stk-h" aria-hidden="true"><span>Article</span><span>Réserve / seuil</span><span>Dans les cabinets</span><span>État</span></div>';
     h += l.slice(0, 300).map(function (a) {
-      var r = stockDe(a.id, 0), cabs = 0, det = [];
-      for (var c = 1; c <= 9; c++) { var v = stockDe(a.id, c); if (v) { cabs += v; det.push((c === 9 ? 'Sté' : c) + ':' + fr(v)); } }
-      var etat = a.sans_seuil ? '<span class="pill">sans seuil</span>' : !(+a.seuil > 0) ? '<span class="pill">seuil ?</span>' : r <= 0 ? '<span class="pill ko">rupture</span>' : r <= +a.seuil ? '<span class="pill warn">à commander</span>' : '<span class="pill ok">ok</span>';
-      return '<tr><td>' + esc(a.nom) + '<span class="ref">' + esc(a.reference || '') + '</span><br><span class="mu" style="font-size:13px">' + esc(S.fournisseurs[a.fournisseur_id] || 'SF') + '</span></td><td class="n" data-l="Réserve">' + fr(r) + ' ' + uRes(a) + '</td><td class="n" data-l="Cabinets" title="' + esc(det.join(' · ')) + '">' + (cabs ? fr(cabs) + ' u.' : '—') + '</td><td>' + etat + '</td></tr>';
-    }).join('') + '</tbody></table></div>';
+      var r = stockDe(a.id, 0), s = +a.seuil || 0, det = [], enc = enCoursPour(a.id);
+      for (var c = 1; c <= 9; c++) { var v = stockDe(a.id, c); if (v) det.push({ c: c, t: (c === 9 ? 'Sté' : 'cab. ' + c) + ' : ' + fr(v) }); }
+      var k2 = a.sans_seuil ? ['neu', 'Sans seuil'] : !(s > 0) ? ['neu', 'Seuil ?'] : r > s ? ['ok', 'OK'] : r + enc > s ? ['enc', 'Commandé · ' + fr(enc)] : r <= 0 ? ['rup', 'En rupture'] : ['cmd', 'À commander'];
+      var pct = s > 0 ? Math.max(0, Math.min(100, r / (2 * s) * 100)) : r > 0 ? 100 : 0;
+      var cabT = !det.length ? '—' : det.length === 1 ? (det[0].c === 9 ? 'la Sté' : 'cabinet ' + det[0].c) : det.length + ' emplacements';
+      return '<button class="stk-r" data-aopen="' + a.id + '"><span class="stk-a"><b>' + esc(a.nom) + '</b><span>' + esc(a.reference || 'sans réf.') + ' · ' + esc(S.fournisseurs[a.fournisseur_id] || 'Sans fournisseur') + '</span></span>'
+        + '<span class="stk-q2"><span><b>' + fr(r) + ' ' + uRes(a) + '</b>' + (s > 0 ? ' <span class="mu">/ seuil ' + fr(s) + '</span>' : '') + '</span><span class="stk-bar"><i class="' + k2[0] + '" style="width:' + pct.toFixed(0) + '%"></i></span></span>'
+        + '<span class="stk-c" title="' + esc(det.map(function (x) { return x.t; }).join(' · ')) + '">' + cabT + '</span>'
+        + '<span class="stk-e"><span class="stk-p ' + k2[0] + '">' + k2[1] + '</span></span></button>';
+    }).join('') + (l.length ? '' : '<p class="mu stk-vide">Aucun article.</p>') + '</section>';
     if (l.length > 300) h += '<p class="mu">300 premiers articles affichés : affinez la recherche.</p>';
     return h;
   }
