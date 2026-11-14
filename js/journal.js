@@ -2,7 +2,8 @@
 // Types : Majeure (changement profond), Mineure (nouvelle fonction), Correctif (réparation).
 // c = changements visibles ; x = opérations sur les données (pour la responsable).
 window.JOURNAL = [{v:"2.3",t:"Mineure",n:"Accueil à deux tuiles, équipe et dentistes (préparation du planning)",d:"Novembre 2026 (en test)",
-c:["Planning : les postes (Sté, Admin, Accueil… et ceux que vous créez) s’affichent dans leur couleur de Réglages › Postes, en pastel. Les journées avec un dentiste restent en bleu foncé.",
+c:["Planning : « OFF » passe dans un gris moyen, plus clair.",
+ "Planning : les postes (Sté, Admin, Accueil… et ceux que vous créez) s’affichent dans leur couleur de Réglages › Postes, en pastel. Les journées avec un dentiste restent en bleu foncé.",
  "Planning : les absences prennent les couleurs de la légende de la page Congés, en pastel (Congés en bleu, Maladie en orange, Formation en vert, École en violet). Les demi-journées ou journées « OFF » (ne travaille pas, 0 h) sont en gris foncé avec « OFF ». Dans la fenêtre d’une case, le choix s’appelle maintenant « OFF · ne travaille pas (0 h) ».",
  "Planning : la ligne « Intérimaire » n’apparaît plus quand on n’en a pas besoin. Un interrupteur « Intérimaire cette semaine » en haut du planning l’ajoute pour la semaine affichée (le choix est gardé pour cette semaine seulement). Si l’intérimaire a déjà des cases remplies dans la semaine, la ligne reste affichée et l’interrupteur est bloqué.",
  "Planning : nouvelle ligne « La Sté » sous « Dentistes seuls ». Pour chaque jour, elle montre qui est en stérilisation (assistantes mises sur « Sté » et personnel de stérilisation hors planning, d’après leurs horaires), en vert si quelqu’un y est toute la journée, en orange avec « Personne le matin / l’après-midi / de la journée » sinon. Rien n’est signalé les jours fériés ni les jours sans dentiste.",

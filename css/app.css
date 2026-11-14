@@ -1790,9 +1790,9 @@ button.stk-k{cursor:pointer}
 .pl-c.abs.ab-arret,.pl-d.abs.ab-arret{background:#f6e0d0;color:#7a3a0e}
 .pl-c.abs.ab-formation,.pl-d.abs.ab-formation{background:#d6ede1;color:#145c39}
 .pl-c.abs.ab-ecole,.pl-d.abs.ab-ecole{background:#e9e0f4;color:#5b3f80}
-.pl-c.off2,.pl-d.off2{background:#595959;color:#fff}
+.pl-c.off2,.pl-d.off2{background:#a3aab0;color:#1f2a33}
 .pl-c.off2 b{font-size:13px;letter-spacing:.04em}
-.pl-c.mix .pl-d.off2{color:#fff}
+.pl-c.mix .pl-d.off2{color:#1f2a33}
 /* Planning : postes (Sté, Admin…) dans leur couleur pastel */
 .pl-c.on.pst span{opacity:1;color:#333d46}
 .pl-c.on.pst .pl-r,.pl-c.on.pst .pl-r.dep{color:#6b5d24}
