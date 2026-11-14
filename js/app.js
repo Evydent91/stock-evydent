@@ -764,7 +764,7 @@
 
   // ---------- Accueil de la référente et de la responsable (2 tuiles), Réglages, Équipe, Dentistes ----------
   // Écrans de la maquette « Accueil référente et responsable ». Chaque écran a son en-tête bleu.
-  var HUB = ['hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
+  var HUB = ['ptransfert', 'hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
   var JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'], JC = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
   // Affectations possibles d'une demi-journée (en plus des dentistes)
   // Postes (modifiables dans Réglages › Postes) ; École et « Ne travaille pas » sont fixes
@@ -826,6 +826,144 @@
     return h;
   }
 
+  // =====================================================================
+  // Transfert Dev → Prod : export choisi (fichier), import avec récapitulatif et liaison des comptes
+  // =====================================================================
+  var TRF_PARAMS = [['postes', 'Postes (Sté, Admin…)'], ['profils', 'Profils'], ['regles_heures', 'Règles des heures'], ['planning_visible', 'Ce que voit l’équipe'], ['types_personnel', 'Types de personnel (ancien réglage)'], ['roles', 'Rôles (ancien réglage)']];
+  function vPTransfert() {
+    var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'Transfert vers la prod', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps trf">';
+    var envT = window.CONFIG && CONFIG.env === 'prod' ? 'site réel (Prod)' : 'site de test (Dev)';
+    h += '<p class="trf-env">Vous êtes sur le <b>' + envT + '</b>. ' + (window.CONFIG && CONFIG.env === 'prod' ? 'Ici, on importe le fichier exporté depuis le site de test.' : 'Ici, on exporte ce qu’on veut retrouver sur le site réel.') + ' Le stock n’est jamais concerné.</p>';
+    if (!S.equipe || !S.dentistes) return h + '<p class="a-vide">Chargement…</p></div>';
+    var X = S.trfX = S.trfX || { p: {}, d: {}, par: {}, cg: true, cgDu: '2026-11-30', pl: true, plDu: '2026-11-30', init: false };
+    if (!X.init) { S.equipe.forEach(function (p) { X.p[p.id] = !!p.actif; }); S.dentistes.forEach(function (d) { X.d[d.id] = !!d.actif; }); TRF_PARAMS.forEach(function (k) { X.par[k[0]] = k[0] !== 'types_personnel' && k[0] !== 'roles'; }); X.init = true; }
+    var cb = function (attr, on, lab, sous) { return '<label class="trf-cb"><input type="checkbox" ' + attr + (on ? ' checked' : '') + '><span><b>' + lab + '</b>' + (sous ? '<small>' + sous + '</small>' : '') + '</span></label>'; };
+    var tri = function (a, b) { return (b.actif - a.actif) || (a.ordre - b.ordre); };
+    h += '<section class="trf-s"><h2>1 · Exporter</h2><p class="mu">Cochez ce que vous voulez emporter. Un fichier est téléchargé sur cet appareil.</p>'
+      + '<div class="trf-g"><div><h3>Personnes <button class="lien" data-trf="ptous">tout</button> · <button class="lien" data-trf="prien">rien</button></h3>' + S.equipe.slice().sort(tri).map(function (p) { var cpt = p.profil_id && (S.profils || []).filter(function (x) { return x.id === p.profil_id; })[0]; return cb('data-trfp="' + p.id + '"', X.p[p.id], (p.type === 'interimaire' ? 'Intérimaire' : esc(p.prenom)) + (p.actif ? '' : ' <span class="pill">ancienne</span>'), esc(nomType(p)) + (cpt ? ' · compte « ' + esc(cpt.identifiant) + ' »' : ' · sans compte')); }).join('') + '</div>'
+      + '<div><h3>Dentistes <button class="lien" data-trf="dtous">tout</button> · <button class="lien" data-trf="drien">rien</button></h3>' + S.dentistes.slice().sort(tri).map(function (d) { return cb('data-trfd="' + d.id + '"', X.d[d.id], 'Dr ' + esc(d.prenom) + (d.actif ? '' : ' <span class="pill">ancien</span>'), [1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j]; }).map(function (j) { return JC[j].toLowerCase(); }).join(' ') || 'jours à renseigner'); }).join('') + '</div>'
+      + '<div><h3>Réglages</h3>' + TRF_PARAMS.map(function (k) { return cb('data-trfr="' + k[0] + '"', X.par[k[0]], k[1]); }).join('')
+      + '<h3>Absences et planning</h3>' + cb('data-trf2="cg"', X.cg, 'Congés et absences', 'acceptés ou en attente, se terminant à partir du :') + '<input class="in trf-d" type="date" data-trfdt="cgDu" value="' + X.cgDu + '" aria-label="Congés à partir du">'
+      + cb('data-trf2="pl"', X.pl, 'Cases du planning modifiées à la main', 'à partir du :') + '<input class="in trf-d" type="date" data-trfdt="plDu" value="' + X.plDu + '" aria-label="Cases à partir du">'
+      + '<p class="mu" style="font-size:13.5px;margin:8px 0 0">Les semaines types (et leurs versions), jours off, consignes et règles de chaque personne partent avec sa fiche.</p></div></div>'
+      + '<button class="a-btn navy trf-go" data-act="trfexp"' + (X.busy ? ' disabled' : '') + '>' + ico('telecharger', 20, 2.2) + (X.busy ? 'Préparation…' : 'Télécharger le fichier de transfert') + '</button></section>';
+    h += '<section class="trf-s"><h2>2 · Importer</h2><p class="mu">Sur le site réel : choisissez le fichier exporté depuis le site de test. Rien n’est enregistré avant votre confirmation.</p>'
+      + '<label class="a-btn blanc trf-go">' + ico('haut', 20, 2.2) + 'Choisir le fichier de transfert<input type="file" id="trff" accept=".json,application/json" hidden></label>';
+    if (S.trfI) h += vTrfRecap();
+    return h + '</section></div>';
+  }
+  function trfExporter() {
+    var X = S.trfX; X.busy = true; render();
+    var eq = S.equipe.filter(function (p) { return X.p[p.id]; }), de = S.dentistes.filter(function (d) { return X.d[d.id]; }), ids = {}; eq.forEach(function (p) { ids[p.id] = 1; }); var dids = {}; de.forEach(function (d) { dids[d.id] = 1; });
+    var cles = TRF_PARAMS.map(function (k) { return k[0]; }).filter(function (k) { return X.par[k]; }).concat(['interim_semaines']);
+    Promise.all([
+      sb.from('parametres').select('cle,valeur').in('cle', cles),
+      X.cg ? sb.from('conges').select('*').gte('au', X.cgDu).in('statut', ['accepte', 'attente']) : Promise.resolve({ data: [] }),
+      X.pl && eq.length ? sb.from('planning').select('*').gte('jour', X.plDu) : Promise.resolve({ data: [] }),
+      S.trames ? sb.from('equipe_trames').select('equipe_id,depuis,trame') : Promise.resolve({ data: [] })
+    ]).then(function (r) {
+      r.forEach(function (x) { if (x && x.error) throw x.error; });
+      var cpt = {}; (S.profils || []).forEach(function (x) { cpt[x.id] = { identifiant: x.identifiant, nom: x.nom, role: x.role }; });
+      var F = { v: 1, source: (window.CONFIG && CONFIG.env) || '?', exporte_le: new Date().toISOString(), version: (window.CONFIG && CONFIG.version) || '',
+        parametres: (r[0].data || []).filter(function (x) { return x.cle !== 'interim_semaines' || X.pl; }),
+        dentistes: de.map(function (d) { return { id: d.id, prenom: d.prenom, actif: d.actif, jours: d.jours || {}, note: d.note || null, ordre: d.ordre, extra: d.extra || [], present_du: d.present_du || null, present_au: d.present_au || null }; }),
+        equipe: eq.map(function (p) { return { id: p.id, prenom: p.prenom, type: p.type, statut: p.statut, contrat_h: p.contrat_h, ecole_jour: p.ecole_jour, actif: p.actif, trame: p.trame || {}, consigne: p.consigne || null, regles: p.regles || {}, ordre: p.ordre, offs: p.offs || [], pointage: !!p.pointage, compte: p.profil_id && cpt[p.profil_id] ? cpt[p.profil_id] : null }; }),
+        trames: (r[3].data || []).filter(function (t) { return ids[t.equipe_id]; }),
+        conges: (r[1].data || []).filter(function (c) { return c.equipe_id ? ids[c.equipe_id] : dids[c.dentiste_id]; }).map(function (c) { return { equipe_id: c.equipe_id, dentiste_id: c.dentiste_id, du: c.du, au: c.au, type: c.type, statut: c.statut, mot: c.mot || null, reponse: c.reponse || null, demande_par: c.demande_par && cpt[c.demande_par] ? cpt[c.demande_par].identifiant : null, traite_par: c.traite_par && cpt[c.traite_par] ? cpt[c.traite_par].identifiant : null, traite_le: c.traite_le || null, cree_le: c.cree_le || null }; }),
+        planning: (r[2].data || []).filter(function (x) { return ids[x.equipe_id]; }).map(function (x) { return { equipe_id: x.equipe_id, jour: x.jour, demi: x.demi, aff: x.aff, debut: x.debut, fin: x.fin, heures: x.heures }; })
+      };
+      var blob = new Blob([JSON.stringify(F, null, 1)], { type: 'application/json' }), a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'evydent-transfert-' + dIso(new Date()) + '.json'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+      X.busy = false; toast('✔ Fichier prêt : ' + F.equipe.length + ' ' + pl(F.equipe.length, 'personne') + ', ' + F.dentistes.length + ' ' + pl(F.dentistes.length, 'dentiste') + ', ' + F.conges.length + ' ' + pl(F.conges.length, 'absence')); render();
+    }).catch(function (e) { X.busy = false; toast(msgErr(e)); render(); });
+  }
+  // Lecture du fichier : propositions de liens (comptes, fiches et dentistes déjà présents)
+  function trfLire(file) {
+    var rd = new FileReader();
+    rd.onload = function () {
+      var F; try { F = JSON.parse(rd.result); } catch (e) { toast('Ce fichier n’est pas un fichier de transfert'); return; }
+      if (!F || F.v !== 1 || !Array.isArray(F.equipe)) { toast('Ce fichier n’est pas un fichier de transfert'); return; }
+      var pr = S.profils || [], norm2 = function (t) { return norm(String(t || '')).trim(); }, gest = function (r) { return r === 'referente' || r === 'responsable'; };
+      var lies = {}; (S.equipe || []).forEach(function (x) { if (x.profil_id) lies[x.profil_id] = x.id; });
+      var I = { F: F, lien: {}, prop: {}, fiche: {}, dent: {} };
+      F.equipe.forEach(function (p) {
+        var ex = (S.equipe || []).filter(function (x) { return norm2(x.prenom) === norm2(p.prenom) && x.type === p.type; })[0];
+        if (ex) I.fiche[p.id] = ex.id;
+        var libre = function (x) { return !lies[x.id] || (ex && lies[x.id] === ex.id); };
+        var c = p.compte, auto = null, prop = null;
+        if (c) {
+          auto = pr.filter(function (x) { return x.identifiant === c.identifiant && libre(x) && (gest(x.role) === gest(c.role)); })[0] || null;
+          if (!auto) { var mp = pr.filter(function (x) { return libre(x) && (norm2(x.nom) === norm2(p.prenom) || norm2(x.nom) === norm2(c.nom)) && gest(x.role) === gest(c.role); }); if (mp.length === 1) { if (gest(c.role) && mp[0].role === c.role) auto = mp[0]; else prop = mp[0]; } }
+        } else { var mp2 = pr.filter(function (x) { return libre(x) && !gest(x.role) && norm2(x.nom) === norm2(p.prenom); }); if (mp2.length === 1) prop = mp2[0]; }
+        if (!auto && ex && ex.profil_id) auto = pr.filter(function (x) { return x.id === ex.profil_id; })[0] || null;
+        I.lien[p.id] = auto ? auto.id : ''; if (prop) I.prop[p.id] = prop.id;
+      });
+      F.dentistes.forEach(function (d) { var ex = (S.dentistes || []).filter(function (x) { return norm2(x.prenom) === norm2(d.prenom); })[0]; if (ex) I.dent[d.id] = ex.id; });
+      S.trfI = I; render();
+    };
+    rd.readAsText(file);
+  }
+  function vTrfRecap() {
+    var I = S.trfI, F = I.F, pr = S.profils || [], gest = pr.filter(function (x) { return x.role === 'referente' || x.role === 'responsable'; });
+    var nomP = function (id) { var x = pr.filter(function (y) { return y.id === id; })[0]; return x ? esc(x.nom) + ' (' + esc(x.identifiant) + ')' : ''; };
+    var h = '<div class="trf-recap"><h3>Récapitulatif du fichier</h3><p class="mu">Exporté le ' + dateCourte(F.exporte_le) + ' depuis le site ' + (F.source === 'dev' ? 'de test' : esc(F.source)) + ' · ' + F.equipe.length + ' ' + pl(F.equipe.length, 'personne') + ' · ' + F.dentistes.length + ' ' + pl(F.dentistes.length, 'dentiste') + ' · ' + (F.trames || []).length + ' ' + pl((F.trames || []).length, 'version') + ' de semaine type · ' + F.conges.length + ' ' + pl(F.conges.length, 'absence') + ' · ' + F.planning.length + ' ' + pl(F.planning.length, 'case') + ' du planning · ' + F.parametres.length + ' ' + pl(F.parametres.length, 'réglage') + '</p>';
+    h += '<div class="trf-gest"><b>Gestion (comptes de ce site)</b>' + (gest.length ? gest.map(function (x) { return '<span>' + LABEL[x.role] + ' : <b>' + esc(x.nom) + '</b></span>'; }).join('') : '<span class="mu">aucun compte de gestion</span>') + '</div>';
+    h += '<h4>Dentistes</h4><div class="trf-l">' + F.dentistes.map(function (d) { return '<div class="trf-r"><b>Dr ' + esc(d.prenom) + '</b><span class="pill ' + (I.dent[d.id] ? 'info' : 'ok') + '">' + (I.dent[d.id] ? 'existe déjà : mis à jour' : 'nouveau') + '</span></div>'; }).join('') + '</div>';
+    var lies = {}; (S.equipe || []).forEach(function (x) { if (x.profil_id) lies[x.profil_id] = x.id; });
+    h += '<h4>Personnes et comptes de connexion</h4><div class="trf-l">' + F.equipe.map(function (p) {
+      var cur = I.lien[p.id] || '', prop = I.prop[p.id], ex = I.fiche[p.id];
+      var etat = cur ? (p.compte && pr.some(function (x) { return x.id === cur && x.identifiant === p.compte.identifiant; }) ? '<span class="pill ok">relié : même identifiant</span>' : '<span class="pill ok">relié</span>') : prop ? '<span class="pill warn">proposé : ' + nomP(prop) + ', même prénom · choisissez-le pour confirmer</span>' : '<span class="pill">sans compte</span>';
+      var opts = '<option value="">— aucun compte —</option>' + pr.filter(function (x) { return !lies[x.id] || (ex && lies[x.id] === ex) || x.id === cur; }).sort(function (a, b) { return (b.id === prop) - (a.id === prop) || a.nom.localeCompare(b.nom); }).map(function (x) { return '<option value="' + x.id + '"' + (x.id === cur ? ' selected' : '') + '>' + (x.id === prop ? '★ ' : '') + esc(x.nom) + ' (' + esc(x.identifiant) + ')' + (x.role === 'referente' || x.role === 'responsable' ? ' · ' + LABEL[x.role].toLowerCase() : '') + '</option>'; }).join('');
+      return '<div class="trf-r"><span class="trf-n"><b>' + (p.type === 'interimaire' ? 'Intérimaire' : esc(p.prenom)) + '</b><small>' + esc(nomType(p)) + (p.compte ? ' · compte sur le site de test : « ' + esc(p.compte.identifiant) + ' »' : '') + (ex ? ' · fiche déjà présente : mise à jour' : '') + '</small></span>' + etat + '<select class="in" data-trfl="' + p.id + '" aria-label="Compte de ' + esc(p.prenom) + '">' + opts + '</select></div>';
+    }).join('') + '</div>';
+    h += '<div class="trf-act"><button class="a-btn blanc" data-act="trfannule">Annuler</button><button class="a-btn navy" data-act="trfimp"' + (I.busy ? ' disabled' : '') + '>' + (I.busy ? 'Import en cours…' : 'Importer') + '</button></div></div>';
+    return h;
+  }
+  async function trfImporter() {
+    var I = S.trfI, F = I.F;
+    if (!(await demander('Importer ces données sur ce site ?', F.equipe.length + ' ' + pl(F.equipe.length, 'personne') + ', ' + F.dentistes.length + ' ' + pl(F.dentistes.length, 'dentiste') + ', ' + F.conges.length + ' ' + pl(F.conges.length, 'absence') + ' et ' + F.parametres.length + ' ' + pl(F.parametres.length, 'réglage') + '.\n\nLes fiches et dentistes déjà présents (même prénom) sont mis à jour, les autres créés. Le stock n’est pas touché.', 'Importer'))) return;
+    I.busy = true; render();
+    var pr = S.profils || [], parId = function (ident) { var x = ident && pr.filter(function (y) { return y.identifiant === ident; })[0]; return x ? x.id : null; };
+    try {
+      // 1. réglages
+      if (F.parametres.length) { var r1 = await sb.from('parametres').upsert(F.parametres.map(function (x) { return { cle: x.cle, valeur: x.valeur }; }), { onConflict: 'cle' }); if (r1.error) throw r1.error; }
+      // 2. dentistes
+      var md = {};
+      for (var i = 0; i < F.dentistes.length; i++) {
+        var d = F.dentistes[i], od = { prenom: d.prenom, actif: d.actif, jours: d.jours, note: d.note, ordre: d.ordre, extra: d.extra || [] };
+        if (d.present_du || d.present_au) { od.present_du = d.present_du; od.present_au = d.present_au; }
+        var rd = I.dent[d.id] ? await sb.from('dentistes').update(od).eq('id', I.dent[d.id]).select().single() : await sb.from('dentistes').insert(od).select().single();
+        if (rd.error) throw rd.error; md[d.id] = rd.data.id;
+      }
+      var tous = (S.dentistes || []); var parPrenom = function (devId) { if (md[devId]) return md[devId]; return null; };
+      var remap = function (a) { if (a && a.slice(0, 2) === 'D:') { var n = parPrenom(a.slice(2)); return n ? 'D:' + n : 'OFF'; } return a; };
+      var remapT = function (t) { var o = JSON.parse(JSON.stringify(t || {})); Object.keys(o).forEach(function (j) { ['am', 'pm'].forEach(function (k) { if (o[j] && o[j][k] && o[j][k].a) o[j][k].a = remap(o[j][k].a); }); }); return o; };
+      // 3. fiches
+      var me = {};
+      for (var k = 0; k < F.equipe.length; k++) {
+        var p = F.equipe[k], op = { prenom: p.prenom, type: p.type, statut: p.statut, contrat_h: p.contrat_h, ecole_jour: p.ecole_jour, actif: p.actif, trame: remapT(p.trame), consigne: p.consigne, regles: p.regles || {}, ordre: p.ordre, offs: p.offs || [], pointage: p.pointage, profil_id: I.lien[p.id] || null };
+        var re = I.fiche[p.id] ? await sb.from('equipe').update(op).eq('id', I.fiche[p.id]).select().single() : await sb.from('equipe').insert(op).select().single();
+        if (re.error) throw re.error; me[p.id] = re.data.id;
+      }
+      // 4. versions de la semaine type (remplacent celles des fiches importées)
+      if ((F.trames || []).length && S.trames) {
+        var ids = Object.keys(me).map(function (x) { return me[x]; });
+        var rdel = await sb.from('equipe_trames').delete().in('equipe_id', ids); if (rdel.error) throw rdel.error;
+        var tl = F.trames.filter(function (t) { return me[t.equipe_id]; }).sort(function (a, b) { return a.depuis < b.depuis ? -1 : 1; }).map(function (t) { return { equipe_id: me[t.equipe_id], depuis: t.depuis, trame: remapT(t.trame) }; });
+        for (var q = 0; q < tl.length; q++) { var rt = await sb.from('equipe_trames').insert(tl[q]); if (rt.error) throw rt.error; }
+      }
+      // 5. absences (sans doublon : même personne, mêmes dates, même type)
+      var deja = {}; (S.conges || []).forEach(function (c) { deja[(c.equipe_id ? 'p' + c.equipe_id : 'd' + c.dentiste_id) + c.du + c.au + c.type] = 1; });
+      var cg = F.conges.map(function (c) { var o = { du: c.du, au: c.au, type: c.type, statut: c.statut, mot: c.mot, reponse: c.reponse, demande_par: parId(c.demande_par), traite_par: parId(c.traite_par), traite_le: c.traite_le }; if (c.equipe_id) { if (!me[c.equipe_id]) return null; o.equipe_id = me[c.equipe_id]; } else { if (!md[c.dentiste_id]) return null; o.dentiste_id = md[c.dentiste_id]; } return deja[(o.equipe_id ? 'p' + o.equipe_id : 'd' + o.dentiste_id) + o.du + o.au + o.type] ? null : o; }).filter(Boolean);
+      if (cg.length) { var rc = await sb.from('conges').insert(cg); if (rc.error) throw rc.error; }
+      // 6. cases du planning
+      var pl2 = F.planning.filter(function (x) { return me[x.equipe_id]; }).map(function (x) { return { equipe_id: me[x.equipe_id], jour: x.jour, demi: x.demi, aff: remap(x.aff), debut: x.debut, fin: x.fin, heures: x.heures }; });
+      for (var z = 0; z < pl2.length; z += 200) { var rp = await sb.from('planning').upsert(pl2.slice(z, z + 200), { onConflict: 'equipe_id,jour,demi' }); if (rp.error) throw rp.error; }
+      S.trfI = null; toast('✔ Import terminé : ' + F.equipe.length + ' ' + pl(F.equipe.length, 'fiche') + ', ' + F.dentistes.length + ' ' + pl(F.dentistes.length, 'dentiste') + ', ' + cg.length + ' ' + pl(cg.length, 'absence'));
+      chargerPlan();
+    } catch (e) { I.busy = false; toast('Import interrompu : ' + msgErr(e) + ' (vous pouvez relancer : ce qui est déjà importé sera mis à jour)'); chargerPlan(); render(); }
+  }
+
   // Réglages : tous les réglages de l'application, regroupés par outil
   function vReglages() {
     var n = (S.equipe || []).filter(function (p) { return p.actif; }).length, nd = (S.dentistes || []).filter(function (d) { return d.actif; }).length;
@@ -855,6 +993,7 @@
         it('Fournisseurs', 'Coordonnées, comptes', 'data-tab="fournisseurs"')])
       + bloc('A', 'b1', 'Application', 'Données et versions', [
         it('Sauvegarde et journal des versions', 'Télécharger les données, ce qui a changé', 'data-tab="plus"'),
+        it('Transfert vers la prod', 'Exporter l’équipe, les dentistes, les réglages et les congés du site de test, puis les importer sur le site réel', 'data-tab="ptransfert"', true),
         it('Mon mot de passe', 'Changer mon mot de passe', 'data-tab="compte"')])
       + '</div><p class="rg-vide" hidden>Aucun réglage ne correspond.</p>';
     return h + '</div>';
@@ -1506,7 +1645,7 @@
       + '<div class="a-corps"><div class="card pc-msg">' + ico('agenda', 34) + '<b>À ouvrir sur ordinateur</b><p class="mu">Le planning et le tableau des heures se gèrent sur un écran de PC. Sur téléphone, vous pouvez gérer les congés et les réglages.</p><button class="btn" data-tab="hub">Retour à l’accueil</button></div></div>';
   }
   function renderH() {
-    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pprofils: vPProfils }[S.tab] || vHub;
+    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pprofils: vPProfils, ptransfert: vPTransfert }[S.tab] || vHub;
     if ((S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage') && telephone()) ecr = vSurPC;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
     h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr' || S.tab === 'pequipe' || S.tab === 'pprofils') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || (S.tab === 'pconges' && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
@@ -5195,6 +5334,10 @@
     if (d.canko) return repondreAnnul(d.canko, false);
     if (d.cannd) return demanderAnnul(d.cannd);
     if (d.cgb) return cgAbsence(d.cgb);
+    if (d.act === 'trfexp') return trfExporter();
+    if (d.act === 'trfimp') return trfImporter();
+    if (d.act === 'trfannule') { S.trfI = null; render(); return; }
+    if (d.trf && S.trfX) { var tv = d.trf.slice(1) === 'tous'; if (d.trf[0] === 'p') S.equipe.forEach(function (p) { S.trfX.p[p.id] = tv; }); else S.dentistes.forEach(function (x) { S.trfX.d[x.id] = tv; }); render(); return; }
     if (d.cannr) { var cgR = +d.cannr; demander('Retirer la demande d’annulation ?', 'Vos congés restent posés comme prévu.', 'Retirer la demande').then(function (ok) { if (!ok) return; sb.rpc('retirer_annulation_conges', { p_id: cgR }).then(function (r) { if (r.error) throw r.error; toast('Demande d’annulation retirée'); chargerMesConges(); }).catch(function (e) { toast(msgErr(e)); }); }); return; }
     if (d.crefus) return repondre(d.crefus, false);
     if ((d.act && d.act.slice(0, 3) === 'off') || d.offmod || d.offj || d.offd || d.offr || d.offn) { if (actionOff(d)) return; }
@@ -5247,6 +5390,9 @@
   });
   document.addEventListener('change', function (e) {
     var t = e.target; if (!S.me) return;
+    if (t.id === 'trff' && t.files && t.files[0]) { trfLire(t.files[0]); t.value = ''; return; }
+    if (S.trfX && t.dataset) { if (t.dataset.trfp) { S.trfX.p[t.dataset.trfp] = t.checked; return; } if (t.dataset.trfd) { S.trfX.d[t.dataset.trfd] = t.checked; return; } if (t.dataset.trfr) { S.trfX.par[t.dataset.trfr] = t.checked; return; } if (t.dataset.trf2) { S.trfX[t.dataset.trf2] = t.checked; return; } if (t.dataset.trfdt) { S.trfX[t.dataset.trfdt] = t.value; return; } }
+    if (S.trfI && t.dataset && t.dataset.trfl) { S.trfI.lien[t.dataset.trfl] = t.value; render(); return; }
     if (t.id === 'pfver' && S.pf) { var vv = versionsTrame({ id: S.pf.id }).filter(function (x) { return x.depuis === t.value; })[0]; if (vv) { S.pf.ver = t.value; S.pf.d.trame = JSON.parse(JSON.stringify(vv.trame || {})); render(); } return; }
     if (t.dataset && t.dataset.sugq) { S.sugQ[t.dataset.sugq] = t.value; render(); return; }
     if (t.dataset && (t.dataset.pff || t.dataset.tr) && S.pf) { majPers(t); if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); return; }

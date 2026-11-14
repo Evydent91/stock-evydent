@@ -1853,3 +1853,29 @@ button.stk-k{cursor:pointer}
 .btn.vert{background:var(--ok);color:#fff}
 .dlg-dates{margin:4px 0 0;gap:10px}
 .dlg-dates input{height:44px;border:1.5px solid var(--line);border-radius:10px;padding:0 10px;font:inherit;font-size:15px;color:var(--ink)}
+
+/* Transfert vers la prod */
+.trf-env{background:#fff;border:1.5px solid var(--gold);border-radius:14px;padding:10px 14px;margin:0 0 14px}
+.trf-s{background:#fff;border-radius:18px;box-shadow:0 1px 3px rgba(31,42,51,.08);padding:16px 18px;margin:0 0 14px}
+.trf-s h2{margin:0 0 4px;font-family:var(--serif);font-weight:600;font-size:24px}
+.trf-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin:12px 0}
+.trf-g h3{margin:0 0 6px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7a6a2a}
+.trf-g h3 .lien{text-transform:none;letter-spacing:0;font-size:13px}
+.trf-cb{display:flex;gap:10px;align-items:flex-start;padding:6px 0;cursor:pointer}
+.trf-cb input{width:20px;height:20px;flex:none;margin-top:2px;accent-color:var(--navy)}
+.trf-cb span{display:flex;flex-direction:column}.trf-cb b{font-size:15px;font-weight:600}.trf-cb small{font-size:12.5px;color:var(--mute)}
+.trf-d{height:40px;max-width:200px;margin:0 0 8px 30px}
+.trf-go{display:inline-flex;align-items:center;gap:8px;width:auto;padding:0 20px}
+.trf-recap{margin-top:16px;border-top:1px solid var(--soft);padding-top:14px}
+.trf-recap h3{margin:0 0 4px;font-size:18px}.trf-recap h4{margin:14px 0 6px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7a6a2a}
+.trf-gest{display:flex;gap:16px;flex-wrap:wrap;align-items:center;background:#fbfaf6;border-radius:12px;padding:10px 14px;margin:10px 0 0}
+.trf-l{display:flex;flex-direction:column}
+.trf-r{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(200px,280px);gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--soft)}
+.trf-l .trf-r:first-child{border-top:none}
+.trf-r:has(> b){grid-template-columns:minmax(0,1fr) auto}
+.trf-n{display:flex;flex-direction:column;min-width:0}.trf-n small{font-size:12.5px;color:var(--mute)}
+.trf-r .pill{white-space:normal}
+.trf-r select{height:42px}
+.trf-act{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+.trf-act .a-btn{width:auto;padding:0 22px}
+@media (max-width:900px){.trf-g{grid-template-columns:1fr}.trf-r{grid-template-columns:1fr}}
