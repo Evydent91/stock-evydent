@@ -1384,7 +1384,8 @@
     var as = assistantesDe(d.id), jours = [1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j]; });
     var seul = d.actif ? jours.filter(function (j) { return !as[j]; }) : [];
     var noms = {}; jours.forEach(function (j) { (as[j] || []).forEach(function (n) { noms[n] = 1; }); });
-    return '<button class="a-li" data-dent="' + d.id + '"><span class="a-av d">' + initiale(d.prenom) + '</span><span class="a-it-n"><b>Dr ' + esc(d.prenom) + '</b><span>' + (jours.length ? jours.map(function (j) { return JC[j].toLowerCase(); }).join(' ') : 'jours à renseigner') + (Object.keys(noms).length ? ' · avec ' + Object.keys(noms).map(esc).join(', ') : '') + '</span>'
+    var auj0 = dIso(new Date()), dates = d.present_du && String(d.present_du).slice(0, 10) > auj0 ? '<span class="pill info">à partir du ' + dateCourte(String(d.present_du).slice(0, 10)) + '</span> ' : d.present_au ? (String(d.present_au).slice(0, 10) < auj0 ? '<span class="pill">parti(e) le ' + dateCourte(String(d.present_au).slice(0, 10)) + '</span> ' : '<span class="pill warn">jusqu’au ' + dateCourte(String(d.present_au).slice(0, 10)) + '</span> ') : '';
+    return '<button class="a-li" data-dent="' + d.id + '"><span class="a-av d">' + initiale(d.prenom) + '</span><span class="a-it-n"><b>Dr ' + esc(d.prenom) + ' ' + dates + '</b><span>' + (jours.length ? jours.map(function (j) { return JC[j].toLowerCase(); }).join(' ') : 'jours à renseigner') + (Object.keys(noms).length ? ' · avec ' + Object.keys(noms).map(esc).join(', ') : '') + '</span>'
       + (seul.length ? '<span class="warn">Sans assistante le ' + seul.map(function (j) { return JOURS[j].toLowerCase(); }).join(', ') + ' (semaine type)</span>' : '') + '</span>' + ico('suiv', 20, 2.2) + '</button>';
   }
   function vPDent() {
@@ -1411,7 +1412,8 @@
       + '<label class="mu">Prénom (affiché « Dr … »)<input class="in" data-dff="prenom" value="' + esc(d.prenom) + '"></label>'
       + '<div><span class="mu">Jours de présence habituels</span><div class="h-jours">' + [1, 2, 3, 4, 5].map(function (j) { return '<button type="button" class="h-jbtn' + (d.jours && d.jours[j] ? ' on' : '') + '" data-djour="' + j + '" aria-pressed="' + !!(d.jours && d.jours[j]) + '">' + JC[j] + '</button>'; }).join('') + '</div></div>'
       + '<label class="mu">Spécificités<textarea class="in" rows="2" data-dff="note" placeholder="Ex. : + 1 mercredi par mois">' + esc(d.note || '') + '</textarea></label>'
-      + '<label class="row"><input type="checkbox" data-dff="actif"' + (d.actif ? ' checked' : '') + ' style="width:20px;height:20px;flex:none"><span>Travaille au centre <span class="mu">(décocher pour un ancien dentiste)</span></span></label></div>';
+      + '<label class="row"><input type="checkbox" data-dff="actif"' + (d.actif ? ' checked' : '') + ' style="width:20px;height:20px;flex:none"><span>Travaille au centre <span class="mu">(décocher pour un ancien dentiste)</span></span></label>'
+      + (d.actif ? '<div class="h-g2"><label class="mu">Présent(e) à partir du<input class="in" type="date" data-dff="present_du" value="' + esc(String(d.present_du || '').slice(0, 10)) + '"></label><label class="mu">Jusqu’au<input class="in" type="date" data-dff="present_au" value="' + esc(String(d.present_au || '').slice(0, 10)) + '"></label></div><p class="mu" style="margin:-4px 0 0;font-size:13.5px">Laissez vide s’il n’y a pas de limite. Avant ou après ces dates, le dentiste ne compte pas dans le planning, les « dentistes seuls » ni les congés.</p>' : '') + '</div>';
     if (!nouv) h += '<h2 class="a-jour">Jours de présence et assistantes</h2><div class="a-liste">' + [1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j] || as[j]; }).map(function (j) {
       var pres = d.jours && d.jours[j], dep = typeof pres === 'string' ? pres : '';
       return '<div class="a-li h-djl"><span class="a-it-n"><b>' + JOURS[j] + '</b>' + (as[j] ? '<span>' + as[j].map(esc).join(', ') + '</span>' : '<span class="warn">pas d’assistante</span>') + '</span>'
@@ -1463,13 +1465,14 @@
     var F = S.df, d = F.d;
     if (!String(d.prenom || '').trim()) { toast('Le prénom est obligatoire'); return; }
     var o = { prenom: String(d.prenom).trim().replace(/^Dr\.?\s+/i, ''), jours: d.jours || {}, note: String(d.note || '').trim() || null, actif: !!d.actif };
+    if ('present_du' in d || 'present_au' in d) { o.present_du = d.present_du ? String(d.present_du).slice(0, 10) : null; o.present_au = d.present_au ? String(d.present_au).slice(0, 10) : null; if (o.present_du && o.present_au && o.present_au < o.present_du) { toast('La date « jusqu’au » est avant la date d’arrivée'); return; } }
     if (F.id === 'new') o.ordre = S.dentistes.reduce(function (m, x) { return Math.max(m, x.ordre || 0); }, 0) + 1;
     F.busy = true; render();
     (F.id === 'new' ? sb.from('dentistes').insert(o).select().single() : sb.from('dentistes').update(o).eq('id', F.id).select().single()).then(function (r) {
       if (r.error) throw r.error;
       var x = r.data || Object.assign({ id: F.id }, F.d, o);
       F.busy = false; F.id = x.id; F.d = JSON.parse(JSON.stringify(x)); toast('✔ Dr ' + x.prenom + ' enregistré'); chargerPlan();
-    }).catch(function (e) { F.busy = false; toast(msgErr(e)); render(); });
+    }).catch(function (e) { F.busy = false; toast(/present_(du|au)/.test(String(e && e.message)) ? 'Les dates de présence demandent la mise à jour 026 de la base' : msgErr(e)); render(); });
   }
 
   function chargerPlan() {
@@ -1975,7 +1978,8 @@
   var JOUR_CACHE = {};
   // Jour en plus (ponctuel) : seulement un jour où le dentiste ne vient pas d'habitude
   function dentExtra(d, iso) { return !!(d && Array.isArray(d.extra) && d.extra.indexOf(iso) >= 0 && !(d.jours && d.jours[jourSem(iso)])); }
-  function dentPresent(d, iso) { var j = jourSem(iso); return !!(d && d.actif && (d.jours && d.jours[j] || dentExtra(d, iso)) && !dentAbsent(d.id, iso)); }
+  function dentDansDates(d, iso) { return !!d && (!d.present_du || iso >= String(d.present_du).slice(0, 10)) && (!d.present_au || iso <= String(d.present_au).slice(0, 10)); }
+  function dentPresent(d, iso) { var j = jourSem(iso); return !!(d && d.actif && dentDansDates(d, iso) && (d.jours && d.jours[j] || dentExtra(d, iso)) && !dentAbsent(d.id, iso)); }
   function jourCalc(iso) {
     if (JOUR_CACHE[iso]) return JOUR_CACHE[iso];
     var ps = (S.equipe || []).filter(function (p) { return p.actif; }).sort(function (a, b) { return (a.ordre - b.ordre) || (a.id - b.id); }), out = {}, rows = S.pl && S.pl.rows || {}, j = jourSem(iso);
