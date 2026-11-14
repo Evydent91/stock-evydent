@@ -17,20 +17,55 @@
     inv: { emp: null, d: {}, q: '', tous: false, recap: false, motifs: {}, busy: false, msg: null, max: 80 }
   };
   var LABEL = { assistante: 'Assistante', referente: 'Référente', responsable: 'Responsable' };
-  // Rôles d'équipe et leurs droits (Réglages › Rôles et droits). Le rôle de base « assistante » peut être réglé ; les autres sont ajoutés.
+  // ---------- Profils : type de personnel et rôle réunis (Réglages › Profils) ----------
+  // Un profil dit où la personne apparaît (planning, dentiste, contrat, cabinet) et ce qu'elle voit dans son appli
+  // (pointage, stock, planning, congés). Stocké dans parametres « profils » ; à défaut, repris des anciens
+  // « types_personnel » et « roles ». La fiche garde type + statut (apprentie = assistante + statut apprentie).
+  var ORG = [['planning', 'Planning'], ['dentiste', 'Dentiste'], ['contrat', 'Contrat'], ['cab', 'Cabinet']];
+  var APP = [['pointage', 'Pointage'], ['stock', 'Stock'], ['voirPlanning', 'Planning'], ['conges', 'Congés']];
+  var PROFILS_BASE = [
+    { code: 'assistante', n: 'Assistante / assistant', d: 'Au fauteuil, stock de son cabinet', planning: true, dentiste: true, contrat: true, cab: true, pointage: true, stock: true, voirPlanning: true, conges: true },
+    { code: 'apprentie', n: 'Apprentie / apprenti', d: 'Comme une assistante, avec un jour d’école', planning: true, dentiste: true, contrat: true, cab: true, pointage: true, stock: true, voirPlanning: true, conges: true, ecole: true },
+    { code: 'interimaire', n: 'Intérimaire', d: 'Selon les besoins, sans contrat', planning: true, dentiste: true, contrat: false, cab: false, pointage: true, stock: false, voirPlanning: false, conges: false }
+  ];
+  var PROFILS_GESTION = [
+    { code: 'referente', n: 'Référente', gestion: true, planning: false, dentiste: false, contrat: true, cab: false, pointage: false, stock: true, voirPlanning: true, conges: true },
+    { code: 'responsable', n: 'Responsable', gestion: true, planning: false, dentiste: false, contrat: true, cab: false, pointage: false, stock: true, voirPlanning: true, conges: true }
+  ];
+  function profilsListe(avecGestion) {
+    var P = Array.isArray(S.profilsP) ? S.profilsP : null, l;
+    if (P) l = P.slice();
+    else {   // reprise des anciens réglages
+      var ty = Array.isArray(S.typesPers) ? S.typesPers : [], ro = Array.isArray(S.roles) ? S.roles : [], m = {};
+      ty.forEach(function (t) { m[t.code] = { code: t.code, n: t.n, planning: t.planning !== false, dentiste: t.dentiste !== false, contrat: t.contrat !== false, cab: false, pointage: true, stock: false, voirPlanning: false, conges: true, retire: t.retire }; });
+      ro.forEach(function (r) { var o = m[r.code] = m[r.code] || { code: r.code, n: r.n, planning: false, dentiste: false, contrat: true }; o.cab = !!r.cab; o.pointage = !!r.pointage; o.stock = !!r.stock; o.voirPlanning = !!r.planning; o.conges = !!r.conges; if (r.retire) o.retire = true; });
+      l = Object.keys(m).map(function (k) { return m[k]; });
+      var ra = ro.filter(function (r) { return r.code === 'assistante'; })[0];
+      if (ra) { var x = l.filter(function (y) { return y.code === 'assistante'; })[0] || {}; ['cab', 'pointage', 'stock', 'conges'].forEach(function (k) { x[k] = !!ra[k]; }); x.voirPlanning = !!ra.planning; x.code = 'assistante'; if (l.indexOf(x) < 0) l.push(x); }
+    }
+    var out = PROFILS_BASE.map(function (b) {
+      var o = l.filter(function (y) { return y.code === b.code; })[0], x = Object.assign({}, b, o || {}, { code: b.code, n: b.n, base: true });
+      if (!o && b.code !== 'interimaire' && !P) x.voirPlanning = !!(S.visible && S.visible.planning);
+      if (b.code === 'apprentie' && !o) { var a = l.filter(function (y) { return y.code === 'assistante'; })[0]; if (a) ['cab', 'pointage', 'stock', 'voirPlanning', 'conges'].forEach(function (k) { if (a[k] != null) x[k] = a[k]; }); if (!a && !P) x.voirPlanning = !!(S.visible && S.visible.planning); }
+      return x;
+    }).concat(l.filter(function (y) { return !PROFILS_BASE.some(function (b) { return b.code === y.code; }) && !PROFILS_GESTION.some(function (b) { return b.code === y.code; }); }));
+    return avecGestion ? out.concat(PROFILS_GESTION) : out;
+  }
+  function profilCode(p) { return !p ? 'assistante' : (!p.type || p.type === 'assistante') ? (p.statut === 'apprentie' ? 'apprentie' : 'assistante') : p.type; }
+  function profilDe(code) { var l = profilsListe(true); return l.filter(function (x) { return x.code === code; })[0] || null; }
   var DROITS = [['cab', 'Affecté à un cabinet'], ['pointage', 'Pointage'], ['stock', 'Stock'], ['planning', 'Planning'], ['conges', 'Congés']];
-  var ROLES_BASE = [{ code: 'assistante', n: 'Assistante / assistant', d: 'Fauteuil, stock du cabinet', cab: true, pointage: true, stock: true, planning: true, conges: true, base: true }];
-  function rolesEq() {
-    var l = Array.isArray(S.roles) ? S.roles : [];
-    return ROLES_BASE.map(function (b) { var o = l.filter(function (y) { return y.code === b.code; })[0]; var x = Object.assign({}, b, o || {}, { base: true, code: b.code, n: b.n }); if (!o) x.planning = !!(S.visible && S.visible.planning); return x; })
-      .concat(l.filter(function (y) { return !ROLES_BASE.some(function (b) { return b.code === y.code; }); }));
-  }
+  function enRole(x) { return { code: x.code, n: x.n, d: x.d, base: x.base, retire: x.retire, cab: !!x.cab, pointage: !!x.pointage, stock: !!x.stock, planning: !!x.voirPlanning, conges: !!x.conges }; }
+  function rolesEq() { return profilsListe().map(enRole); }
   function roleEqDe(code) {
-    var c = code || 'assistante', r = rolesEq().filter(function (x) { return x.code === c; })[0];
-    if (r) return r;
-    return c !== 'assistante' && !Array.isArray(S.roles) ? { code: c, n: '…', cab: false, pointage: false, stock: false, planning: false, conges: false } : rolesEq()[0];   // rôles pas encore chargés : rien d'affiché
+    var x = profilDe(code || 'assistante');
+    if (x) return enRole(x);
+    return code && !Array.isArray(S.roles) && !Array.isArray(S.profilsP) ? { code: code, n: '…', cab: false, pointage: false, stock: false, planning: false, conges: false } : enRole(profilDe('assistante'));
   }
-  function droit(k) { if (gestion()) return true; return !!(S.me && roleEqDe(S.me.fonction)[k]); }
+  function droit(k) {
+    if (gestion()) return true; if (!S.me) return false;
+    var pc = S.moiEq ? profilCode(S.moiEq) : null, code = pc && (pc !== 'assistante' && pc !== 'apprentie' || !S.me.fonction) ? pc : (S.me.fonction || pc || 'assistante');
+    return !!roleEqDe(code)[k];
+  }
   function nomRole(p) { return !p ? '' : p.role === 'assistante' ? (p.fonction ? roleEqDe(p.fonction).n : LABEL.assistante) : LABEL[p.role] || p.role; }
   function fonctionPret() { return !!(S.me && Object.prototype.hasOwnProperty.call(S.me, 'fonction')); }
 
@@ -690,7 +725,7 @@
 
   // ---------- Accueil de la référente et de la responsable (2 tuiles), Réglages, Équipe, Dentistes ----------
   // Écrans de la maquette « Accueil référente et responsable ». Chaque écran a son en-tête bleu.
-  var HUB = ['hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr'];
+  var HUB = ['hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
   var JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'], JC = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
   // Affectations possibles d'une demi-journée (en plus des dentistes)
   // Postes (modifiables dans Réglages › Postes) ; École et « Ne travaille pas » sont fixes
@@ -703,11 +738,12 @@
     return postes().filter(function (x) { return !x.retire || x.code === cur; }).map(function (x) { return [x.code, x.n]; }).concat([['ECOLE', 'École'], ['OFF', 'Ne travaille pas']]);
   }
   // Types de personnel (Réglages › Types de personnel)
-  var TYPES_BASE = [{ code: 'assistante', n: 'Assistante / assistant', planning: true, contrat: true, dentiste: true, base: true }, { code: 'interimaire', n: 'Intérimaire', planning: true, contrat: false, dentiste: true, base: true }];
-  function typesPers() { var l = Array.isArray(S.typesPers) ? S.typesPers : []; return TYPES_BASE.concat(l.filter(function (x) { return !TYPES_BASE.some(function (b) { return b.code === x.code; }); })); }
+  function enType(x) { return { code: x.code, n: x.n, planning: x.planning !== false, contrat: x.contrat !== false, dentiste: x.dentiste !== false, base: x.base, retire: x.retire, gestion: x.gestion }; }
+  var TYPES_BASE = [enType(PROFILS_BASE[0])];
+  function typesPers() { return profilsListe(true).filter(function (x) { return x.code !== 'apprentie'; }).map(enType); }
   function aDent(type) { return typeDe(type).dentiste !== false; }   // le type travaille-t-il auprès d'un dentiste ?
-  function typeDe(code) { return typesPers().filter(function (x) { return x.code === code; })[0] || TYPES_BASE[0]; }
-  function nomType(p) { return p.type === 'interimaire' ? 'Intérimaire' : p.type === 'assistante' || !p.type ? (p.statut === 'apprentie' ? 'Apprentie' : 'Assistante') : typeDe(p.type).n; }
+  function typeDe(code) { var x = profilDe(code === 'apprentie' ? 'apprentie' : code || 'assistante') || profilDe('assistante'); return enType(x); }
+  function nomType(p) { var c = profilCode(p); return c === 'interimaire' ? 'Intérimaire' : c === 'assistante' ? 'Assistante' : c === 'apprentie' ? 'Apprentie' : typeDe(c).n; }
   var ACC_H = ['data-tab="hub"', 'Accueil'];
   function dentById(id) { return (S.dentistes || []).filter(function (d) { return String(d.id) === String(id); })[0]; }
   function affTxt(a) {
@@ -765,12 +801,10 @@
         it('L’équipe', (planPret() ? n + ' ' + pl(n, 'personne') + ' · ' : '') + 'fiches, semaine type, absences', 'data-tab="pequipe"'),
         it('Les dentistes', (planPret() ? nd + ' ' + pl(nd, 'dentiste') + ' · ' : '') + 'jours de présence, départs anticipés', 'data-tab="pdent"'),
         it('Comptes de connexion', 'Identifiants, codes, rôles, cabinet par défaut', 'data-tab="equipe"'),
-        it('Types de personnel', 'Assistante, intérimaire… et vos propres types', 'data-tab="ptypes"', true),
-        it('Rôles et droits', rolesEq().length + ' ' + pl(rolesEq().length, 'rôle') + ' d’équipe · ce que chacun voit dans son appli', 'data-tab="proles"', true)])
+        it('Profils', profilsListe().filter(function (x) { return !x.retire; }).length + ' profils · planning, contrat, ce que chacun voit dans son appli', 'data-tab="pprofils"', true)])
       + bloc('P', 'b2', 'Planning', 'Organisation des journées', [
         it('Postes', 'Sté, Admin, Accueil… ajouter, renommer, couleur', 'data-tab="ppostes"', true),
-        it('Règles des heures', 'Congés, maladie, école, formation, férié, reliquat', 'data-tab="pregles"'),
-        it('Ce que voient les assistantes', 'Leur planning' + (S.visible && S.visible.planning ? ' (affiché)' : ' (coupé)') + ', leur reliquat', 'data-tab="pvisible"')])
+        it('Règles des heures', 'Congés, maladie, école, formation, férié, reliquat', 'data-tab="pregles"')])
       + bloc('Q', 'b3', 'Pointage', 'Arrivées, sorties, temps effectif', [
         it('QR code', 'Afficher, imprimer, régénérer', 'data-act="rgqr"'),
         it('Calcul et alertes', (R.pt_reliquat !== false ? 'Reliquat sur le temps pointé' : 'Reliquat sur le planning') + ' · retard ' + R.pt_tol + ' min · départ ' + R.pt_tol_dep + ' min', 'data-tab="pregles"'),
@@ -839,6 +873,48 @@
       T.push({ code: ct, n: nt, planning: $('tynewpl').checked, contrat: $('tynewco').checked, dentiste: $('tynewde').checked }); render(); return true;
     }
     if (d.act === 'tysave' && T) { sauverParam('types_personnel', T.filter(function (x) { return !x.base; }), '✔ Types enregistrés', function () { S.typesPers = T.filter(function (x) { return !x.base; }); }); return true; }
+    return false;
+  }
+  // ---------- Réglages › Profils ----------
+  function vPProfils() {
+    var E = S.profEd = S.profEd || JSON.parse(JSON.stringify(profilsListe()));
+    var nbP = function (code) { return (S.equipe || []).filter(function (p) { return p.actif && profilCode(p) === code; }).length; };
+    var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'Profils', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    h += '<p class="a-aide" style="margin-top:0">Un profil dit en une fois <b>où la personne apparaît</b> (planning, dentiste, contrat, cabinet) et <b>ce qu’elle voit dans son appli</b> (une tuile par case). Dans chaque fiche, on choisit seulement le profil.</p>';
+    var cb = function (i, k, on, lab) { return '<label class="pf-c"><input type="checkbox" data-pfx="' + i + '.' + k + '"' + (on ? ' checked' : '') + ' aria-label="' + esc(lab) + '"><span class="pf-cl">' + esc(lab.split(' : ')[1]) + '</span></label>'; };
+    h += '<section class="ro-carte"><div class="ro-scroll"><div class="pf-g"><div class="pf-l pf-t1"><span></span><span class="pf-gr or">Dans l’organisation</span><span></span><span class="pf-gr bl">Dans son appli (tuiles)</span><span></span></div>'
+      + '<div class="pf-l ro-tete"><span>Profil</span>' + ORG.map(function (o) { return '<span>' + o[1] + '</span>'; }).join('') + '<span></span>' + APP.map(function (o) { return '<span>' + o[1] + '</span>'; }).join('') + '<span></span></div>'
+      + E.map(function (x, i) {
+        var n = nbP(x.code);
+        return '<div class="pf-l' + (x.retire ? ' retire' : '') + '"><span class="ro-n">' + (x.base ? '<b>' + esc(x.n) + '</b>' : '<input class="in" data-pfn="' + i + '" value="' + esc(x.n) + '" aria-label="Nom du profil">') + '<small>' + n + ' ' + pl(n, 'personne') + (x.base ? ' · de base' : '') + (x.ecole ? ' · jour d’école' : '') + '</small></span>'
+          + ORG.map(function (o) { return cb(i, o[0], x[o[0]], x.n + ' : ' + o[1]); }).join('') + '<span class="pf-sep"></span>' + APP.map(function (o) { return cb(i, o[0], x[o[0]], x.n + ' : ' + o[1]); }).join('')
+          + '<span class="ro-a">' + (x.base ? '' : '<button class="btn l sm" data-pfret="' + i + '"' + (n && !x.retire ? ' title="Utilisé par ' + n + ' personne(s) : il restera lisible"' : '') + '>' + (x.retire ? 'Rétablir' : 'Retirer') + '</button>') + '</span></div>';
+      }).join('') + '</div></div>'
+      + '<div class="ro-add"><label class="mu">Nouveau profil<input class="in" id="pfnew" placeholder="Ex. : Secrétaire, Aide-dentaire, Stagiaire"></label><button class="btn" data-act="pfadd">+ Ajouter le profil</button></div></section>';
+    h += '<section class="ro-carte"><div class="ro-t"><h2>Gestion</h2><span class="mu">tous les outils et les réglages · connexion avec un mot de passe</span></div>'
+      + PROFILS_GESTION.map(function (r) { return '<div class="ro-ge"><span><b>' + r.n + '</b><span class="mu">Stock, planning, heures, pointage, congés, réglages · ne pointe pas</span></span><span class="pill or">tous les droits</span></div>'; }).join('') + '</section>';
+    var V = S.visible || {};
+    h += '<div class="a-liste"><label class="a-li"><span class="a-it-n"><b>Avec le planning, leur reliquat d’heures</b><span>pour les profils qui ont la tuile Planning</span></span><input type="checkbox" role="switch" class="h-sw" data-vis="reliquat"' + (V.reliquat ? ' checked' : '') + ' aria-label="Afficher aussi le reliquat"><span class="pill' + (V.reliquat ? ' ok' : '') + '">' + (V.reliquat ? 'Activé' : 'Coupé') + '</span></label></div>';
+    h += '<p class="a-aide">Planning, Dentiste et Contrat : la personne apparaît dans le planning des dentistes, peut être placée au fauteuil, a un reliquat d’heures. Cabinet : un cabinet est choisi pour son compte. Les tuiles s’appliquent à la prochaine ouverture de son appli ; la tuile Pointage apparaît aussi seulement si la fiche est « soumise au pointage ».</p>';
+    return h + '<button class="a-btn navy" data-act="pfsavep">Enregistrer les profils</button></div>';
+  }
+  function actionProfils(d) {
+    var E = S.profEd; if (!E) return false;
+    if (d.pfret != null) { E[+d.pfret].retire = !E[+d.pfret].retire; render(); return true; }
+    if (d.act === 'pfadd') {
+      var n = $('pfnew').value.trim(); if (!n) { toast('Indiquez le nom du profil'); return true; }
+      var c = norm(n).replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 40) || 'profil';
+      if (['assistante', 'apprentie', 'interimaire', 'referente', 'responsable'].indexOf(c) >= 0 || E.some(function (x) { return x.code === c; })) { toast('Ce profil existe déjà'); return true; }
+      E.push({ code: c, n: n, planning: false, dentiste: false, contrat: true, cab: false, pointage: true, stock: false, voirPlanning: false, conges: true }); render(); return true;
+    }
+    if (d.act === 'pfsavep') {
+      var l = E.map(function (x) { var o = { code: x.code, n: x.n }; ORG.concat(APP).forEach(function (k) { o[k[0]] = !!x[k[0]]; }); if (x.retire) o.retire = true; return o; });
+      var vis = Object.assign({ planning: false, reliquat: false }, S.visible || {}); vis.planning = l.some(function (x) { return x.voirPlanning && !x.retire; }); if (!vis.planning) vis.reliquat = false;
+      sb.from('parametres').upsert([{ cle: 'profils', valeur: l }, { cle: 'planning_visible', valeur: vis }], { onConflict: 'cle' }).then(function (r) {
+        if (r.error) throw r.error; S.profilsP = l; S.visible = vis; S.profEd = null; JOUR_CACHE = {}; toast('✔ Profils enregistrés'); render();
+      }).catch(function (e) { toast(msgErr(e)); });
+      return true;
+    }
     return false;
   }
   function vPVisible() {
@@ -990,7 +1066,8 @@
     var F = S.pf; if (!F) { S.tab = 'pequipe'; return vPEquipe(); }
     var p = F.d, nouv = F.id === 'new', t = p.trame || {}, tot = heuresTrame(t), c = +p.contrat_h || 0, ty = typeDe(p.type), tel = telephone();
     var prof = p.profil_id ? S.profils.filter(function (x) { return x.id === p.profil_id; })[0] : null;
-    var horsPl = ty.planning === false, ONG = [['infos', 'Infos et contrat'], ['semaine', horsPl ? 'Horaires habituels' : 'Semaine type'], ['absences', 'Absences'], ['compte', 'Compte et pointage'], ['regles', 'Règles et consigne']];
+    var horsPl = ty.planning === false, ONG = [['infos', 'Infos, profil et compte'], ['semaine', horsPl ? 'Horaires habituels' : 'Semaine type'], ['absences', 'Absences'], ['regles', 'Règles et consigne']];
+    if (F.onglet === 'compte') F.onglet = 'infos';
     var og = nouv ? 'infos' : F.onglet || (tel ? null : 'semaine');
     var h = '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" ' + (tel && og && !nouv ? 'data-pfong=""' : 'data-tab="pequipe"') + '>' + ico('prec', 22, 2.4) + (tel && og && !nouv ? esc(p.prenom || 'Fiche') : 'L’équipe') + '</button><h1>' + (nouv ? 'Nouvelle fiche' : tel && og ? ONG.filter(function (o) { return o[0] === og; })[0][1] : esc(p.prenom || '…')) + '</h1><span class="a-cale"></span></div></header><div class="a-corps h-fiche fi">';
     // --- résumé
@@ -1009,12 +1086,12 @@
     var R = {};
     R.infos = function () { return '<div class="h-g2">'
       + '<label class="mu">Prénom<input class="in" data-pff="prenom" value="' + esc(p.prenom) + '"></label>'
-      + '<label class="mu">Type<select class="in" data-pff="type">' + typesPers().filter(function (t) { return !t.retire || t.code === p.type; }).map(function (t) { return '<option value="' + esc(t.code) + '"' + (p.type === t.code ? ' selected' : '') + '>' + esc(t.n) + '</option>'; }).join('') + '</select></label>'
-      + '<label class="mu">Statut<select class="in" data-pff="statut"><option value="qualifiee"' + (p.statut === 'qualifiee' ? ' selected' : '') + '>Qualifiée / qualifié</option><option value="apprentie"' + (p.statut === 'apprentie' ? ' selected' : '') + '>Apprentie / apprenti</option></select></label>'
+      + '<label class="mu">Profil<select class="in pf-sel" data-pff="profil">' + (function () { var cur = profilCode(p), l = profilsListe(true).filter(function (x) { return !x.retire || x.code === cur; }); return '<optgroup label="Équipe">' + l.filter(function (x) { return !x.gestion; }).map(function (x) { return '<option value="' + esc(x.code) + '"' + (cur === x.code ? ' selected' : '') + '>' + esc(x.n) + '</option>'; }).join('') + '</optgroup><optgroup label="Gestion">' + l.filter(function (x) { return x.gestion; }).map(function (x) { return '<option value="' + esc(x.code) + '"' + (cur === x.code ? ' selected' : '') + '>' + esc(x.n) + '</option>'; }).join('') + '</optgroup>'; })() + '</select></label>'
+      + resumeProfil(p)
       + (typeDe(p.type).contrat === false ? '' : '<label class="mu">Heures du contrat par semaine<input class="in" inputmode="decimal" data-pff="contrat_h" value="' + esc(fr(p.contrat_h)) + '"></label>')
       + (p.statut === 'apprentie' ? '<label class="mu">Jour d’école par défaut<select class="in" data-pff="ecole_jour"><option value="">—</option>' + [1, 2, 3, 4, 5].map(function (j) { return '<option value="' + j + '"' + (+p.ecole_jour === j ? ' selected' : '') + '>' + JOURS[j] + '</option>'; }).join('') + '</select></label>' : '')
       + '<label class="row" style="grid-column:1/-1"><input type="checkbox" data-pff="actif"' + (p.actif ? ' checked' : '') + ' style="width:20px;height:20px;flex:none"><span>Fait partie de l’équipe <span class="mu">(décocher pour une ancienne : elle reste dans l’historique)</span></span></label></div>';
-      + '</div>'; };
+      + '</div>' + (R.compte ? '<h3 class="fi-h3">Pointage et compte</h3>' + R.compte() : ''); };
     R.semaine = function () {
       var cel = F.cel || '1.am', cx = cel.split('.'), cj = +cx[0], ck = cx[1];
       var g = '<div class="fi-sem"><span></span>' + [1, 2, 3, 4, 5].map(function (j) { var hj = heuresJour(t, j); return '<span class="fi-sj"><b>' + JC[j] + '</b><small>' + (hj ? fh(hj) : '—') + '</small></span>'; }).join('');
@@ -1072,6 +1149,7 @@
       var k = el.dataset.pff, v = el.type === 'checkbox' ? el.checked : el.value;
       if (k === 'contrat_h') v = Math.max(0, nb(String(v).replace(',', '.')));
       if (k === 'ecole_jour') v = v ? +v : null;
+      if (k === 'profil') { if (v === 'assistante' || v === 'apprentie') { F.d.type = 'assistante'; F.d.statut = v === 'apprentie' ? 'apprentie' : 'qualifiee'; } else { F.d.type = v; F.d.statut = 'qualifiee'; } return; }
       if (k === 'repli') { F.d.regles = Object.assign({}, F.d.regles || {}); F.d.regles.repli = v; return; }
       if (k === 'cp_droits' || k === 'cp_report') { F.d.regles = Object.assign({}, F.d.regles || {}); var nv = String(v).replace(',', '.').trim(); if (nv === '') delete F.d.regles[k]; else F.d.regles[k] = +nv; return; }
       F.d[k] = v;
@@ -1168,6 +1246,23 @@
     }
     return false;
   }
+  function resumeProfil(p) {
+    var x = profilDe(profilCode(p)) || {}, org = [];
+    if (x.gestion) return '<div class="pf-res"><span><b class="or">Gestion</b><span>Tous les outils et les réglages · ne pointe pas · son compte devient « ' + esc(x.n) + ' » à l’enregistrement</span></span></div>';
+    org.push(x.planning ? 'au planning des dentistes' : 'hors planning'); if (x.dentiste && x.planning) org.push('rattaché à un dentiste'); org.push(x.contrat ? 'contrat d’heures' : 'sans contrat'); org.push(x.cab ? 'affecté à un cabinet' : 'pas de cabinet'); if (x.ecole) org.push('jour d’école');
+    return '<div class="pf-res"><span><b class="or">Dans l’organisation</b><span>' + org.join(' · ') + '</span></span><span><b class="bl">Dans son appli</b><span class="rg-pills">' + APP.map(function (a) { return '<span class="' + (x[a[0]] ? 'on' : 'off') + '">' + a[1] + '</span>'; }).join('') + '</span></span><button class="lien" data-tab="pprofils">Modifier ce profil</button></div>';
+  }
+  // Après l'enregistrement d'une fiche : le compte relié suit le profil (sans jamais retirer les droits d'un compte de gestion)
+  function synchroCompte(x) {
+    if (!x || !x.profil_id || !fonctionPret()) return Promise.resolve();
+    var prof = (S.profils || []).filter(function (y) { return y.id === x.profil_id; })[0]; if (!prof) return Promise.resolve();
+    var c = profilCode(x), P = profilDe(c) || {}, maj = null;
+    if (P.gestion) { if (prof.role !== c) { if (!confirm('Le compte « ' + prof.identifiant + ' » va devenir ' + P.n + ' (tous les droits, connexion avec un mot de passe). Continuer ?')) return Promise.resolve(); maj = { role: c, fonction: null }; } }
+    else if (prof.role === 'assistante') { var f = c === 'assistante' || c === 'apprentie' ? null : c; if ((prof.fonction || null) !== f) maj = { fonction: f }; if (!P.cab && prof.cabinet) maj = Object.assign(maj || {}, { cabinet: null }); }
+    else return Promise.resolve();
+    if (!maj) return Promise.resolve();
+    return sb.from('profils').update(maj).eq('id', prof.id).then(function (r) { if (r.error) throw r.error; Object.assign(prof, maj); if (maj.role) toast('Compte passé en ' + P.n + ' : pensez à lui donner un mot de passe (Comptes de connexion › Réinitialiser)'); });
+  }
   function sauverPers() {
     var F = S.pf, p = F.d;
     if (!String(p.prenom || '').trim()) { toast('Le prénom est obligatoire'); return; }
@@ -1180,6 +1275,7 @@
       if (r.error) throw r.error;
       var x = r.data || Object.assign({ id: F.id }, F.d, o);
       F.busy = false; F.id = x.id; F.d = JSON.parse(JSON.stringify(x)); toast('✔ Fiche de ' + x.prenom + ' enregistrée'); chargerPlan();
+      return synchroCompte(x);
     }).catch(function (e) { F.busy = false; toast(/type_check/.test(String(e && e.message)) ? 'Ce type de personnel demande la mise à jour 020 de la base' : msgErr(e)); render(); });
   }
   function lierCompte(fid, pid) {
@@ -1295,9 +1391,9 @@
       sb.from('equipe').select('*').order('ordre'),
       sb.from('dentistes').select('*').order('ordre'),
       sb.from('conges').select('*').gte('au', dIso(new Date(Date.now() - 120 * 864e5))).order('du'),
-      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'simulation_pointage', 'postes', 'types_personnel', 'roles'])
+      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'simulation_pointage', 'postes', 'types_personnel', 'roles', 'profils'])
     ]).then(function (r) {
-      if (r[3] && !r[3].error) (r[3].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else if (x.cle === 'postes') S.postes = x.valeur; else if (x.cle === 'types_personnel') S.typesPers = x.valeur; else if (x.cle === 'roles') S.roles = x.valeur; else S.visible = x.valeur; });
+      if (r[3] && !r[3].error) (r[3].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else if (x.cle === 'postes') S.postes = x.valeur; else if (x.cle === 'types_personnel') S.typesPers = x.valeur; else if (x.cle === 'roles') S.roles = x.valeur; else if (x.cle === 'profils') S.profilsP = Array.isArray(x.valeur) ? x.valeur : null; else S.visible = x.valeur; });
       if (!Array.isArray(S.roles)) S.roles = S.roles || [];
       if (r[0].error || r[1].error) { S.equipe = null; S.dentistes = null; } else { S.equipe = r[0].data; S.dentistes = r[1].data; }
       S.conges = r[2] && !r[2].error ? r[2].data : [];
@@ -1313,10 +1409,10 @@
       + '<div class="a-corps"><div class="card pc-msg">' + ico('agenda', 34) + '<b>À ouvrir sur ordinateur</b><p class="mu">Le planning et le tableau des heures se gèrent sur un écran de PC. Sur téléphone, vous pouvez gérer les congés et les réglages.</p><button class="btn" data-tab="hub">Retour à l’accueil</button></div></div>';
   }
   function renderH() {
-    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPVisible, ppostes: vPPostes, ptypes: vPTypes, pqui: vPQui, proles: vPRoles, pqr: vPQR }[S.tab] || vHub;
+    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pprofils: vPProfils }[S.tab] || vHub;
     if ((S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage') && telephone()) ecr = vSurPC;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
-    h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr' || S.tab === 'pequipe') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || (S.tab === 'pconges' && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
+    h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr' || S.tab === 'pequipe' || S.tab === 'pprofils') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || (S.tab === 'pconges' && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
     if (S.tab === 'pfiche') h += vBarPFiche();
     if (S.tab === 'dfiche') h += vBarDFiche();
     return h;
@@ -1641,12 +1737,12 @@
   function chargerMesConges() {
     if (gestion() || !S.me) return Promise.resolve();
     return Promise.all([sb.from('equipe').select('*').eq('profil_id', S.me.id).maybeSingle(), sb.from('conges').select('*').order('du', { ascending: false }).limit(60),
-      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'roles', 'simulation_pointage'])]).then(function (r) {
+      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'roles', 'simulation_pointage', 'profils'])]).then(function (r) {
       S.moiEq = r[0].error ? null : r[0].data; S.mesConges = r[1].error ? [] : r[1].data || []; S.mesCongesOk = !r[0].error;
       if (S.moiEq && S.moiEq.pointage) { chargerMonPointage(); chargerMesOublis(); }
       chargerClos();
       var vuR = false;
-      if (r[2] && !r[2].error) (r[2].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'roles') { S.roles = Array.isArray(x.valeur) ? x.valeur : []; vuR = true; } else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else S.visible = x.valeur; });
+      if (r[2] && !r[2].error) (r[2].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'roles') { S.roles = Array.isArray(x.valeur) ? x.valeur : []; vuR = true; } else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else if (x.cle === 'profils') S.profilsP = Array.isArray(x.valeur) ? x.valeur : null; else S.visible = x.valeur; });
       if (!vuR) S.roles = [];
       if (!(r[2] && !r[2].error && (r[2].data || []).some(function (x) { return x.cle === 'simulation_pointage' && x.valeur === true; }))) S.simOn = false;
       if (S.tab !== 'maison' && !ongletPermis(S.tab)) S.tab = 'maison';
@@ -1970,12 +2066,12 @@
   }
   function memoriserHorsLigne() {
     if (!S.me || gestion()) return;
-    try { localStorage.setItem('evy-hl', JSON.stringify({ uid: S.me.id, me: S.me, moiEq: S.moiEq ? { id: S.moiEq.id, prenom: S.moiEq.prenom, pointage: S.moiEq.pointage, trame: S.moiEq.trame, type: S.moiEq.type } : null, roles: S.roles || [] })); } catch (e) {}
+    try { localStorage.setItem('evy-hl', JSON.stringify({ uid: S.me.id, me: S.me, moiEq: S.moiEq ? { id: S.moiEq.id, prenom: S.moiEq.prenom, pointage: S.moiEq.pointage, trame: S.moiEq.trame, type: S.moiEq.type, statut: S.moiEq.statut } : null, roles: S.roles || [], profilsP: S.profilsP || null })); } catch (e) {}
   }
   function demarrerHorsLigne(session) {
     var c = null; try { c = JSON.parse(localStorage.getItem('evy-hl') || 'null'); } catch (e) {}
     if (!c || !session || c.uid !== session.user.id) return false;
-    S.me = c.me; S.moiEq = c.moiEq; S.roles = c.roles || []; S.horsLigne = true; S.loading = false; S.tab = 'maison'; S.mesConges = []; S.mesOublis = [];
+    S.me = c.me; S.moiEq = c.moiEq; S.roles = c.roles || []; S.profilsP = c.profilsP || null; S.horsLigne = true; S.loading = false; S.tab = 'maison'; S.mesConges = []; S.mesOublis = [];
     render(); return true;
   }
   window.addEventListener('online', function () { if (S.horsLigne) { location.reload(); return; } envoyerAttentePt(); });
@@ -4498,7 +4594,7 @@
     if (!/^eq:/.test(v)) return '<div class="rg-apercu"><b>Accès complet</b><span class="mu">Gestion : stock, planning, heures, pointage, congés, réglages. Connexion avec un mot de passe.</span></div>';
     var r = roleEqDe(v.slice(3));
     return '<div class="rg-apercu"><b>Ce que ' + esc(nom || 'la personne') + ' verra sur son téléphone</b><span class="rg-pills">' + DROITS.slice(1).map(function (d) { return '<span class="' + (r[d[0]] ? 'on' : 'off') + '">' + d[1] + '</span>'; }).join('') + '</span>'
-      + '<span class="mu">' + (r.cab ? 'Rôle affecté à un cabinet.' : 'Rôle non affecté à un cabinet : pas de choix de cabinet.') + ' <button class="lien" data-tab="proles">Modifier les droits du rôle</button></span></div>';
+      + '<span class="mu">' + (r.cab ? 'Rôle affecté à un cabinet.' : 'Rôle non affecté à un cabinet : pas de choix de cabinet.') + ' <button class="lien" data-tab="pprofils">Modifier le profil</button></span></div>';
   }
   function creerCompte() {
     var N = S.eqNew, m = $('nmdp').value, m2 = $('nmdp2').value, LR = lireRole(N.sel);
@@ -4610,7 +4706,7 @@
     if (d.essai) { marquerVu(d.gid); S.aideOuverte = d.gid; S.tab = d.essai; S.tabChoisi = true; if (d.essai === 'histo') chargerHisto(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'menu') { S.menu = !S.menu; render(); return; }
     if (d.tab) { if (d.tab === 'pointage' && S.tab !== 'pointage') { S.ptg = S.ptg || { rows: {} }; S.ptg.mode = 'semaine'; S.ptg.jour = dIso(new Date()); if (S.ptg.bord) S.ptg.bord.sel = null; }   // le pointage s'ouvre toujours sur la semaine en cours
-    if (d.tab === 'ppostes') S.postesEd = null; if (d.tab === 'ptypes') S.typesEd = null; if (d.tab === 'proles') S.rolesEd = null; S.menu = false; S.fiche = null; if (d.tab === 'sortie') S.sortie.ok = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); if (d.tab === 'plus') chargerEcarts(); render(); window.scrollTo(0, 0); return; }
+    if (d.tab === 'ppostes') S.postesEd = null; if (d.tab === 'ptypes') S.typesEd = null; if (d.tab === 'proles') S.rolesEd = null; if (d.tab === 'pprofils' || d.tab === 'ptypes' || d.tab === 'proles' || d.tab === 'pvisible') S.profEd = null; S.menu = false; S.fiche = null; if (d.tab === 'sortie') S.sortie.ok = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); if (d.tab === 'plus') chargerEcarts(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'out') { if (confirm('Changer de personne ? La personne suivante devra se connecter avec son identifiant et son code.')) deconnexion(); return; }
     if (d.act === 'maj') return mettreAJour();
     if (d.ecp) { S.ecarts = S.ecarts || {}; S.ecarts.p = d.ecp; chargerEcarts(); render(); return; }
@@ -4710,6 +4806,7 @@
     if (d.pfong != null && S.pf) { S.pf.onglet = d.pfong || null; render(); window.scrollTo(0, 0); return; }
     if (d.pfcel && S.pf) { S.pf.cel = d.pfcel; render(); return; }
     if (d.act === 'pfcopiejour' && S.pf) { var tj = S.pf.d.trame = S.pf.d.trame || {}, src = JSON.parse(JSON.stringify(tj[d.j] || {})); for (var jj2 = 1; jj2 <= 5; jj2++) if (String(jj2) !== String(d.j)) tj[jj2] = JSON.parse(JSON.stringify(src)); toast('Copié sur toute la semaine · pensez à enregistrer'); render(); return; }
+    if ((d.pfret != null || /^(pfadd|pfsavep)$/.test(d.act || '')) && actionProfils(d)) return;
     if ((d.roret != null || /^(roadd|rosave)$/.test(d.act || '')) && actionRoles(d)) return;
     if ((d.poup != null || d.podown != null || d.poret != null || d.tyret != null || /^(poadd|posave|tyadd|tysave)$/.test(d.act || '')) && actionReglages(d)) return;
     if (d.act === 'rgqr') return ouvrirPageQR('reglages');
@@ -4846,6 +4943,8 @@
     if (t.id === 'plimpf') { var fp = t.files && t.files[0]; t.value = ''; importerPlanning(fp); return; }
     if (t.dataset && t.dataset.vis) { basculerVisible(t.dataset.vis, t.checked); return; }
     if (t.dataset && t.dataset.qp) { basculerPointage(t.dataset.qp, t.checked); return; }
+    if (t.dataset && t.dataset.pfx && S.profEd) { var pz = t.dataset.pfx.split('.'); S.profEd[+pz[0]][pz[1]] = t.checked; return; }
+    if (t.dataset && t.dataset.pfn != null && S.profEd) { S.profEd[+t.dataset.pfn].n = t.value.trim() || S.profEd[+t.dataset.pfn].n; return; }
     if (t.dataset && t.dataset.rodr && S.rolesEd) { var rz = t.dataset.rodr.split('.'); S.rolesEd[+rz[0]][rz[1]] = t.checked; return; }
     if (t.dataset && t.dataset.ron != null && S.rolesEd) { S.rolesEd[+t.dataset.ron].n = t.value.trim() || S.rolesEd[+t.dataset.ron].n; return; }
     if ((t.id === 'dmdu' || t.id === 'dmau') && S.dm) { S.dm[t.id === 'dmdu' ? 'du' : 'au'] = t.value; if (t.id === 'dmdu' && S.dm.au && S.dm.au < t.value) S.dm.au = t.value; var mm = $('dmmot'); if (mm) S.dm.mot = mm.value; render(); return; }
