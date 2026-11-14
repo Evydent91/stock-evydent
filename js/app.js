@@ -609,9 +609,16 @@
   function refTxt(a) { return a === 'CP' ? 'Congés' : a === 'ARRET' ? 'Maladie' : a === 'FORMATION' ? 'Formation' : a === 'FERIE' ? 'Férié' : a === 'OFF' ? 'OFF' : affTxt(a); }
   // Fermeture proposée : la personne du profil qui finit la dernière ce jour-là
   function refFermeAuto(iso) {
-    var best = null;
-    refPers().forEach(function (p) { ['AM', 'PM'].forEach(function (d) { var c = refCase(p, iso, d); if (refTravail(c) && c.fi && (!best || c.fi > best.heure)) best = { equipe_id: p.id, nom: p.prenom, heure: c.fi, auto: 1 }; }); });
-    return best;
+    var fin = {}, max = null;
+    refPers().forEach(function (p) { ['AM', 'PM'].forEach(function (d) { var c = refCase(p, iso, d); if (refTravail(c) && c.fi && (!fin[p.id] || c.fi > fin[p.id].heure)) fin[p.id] = { equipe_id: p.id, nom: p.prenom, heure: c.fi, auto: 1 }; }); });
+    var l = Object.keys(fin).map(function (k) { return fin[k]; });
+    l.forEach(function (x) { if (!max || x.heure > max) max = x.heure; });
+    l = l.filter(function (x) { return x.heure === max; });   // dans l'ordre des fiches
+    if (!l.length) return null;
+    // Plusieurs personnes finissent à la même heure : à tour de rôle, un soir chacune (jours ouvrés comptés depuis le lundi 5 janvier 2026)
+    var dj = Math.round((dDe(iso) - dDe('2026-01-05')) / 864e5), rang = Math.floor(dj / 7) * 5 + (jourSem(iso) - 1);
+    var x = l[((rang % l.length) + l.length) % l.length]; x.egal = l.length;
+    return x;
   }
   function refFerme(iso) { var f = S.ref && S.ref.ferm[iso]; return f && (f.nom || f.equipe_id) ? { equipe_id: f.equipe_id, nom: f.nom, heure: f.heure } : refFermeAuto(iso); }
   function refJours() { var L = S.refSem || lundiDe(dIso(new Date())), l = []; for (var i = 0; i < 5; i++) l.push(addJ(L, i)); return l; }
@@ -633,11 +640,11 @@
     h += '<section class="cg2-carte rf-carte"><div class="rf-scroll"><div class="rf-g"><span class="cp-h">' + esc(nom) + '</span>' + js.map(function (iso) { return '<span class="rf-j' + (iso === dIso(new Date()) ? ' auj' : '') + '"><b>' + JOURS[jourSem(iso)] + '</b>' + dateCourte(iso) + '</span>'; }).join('')
       + ps.map(function (p) { return '<span class="rf-n"><b>' + esc(p.prenom) + '</b><small>' + (p.contrat_h ? fr(p.contrat_h) + ' h' : '') + '</small></span>' + js.map(function (iso) { return cel(p, iso); }).join(''); }).join('')
       + '<span class="rf-n rf-fl"><b>Fermeture du centre</b><small>qui ferme le soir</small></span>' + js.map(function (iso) {
-        var f = ferie(iso) ? null : refFerme(iso), corps = ferie(iso) ? '<b>Férié</b>' : f ? '<b>' + esc(f.nom || '?') + '</b><span>' + (f.heure ? hCourt(f.heure) : '') + (f.auto ? ' · proposé' : '') + '</span>' : '<b>À désigner</b><span>personne ne finit tard</span>';
+        var f = ferie(iso) ? null : refFerme(iso), corps = ferie(iso) ? '<b>Férié</b>' : f ? '<b>' + esc(f.nom || '?') + '</b><span>' + (f.heure ? hCourt(f.heure) : '') + (f.auto ? (f.egal > 1 ? ' · à tour de rôle' : ' · proposé') : '') + '</span>' : '<b>À désigner</b><span>personne ne finit tard</span>';
         var cl = 'rf-f' + (ferie(iso) ? ' fe' : f ? (f.auto ? ' auto' : '') : ' vide');
         return modif && !ferie(iso) ? '<button class="' + cl + '" data-reff="' + iso + '">' + corps + '</button>' : '<div class="' + cl + '">' + corps + '</div>';
       }).join('') + '</div></div></section>';
-    return h + '<p class="a-aide">Seules les personnes au profil « ' + esc(nom) + ' » apparaissent ici. La ligne « Fermeture » propose la personne qui finit la dernière ; touchez la case pour désigner quelqu’un d’autre. Une case orange signale un soir sans personne désignée.</p></div>';
+    return h + '<p class="a-aide">Seules les personnes au profil « ' + esc(nom) + ' » apparaissent ici. La ligne « Fermeture » propose la personne qui finit la dernière ; si plusieurs finissent à la même heure, c’est à tour de rôle, un soir chacune. Touchez la case pour désigner quelqu’un d’autre. Une case orange signale un soir sans personne désignée.</p></div>';
   }
   async function refOuvrirCase(v) {
     var x = v.split('|'), p = persById(x[0]), iso = x[1]; if (!p || !refDroit('planning_modif')) return;
@@ -657,7 +664,7 @@
   async function refOuvrirFerme(iso) {
     if (!refDroit('planning_modif') && !gestion()) return;
     var cur = S.ref.ferm[iso], auto = refFermeAuto(iso), c = refDe(), noms = refPers().map(function (p) { return { id: p.id, prenom: p.prenom, type: c }; });
-    var choix = [{ v: '', t: auto ? 'Proposition : ' + auto.nom : 'Personne (à désigner)', s: auto ? 'finit à ' + hCourt(auto.heure) + ' · se met à jour avec le planning' : 'aucun horaire ce jour-là', on: !cur || !(cur.nom || cur.equipe_id) }]
+    var choix = [{ v: '', t: auto ? 'Proposition : ' + auto.nom : 'Personne (à désigner)', s: auto ? (auto.egal > 1 ? auto.egal + ' personnes finissent à ' + hCourt(auto.heure) + ' : à tour de rôle' : 'finit à ' + hCourt(auto.heure)) + ' · se met à jour avec le planning' : 'aucun horaire ce jour-là', on: !cur || !(cur.nom || cur.equipe_id) }]
       .concat(noms.map(function (n) { return { v: String(n.id), t: n.prenom, on: !!cur && String(cur.equipe_id) === String(n.id) }; }));
     var r = await fenetre({ titre: 'Qui ferme le ' + JOURS[jourSem(iso)].toLowerCase() + ' ' + dateCourte(iso) + ' ?', choix: choix, grille: true, ok: 'Enregistrer', html: '<label class="mu" style="display:flex;flex-direction:column;gap:4px;margin-top:8px">Heure de fermeture (facultatif)<input class="in" type="time" id="rfh" value="' + esc((cur && cur.heure) || (auto && auto.heure) || '') + '"></label>', lire: function (bg) { return { h: bg.querySelector('#rfh').value || null }; } });
     if (!r) return;
