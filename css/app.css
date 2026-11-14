@@ -1775,7 +1775,6 @@ button.stk-k{cursor:pointer}
 .mc-p:first-child{border-top:none}
 .mc-p .ok{color:var(--ok);font-weight:700}.mc-p .warn{color:var(--warn);font-weight:700}
 .a-lien.cg-ann{max-width:118px;text-align:right;line-height:1.25;white-space:normal}
-/* Planning : semaine qui ne tombe pas sur le contrat (trop ou pas assez d'heures) */
-.pl-c.on.hx{background:#b0561a}
-.pl-c.mix.hx .pl-d:not(.abs):not(.off){background:#b0561a}
-.pl-hx{display:inline-block;background:#b0561a;color:#fff;font-size:11.5px;font-weight:700;border-radius:6px;padding:2px 8px}
+/* Planning, colonne Heures : semaine juste (bleu foncé) ou à ajuster (orange foncé) */
+.pl-h .pl-hok,.pl-h .pl-hok b{color:var(--navy)}
+.pl-h .pl-hko,.pl-h .pl-hko b{color:#a24d12}

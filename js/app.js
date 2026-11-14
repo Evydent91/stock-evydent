@@ -2934,7 +2934,7 @@
     if (!(await demander('Rouvrir la semaine du ' + periode(L, addJ(L, 4)).replace(/^du /, '') + ' ?', 'Les cases et les pointages pourront de nouveau être modifiés, et le reliquat sera recalculé.', 'Rouvrir'))) return;
     sb.rpc('rouvrir_semaine', { p_lundi: L }).then(function (r) { if (r.error) throw r.error; toast('Semaine rouverte'); chargerClos(); }).catch(function (e) { toast(msgErr(e)); });
   }
-  function celluleJour(p, iso, hx) {
+  function celluleJour(p, iso) {
     var am = caseEff(p, iso, 'AM'), pm = caseEff(p, iso, 'PM'), ab = function (c) { return ABS.indexOf(c.a) >= 0; };
     var cls = 'pl-c', h;
     if (am.a === pm.a && (ab(am) || am.a === 'OFF')) { cls += am.a === 'OFF' ? ' off' : ' abs'; h = '<b>' + (am.a === 'OFF' && (am.off || pm.off) ? 'Jour off' : nomAff(am.a)) + '</b>'; }
@@ -2951,7 +2951,7 @@
     if (cac && cac.annul_demande) { cls += ' cg-at'; h += '<small class="pl-at">' + ico('attente', 13, 2.4) + 'Annulation demandée</small>'; }
     var cat = !(am.a === 'OFF' && pm.a === 'OFF') && congeAttenteLe(p.id, iso);
     if (cat) { cls += ' cg-at'; h += '<small class="pl-at" title="Demande du ' + dateCourte(cat.du) + (cat.au !== cat.du ? ' au ' + dateCourte(cat.au) : '') + ', pas encore validée">' + ico('attente', 13, 2.4) + esc(cat.type === 'FORMATION' ? 'Formation' : typeTxt(cat.type)) + ' demandé' + (cat.type === 'FORMATION' ? 'e' : 's') + '</small>'; }
-    return '<button class="' + cls + (hx ? ' hx' : '') + (jourClos(iso) ? ' clos' : '') + '" data-plc=""' + p.id + '|' + iso + '" aria-label="' + esc(p.prenom) + ', ' + JOURS[jourSem(iso)] + '">' + h + '</button>';
+    return '<button class="' + cls + (jourClos(iso) ? ' clos' : '') + '" data-plc="' + p.id + '|' + iso + '" aria-label="' + esc(p.prenom) + ', ' + JOURS[jourSem(iso)] + '">' + h + '</button>';
   }
   // Dentistes présents qui travaillent sans assistante ce jour-là (journée entière, matin ou après-midi)
   function dentistesSeuls(iso) {
@@ -2993,7 +2993,7 @@
     ps.forEach(function (p) {
       h += '<div class="pl-nom"><span class="a-av p">' + initiale(p.prenom) + '</span><span><b>' + esc(p.prenom) + '</b><small>' + (p.type === 'interimaire' ? 'intérimaire' : (p.statut === 'apprentie' ? 'apprentie · ' : '') + fh(+p.contrat_h || 0)) + '</small></span></div>';
       var hs = heuresSem(p, L), c = +p.contrat_h || 0, hx = c > 0 && Math.abs(hs - c) >= 0.01;
-      for (var k2 = 0; k2 < 5; k2++) h += celluleJour(p, addJ(L, k2), hx);
+      for (var k2 = 0; k2 < 5; k2++) h += celluleJour(p, addJ(L, k2));
       if (S.plVoirPt) {
         var pt = p.pointage ? ptSem(p, L) : null, rl = c ? reliquatAvant(p, L) + hs - c : null, eP = pt ? pt.h - heuresSemPrevu(p, L) : 0;
         h += '<div class="pl-h pl-h4"><span>Planning</span><b>' + fh(heuresSemPrevu(p, L)) + '</b><span>Pointé</span><b class="' + (pt && pt.n ? hrCouleur(Math.abs(eP) < 0.09 ? 0 : eP) : 'mu') + '">' + (!pt ? '—' : pt.n ? fh(pt.h) : '—') + '</b><span>Contrat</span><b>' + (c ? fh(c) : '—') + '</b><span class="pl-h4r">Reliquat</span><b class="pl-h4r ' + (rl == null ? 'mu' : hrCouleur(Math.abs(rl) < 0.01 ? 0 : rl)) + '">' + (rl == null ? '—' : Math.abs(rl) < 0.01 ? 'à jour' : relTxt(rl)) + '</b></div>';
@@ -3001,7 +3001,7 @@
       else if (!c) h += '<div class="pl-h"><span><b>' + fh(hs) + '</b></span></div>';
       else {
         var r = reliquatAvant(p, L) + hs - c;
-        h += '<div class="pl-h"><span><b>' + fh(hs) + '</b> / ' + fh(c) + '</span>' + (Math.abs(r) < 0.01 ? '<span class="ok">à jour</span>' : r < 0 ? '<span class="moins">' + relTxt(r) + ' · à rattraper</span>' : '<span class="plus">' + relTxt(r) + ' · à alléger</span>') + '</div>';
+        h += '<div class="pl-h"><span class="' + (hx ? 'pl-hko' : 'pl-hok') + '"' + (hx ? ' title="' + (hs > c ? 'Plus' : 'Moins') + ' que le contrat cette semaine : à ajuster"' : '') + '><b>' + fh(hs) + '</b> / ' + fh(c) + '</span>' + (Math.abs(r) < 0.01 ? '<span class="ok">à jour</span>' : r < 0 ? '<span class="moins">' + relTxt(r) + ' · à rattraper</span>' : '<span class="plus">' + relTxt(r) + ' · à alléger</span>') + '</div>';
       }
     });
     h += '<div class="pl-nom pl-seul-t"><span class="a-av d">' + ico('dent', 16) + '</span><span><b>Dentistes seuls</b><small>sans assistante</small></span></div>';
@@ -3011,7 +3011,6 @@
     h += '<div class="pl-notes"><span class="pl-n vert"><b>Semaine remplie automatiquement</b> d’après les fiches (semaine type, école, congés acceptés, jours fériés, règle d’or) : corrigez seulement les exceptions.</span>'
       + (congesAttente().some(function (c) { return c.equipe_id && c.du <= fin && c.au >= L; }) ? '<span class="pl-n at"><span class="pl-at">' + ico('attente', 13, 2.4) + 'Congés demandés</span> = demande pas encore validée (à valider dans Congés). La case garde le planning prévu tant que la demande n’est pas acceptée.</span>' : '')
       + (congesAnnul().some(function (c) { return c.equipe_id && c.du <= fin && c.au >= L; }) ? '<span class="pl-n at"><span class="pl-at">' + ico('attente', 13, 2.4) + 'Annulation demandée</span> = congés acceptés dont la personne demande l’annulation (à traiter dans Congés). Ils restent posés tant que ce n’est pas accepté.</span>' : '')
-      + (ps.some(function (p) { var c = +p.contrat_h || 0; return c > 0 && Math.abs(heuresSem(p, L) - c) >= 0.01; }) ? '<span class="pl-n at"><span class="pl-hx">Orange</span> = la semaine de la personne ne fait pas ses heures de contrat (trop ou pas assez) : ajustez un jour. Bleu = semaine juste.</span>' : '')
       + '<span class="pl-n">Touchez une case pour choisir le dentiste et les heures. Reliquat : heures faites moins heures du contrat, cumulées depuis le ' + dateCourte(regles().depuis) + ' (Réglages › Règles des heures).</span></div>';
     return h + '</div>' + (P.cas ? vCasePlanning() : '') + (S.plExp ? vExportPlanning() : '') + (S.plClo ? vCloture() : '');
   }
