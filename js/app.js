@@ -1398,7 +1398,7 @@
     var parDent = {}; ass.forEach(function (r) { var a = attitre(r.p); if (a) (parDent[a] = parDent[a] || []).push(r); });
     if (F === 'tous' || F === 'couples') {
       titreB('Dentistes et leur assistant(e)', 'la ligne fine sous chaque dentiste : son assistant(e) attitré(e)');
-      de.forEach(function (r) { L.push({ r: r }); (parDent[r.dent.id] || []).forEach(function (a) { L.push({ r: a, petit: true }); }); });
+      de.forEach(function (r, ci) { L.push({ r: r, cp: ci }); (parDent[r.dent.id] || []).forEach(function (a) { L.push({ r: a, petit: true, cp: ci }); }); });
       var seuls = ass.filter(function (r) { return !attitre(r.p); });
       if (seuls.length) { titreB('Assistant(e)s sans dentiste attitré'); seuls.forEach(function (r) { L.push({ r: r }); }); }
     }
@@ -1410,8 +1410,8 @@
     g += '<span class="cg2-coin" style="grid-row:1;grid-column:1"></span>' + jours.map(function (iso) { var j = jourSem(iso), f = ferie(iso); return '<span class="cg2-h' + (iso === auj ? ' auj' : '') + (f ? ' fe' : '') + '" style="grid-row:1;grid-column:' + col[iso] + '"><small>' + JC[j] + '</small><b>' + (+iso.slice(8)) + '</b></span>'; }).join('');
     var absLe = function (r, iso) { return r.l.some(function (c) { return c.du <= iso && c.au >= iso; }); };
     var ligne = function (r, petit, dentR) {
-      row++; rows.push(petit ? '18px' : '34px');
-      var n = nbJ(r), out = '<button class="cg2-n' + (petit ? ' pt' : '') + '" ' + r.ouv + ' style="grid-row:' + row + ';grid-column:1"><b>' + (petit ? '<i aria-hidden="true">↳</i>' : '') + esc(r.nom) + '</b>' + (n ? '<small>' + n + ' j</small>' : '') + '</button>';
+      row++; rows.push(petit ? '24px' : '34px');
+      var n = nbJ(r), out = '<button class="cg2-n' + (petit ? ' pt' : '') + (enCouple ? ' bd' : '') + '" ' + r.ouv + ' style="grid-row:' + row + ';grid-column:1"><b>' + (petit ? '<i aria-hidden="true">↳</i>' : '') + esc(r.nom) + '</b>' + (n ? '<small>' + n + ' j</small>' : '') + '</button>';
       jours.forEach(function (iso) {
         var j = jourSem(iso), f = ferie(iso), trav = r.dent ? (r.dent.jours && r.dent.jours[j]) || dentExtra(r.dent, iso) : (function () { var t = (r.p.trame || {})[j] || {}; return heuresTrame(r.p.trame) < 0.01 || (t.am && t.am.a && t.am.a !== 'OFF') || (t.pm && t.pm.a && t.pm.a !== 'OFF'); })();
         var ens = petit && dentR && absLe(r, iso) && absLe(dentR, iso);
@@ -1427,12 +1427,19 @@
       });
       return out;
     };
-    var dentCourant = null;
+    var dentCourant = null, enCouple = false, bandes = [], cpPrec = null;
     L.forEach(function (x) {
-      if (x.gr) { row++; rows.push('34px'); g += '<span class="cg2-gr" style="grid-row:' + row + ';grid-column:1/-1"><b>' + esc(x.gr) + '</b>' + (x.sous ? '<small>' + esc(x.sous) + '</small>' : '') + '</span>'; return; }
+      if (x.gr) { cpPrec = null; row++; rows.push('34px'); g += '<span class="cg2-gr" style="grid-row:' + row + ';grid-column:1/-1"><b>' + esc(x.gr) + '</b>' + (x.sous ? '<small>' + esc(x.sous) + '</small>' : '') + '</span>'; return; }
       if (x.r.dent) dentCourant = x.r;
+      enCouple = x.cp != null;
+      if (enCouple && x.cp !== cpPrec) { if (cpPrec != null) { row++; rows.push('4px'); } bandes.push({ a: row + 1, b: row + 1 }); cpPrec = x.cp; }
       g += ligne(x.r, x.petit, x.petit ? dentCourant : null);
+      if (enCouple) bandes[bandes.length - 1].b = row;
     });
+    // un couple dentiste / assistant(e) = une bande claire ; le jour courant = une colonne dorée sur toute la hauteur
+    g += bandes.map(function (bd) { return '<span class="cg2-bande" aria-hidden="true" style="grid-row:' + bd.a + '/' + (bd.b + 1) + ';grid-column:1/-1"></span>'; }).join('');
+    if (col[auj]) g += '<span class="cg2-aujc" aria-hidden="true" style="grid-row:1/' + (rows.length + 1) + ';grid-column:' + col[auj] + '"></span>';
+    else if (auj.slice(0, 7) === M) { var apres = jours.filter(function (d) { return d > auj; })[0]; if (apres && jourSem(apres) === 1 && col[apres] - 1 > 1) g += '<span class="cg2-aujw" title="Aujourd’hui : ' + esc(jourLong(auj)) + '" style="grid-row:1/' + (rows.length + 1) + ';grid-column:' + (col[apres] - 1) + '"><small>auj.</small></span>'; }
     if (!L.length) g += '<p class="a-vide" style="grid-row:2;grid-column:1/-1">Personne dans ce filtre.</p>';
     h += '<section class="cg2-carte"><div class="cg2-scroll"><div class="cg2-g" style="grid-template-columns:' + tpl.join(' ') + ';grid-template-rows:' + rows.join(' ') + '">' + g + '</div></div>'
       + (F === 'tous' || F === 'couples' ? '<p class="cg2-note"><i aria-hidden="true"></i>Contour doré : le dentiste et son assistant(e) attitré(e) sont absents le même jour.</p>' : '') + '</section>';

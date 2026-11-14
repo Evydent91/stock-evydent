@@ -1390,3 +1390,19 @@ button.lien{border:none;background:none;padding:0;font:inherit;font-weight:700;c
 .cg2-note i{width:16px;height:10px;border-radius:3px;box-shadow:0 0 0 2px var(--gold)}
 .cg2-f{margin-bottom:-4px}
 @media (max-width:700px){.cg2-n.pt i{margin-left:2px}}
+/* Congés : couples en bandes, jour courant en colonne */
+.cg2-c,.cg2-gr{position:relative;z-index:1}
+.cg2-bande{background:#f4efe1;border-radius:12px;margin:-3px -6px;z-index:0}
+.cg2-n.bd{background:#f4efe1}
+.cg2-n{z-index:3}
+.cg2-n.pt b{font-size:13.5px;color:var(--ink2)}
+.cg2-b.pt{opacity:1;margin:3px 0;font-size:0}
+.cg2-aujc{background:rgba(201,185,122,.35);border-radius:9px;margin:-3px -3px;z-index:0}
+.cg2-c.auj{border:2px solid var(--gold);background:rgba(255,255,255,.6)}
+.cg2-c.auj.np{background:rgba(241,238,230,.75)}
+.cg2-h.auj{background:var(--gold);color:var(--ink)}.cg2-h.auj small{color:var(--ink)}
+.cg2-aujw{position:relative;z-index:2;display:flex;justify-content:center}
+.cg2-aujw::before{content:"";position:absolute;top:30px;bottom:0;left:50%;width:4px;margin-left:-2px;border-radius:2px;background:var(--gold)}
+.cg2-aujw small{font-size:10px;font-weight:700;color:#7a6a2a;white-space:nowrap;margin-top:4px}
+.cg2-c.np{background:#e7e1d1;border-color:#e7e1d1}
+.cg2-c.auj.np{border:2px solid var(--gold);background:rgba(231,225,209,.8)}
