@@ -1793,3 +1793,6 @@ button.stk-k{cursor:pointer}
 .pl-c.off2,.pl-d.off2{background:#595959;color:#fff}
 .pl-c.off2 b{font-size:13px;letter-spacing:.04em}
 .pl-c.mix .pl-d.off2{color:#fff}
+/* Planning : postes (Sté, Admin…) dans leur couleur pastel */
+.pl-c.on.pst span{opacity:1;color:#333d46}
+.pl-c.on.pst .pl-r,.pl-c.on.pst .pl-r.dep{color:#6b5d24}

@@ -2934,14 +2934,20 @@
     if (!(await demander('Rouvrir la semaine du ' + periode(L, addJ(L, 4)).replace(/^du /, '') + ' ?', 'Les cases et les pointages pourront de nouveau être modifiés, et le reliquat sera recalculé.', 'Rouvrir'))) return;
     sb.rpc('rouvrir_semaine', { p_lundi: L }).then(function (r) { if (r.error) throw r.error; toast('Semaine rouverte'); chargerClos(); }).catch(function (e) { toast(msgErr(e)); });
   }
+  // Couleur pastel d'un poste (Réglages › Postes) : la couleur choisie, mélangée avec du blanc
+  function pastelPoste(a) {
+    var ps = a && a.slice(0, 2) !== 'D:' && posteDe(a), c = ps && /^[0-9a-f]{6}$/i.test(ps.coul || '') ? ps.coul : null; if (!c) return '';
+    var m = function (i) { var v = parseInt(c.slice(i, i + 2), 16); return Math.round(v + (255 - v) * 0.55); };
+    return 'background:rgb(' + m(0) + ',' + m(2) + ',' + m(4) + ');color:#1f2a33';
+  }
   function celluleJour(p, iso) {
     var am = caseEff(p, iso, 'AM'), pm = caseEff(p, iso, 'PM'), ab = function (c) { return ABS.indexOf(c.a) >= 0; };
     var cls = 'pl-c', h;
     var itm = p.type === 'interimaire', ofc = itm ? ' off' : ' off2', acl = function (c) { return ' abs ab-' + String(c.a).toLowerCase(); };
     if (am.a === pm.a && (ab(am) || am.a === 'OFF')) { cls += am.a === 'OFF' ? ofc : acl(am); h = '<b>' + (am.a === 'OFF' ? (am.off || pm.off ? 'Jour off' : itm ? '—' : 'OFF') : nomAff(am.a)) + '</b>'; }
-    else if (am.a === pm.a) { cls += ' on'; h = '<b>' + esc(nomAff(am.a)) + '</b><span>' + ft(am.de) + '–' + ft(am.fi) + ' · ' + ft(pm.de) + '–' + ft(pm.fi) + '</span>'; }
+    else if (am.a === pm.a) { cls += ' on'; if (pastelPoste(am.a)) { cls += ' pst'; var stP = pastelPoste(am.a); } h = '<b>' + esc(nomAff(am.a)) + '</b><span>' + ft(am.de) + '–' + ft(am.fi) + ' · ' + ft(pm.de) + '–' + ft(pm.fi) + '</span>'; }
     else {
-      var demi = function (c) { return '<span class="pl-d' + (ab(c) ? acl(c) : c.a === 'OFF' ? ofc : '') + '"><b>' + (c.off ? 'Off' : c.a === 'OFF' ? (itm ? '—' : 'OFF') : esc(nomAff(c.a))) + '</b>' + (c.de ? ' ' + ft(c.de) + '–' + ft(c.fi) : '') + '</span>'; };
+      var demi = function (c) { var sp = !ab(c) && c.a !== 'OFF' && pastelPoste(c.a); return '<span class="pl-d' + (ab(c) ? acl(c) : c.a === 'OFF' ? ofc : '') + '"' + (sp ? ' style="' + sp + '"' : '') + '><b>' + (c.off ? 'Off' : c.a === 'OFF' ? (itm ? '—' : 'OFF') : esc(nomAff(c.a))) + '</b>' + (c.de ? ' ' + ft(c.de) + '–' + ft(c.fi) : '') + '</span>'; };
       cls += ' mix'; h = demi(am) + demi(pm);
     }
     var rg = am.r || pm.r, dpt = pm.a && pm.a.slice(0, 2) === 'D:' ? dentById(pm.a.slice(2)) : am.a && am.a.slice(0, 2) === 'D:' && pm.a === 'OFF' ? dentById(am.a.slice(2)) : null, hd = dpt && dpt.jours && dpt.jours[jourSem(iso)];
@@ -2952,7 +2958,7 @@
     if (cac && cac.annul_demande) { cls += ' cg-at'; h += '<small class="pl-at">' + ico('attente', 13, 2.4) + 'Annulation demandée</small>'; }
     var cat = !(am.a === 'OFF' && pm.a === 'OFF') && congeAttenteLe(p.id, iso);
     if (cat) { cls += ' cg-at'; h += '<small class="pl-at" title="Demande du ' + dateCourte(cat.du) + (cat.au !== cat.du ? ' au ' + dateCourte(cat.au) : '') + ', pas encore validée">' + ico('attente', 13, 2.4) + esc(cat.type === 'FORMATION' ? 'Formation' : typeTxt(cat.type)) + ' demandé' + (cat.type === 'FORMATION' ? 'e' : 's') + '</small>'; }
-    return '<button class="' + cls + (jourClos(iso) ? ' clos' : '') + '" data-plc="' + p.id + '|' + iso + '" aria-label="' + esc(p.prenom) + ', ' + JOURS[jourSem(iso)] + '">' + h + '</button>';
+    return '<button class="' + cls + (jourClos(iso) ? ' clos' : '') + '"' + (stP ? ' style="' + stP + '"' : '') + ' data-plc="' + p.id + '|' + iso + '" aria-label="' + esc(p.prenom) + ', ' + JOURS[jourSem(iso)] + '">' + h + '</button>';
   }
   // Dentistes présents qui travaillent sans assistante ce jour-là (journée entière, matin ou après-midi)
   function dentistesSeuls(iso) {
