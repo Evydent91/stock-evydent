@@ -1,7 +1,7 @@
 // Journal des versions (affiché dans Plus, pour la référente et la responsable).
 // Types : Majeure (changement profond), Mineure (nouvelle fonction), Correctif (réparation).
 // c = changements visibles ; x = opérations sur les données (pour la responsable).
-window.JOURNAL = [{v:"2.3",t:"Mineure",n:"Accueil à deux tuiles, équipe et dentistes (préparation du planning)",d:"Novembre 2026 (en test)",
+window.JOURNAL = [{v:"2.3",t:"Majeure",n:"Planning, congés, pointage et heures ; gestion de stock au nouveau style",d:"Mise en service le 1er décembre 2026",
 c:["Transfert vers la prod (Réglages › Application) : sur le site de test, on coche les personnes, les dentistes, les réglages, les congés et les cases du planning à emporter, et on télécharge un fichier. Sur le site réel, on choisit ce fichier : un récapitulatif montre les comptes de gestion, les dentistes (nouveaux ou mis à jour) et, pour chaque personne, le compte de connexion relié (même identifiant), proposé (même prénom, à confirmer) ou aucun. Rien n’est enregistré avant « Importer ». Les dentistes des semaines types et du planning sont renumérotés automatiquement ; le stock n’est jamais touché.",
  "Congés : toucher une absence déjà posée (une barre du mois) ouvre une petite fenêtre au lieu de la fiche : type, dates, jours de travail, note, qui l’a posée ou validée, avec « Modifier » (type, dates, note), « Supprimer » et « Voir la fiche ». Pour une demande en attente : « Accepter » et « Refuser ».",
  "Congés, fenêtre « poser une absence » : les trois choix portent la couleur de la légende (Congés bleu, Maladie orange, Formation vert) ; le choix sélectionné prend sa couleur.",
