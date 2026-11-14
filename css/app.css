@@ -1953,3 +1953,4 @@ button.stk-k{cursor:pointer}
   .cg2-2c .cg2-k{flex-wrap:nowrap}.cg2-2c .cg2-k > div{white-space:nowrap}
 }
 @media (min-width:1100px) and (max-width:1500px){.cg2-2c .cg2-k{grid-column:1/-1;grid-row:3;justify-content:flex-start}.cg2-2c .cg2-cg > .cg2-carte{grid-row:4}}
+@media (min-width:1100px){.cg2-2c .cg2-k{flex-wrap:wrap}.cg2-2c .cg2-k > div{flex:none;min-width:auto}}
