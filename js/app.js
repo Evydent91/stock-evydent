@@ -91,6 +91,42 @@
   function horsCab(e) { e = +e; return !!S.me.cabinet && e >= 1 && e <= 8 && e !== +S.me.cabinet; }
   var tt;
   function toast(m) { var t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(function () { t.classList.remove('on'); }, 3200); }
+  // Fenêtres de l'appli (remplacent confirm / prompt du navigateur). texte : \n = retour à la ligne, « • » = puce.
+  function fenetre(o) {
+    return new Promise(function (res) {
+      var prec = document.activeElement, bg = document.createElement('div'), S2 = o.saisie;
+      var corps = String(o.texte || '').split(/\n\n+/).filter(Boolean).map(function (b) {
+        var l = b.split('\n'), h = '', ul = [];
+        var vide = function () { if (ul.length) { h += '<ul>' + ul.join('') + '</ul>'; ul = []; } };
+        l.forEach(function (x) { if (/^[•…]/.test(x)) ul.push('<li>' + esc(x.replace(/^•\s*/, '')) + '</li>'); else { vide(); h += '<p>' + esc(x) + '</p>'; } });
+        vide(); return h;
+      }).join('');
+      bg.className = 'dlg-bg';
+      bg.innerHTML = '<div class="dlg' + (o.danger ? ' danger' : '') + '" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t"><h2 id="dlg-t">' + esc(o.titre) + '</h2>' + corps
+        + (S2 ? '<label class="dlg-l">' + esc(S2.label || '') + '<input id="dlg-in"' + (S2.type === 'nombre' ? ' inputmode="decimal"' : '') + ' autocomplete="off" value="' + esc(S2.valeur || '') + '"' + (S2.attendu ? ' placeholder="' + esc(S2.attendu) + '"' : '') + '></label>' : '')
+        + '<div class="dlg-b">' + (o.seul ? '' : '<button type="button" class="btn l" data-dlg="0">' + esc(o.non || 'Annuler') + '</button>') + '<button type="button" class="btn' + (o.danger ? ' ko' : '') + '" data-dlg="1">' + esc(o.ok || 'Confirmer') + '</button></div></div>';
+      document.body.appendChild(bg);
+      var inp = bg.querySelector('#dlg-in'), bok = bg.querySelector('[data-dlg="1"]');
+      var verif = function () { if (S2 && S2.attendu) bok.disabled = norm(inp.value.trim()) !== norm(String(S2.attendu).trim()); };
+      var fin = function (v) { document.removeEventListener('keydown', cle, true); bg.remove(); if (prec && prec.focus) try { prec.focus(); } catch (e) {} res(v); };
+      var oui = function () { if (bok.disabled) return; fin(S2 ? inp.value : true); };
+      var non = function () { fin(S2 ? null : false); };
+      var cle = function (e) {
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); non(); }
+        else if (e.key === 'Enter' && e.target === inp) { e.preventDefault(); e.stopPropagation(); oui(); }
+        else if (e.key === 'Tab') { var f = [].slice.call(bg.querySelectorAll('input,button:not([disabled])')), i = f.indexOf(document.activeElement); if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); } else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); } }
+      };
+      document.addEventListener('keydown', cle, true);
+      bg.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var b = e.target.closest('[data-dlg]'); if (b) { if (b.dataset.dlg === '1') oui(); else non(); return; }
+        if (e.target === bg && !o.danger) non();
+      });
+      if (inp) { inp.addEventListener('input', verif); verif(); inp.focus(); if (!S2.attendu) inp.select(); } else (o.danger ? bg.querySelector('[data-dlg="0"]') || bok : bok).focus();
+    });
+  }
+  function demander(titre, texte, ok, danger) { return fenetre({ titre: titre, texte: texte, ok: ok, danger: danger }); }
+  function saisir(titre, texte, o) { return fenetre(Object.assign({ titre: titre, texte: texte, saisie: o }, { ok: o.ok, danger: o.danger })); }
   function msgErr(e) {
     var m = (e && (e.message || e.error_description)) || String(e);
     if (/Invalid login credentials/i.test(m)) return 'Identifiant ou mot de passe incorrect.';
@@ -1066,10 +1102,10 @@
     var F = S.pf; if (!F) { S.tab = 'pequipe'; return vPEquipe(); }
     var p = F.d, nouv = F.id === 'new', t = p.trame || {}, tot = heuresTrame(t), c = +p.contrat_h || 0, ty = typeDe(p.type), tel = telephone();
     var prof = p.profil_id ? S.profils.filter(function (x) { return x.id === p.profil_id; })[0] : null;
-    var horsPl = ty.planning === false, ONG = [['infos', 'Infos, profil et compte'], ['semaine', horsPl ? 'Horaires habituels' : 'Semaine type'], ['absences', 'Absences'], ['regles', 'Règles et consigne']];
+    var horsPl = ty.planning === false, ONG = [['infos', 'Infos, profil et compte', 'Profil et compte'], ['semaine', horsPl ? 'Horaires habituels' : 'Semaine type'], ['absences', 'Absences'], ['regles', 'Règles et consigne']];
     if (F.onglet === 'compte') F.onglet = 'infos';
     var og = nouv ? 'infos' : F.onglet || (tel ? null : 'semaine');
-    var h = '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" ' + (tel && og && !nouv ? 'data-pfong=""' : 'data-tab="pequipe"') + '>' + ico('prec', 22, 2.4) + (tel && og && !nouv ? esc(p.prenom || 'Fiche') : 'L’équipe') + '</button><h1>' + (nouv ? 'Nouvelle fiche' : tel && og ? ONG.filter(function (o) { return o[0] === og; })[0][1] : esc(p.prenom || '…')) + '</h1><span class="a-cale"></span></div></header><div class="a-corps h-fiche fi">';
+    var h = '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" ' + (tel && og && !nouv ? 'data-pfong=""' : 'data-tab="pequipe"') + '>' + ico('prec', 22, 2.4) + (tel && og && !nouv ? esc(p.prenom || 'Fiche') : 'L’équipe') + '</button><h1>' + (nouv ? 'Nouvelle fiche' : tel && og ? (function (o) { return o[2] || o[1]; })(ONG.filter(function (o) { return o[0] === og; })[0]) : esc(p.prenom || '…')) + '</h1><span class="a-cale"></span></div></header><div class="a-corps h-fiche fi">';
     // --- résumé
     var at = attitre(p), da = at && dentById(at), auj = dIso(new Date());
     var avenir = (S.conges || []).filter(function (x) { return String(x.equipe_id) === String(F.id) && x.au >= auj && x.statut !== 'refuse'; }).sort(function (a, b) { return a.du < b.du ? -1 : 1; }).slice(0, 3).map(function (x) { return '<span class="fi-av"><i class="' + (x.type === 'FORMATION' ? 'fo' : x.type === 'ARRET' ? 'ar' : 'cp') + '"></i>' + esc(typeTxt(x.type)) + ' ' + periode(x.du, x.au) + (x.statut === 'attente' ? ' · en attente' : '') + '</span>'; });
@@ -1237,7 +1273,7 @@
     if (d.offr) { E.rec = d.offr; render(); return true; }
     if (d.offn) { E.rang = +d.offn; render(); return true; }
     if (d.act === 'offannule') { S.offEd = null; render(); return true; }
-    if (d.act === 'offsuppr') { if (!confirm('Supprimer ce jour off ?')) return true; sauverOffs((F.d.offs || []).filter(function (x) { return x.id !== E.id; }), 'Jour off supprimé'); return true; }
+    if (d.act === 'offsuppr') { demander('Supprimer ce jour off ?', '', 'Supprimer', true).then(function (ok) { if (ok) sauverOffs((F.d.offs || []).filter(function (x) { return x.id !== E.id; }), 'Jour off supprimé'); }); return true; }
     if (d.act === 'offok') {
       var n = offDe(E); if (!n) { toast('Complétez le jour off'); return true; }
       var l = (F.d.offs || []).slice(), k = -1; l.forEach(function (x, ii) { if (x.id === E.id) k = ii; });
@@ -1253,11 +1289,11 @@
     return '<div class="pf-res"><span><b class="or">Dans l’organisation</b><span>' + org.join(' · ') + '</span></span><span><b class="bl">Dans son appli</b><span class="rg-pills">' + APP.map(function (a) { return '<span class="' + (x[a[0]] ? 'on' : 'off') + '">' + a[1] + '</span>'; }).join('') + '</span></span><button class="lien" data-tab="pprofils">Modifier ce profil</button></div>';
   }
   // Après l'enregistrement d'une fiche : le compte relié suit le profil (sans jamais retirer les droits d'un compte de gestion)
-  function synchroCompte(x) {
+  async function synchroCompte(x) {
     if (!x || !x.profil_id || !fonctionPret()) return Promise.resolve();
     var prof = (S.profils || []).filter(function (y) { return y.id === x.profil_id; })[0]; if (!prof) return Promise.resolve();
     var c = profilCode(x), P = profilDe(c) || {}, maj = null;
-    if (P.gestion) { if (prof.role !== c) { if (!confirm('Le compte « ' + prof.identifiant + ' » va devenir ' + P.n + ' (tous les droits, connexion avec un mot de passe). Continuer ?')) return Promise.resolve(); maj = { role: c, fonction: null }; } }
+    if (P.gestion) { if (prof.role !== c) { if (!(await demander('Donner tous les droits ?', 'Le compte « ' + prof.identifiant + ' » va devenir ' + P.n + ' : tous les outils et les réglages, connexion avec un mot de passe.', 'Continuer'))) return; maj = { role: c, fonction: null }; } }
     else if (prof.role === 'assistante') { var f = c === 'assistante' || c === 'apprentie' ? null : c; if ((prof.fonction || null) !== f) maj = { fonction: f }; if (!P.cab && prof.cabinet) maj = Object.assign(maj || {}, { cabinet: null }); }
     else return Promise.resolve();
     if (!maj) return Promise.resolve();
@@ -1618,9 +1654,9 @@
       + (F === 'tous' || F === 'couples' ? '<p class="cg2-note"><i aria-hidden="true"></i>Contour doré : le dentiste et son assistant(e) attitré(e) sont absents le même jour.</p>' : '') + '</section>';
     return h;
   }
-  function repondre(id, ok) {
+  async function repondre(id, ok) {
     var rep = null;
-    if (!ok) { rep = prompt('Motif du refus (facultatif, la personne le verra) :', ''); if (rep === null) return; }
+    if (!ok) { rep = await saisir('Refuser cette demande de congés ?', '', { label: 'Motif du refus (facultatif, la personne le verra)', ok: 'Refuser', danger: true }); if (rep === null) return; rep = rep.trim() || null; }
     sb.rpc('repondre_conges', { p_id: +id, p_accepte: ok, p_reponse: rep }).then(function (r) {
       if (r.error) throw r.error; toast(ok ? '✔ Congés acceptés' : 'Demande refusée'); chargerPlan();
     }).catch(function (e) { toast(msgErr(e)); chargerPlan(); });
@@ -1667,9 +1703,9 @@
     o[A.cle[0] === 'd' ? 'dentiste_id' : 'equipe_id'] = +A.cle.slice(1);
     sb.from('conges').insert(o).then(function (r) { if (r.error) throw r.error; S.cAjout = null; toast(A.formation ? '✔ Formation ajoutée' : '✔ Congés ajoutés'); chargerPlan(); }).catch(function (e) { toast(msgErr(e)); });
   }
-  function supprimerConges(id) {
+  async function supprimerConges(id) {
     var fo = S.cAjout && S.cAjout.formation;
-    if (!confirm(fo ? 'Supprimer cette formation ?' : 'Supprimer ces congés ?')) return;
+    if (!(await demander(fo ? 'Supprimer cette formation ?' : 'Supprimer ces congés ?', '', 'Supprimer', true))) return;
     sb.from('conges').delete().eq('id', +id).then(function (r) { if (r.error) throw r.error; S.cAjout = null; toast(fo ? 'Formation supprimée' : 'Congés supprimés'); chargerPlan(); }).catch(function (e) { toast(msgErr(e)); });
   }
 
@@ -1727,9 +1763,9 @@
         + '<div class="h-cg-b"><button class="a-btn blanc" data-obrefus="' + o.id + '">Refuser</button><button class="a-btn vert" data-obok="' + o.id + '">Enregistrer l’heure</button></div></div>';
     }).join('') + '</div></section>';
   }
-  function repondreOubli(id, ok) {
+  async function repondreOubli(id, ok) {
     var rep = null;
-    if (!ok) { rep = prompt('Motif du refus (facultatif, la personne le verra) :', ''); if (rep === null) return; }
+    if (!ok) { rep = await saisir('Refuser ce signalement ?', '', { label: 'Motif du refus (facultatif, la personne le verra)', ok: 'Refuser', danger: true }); if (rep === null) return; rep = rep.trim() || null; }
     sb.rpc('repondre_oubli', { p_id: +id, p_accepte: ok, p_reponse: rep }).then(function (r) {
       if (r.error) throw r.error; toast(ok ? '✔ Heure enregistrée' : 'Signalement refusé'); chargerOublis(); if (S.ptg) { S.ptg.charges = null; chargerPointages(true); }
     }).catch(function (e) { toast(msgErr(e)); chargerOublis(); });
@@ -2535,11 +2571,11 @@
       + '<div class="h-cpied">' + (r ? '<button class="h-csup" data-act="ptsuppr">' + ico('poubelle', 18, 2) + 'Effacer le pointage</button>' : '<span></span>')
       + '<span class="row"><button class="btn l" data-act="ptedfermer">Annuler</button><button class="btn" data-act="ptsave">Enregistrer</button></span></div></div></div>';
   }
-  function sauverPointage(supprimer) {
+  async function sauverPointage(supprimer) {
     var E = S.ptEd, cle = E.eid + '|' + E.jour, r = S.ptg.rows[cle];
     var ts = function (v) { if (!v) return null; var x = v.split(':'), d = dDe(E.jour); d.setHours(+x[0], +x[1], 0, 0); return d.toISOString(); };
     var q;
-    if (supprimer) { if (!confirm('Effacer le pointage de cette journée ?')) return; q = sb.from('pointages').delete().eq('equipe_id', +E.eid).eq('jour', E.jour); }
+    if (supprimer) { if (!(await demander('Effacer le pointage de cette journée ?', 'L’arrivée et la sortie de ce jour seront effacées.', 'Effacer', true))) return; q = sb.from('pointages').delete().eq('equipe_id', +E.eid).eq('jour', E.jour); }
     else {
       var a = $('ptarr').value, b = $('ptsor').value;
       if (b && !a) { toast('Indiquez l’heure d’arrivée'); return; }
@@ -2810,8 +2846,8 @@
       + '<script>(function(){var f=false,go=function(){if(!f){f=true;setTimeout(function(){print()},400)}},i=document.getElementById("logo");if(i.complete)go();else{i.onload=go;i.onerror=go}setTimeout(go,2500)})()<\/script></body></html>');
     w.document.close();
   }
-  function regenererQR() {
-    if (!confirm('Créer un nouveau QR code ? L’ancien ne fonctionnera plus : il faudra réimprimer l’affiche.')) return;
+  async function regenererQR() {
+    if (!(await demander('Créer un nouveau QR code ?', 'L’ancien ne fonctionnera plus : il faudra réimprimer l’affiche.', 'Créer un nouveau QR code', true))) return;
     sb.rpc('regenerer_qr').then(function (r) { if (r.error) throw r.error; toast('✔ Nouveau QR code créé'); ouvrirQR(); if (S.tab === 'pqr') chargerEvQR(); }).catch(function (e) { toast(msgErr(e)); });
   }
   // ---------- Clôture de semaine (mise à jour 023) ----------
@@ -2872,8 +2908,8 @@
     sb.rpc('cloturer_semaine', { p_lundi: L, p_figes: figes }).then(function (r) { if (r.error) throw r.error; S.plClo = null; toast('✔ Semaine clôturée'); chargerClos(); })
       .catch(function (e) { S.plClo.busy = false; toast(msgErr(e)); render(); });
   }
-  function rouvrirSemaine(L) {
-    if (!confirm('Rouvrir la semaine du ' + periode(L, addJ(L, 4)).replace(/^du /, '') + ' ? Les cases et les pointages pourront de nouveau être modifiés, et le reliquat sera recalculé.')) return;
+  async function rouvrirSemaine(L) {
+    if (!(await demander('Rouvrir la semaine du ' + periode(L, addJ(L, 4)).replace(/^du /, '') + ' ?', 'Les cases et les pointages pourront de nouveau être modifiés, et le reliquat sera recalculé.', 'Rouvrir'))) return;
     sb.rpc('rouvrir_semaine', { p_lundi: L }).then(function (r) { if (r.error) throw r.error; toast('Semaine rouverte'); chargerClos(); }).catch(function (e) { toast(msgErr(e)); });
   }
   function celluleJour(p, iso) {
@@ -3017,9 +3053,9 @@
       S.pl.cas = null; toast('✔ Case enregistrée'); render();
     }).catch(function (e) { K.busy = false; toast(msgErr(e)); render(); });
   }
-  function caseSemaineType() {
+  async function caseSemaineType() {
     var K = S.pl.cas;
-    if (!confirm('Revenir à la semaine type pour ce jour ? La saisie de ce jour sera effacée.')) return;
+    if (!(await demander('Revenir à la semaine type pour ce jour ?', 'La saisie de ce jour sera effacée.', 'Revenir à la semaine type'))) return;
     sb.from('planning').delete().eq('equipe_id', K.eid).eq('jour', K.jour).then(function (r) {
       if (r.error) throw r.error;
       delete S.pl.rows[cleCase(K.eid, K.jour, 'AM')]; delete S.pl.rows[cleCase(K.eid, K.jour, 'PM')];
@@ -3494,8 +3530,8 @@
         + '<button class="btn l sm" data-refuser="' + m.id + '">Refuser</button><button class="btn sm" data-confirmer="' + m.id + '">Confirmer</button></div></div>';
     }).join('');
   }
-  function traiter(id, ok) {
-    if (!ok && !confirm('Refuser cette demande ? Le stock ne sera pas modifié.')) return;
+  async function traiter(id, ok) {
+    if (!ok && !(await demander('Refuser cette demande ?', 'Le stock ne sera pas modifié.', 'Refuser', true))) return;
     sb.rpc('traiter_demande', { p_mouvement: id, p_accepter: ok }).then(function (r) {
       if (r.error) { toast(msgErr(r.error)); return; }
       toast(ok ? '✔ Sortie confirmée' + (r.data && +r.data.ecart ? ' (écart de réserve enregistré)' : '') : 'Demande refusée');
@@ -3607,8 +3643,8 @@
       charger();
     });
   }
-  function reglerJ0(on) {
-    if (!on && !confirm('Terminer l’inventaire de départ ? Les inventaires suivants reprendront le fonctionnement normal (écarts et motifs).')) return;
+  async function reglerJ0(on) {
+    if (!on && !(await demander('Terminer l’inventaire de départ ?', 'Les inventaires suivants reprendront le fonctionnement normal (écarts et motifs).', 'Terminer'))) return;
     sb.rpc('regler_j0', { p_actif: on, p_jours: 7 }).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } S.j0 = r.data; S.inv.j0ask = false; toast(on ? '✔ Inventaire de départ lancé pour 7 jours' : '✔ Inventaire de départ terminé'); charger(); });
   }
 
@@ -3837,11 +3873,10 @@
     }).catch(function (e) { F.busy = false; toast(msgErr(e)); render(); });
   }
   function stockPartout(id) { var t = []; for (var e = 0; e <= 9; e++) { var q = stockDe(id, e); if (Math.abs(q) > 1e-9) t.push(cabTxt(e) + ' : ' + fr(q)); } return t; }
-  function supprimerArticle() {
+  async function supprimerArticle() {
     var a = S.byId[S.fiche.id] || S.fiche.d, st = stockPartout(a.id);
     if (st.length) { toast('Suppression impossible : il reste du stock (' + st.join(', ') + '). Mettez-le à 0 par un inventaire ou une correction.'); return; }
-    if (!confirm('Supprimer définitivement « ' + a.nom + ' » ?\n\n• La fiche, ses prix par fournisseur et son historique de prix sont effacés.\n• Les mouvements passés restent dans l’historique, sous son nom.\n\nCette suppression est définitive. Pour simplement le masquer, utilisez « Archiver ».')) return;
-    var t = prompt('Pour confirmer, tapez le nom de l’article : ' + a.nom);
+    var t = await saisir('Supprimer définitivement « ' + a.nom + ' » ?', '• La fiche, ses prix par fournisseur et son historique de prix sont effacés.\n• Les mouvements passés restent dans l’historique, sous son nom.\n\nCette suppression est définitive. Pour simplement le masquer, utilisez « Archiver ».', { label: 'Pour confirmer, tapez le nom de l’article', attendu: a.nom, ok: 'Supprimer', danger: true });
     if (t == null) return;
     if (norm(t.trim()) !== norm(a.nom.trim())) { toast('Nom différent : suppression annulée'); return; }
     sb.rpc('supprimer_article', { p_article: a.id }).then(function (r) {
@@ -3849,9 +3884,9 @@
       toast('✔ « ' + a.nom + ' » supprimé'); S.fiche = null; charger();
     });
   }
-  function archiverArticle() {
+  async function archiverArticle() {
     var a = S.fiche.d, v = !a.archive;
-    if (v && !confirm('Archiver « ' + a.nom + ' » ? Il disparaîtra des sorties, de l’inventaire et des listes. Vous pourrez le réactiver depuis le filtre « Archivés ».')) return;
+    if (v && !(await demander('Archiver « ' + a.nom + ' » ?', 'Il disparaîtra des sorties, de l’inventaire et des listes. Vous pourrez le réactiver depuis le filtre « Archivés ».', 'Archiver'))) return;
     sb.from('articles').update({ archive: v }).eq('id', a.id).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } toast(v ? 'Article archivé' : 'Article réactivé'); S.fiche = null; charger(); });
   }
   // Correction sans impact financier (double confirmation)
@@ -3936,11 +3971,10 @@
     sb.from('fournisseurs').update({ archive: v }).eq('id', f.id).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } toast(v ? 'Fiche archivée' : 'Fiche réactivée'); S.fiche = null; charger(); });
   }
 
-  function supprimerFo() {
+  async function supprimerFo() {
     var f = S.fiche.d, n = S.articles.filter(function (a) { return a.fournisseur_id === f.id; }).length;
     var n2 = S.articles.filter(function (a) { return a.fournisseur_id !== f.id && (S.afPrix[a.id] || []).some(function (p) { return p.fournisseur_id === f.id; }); }).length;
-    if (!confirm('Supprimer définitivement le fournisseur « ' + f.nom + ' » ?\n\n• ' + n + ' article(s) dont c’est le fournisseur principal passeront en SF (sans fournisseur).\n• ' + (n2 ? n2 + ' article(s) le perdront comme fournisseur secondaire.\n• ' : '') + 'Son compte (identifiant, mot de passe) sera effacé.\n• Les commandes passées et l’historique des prix sont conservés, sans nom de fournisseur.\n\nCette suppression est définitive. Pour simplement le masquer, utilisez « Archiver ».')) return;
-    var t = prompt('Pour confirmer, tapez le nom du fournisseur : ' + f.nom);
+    var t = await saisir('Supprimer définitivement le fournisseur « ' + f.nom + ' » ?', '• ' + n + ' article(s) dont c’est le fournisseur principal passeront en SF (sans fournisseur).\n• ' + (n2 ? n2 + ' article(s) le perdront comme fournisseur secondaire.\n• ' : '') + 'Son compte (identifiant, mot de passe) sera effacé.\n• Les commandes passées et l’historique des prix sont conservés, sans nom de fournisseur.\n\nCette suppression est définitive. Pour simplement le masquer, utilisez « Archiver ».', { label: 'Pour confirmer, tapez le nom du fournisseur', attendu: f.nom, ok: 'Supprimer', danger: true });
     if (t == null) return;
     if (norm(t.trim()) !== norm(f.nom.trim())) { toast('Nom différent : suppression annulée'); return; }
     sb.from('fournisseurs').delete().eq('id', f.id).then(function (r) {
@@ -4077,23 +4111,23 @@
       F.rx = {}; Promise.all([charger(), chargerCommandes()]).then(function () { ouvrirCommande(c.id); });
     });
   }
-  function annulerReception(lot) {
-    if (!confirm('Annuler cette réception ? Les quantités sortent de la réserve et le coût moyen est recalculé.')) return;
+  async function annulerReception(lot) {
+    if (!(await demander('Annuler cette réception ?', 'Les quantités sortent de la réserve et le coût moyen est recalculé.', 'Annuler la réception', true))) return;
     sb.rpc('annuler_reception', { p_lot: lot }).then(function (r) {
       if (r.error) { toast(msgErr(r.error)); return; }
       toast('✔ Réception annulée' + (r.data.reserve_insuffisante ? ' · réserve insuffisante pour : ' + r.data.reserve_insuffisante + ' (mise à 0)' : ''));
       var id = S.fiche.id; Promise.all([charger(), chargerCommandes()]).then(function () { ouvrirCommande(id); });
     });
   }
-  function abandonnerReste(lid) {
-    if (!confirm('Ne plus attendre le reste de cette ligne ?')) return;
+  async function abandonnerReste(lid) {
+    if (!(await demander('Ne plus attendre le reste de cette ligne ?', '', 'Ne plus attendre'))) return;
     sb.from('commande_lignes').update({ reliquat_abandonne: true }).eq('id', lid).then(function (r) {
       if (r.error) { toast(msgErr(r.error)); return; }
       sb.rpc('statut_commande', { p_commande: S.fiche.id }).then(function () { var id = S.fiche.id; chargerCommandes().then(function () { ouvrirCommande(id); }); });
     });
   }
-  function cloturerCommande() {
-    if (!confirm('Clôturer cette commande ? Plus rien n’est attendu.')) return;
+  async function cloturerCommande() {
+    if (!(await demander('Clôturer cette commande ?', 'Plus rien n’est attendu.', 'Clôturer'))) return;
     var id = S.fiche.id;
     sb.from('commandes').update({ statut: 'close' }).eq('id', id).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } toast('Commande clôturée'); chargerCommandes().then(function () { ouvrirCommande(id); }); });
   }
@@ -4113,15 +4147,15 @@
     var F = S.fiche, c = S.commandes.filter(function (x) { return x.id === F.id; })[0];
     if (!file || !c) return;
     F.imp = { lecture: true }; render();
-    file.arrayBuffer().then(FACTURES.extraireLignes).then(function (lignes) {
+    file.arrayBuffer().then(FACTURES.extraireLignes).then(async function (lignes) {
       var R = FACTURES.lireFacture(lignes), nomFo = S.fournisseurs[c.fournisseur_id] || '';
       if (!R.fournisseur) { F.imp = { inconnu: true }; render(); return; }
       if (!R.lignes.length) { F.imp = null; toast('Aucune ligne d’article trouvée dans cette facture'); render(); return; }
-      if (norm(nomFo).replace(/\s/g, '').indexOf(norm(R.fournisseur).replace(/\s/g, '')) < 0 && !confirm('Cette facture est une facture ' + R.fournisseur + ', mais la commande est chez ' + nomFo + '.\n\nContinuer quand même ?')) { F.imp = null; render(); return; }
+      if (norm(nomFo).replace(/\s/g, '').indexOf(norm(R.fournisseur).replace(/\s/g, '')) < 0 && !(await demander('Facture d’un autre fournisseur', 'Cette facture est une facture ' + R.fournisseur + ', mais la commande est chez ' + nomFo + '.\n\nContinuer quand même ?', 'Continuer'))) { F.imp = null; render(); return; }
       var lignesF = R.lignes, num = (c.numero || '').trim();
       if (num) {
         if (R.commandes.length && R.commandes.indexOf(num) < 0) {
-          if (!confirm('Cette facture correspond à la commande n° ' + R.commandes.join(', ') + '.\nVotre commande est enregistrée sous le n° ' + num + '.\n\nContinuer quand même ?')) { F.imp = null; render(); return; }
+          if (!(await demander('Numéro de commande différent', 'Cette facture correspond à la commande n° ' + R.commandes.join(', ') + '.\nVotre commande est enregistrée sous le n° ' + num + '.\n\nContinuer quand même ?', 'Continuer'))) { F.imp = null; render(); return; }
         } else if (R.commandes.length > 1) lignesF = R.lignes.filter(function (x) { return x.commande === num; });
       }
       // regroupement par article (plusieurs références peuvent viser la même fiche)
@@ -4214,10 +4248,10 @@
     if (q) h += S.articles.filter(function (a) { return norm(a.nom + ' ' + (a.reference || '')).indexOf(q) >= 0; }).slice(0, 12).map(function (a) { return '<button class="it lrow" data-caadd="' + a.id + '"><span class="it-n"><b>' + esc(a.nom) + '</b><span>' + esc(refChez(a, c.fournisseur_id) || 'SR') + ' · ' + eur(prixChez(a, c.fournisseur_id)) + '</span></span><span>+</span></button>'; }).join('');
     return h + '<button class="lnk" style="margin-top:8px" data-act="cano">Fermer</button></div>';
   }
-  function ajouterLigne(aid) {
+  async function ajouterLigne(aid) {
     var F = S.fiche, c = S.commandes.filter(function (x) { return x.id === F.id; })[0], a = S.byId[aid];
     if ((S.lignes[c.id] || []).some(function (l) { return l.article_id === aid; })) { toast('Cet article est déjà dans la commande'); return; }
-    var q = nb(String(prompt('Quantité commandée pour « ' + a.nom + ' » (' + uRes(a) + ') ?', '1') || '').replace(',', '.'));
+    var q = nb(String((await saisir('Ajouter « ' + a.nom + ' »', '', { label: 'Quantité commandée (' + uRes(a) + ')', valeur: '1', type: 'nombre', ok: 'Ajouter' })) || '').replace(',', '.'));
     if (!(q > 0)) return;
     sb.from('commande_lignes').insert({ commande_id: c.id, article_id: aid, quantite: q, prix: prixChez(a, c.fournisseur_id) }).then(function (r) {
       if (r.error) { toast(msgErr(r.error)); return; }
@@ -4470,10 +4504,10 @@
       return Promise.all(ops).then(function (rs) { rs.forEach(function (r) { if (r && r.error) throw r.error; }); });
     });
   }
-  function appliquerImportArticles() {
+  async function appliquerImportArticles() {
     var R = S.artImp, taches = R.modifs.map(function (m) { var v = {}; m.diffs.forEach(function (k) { v[k] = m.v[k]; }); if (m.diffs.indexOf('fournisseur_id') >= 0) { if (!('prix' in v) && 'prix' in m.v) v.prix = m.v.prix; if (!('ref_fo' in v) && 'ref_fo' in m.v) v.ref_fo = m.v.ref_fo; } return [m.a, v]; })
       .concat(R.nouveaux.map(function (x) { return [null, x.v]; }));
-    if (R.suppr.length && !confirm(R.suppr.length + ' fiche(s) vont être supprimées définitivement :\n' + R.suppr.slice(0, 15).map(function (a) { return '• ' + a.nom; }).join('\n') + (R.suppr.length > 15 ? '\n…' : '') + '\n\nContinuer ?')) return;
+    if (R.suppr.length && !(await demander(R.suppr.length + ' fiche(s) vont être supprimées définitivement', R.suppr.slice(0, 15).map(function (a) { return '• ' + a.nom; }).join('\n') + (R.suppr.length > 15 ? '\n…' : '') + '\n\nContinuer ?', 'Supprimer et importer', true))) return;
     R.suppr.forEach(function (a) { taches.push([a, null]); });
     R.busy = true; R.fait = 0; render();
     var i = 0, ko = [];
@@ -4616,24 +4650,24 @@
       S.eqNew = null; toast('✔ Compte créé · identifiant : ' + r.identifiant); charger();
     }).catch(function (e) { N.busy = false; toast(e.message); render(); });
   }
-  function reinitMdp(id) {
+  async function reinitMdp(id) {
     var p = S.profils.filter(function (x) { return x.id === id; })[0], m = $('rmdp').value, m2 = $('rmdp2').value;
     var pb = regleMdp(p.role, m); if (pb) { toast(pb); return; }
     if (m !== m2) { toast('Les deux saisies ne correspondent pas'); return; }
-    if (!confirm('Remplacer ' + (p.role === 'assistante' ? 'le code' : 'le mot de passe') + ' de ' + p.nom + ' ?')) return;
+    if (!(await demander('Remplacer ' + (p.role === 'assistante' ? 'le code' : 'le mot de passe') + ' de ' + p.nom + ' ?', '', 'Remplacer'))) return;
     equipe({ action: 'reinit', user_id: id, mdp: m }).then(function () { $('rmdp').value = ''; $('rmdp2').value = ''; toast('✔ Nouveau ' + (p.role === 'assistante' ? 'code' : 'mot de passe') + ' enregistré pour ' + p.nom); })
       .catch(function (e) { toast(e.message); });
   }
-  function sauverProfil(id) {
+  async function sauverProfil(id) {
     var p = S.profils.filter(function (x) { return x.id === id; })[0];
     var LR = lireRole($('erole').value), o = { nom: $('enom').value.trim(), role: LR.role, cabinet: $('ecab').value ? +$('ecab').value : null, reserve_jusquau: $('eres').value || null };
     if (fonctionPret()) o.fonction = LR.fonction; else if (LR.fonction) { toast('Ce rôle demande la mise à jour 021 de la base'); return; }
     var actif = $('eact').checked, ident = norm($('eid').value).replace(/\s+/g, ''), identChange = ident !== p.identifiant || (id === S.me.id && S.session && S.session.user && String(S.session.user.email).toLowerCase() !== ident + '@' + C.domaine);
     if (!ident) { toast('L’identifiant ne peut pas être vide'); return; }
-    if (identChange && !confirm('Nouvel identifiant de connexion pour ' + p.nom + ' : « ' + ident + ' ».\nÀ la prochaine connexion, il faudra taper « ' + ident + ' ». Le code ne change pas.')) return;
+    if (identChange && !(await demander('Nouvel identifiant pour ' + p.nom + ' : « ' + ident + ' »', 'À la prochaine connexion, il faudra taper « ' + ident + ' ». Le code ne change pas.', 'Changer l’identifiant'))) return;
     if (!o.nom) { toast('Le prénom ne peut pas être vide'); return; }
-    if (id === S.me.id && o.role === 'assistante' && !confirm('Vous allez retirer vos propres droits de gestion. Continuer ?')) return;
-    if (p.actif && !actif && !confirm('Désactiver le compte de ' + p.nom + ' ? Elle ne pourra plus se connecter. Son historique est conservé et le compte pourra être réactivé.')) return;
+    if (id === S.me.id && o.role === 'assistante' && !(await demander('Retirer vos propres droits de gestion ?', 'Vous n’aurez plus accès aux outils de gestion ni aux réglages.', 'Retirer mes droits', true))) return;
+    if (p.actif && !actif && !(await demander('Désactiver le compte de ' + p.nom + ' ?', 'Elle ne pourra plus se connecter. Son historique est conservé et le compte pourra être réactivé.', 'Désactiver', true))) return;
     if (o.role !== p.role) toast(o.role === 'assistante' ? 'Pensez à lui donner un code à 6 chiffres (Réinitialiser)' : p.role === 'assistante' ? 'Pensez à lui donner un mot de passe solide (Réinitialiser)' : '');
     sb.from('profils').update(o).eq('id', id).select().then(function (r) {
       if (r.error) throw r.error;
@@ -4707,7 +4741,7 @@
     if (d.act === 'menu') { S.menu = !S.menu; render(); return; }
     if (d.tab) { if (d.tab === 'pointage' && S.tab !== 'pointage') { S.ptg = S.ptg || { rows: {} }; S.ptg.mode = 'semaine'; S.ptg.jour = dIso(new Date()); if (S.ptg.bord) S.ptg.bord.sel = null; }   // le pointage s'ouvre toujours sur la semaine en cours
     if (d.tab === 'ppostes') S.postesEd = null; if (d.tab === 'ptypes') S.typesEd = null; if (d.tab === 'proles') S.rolesEd = null; if (d.tab === 'pprofils' || d.tab === 'ptypes' || d.tab === 'proles' || d.tab === 'pvisible') S.profEd = null; S.menu = false; S.fiche = null; if (d.tab === 'sortie') S.sortie.ok = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); if (d.tab === 'plus') chargerEcarts(); render(); window.scrollTo(0, 0); return; }
-    if (d.act === 'out') { if (confirm('Changer de personne ? La personne suivante devra se connecter avec son identifiant et son code.')) deconnexion(); return; }
+    if (d.act === 'out') { demander('Changer de personne ?', 'La personne suivante devra se connecter avec son identifiant et son code.', 'Changer de personne').then(function (ok) { if (ok) deconnexion(); }); return; }
     if (d.act === 'maj') return mettreAJour();
     if (d.ecp) { S.ecarts = S.ecarts || {}; S.ecarts.p = d.ecp; chargerEcarts(); render(); return; }
     if (d.act === 'sauver') return telechargerSauvegarde();
@@ -4798,7 +4832,7 @@
     if (d.cgm) { var cx = (S.cgMois || dIso(new Date()).slice(0, 7)).split('-'), cdt = new Date(+cx[0], +cx[1] - 1 + (+d.cgm), 1); S.cgMois = cdt.getFullYear() + '-' + ('0' + (cdt.getMonth() + 1)).slice(-2); render(); return; }
     if (d.act === 'exouvre' && S.df) { S.df.exOuvert = !S.df.exOuvert; render(); return; }
     if (d.act === 'pfcompte' && S.pf) { var pr = S.pf.d.prenom || ''; S.eqNew = { identifiant: norm(pr).replace(/[^a-z0-9]/g, ''), nom: pr, role: 'assistante', cabinet: '', lierA: S.pf.id }; S.eqEdit = null; render(); return; }
-    if (d.act === 'pfdelier' && S.pf) { if (confirm('Détacher le compte de connexion de cette fiche ? Le compte reste actif, il n’est simplement plus relié au planning.')) lierCompte(S.pf.id, null); return; }
+    if (d.act === 'pfdelier' && S.pf) { var pfD = S.pf.id; demander('Détacher le compte de connexion ?', 'Le compte reste actif, il n’est simplement plus relié au planning.', 'Détacher').then(function (ok) { if (ok) lierCompte(pfD, null); }); return; }
     if (d.act === 'plcal') { var ci = document.getElementById('plcal'); if (ci) { try { if (ci.showPicker) ci.showPicker(); else { ci.focus(); ci.click(); } } catch (er) { ci.focus(); ci.click(); } } return; }
     if (d.plsem != null && S.pl) { S.pl.lundi = d.plsem === '0' ? lundiDe(dIso(new Date())) : addJ(S.pl.lundi, +d.plsem); S.pl.cas = null; if (gestion()) chargerSemaine(); else S.pl.de = null; render(); return; }
     if (d.plc) return ouvrirCase(d.plc);
@@ -4880,7 +4914,7 @@
     if (d.cadd) { S.cAjout = { cle: d.cadd, type: 'CP', formation: !!d.cform }; render(); return; }
     if (d.act === 'caannule') { S.cAjout = null; render(); return; }
     if (d.act === 'caok') return ajouterConges();
-    if (d.cannule) { if (!confirm('Annuler cette demande de congés ?')) return; sb.rpc('annuler_conges', { p_id: +d.cannule }).then(function (r) { if (r.error) throw r.error; toast('Demande annulée'); chargerMesConges(); }).catch(function (e) { toast(msgErr(e)); }); return; }
+    if (d.cannule) { var cgA = +d.cannule; demander('Annuler cette demande de congés ?', '', 'Annuler la demande', true).then(function (ok) { if (!ok) return; sb.rpc('annuler_conges', { p_id: cgA }).then(function (r) { if (r.error) throw r.error; toast('Demande annulée'); chargerMesConges(); }).catch(function (e) { toast(msgErr(e)); }); }); return; }
     if (d.dmun != null && S.dm) { var x1 = $('dmdu'), x2 = $('dmau'), x3 = $('dmmot'); if (x1) S.dm.du = x1.value; if (x2) S.dm.au = x2.value; if (x3) S.dm.mot = x3.value; S.dm.un = d.dmun === '1'; render(); return; }
     if (d.act === 'dmenvoi') return envoyerDemande();
     if (d.act === 'planbientot') { toast('Arrive à l’étape du planning'); return; }
@@ -4950,7 +4984,7 @@
     if ((t.id === 'dmdu' || t.id === 'dmau') && S.dm) { S.dm[t.id === 'dmdu' ? 'du' : 'au'] = t.value; if (t.id === 'dmdu' && S.dm.au && S.dm.au < t.value) S.dm.au = t.value; var mm = $('dmmot'); if (mm) S.dm.mot = mm.value; render(); return; }
     if (t.id === 'caint' && S.cAjout) { S.cAjout.mot = t.value; return; }
     if ((t.id === 'cadu' || t.id === 'caau' || t.id === 'catype') && S.cAjout) { S.cAjout[t.id === 'cadu' ? 'du' : t.id === 'caau' ? 'au' : 'type'] = t.value; if (t.id === 'cadu' && !S.cAjout.au) { S.cAjout.au = t.value; render(); } return; }
-    if (t.id === 'pflier' && S.pf && t.value) { if (confirm('Relier ce compte de connexion à la fiche de ' + S.pf.d.prenom + ' ?')) lierCompte(S.pf.id, t.value); else t.value = ''; return; }
+    if (t.id === 'pflier' && S.pf && t.value) { var pfL = S.pf.id, vL = t.value; demander('Relier ce compte à la fiche de ' + S.pf.d.prenom + ' ?', '', 'Relier').then(function (ok) { if (ok) lierCompte(pfL, vL); else t.value = ''; }); return; }
     if (t.id === 'nrole' && S.eqNew) { S.eqNew.sel = t.value; S.eqNew.role = lireRole(t.value).role; S.eqNew.identifiant = $('nid').value; S.eqNew.nom = $('nnom').value; render(); }
     else if (t.id === 'ncab' && S.eqNew) { S.eqNew.cabinet = t.value; }
     else if (t.id === 'aimpf') { var fa = t.files && t.files[0]; t.value = ''; importerArticles(fa); }
