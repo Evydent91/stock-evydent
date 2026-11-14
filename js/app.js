@@ -655,8 +655,9 @@
     return postes().filter(function (x) { return !x.retire || x.code === cur; }).map(function (x) { return [x.code, x.n]; }).concat([['ECOLE', 'École'], ['OFF', 'Ne travaille pas']]);
   }
   // Types de personnel (Réglages › Types de personnel)
-  var TYPES_BASE = [{ code: 'assistante', n: 'Assistante / assistant', planning: true, contrat: true, base: true }, { code: 'interimaire', n: 'Intérimaire', planning: true, contrat: false, base: true }];
+  var TYPES_BASE = [{ code: 'assistante', n: 'Assistante / assistant', planning: true, contrat: true, dentiste: true, base: true }, { code: 'interimaire', n: 'Intérimaire', planning: true, contrat: false, dentiste: true, base: true }];
   function typesPers() { var l = Array.isArray(S.typesPers) ? S.typesPers : []; return TYPES_BASE.concat(l.filter(function (x) { return !TYPES_BASE.some(function (b) { return b.code === x.code; }); })); }
+  function aDent(type) { return typeDe(type).dentiste !== false; }   // le type travaille-t-il auprès d'un dentiste ?
   function typeDe(code) { return typesPers().filter(function (x) { return x.code === code; })[0] || TYPES_BASE[0]; }
   function nomType(p) { return p.type === 'interimaire' ? 'Intérimaire' : p.type === 'assistante' || !p.type ? (p.statut === 'apprentie' ? 'Apprentie' : 'Assistante') : typeDe(p.type).n; }
   var ACC_H = ['data-tab="hub"', 'Accueil'];
@@ -759,13 +760,13 @@
     var E = S.typesEd = S.typesEd || JSON.parse(JSON.stringify(typesPers()));
     var util = function (code) { return (S.equipe || []).filter(function (p) { return p.type === code; }).length; };
     var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'Types de personnel', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
-    h += '<p class="a-aide" style="margin-top:0">Choisi dans chaque fiche. Indique si la personne apparaît dans le planning et si elle a un contrat d’heures (reliquat).</p><div class="a-liste">' + E.map(function (t, i) {
+    h += '<p class="a-aide" style="margin-top:0">Choisi dans chaque fiche. Indique si la personne apparaît dans le planning, si elle a un contrat d’heures (reliquat) et si elle est rattachée à un dentiste (sinon, sa semaine type ne propose que les postes : Accueil, Admin, Sté…).</p><div class="a-liste">' + E.map(function (t, i) {
       var n = util(t.code);
       return '<div class="a-li ty' + (t.retire ? ' retire' : '') + '"><span class="a-it-n"><b>' + esc(t.n) + '</b><span>' + n + ' ' + pl(n, 'personne') + (t.base ? ' · type de base' : '') + '</span></span>'
-        + (t.base ? '<span class="ty-f">' + (t.planning ? 'Planning' : '') + (t.contrat ? ' · contrat' : ' · sans contrat') + '</span>'
-          : '<label class="ty-c"><input type="checkbox" data-typl="' + i + '"' + (t.planning !== false ? ' checked' : '') + '>Planning</label><label class="ty-c"><input type="checkbox" data-tyco="' + i + '"' + (t.contrat !== false ? ' checked' : '') + '>Contrat</label><button class="btn l sm" data-tyret="' + i + '"' + (n && !t.retire ? ' title="Utilisé dans ' + n + ' fiche(s) : il restera lisible"' : '') + '>' + (t.retire ? 'Rétablir' : 'Retirer') + '</button>') + '</div>';
+        + (t.base ? '<span class="ty-f">' + (t.planning ? 'Planning' : '') + (t.contrat ? ' · contrat' : ' · sans contrat') + (t.dentiste !== false ? ' · rattaché à un dentiste' : '') + '</span>'
+          : '<label class="ty-c"><input type="checkbox" data-typl="' + i + '"' + (t.planning !== false ? ' checked' : '') + '>Planning</label><label class="ty-c"><input type="checkbox" data-tyco="' + i + '"' + (t.contrat !== false ? ' checked' : '') + '>Contrat</label><label class="ty-c"><input type="checkbox" data-tyde="' + i + '"' + (t.dentiste !== false ? ' checked' : '') + '>Rattaché à un dentiste</label><button class="btn l sm" data-tyret="' + i + '"' + (n && !t.retire ? ' title="Utilisé dans ' + n + ' fiche(s) : il restera lisible"' : '') + '>' + (t.retire ? 'Rétablir' : 'Retirer') + '</button>') + '</div>';
     }).join('') + '</div>';
-    h += '<div class="card po-add"><b>Nouveau type</b><input class="in" id="tynew" placeholder="Ex. : Secrétaire, Hygiéniste, Aide-dentaire"><label class="row"><input type="checkbox" id="tynewpl" checked style="width:20px;height:20px"> Apparaît dans le planning</label><label class="row"><input type="checkbox" id="tynewco" checked style="width:20px;height:20px"> A un contrat d’heures (reliquat)</label><button class="btn" data-act="tyadd">Ajouter le type</button></div>';
+    h += '<div class="card po-add"><b>Nouveau type</b><input class="in" id="tynew" placeholder="Ex. : Secrétaire, Hygiéniste, Aide-dentaire"><label class="ty-n"><input type="checkbox" id="tynewpl" checked> Apparaît dans le planning</label><label class="ty-n"><input type="checkbox" id="tynewco" checked> A un contrat d’heures (reliquat)</label><label class="ty-n"><input type="checkbox" id="tynewde"> Rattaché à un dentiste (travaille au fauteuil, a un dentiste attitré, peut remplacer au fauteuil)</label><button class="btn" data-act="tyadd">Ajouter le type</button></div>';
     return h + '<button class="a-btn navy" data-act="tysave">Enregistrer les types</button></div>';
   }
   function actionReglages(d) {
@@ -785,7 +786,7 @@
       var nt = $('tynew').value.trim(); if (!nt) { toast('Indiquez le nom du type'); return true; }
       var ct = norm(nt).replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'type';
       if (T.some(function (x) { return x.code === ct; })) { toast('Ce type existe déjà'); return true; }
-      T.push({ code: ct, n: nt, planning: $('tynewpl').checked, contrat: $('tynewco').checked }); render(); return true;
+      T.push({ code: ct, n: nt, planning: $('tynewpl').checked, contrat: $('tynewco').checked, dentiste: $('tynewde').checked }); render(); return true;
     }
     if (d.act === 'tysave' && T) { sauverParam('types_personnel', T.filter(function (x) { return !x.base; }), '✔ Types enregistrés', function () { S.typesPers = T.filter(function (x) { return !x.base; }); }); return true; }
     return false;
@@ -838,14 +839,14 @@
     if (!p) return;
     S.pf = { id: id, d: JSON.parse(JSON.stringify(p)) }; S.eqNew = null; S.eqEdit = null; S.tab = 'pfiche'; render(); window.scrollTo(0, 0);
   }
-  function optAff(cur) {
-    var ds = (S.dentistes || []).filter(function (d) { return d.actif || 'D:' + d.id === cur; }).sort(function (a, b) { return a.ordre - b.ordre; });
-    return '<option value="">—</option><optgroup label="Dentistes">' + ds.map(function (d) { var v = 'D:' + d.id; return '<option value="' + v + '"' + (cur === v ? ' selected' : '') + '>Dr ' + esc(d.prenom) + '</option>'; }).join('') + '</optgroup>'
+  function optAff(cur, sansDent) {
+    var ds = (S.dentistes || []).filter(function (d) { return (d.actif && !sansDent) || 'D:' + d.id === cur; }).sort(function (a, b) { return a.ordre - b.ordre; });
+    return '<option value="">—</option>' + (ds.length ? '<optgroup label="Dentistes">' : '<optgroup label="Dentistes" hidden>') + ds.map(function (d) { var v = 'D:' + d.id; return '<option value="' + v + '"' + (cur === v ? ' selected' : '') + '>Dr ' + esc(d.prenom) + '</option>'; }).join('') + '</optgroup>'
       + '<optgroup label="Autres">' + listeCodes(cur).map(function (c) { return '<option value="' + c[0] + '"' + (cur === c[0] ? ' selected' : '') + '>' + c[1] + '</option>'; }).join('') + '</optgroup>';
   }
   function demiEdit(j, k, c) {
     c = c || {}; var off = !c.a || c.a === 'OFF';
-    return '<div class="h-demi"><span class="h-dl">' + (k === 'am' ? 'Matin' : 'Après-midi') + '</span><select class="in" data-tr="' + j + '.' + k + '.a" aria-label="' + JOURS[j] + ' ' + (k === 'am' ? 'matin' : 'après-midi') + '">' + optAff(c.a) + '</select>'
+    return '<div class="h-demi"><span class="h-dl">' + (k === 'am' ? 'Matin' : 'Après-midi') + '</span><select class="in" data-tr="' + j + '.' + k + '.a" aria-label="' + JOURS[j] + ' ' + (k === 'am' ? 'matin' : 'après-midi') + '">' + optAff(c.a, !!(S.pf && S.pf.d && !aDent(S.pf.d.type))) + '</select>'
       + '<span class="h-hh"><input class="in" type="time" data-tr="' + j + '.' + k + '.de" value="' + esc(off ? '' : c.de || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Arrivée"><span>–</span><input class="in" type="time" data-tr="' + j + '.' + k + '.fi" value="' + esc(off ? '' : c.fi || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Départ"></span></div>';
   }
   // Fiche d'une personne : résumé à gauche, rubriques en onglets (sur téléphone : une rubrique à la fois)
@@ -864,7 +865,7 @@
     var resume = '<aside class="fi-g"><section class="fi-carte fi-res"><span class="fi-avt" aria-hidden="true">' + esc((p.prenom || '?').charAt(0).toUpperCase()) + '</span><b class="fi-nom">' + esc(p.prenom || 'Nouvelle personne') + '</b>'
       + '<span class="fi-badges"><span>' + esc(nomType(p)) + (p.statut === 'apprentie' && p.type === 'assistante' ? '' : p.statut === 'apprentie' ? ' · apprentie' : '') + '</span>' + (p.pointage ? '<span class="or">Pointe</span>' : '') + (!p.actif && !nouv ? '<span class="ko">Ancienne</span>' : '') + '</span>'
       + '<div class="fi-tuiles">' + (ty.contrat !== false ? '<div><small>Contrat</small><b>' + (c ? fh(c) : '—') + '</b></div>' : '') + '<div><small>Semaine type</small><b>' + fh(tot) + '</b>' + (c ? '<em class="' + (ecT ? 'plus' : 'ok') + '">' + (ecT ? relTxt(tot - c) : '= contrat') + '</em>' : '') + '</div>'
-      + '<div><small>Dentiste attitré</small><b>' + (da ? 'Dr ' + esc(da.prenom) : '—') + '</b></div>' + (p.statut === 'apprentie' && p.ecole_jour ? '<div><small>École</small><b>' + JOURS[p.ecole_jour] + '</b></div>' : '') + '</div></section>'
+      + (aDent(p.type) ? '<div><small>Dentiste attitré</small><b>' + (da ? 'Dr ' + esc(da.prenom) : '—') + '</b></div>' : '') + (p.statut === 'apprentie' && p.ecole_jour ? '<div><small>École</small><b>' + JOURS[p.ecole_jour] + '</b></div>' : '') + '</div></section>'
       + (nouv ? '' : '<section class="fi-carte"><h3>À venir</h3>' + (avenir.length ? avenir.join('') : '<span class="mu">Rien de prévu</span>') + '</section>'
         + '<section class="fi-carte"><h3>Compte</h3>' + (prof ? '<span>Se connecte avec <b>' + esc(prof.identifiant) + '</b></span><span class="mu">' + LABEL[prof.role] + (prof.cabinet ? ' · cabinet ' + prof.cabinet : '') + '</span>' : '<span class="mu">Pas de compte de connexion</span>') + '</section>') + '</aside>';
     // --- rubriques
@@ -890,7 +891,7 @@
       });
       g += '</div><div class="h-total ' + (ecT ? 'warn' : 'ok') + '"><span>Total de la semaine type</span><b>' + fh(tot) + (c ? ' / ' + fh(c) + ' · ' + (ecT ? relTxt(tot - c) : 'équilibré') : '') + '</b></div>';
       g += '<div class="fi-ed"><b>' + JOURS[cj] + ' ' + (ck === 'am' ? 'matin' : 'après-midi') + '</b>' + demiEdit(cj, ck, (t[cj] || {})[ck]) + '<div class="fi-rac"><button class="btn l sm" data-act="pfcopiejour" data-j="' + cj + '">Copier le ' + JOURS[cj].toLowerCase() + ' sur toute la semaine</button></div></div>';
-      return '<p class="mu fi-intro">Touchez une case pour changer le dentiste ou le poste et les horaires. Le planning de chaque semaine part de là.</p>' + g;
+      return '<p class="mu fi-intro">Touchez une case pour changer ' + (aDent(p.type) ? 'le dentiste ou le poste' : 'le poste') + ' et les horaires. Le planning de chaque semaine part de là.</p>' + g;
     };
     R.absences = function () { return nouv ? avant : '<h3 class="fi-h3">Congés</h3>' + blocConges(false, F.id, p) + '<h3 class="fi-h3">Formations</h3>' + blocConges(false, F.id, p, true) + '<h3 class="fi-h3">Jours off</h3>' + blocOffs(F); };
     R.compte = function () {
@@ -1425,7 +1426,7 @@
   }
   // Dentiste attitré d'une assistante : celui avec qui elle travaille le plus dans sa semaine type (au moins 2 jours)
   function attitre(p) {
-    var n = {}, best = null;
+    var n = {}, best = null; if (!aDent(p.type)) return null;
     Object.keys(p.trame || {}).forEach(function (j) { ['am', 'pm'].forEach(function (k) { var x = (p.trame[j] || {})[k]; if (x && x.a && x.a.slice(0, 2) === 'D:') n[x.a.slice(2)] = (n[x.a.slice(2)] || 0) + 1; }); });
     Object.keys(n).forEach(function (id) { if (n[id] >= 4 && (!best || n[id] > n[best])) best = id; });
     return best;
@@ -2229,8 +2230,8 @@
   }
 
   // Fenêtre d'une case (une personne, un jour)
-  function optAffPl(cur) {
-    return optAff(cur).replace('<optgroup label="Autres">', '<optgroup label="Absences">' + ['CP', 'ARRET', 'FORMATION', 'FERIE'].map(function (a) { return '<option value="' + a + '"' + (cur === a ? ' selected' : '') + '>' + ABS_TXT[a] + '</option>'; }).join('') + '</optgroup><optgroup label="Autres">');
+  function optAffPl(cur, sansDent) {
+    return optAff(cur, sansDent).replace('<optgroup label="Autres">', '<optgroup label="Absences">' + ['CP', 'ARRET', 'FORMATION', 'FERIE'].map(function (a) { return '<option value="' + a + '"' + (cur === a ? ' selected' : '') + '>' + ABS_TXT[a] + '</option>'; }).join('') + '</optgroup><optgroup label="Autres">');
   }
   function ouvrirCase(v) {
     var x = v.split('|'), p = persById(x[0]); if (!p) return;
@@ -2247,9 +2248,9 @@
     };
     var dem = function (d) {
       var c = K[d], off = !c.a || c.a === 'OFF' || ABS.indexOf(c.a) >= 0;
-      if (abs(c) && !K.jc) return '<div class="pl-cd"><span class="h-dl">' + (d === 'AM' ? 'Matin' : 'Après-midi') + '</span><select class="in" data-plk="' + d + '.a">' + optAffPl(c.a) + '</select>' + champH(d + '.h', c.h, heuresRegle(p, iso, d, c.a), 'Heures comptées') + '</div>';
+      if (abs(c) && !K.jc) return '<div class="pl-cd"><span class="h-dl">' + (d === 'AM' ? 'Matin' : 'Après-midi') + '</span><select class="in" data-plk="' + d + '.a">' + optAffPl(c.a, !aDent(p.type)) + '</select>' + champH(d + '.h', c.h, heuresRegle(p, iso, d, c.a), 'Heures comptées') + '</div>';
       if (abs(c) && K.jc) return '';
-      return '<div class="pl-cd"><span class="h-dl">' + (d === 'AM' ? 'Matin' : 'Après-midi') + '</span>' + (K.jc ? '' : '<select class="in" data-plk="' + d + '.a">' + optAffPl(c.a) + '</select>')
+      return '<div class="pl-cd"><span class="h-dl">' + (d === 'AM' ? 'Matin' : 'Après-midi') + '</span>' + (K.jc ? '' : '<select class="in" data-plk="' + d + '.a">' + optAffPl(c.a, !aDent(p.type)) + '</select>')
         + '<span class="h-hh"><input class="in" type="time" data-plk="' + d + '.de" value="' + esc(off ? '' : c.de || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Arrivée"><span>–</span><input class="in" type="time" data-plk="' + d + '.fi" value="' + esc(off ? '' : c.fi || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Départ"></span></div>';
     };
     var hj = heuresDemi(p, iso, 'AM', K.AM) + heuresDemi(p, iso, 'PM', K.PM);
@@ -2261,7 +2262,7 @@
       + (K.r ? '<p class="pl-regle"><b>Règle d’or :</b> ' + esc(affTxt(K.r)) + ' est absent ce jour-là ; proposition : ' + esc(nomAff(K.AM.a)) + (K.PM.a !== K.AM.a ? ' / ' + esc(nomAff(K.PM.a)) : '') + '. Enregistrez pour confirmer ou changez.</p>' : '')
       + (p.consigne ? '<p class="pl-consigne"><b>Consigne :</b> « ' + esc(p.consigne) + ' »</p>' : '')
       + '<label class="pl-jc"><span><b>Journée complète</b><small>même dentiste ou poste le matin et l’après-midi</small></span><input type="checkbox" role="switch" class="h-sw" data-pljc="1"' + (K.jc ? ' checked' : '') + ' aria-label="Journée complète"></label>'
-      + (K.jc ? '<div class="pl-cd"><span class="h-dl">Journée</span><select class="in" data-plk="J.a">' + optAffPl(K.AM.a) + '</select>'
+      + (K.jc ? '<div class="pl-cd"><span class="h-dl">Journée</span><select class="in" data-plk="J.a">' + optAffPl(K.AM.a, !aDent(p.type)) + '</select>'
         + (abs(K.AM) && K.AM.a === K.PM.a ? champH('J.h', K.AM.h != null && K.AM.h !== '' || K.PM.h != null && K.PM.h !== '' ? (+K.AM.h || 0) + (+K.PM.h || 0) : null, heuresRegle(p, iso, 'AM', K.AM.a) + heuresRegle(p, iso, 'PM', K.AM.a), 'Heures comptées pour la journée') : '') + '</div>' : '')
       + dem('AM') + dem('PM')
       + '<div class="pl-vite"><span class="mu">Toute la journée :</span>' + ['CP', 'ARRET', 'ECOLE', 'FORMATION'].map(function (a) { return '<button data-plabs="' + a + '">' + ABS_TXT[a] + '</button>'; }).join('') + '</div>'
@@ -4144,7 +4145,7 @@
     if (t.dataset && (t.dataset.pff || t.dataset.tr) && S.pf) { majPers(t); if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); return; }
     if (t.dataset && t.dataset.dff && S.df) { S.df.d[t.dataset.dff] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox') render(); return; }
     if (t.dataset && S.postesEd && (t.dataset.pon != null || t.dataset.poxl != null || t.dataset.poc != null)) { var pe = S.postesEd[+(t.dataset.pon || t.dataset.poxl || t.dataset.poc)]; if (t.dataset.pon != null) pe.n = t.value.trim() || pe.n; else if (t.dataset.poxl != null) pe.xl = t.value.trim(); else pe.coul = t.value.replace('#', '').toUpperCase(); return; }
-    if (t.dataset && S.typesEd && (t.dataset.typl != null || t.dataset.tyco != null)) { var te = S.typesEd[+(t.dataset.typl || t.dataset.tyco)]; if (t.dataset.typl != null) te.planning = t.checked; else te.contrat = t.checked; return; }
+    if (t.dataset && S.typesEd && (t.dataset.typl != null || t.dataset.tyco != null || t.dataset.tyde != null)) { var te = S.typesEd[+(t.dataset.typl || t.dataset.tyco || t.dataset.tyde)]; if (t.dataset.typl != null) te.planning = t.checked; else if (t.dataset.tyco != null) te.contrat = t.checked; else te.dentiste = t.checked; return; }
     if (t.dataset && t.dataset.ddep && S.df) { var jj = S.df.d.jours = S.df.d.jours || {}; jj[t.dataset.ddep] = t.value ? t.value : true; render(); return; }
     if ((t.id === 'ptlogdu' || t.id === 'ptlogau') && S.ptLog) { S.ptLog[t.id === 'ptlogdu' ? 'du' : 'au'] = t.value; chargerJournalPt(); return; }
     if (t.id === 'ptlogqui' && S.ptLog) { S.ptLog.qui = t.value; render(); return; }
