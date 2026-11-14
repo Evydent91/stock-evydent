@@ -1778,3 +1778,10 @@ button.stk-k{cursor:pointer}
 /* Planning, colonne Heures : semaine juste (bleu foncé) ou à ajuster (orange foncé) */
 .pl-h .pl-hok,.pl-h .pl-hok b{color:var(--navy)}
 .pl-h .pl-hko,.pl-h .pl-hko b{color:#a24d12}
+/* Planning : interrupteur « Intérimaire cette semaine » */
+.pl-sw{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:0 14px 0 8px;border-radius:999px;border:1.5px solid rgba(255,255,255,.3);background:none;color:#fff;font:inherit;font-weight:600;font-size:15px;cursor:pointer;margin-left:12px}
+.pl-sw-k{position:relative;width:40px;height:24px;border-radius:12px;background:rgba(255,255,255,.25);transition:background .15s;flex:none}
+.pl-sw-k::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s}
+.pl-sw.on .pl-sw-k{background:var(--gold)}
+.pl-sw.on .pl-sw-k::after{transform:translateX(16px)}
+.pl-sw[disabled]{opacity:.75;cursor:default}

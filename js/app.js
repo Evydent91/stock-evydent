@@ -1419,9 +1419,9 @@
       sb.from('equipe').select('*').order('ordre'),
       sb.from('dentistes').select('*').order('ordre'),
       sb.from('conges').select('*').gte('au', dIso(new Date(Date.now() - 120 * 864e5))).order('du'),
-      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'simulation_pointage', 'postes', 'types_personnel', 'roles', 'profils'])
+      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'simulation_pointage', 'postes', 'types_personnel', 'roles', 'profils', 'interim_semaines'])
     ]).then(function (r) {
-      if (r[3] && !r[3].error) (r[3].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else if (x.cle === 'postes') S.postes = x.valeur; else if (x.cle === 'types_personnel') S.typesPers = x.valeur; else if (x.cle === 'roles') S.roles = x.valeur; else if (x.cle === 'profils') S.profilsP = Array.isArray(x.valeur) ? x.valeur : null; else S.visible = x.valeur; });
+      if (r[3] && !r[3].error) (r[3].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else if (x.cle === 'postes') S.postes = x.valeur; else if (x.cle === 'types_personnel') S.typesPers = x.valeur; else if (x.cle === 'roles') S.roles = x.valeur; else if (x.cle === 'profils') S.profilsP = Array.isArray(x.valeur) ? x.valeur : null; else if (x.cle === 'interim_semaines') S.interimSem = Array.isArray(x.valeur) ? x.valeur : []; else S.visible = x.valeur; });
       if (!Array.isArray(S.roles)) S.roles = S.roles || [];
       if (r[0].error || r[1].error) { S.equipe = null; S.dentistes = null; } else { S.equipe = r[0].data; S.dentistes = r[1].data; }
       S.conges = r[2] && !r[2].error ? r[2].data : [];
@@ -1792,7 +1792,7 @@
       if (S.moiEq && S.moiEq.pointage) { chargerMonPointage(); chargerMesOublis(); }
       chargerClos();
       var vuR = false;
-      if (r[2] && !r[2].error) (r[2].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'roles') { S.roles = Array.isArray(x.valeur) ? x.valeur : []; vuR = true; } else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else if (x.cle === 'profils') S.profilsP = Array.isArray(x.valeur) ? x.valeur : null; else S.visible = x.valeur; });
+      if (r[2] && !r[2].error) (r[2].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'roles') { S.roles = Array.isArray(x.valeur) ? x.valeur : []; vuR = true; } else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else if (x.cle === 'profils') S.profilsP = Array.isArray(x.valeur) ? x.valeur : null; else if (x.cle === 'interim_semaines') S.interimSem = Array.isArray(x.valeur) ? x.valeur : []; else S.visible = x.valeur; });
       if (!vuR) S.roles = [];
       if (!(r[2] && !r[2].error && (r[2].data || []).some(function (x) { return x.cle === 'simulation_pointage' && x.valeur === true; }))) S.simOn = false;
       if (S.tab !== 'maison' && !ongletPermis(S.tab)) S.tab = 'maison';
@@ -2991,6 +2991,17 @@
     var meme = am.join() === pm.join();
     return '<div class="pl-seul ok">' + (meme ? '<b>' + noms(am) + '</b><small>toute la journée</small>' : '<span>matin : <b>' + noms(am) + '</b></span><span>après-midi : <b>' + noms(pm) + '</b></span>') + '</div>';
   }
+  // Intérimaire : sa ligne n'apparaît que les semaines où on en a besoin (interrupteur) ou s'il a déjà des cases remplies
+  function interimRempli(p, L) { for (var k = 0; k < 5; k++) { var iso = addJ(L, k); if (['AM', 'PM'].some(function (k) { var a = caseEff(p, iso, k).a; return a && a !== 'OFF' && ABS.indexOf(a) < 0; })) return true; } return false; }
+  function interimVisible(p, L) { return (S.interimSem || []).indexOf(L) >= 0 || interimRempli(p, L); }
+  function basculerInterim(L) {
+    var l = (S.interimSem || []).filter(function (x) { return x !== L; }), on = (S.interimSem || []).indexOf(L) < 0;
+    if (on) l.push(L);
+    l = l.filter(function (x) { return x >= addJ(lundiDe(dIso(new Date())), -56); }).sort();
+    var avant = S.interimSem; S.interimSem = l; render();
+    sb.from('parametres').upsert({ cle: 'interim_semaines', valeur: l }, { onConflict: 'cle' }).then(function (r) { if (r.error) throw r.error; })
+      .catch(function (e) { S.interimSem = avant; toast(msgErr(e)); render(); });
+  }
   function vPlanning() {
     if (!S.pl || (!S.pl.de && !S.pl.charge && !S.pl.err)) { chargerSemaine(); if (!S.pl.rows || !S.pl.de) return '<div class="a-corps"><p class="a-vide">Chargement…</p></div>'; }
     var P = S.pl, L = P.lundi, ps = persPlanning(), auj = dIso(new Date());
@@ -3001,7 +3012,8 @@
       + '<div class="pl-nav"><span class="pl-g"></span><button class="h-rond" data-plsem="-7" aria-label="Semaine précédente">' + ico('prec', 20, 2.4) + '</button>' + titreCal(titre, L) + '<button class="h-rond" data-plsem="7" aria-label="Semaine suivante">' + ico('suiv', 20, 2.4) + '</button>'
       + '<span class="pl-g d">' + (lundiDe(auj) !== L ? '<button class="pl-auj" data-plsem="0">Cette semaine</button>' : '') + '</span></div>'
       + '<div class="pl-outils"><div class="hr-seg" role="group" aria-label="Heures affichées"><button data-plpt="0" aria-pressed="' + !S.plVoirPt + '"' + (!S.plVoirPt ? ' class="on"' : '') + '>Planning seul</button><button data-plpt="1" aria-pressed="' + !!S.plVoirPt + '"' + (S.plVoirPt ? ' class="on"' : '') + '>Planning + pointé</button></div>'
-      + (semClose(L) ? '<span class="pl-clos">' + ico('cadenas', 16, 2.4) + 'Clôturée</span>' : '<button class="pl-clob" data-act="clo"' + (addJ(L, 4) >= auj ? ' disabled title="La semaine n’est pas terminée"' : '') + '>' + ico('cadenas', 18, 2.2) + 'Clôturer la semaine</button>') + '</div></header>';
+      + (function () { var it = ps.filter(function (p) { return p.type === 'interimaire'; }); if (!it.length) return ''; var fixe = it.some(function (p) { return interimRempli(p, L); }), on = fixe || (S.interimSem || []).indexOf(L) >= 0; return '<button class="pl-sw' + (on ? ' on' : '') + '" data-act="plinterim" role="switch" aria-checked="' + on + '"' + (fixe ? ' disabled title="L’intérimaire a des cases remplies cette semaine : videz-les pour retirer la ligne"' : '') + '><span class="pl-sw-k" aria-hidden="true"></span>Intérimaire cette semaine</button>'; })()
+      + '<span class="grow"></span>' + (semClose(L) ? '<span class="pl-clos">' + ico('cadenas', 16, 2.4) + 'Clôturée</span>' : '<button class="pl-clob" data-act="clo"' + (addJ(L, 4) >= auj ? ' disabled title="La semaine n’est pas terminée"' : '') + '>' + ico('cadenas', 18, 2.2) + 'Clôturer la semaine</button>') + '</div></header>';
     h += '<div class="a-corps pl-corps">';
     if (!planPret()) return h + '<div class="ban warn">Les mises à jour 009 à 011 de la base ne sont pas encore faites.</div></div>';
     if (S.plImp) h += vImportPlanning();
@@ -3011,7 +3023,7 @@
     h += '<div class="pl-scroll"><div class="pl-grille"><div class="pl-tete pl-nom">Assistantes</div>';
     for (var k = 0; k < 5; k++) { var iso = addJ(L, k), fe = ferie(iso); h += '<div class="pl-tete' + (iso === auj ? ' auj' : '') + '"><b>' + JOURS[k + 1] + '</b><span>' + dateCourte(iso) + (fe ? ' · <em>' + fe + '</em>' : '') + '</span></div>'; }
     h += '<div class="pl-tete pl-h"><b>Heures</b><span>semaine · reliquat</span></div>';
-    ps.forEach(function (p) {
+    ps.filter(function (p) { return p.type !== 'interimaire' || interimVisible(p, L); }).forEach(function (p) {
       h += '<div class="pl-nom"><span class="a-av p">' + initiale(p.prenom) + '</span><span><b>' + esc(p.prenom) + '</b><small>' + (p.type === 'interimaire' ? 'intérimaire' : (p.statut === 'apprentie' ? 'apprentie · ' : '') + fh(+p.contrat_h || 0)) + '</small></span></div>';
       var hs = heuresSem(p, L), c = +p.contrat_h || 0, hx = c > 0 && Math.abs(hs - c) >= 0.01;
       for (var k2 = 0; k2 < 5; k2++) h += celluleJour(p, addJ(L, k2));
@@ -4863,6 +4875,7 @@
     if (d.plus) { setQte(d.plus, (S.sortie.panier[d.plus] || 0) + 1); S.sortie.msg = null; render(); return; }
     if (d.moins) { setQte(d.moins, (S.sortie.panier[d.moins] || 0) - 1); render(); return; }
     if (d.foarch != null) { S.foArch = d.foarch === '1'; render(); return; }
+    if (d.act === 'plinterim') { if (S.pl) basculerInterim(S.pl.lundi); return; }
     if (d.scab) { S.sortie.cab = +d.scab; render(); return; }
     if (d.htous != null) { var ht = d.htous === '1'; if (ht !== !!S.histTous) { S.histTous = ht; render(); chargerHisto(); } return; }
     if (d.rcab) { S.ret.cab = +d.rcab; render(); return; }
