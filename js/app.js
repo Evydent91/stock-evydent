@@ -1783,21 +1783,34 @@
         + '<span class="pb-bars" role="img" aria-label="' + esc(sem.map(function (z) { return dateCourte(z.L) + ' ' + (z.ok ? relTxt(z.e) : 'pas de pointage'); }).join(', ')) + '"><i class="pb-zero"></i>' + sem.map(function (z) { var hp = Math.max(2, Math.round(Math.abs(z.e) / mx * 26)); return '<span><i class="' + (!z.ok ? 'vide' : Math.abs(z.e) < 0.01 ? 'nul' : z.e > 0 ? 'plus' : 'moins') + '" style="height:' + (z.ok ? hp : 2) + 'px;' + (z.e >= 0 ? 'bottom:28px' : 'top:28px') + '"></i></span>'; }).join('') + '</span>'
         + '<span class="pb-dates">' + sem.map(function (z) { return '<span>' + dDe(z.L).getDate() + '/' + (dDe(z.L).getMonth() + 1) + '</span>'; }).join('') + '</span></div>';
     }).join('') + '</div><p class="mu" style="margin:0;font-size:13.5px">Au-dessus du trait : plus d’heures que prévu (orange) ; en dessous : moins (bleu). Gris : pas de journée pointée.</p></div></section>';
-    // à surveiller
-    var al = [];
+    // à surveiller : regroupé par sujet, du plus urgent au moins urgent
+    var jb = G.jb, sq = function (d) { return JC[jourSem(d)].toLowerCase() + '. ' + dDe(d).getDate() + '/' + (dDe(d).getMonth() + 1); };
+    var grp = { oublis: [], retards: [], ecarts: [], refus: [], corr: [] };
     X.forEach(function (x) {
-      if (x.ret.length >= (+R.pt_retards || 3)) al.push('<button class="hr-al plus" data-ptbsel="' + x.p.id + '"><b>' + esc(x.p.prenom) + ' · ' + x.ret.length + ' retards</b><span>' + som(x.ret) + ' min cumulées (seuil d’alerte : ' + (+R.pt_retards || 3) + ')</span></button>');
-      x.sortieM.forEach(function (d) { al.push('<button class="hr-al ko" data-pted="' + x.p.id + '|' + d + '"><b>' + esc(x.p.prenom) + ' · sortie manquante</b><span>' + JOURS[jourSem(d)] + ' ' + dateCourte(d) + ' · à compléter</span></button>'); });
-      x.arriveeM.forEach(function (d) { al.push('<button class="hr-al ko" data-pted="' + x.p.id + '|' + d + '"><b>' + esc(x.p.prenom) + ' · arrivée manquante</b><span>' + JOURS[jourSem(d)] + ' ' + dateCourte(d) + ' · à compléter</span></button>'); });
-      x.aucun.forEach(function (d) { al.push('<button class="hr-al ko" data-pted="' + x.p.id + '|' + d + '"><b>' + esc(x.p.prenom) + ' · aucun pointage</b><span>' + JOURS[jourSem(d)] + ' ' + dateCourte(d) + ' (jour travaillé au planning)</span></button>'); });
-      x.sem.forEach(function (z) { if (z.ok && Math.abs(z.e) > (+R.pt_ecart || 2)) al.push('<button class="hr-al ' + (z.e > 0 ? 'plus' : 'moins') + '" data-ptbsel="' + x.p.id + '"><b>' + esc(x.p.prenom) + ' · ' + relTxt(z.e) + ' sur la semaine</b><span>Semaine du ' + dateCourte(z.L) + ' (seuil : ' + fh(+R.pt_ecart || 2) + ')</span></button>'); });
+      x.sortieM.forEach(function (d) { grp.oublis.push({ q: x.p.prenom, t: 'sortie manquante', w: sq(d), a: 'data-pted="' + x.p.id + '|' + d + '"', k: d }); });
+      x.arriveeM.forEach(function (d) { grp.oublis.push({ q: x.p.prenom, t: 'arrivée manquante', w: sq(d), a: 'data-pted="' + x.p.id + '|' + d + '"', k: d }); });
+      x.aucun.forEach(function (d) { grp.oublis.push({ q: x.p.prenom, t: 'aucun pointage', w: sq(d), a: 'data-pted="' + x.p.id + '|' + d + '"', k: d }); });
+      if (x.ret.length >= (+R.pt_retards || 3)) grp.retards.push({ q: x.p.prenom, t: x.ret.length + ' retards · ' + som(x.ret) + ' min', w: '', a: 'data-ptbsel="' + x.p.id + '"' });
+      x.sem.forEach(function (z) { if (z.ok && Math.abs(z.e) > (+R.pt_ecart || 2)) grp.ecarts.push({ q: x.p.prenom, t: relTxt(z.e) + (z.e > 0 ? ' en plus' : ' en moins'), w: 'sem. ' + dDe(z.L).getDate() + '/' + (dDe(z.L).getMonth() + 1), a: 'data-ptbsel="' + x.p.id + '"' }); });
     });
-    var jb = G.jb, ref = jb ? jb.filter(function (e) { return /^(QR_PERIME|SANS_FICHE|NON_SOUMIS|SIMULATION_COUPEE)$/.test(e.evenement); }) : [], cor = jb ? jb.filter(function (e) { return e.evenement === 'CORRECTION' || e.evenement === 'EFFACEMENT'; }) : [];
-    if (ref.length) al.push('<button class="hr-al neutre" data-act="ptlog"><b>' + ref.length + ' scan' + (ref.length > 1 ? 's' : '') + ' refusé' + (ref.length > 1 ? 's' : '') + '</b><span>' + (ref.some(function (e) { return e.evenement === 'QR_PERIME'; }) ? 'QR périmé : une affiche n’a peut-être pas été remplacée' : 'compte non relié ou non soumis') + ' · détail dans le Journal</span></button>');
-    if (cor.length) al.push('<button class="hr-al neutre" data-act="ptlog"><b>' + cor.length + ' correction' + (cor.length > 1 ? 's' : '') + ' à la main</b><span>Détail dans le Journal</span></button>');
+    grp.oublis.sort(function (a, b) { return a.k < b.k ? 1 : -1; });
+    (jb || []).forEach(function (e) {
+      var pe = e.equipe_id ? persById(e.equipe_id) : null, q = pe ? pe.prenom : '—', w = jlDate(e.quand).slice(0, 5);
+      if (/^(QR_PERIME|SANS_FICHE|NON_SOUMIS|SIMULATION_COUPEE)$/.test(e.evenement)) grp.refus.push({ q: q, t: (EVT_PT[e.evenement] || e.evenement).toLowerCase(), w: w, a: 'data-act="ptlog"' });
+      else if (e.evenement === 'CORRECTION' || e.evenement === 'EFFACEMENT') grp.corr.push({ q: q, t: e.evenement === 'CORRECTION' ? 'correction' : 'effacement', w: w, a: 'data-act="ptlog"' });
+    });
+    var SV = G.surv = G.surv || { ouvert: { oublis: true, retards: true }, tout: {} };
+    var defs = [['oublis', 'Oublis à compléter', 'ko'], ['retards', 'Retards répétés', 'plus'], ['ecarts', 'Écarts de semaine', 'moins'], ['refus', 'Scans refusés', 'neutre'], ['corr', 'Corrections à la main', 'neutre']];
+    var nTot = defs.reduce(function (a, d) { return a + grp[d[0]].length; }, 0);
+    h += '<aside class="hr-cote"><section class="hr-carte sv"><div class="sv-t"><h2>À surveiller</h2><span class="mu">' + (nTot ? nTot + ' ' + pl(nTot, 'point') : 'rien à signaler') + '</span></div>'
+      + defs.filter(function (d) { return grp[d[0]].length; }).map(function (d) {
+        var l = grp[d[0]], ouv = !!SV.ouvert[d[0]], tout = !!SV.tout[d[0]], vis = tout ? l : l.slice(0, 3);
+        return '<div class="sv-g"><button class="sv-h" data-svg="' + d[0] + '" aria-expanded="' + ouv + '"><span class="sv-n ' + d[2] + '">' + l.length + '</span><b>' + d[1] + '</b>' + ico(ouv ? 'haut' : 'bas', 18, 2.4) + '</button>'
+          + (ouv ? '<div class="sv-l">' + vis.map(function (x) { return '<button class="sv-li" ' + x.a + '><b>' + esc(x.q) + '</b><span>' + esc(x.t) + '</span><small>' + esc(x.w) + '</small></button>'; }).join('')
+            + (l.length > 3 ? '<button class="sv-plus" data-svtout="' + d[0] + '">' + (tout ? 'Voir moins' : 'Voir les ' + l.length) + '</button>' : '') + '</div>' : '') + '</div>';
+      }).join('') + (nTot ? '' : '<p class="mu" style="margin:0;padding:0 16px 14px">Rien à signaler sur la période.</p>') + '</section>';
     var cA = [0, 0, 0]; arr.forEach(function (m) { cA[m <= 0 ? 0 : m <= tol ? 1 : 2]++; }); var tA = Math.max(1, arr.length);
-    h += '<aside class="hr-cote"><section class="hr-carte"><h2>À surveiller</h2>' + (al.length ? al.join('') : '<p class="mu" style="margin:0">Rien à signaler sur la période.</p>') + '</section>'
-      + '<section class="hr-carte"><h2>Heures d’arrivée</h2><p class="mu" style="margin:0 0 4px;font-size:14px">Arrivée pointée par rapport à l’heure prévue, toutes les journées</p>'
+    h += '<section class="hr-carte"><h2>Heures d’arrivée</h2><p class="mu" style="margin:0 0 4px;font-size:14px">Arrivée pointée par rapport à l’heure prévue, toutes les journées</p>'
       + [['En avance / à l’heure', 'ok', cA[0]], ['1 à ' + tol + ' min', 'tol', cA[1]], ['Retard (+' + tol + ' min)', 'ret', cA[2]]].map(function (z) { return '<div class="pb-dist"><span>' + z[0] + '</span><span class="pb-db"><i class="' + z[1] + '" style="width:' + Math.round(z[2] / tA * 100) + '%"></i></span><b>' + z[2] + '</b></div>'; }).join('') + '</section></aside></div>';
     return h + '</div>' + modalesPt();
   }
@@ -3904,6 +3917,8 @@
     if (d.act === 'ptimprimer') return imprimerQR();
     if (d.act === 'ptregen') return regenererQR();
     if (d.ptmode && S.ptg) { S.ptg.mode = d.ptmode; render(); return; }
+    if (d.svg && S.ptg && S.ptg.surv) { S.ptg.surv.ouvert[d.svg] = !S.ptg.surv.ouvert[d.svg]; render(); return; }
+    if (d.svtout && S.ptg && S.ptg.surv) { S.ptg.surv.tout[d.svtout] = !S.ptg.surv.tout[d.svtout]; render(); return; }
     if (d.ptbper && S.ptg && S.ptg.bord) { S.ptg.bord.per = d.ptbper; S.ptg.bord.sel = null; render(); return; }
     if (d.ptbnav != null && d.ptbnav !== '' && S.ptg && S.ptg.bord) { var Bn = S.ptg.bord, bn = +d.ptbnav; if (!bn) { Bn.lundi = lundiDe(dIso(new Date())); Bn.mois = addJ(Bn.lundi, 3).slice(0, 7); render(); return; } if (Bn.per === 'semaine') Bn.lundi = addJ(Bn.lundi, 7 * bn); else { var bx = Bn.mois.split('-'), bd = new Date(+bx[0], +bx[1] - 1 + bn, 1); Bn.mois = bd.getFullYear() + '-' + ('0' + (bd.getMonth() + 1)).slice(-2); } render(); return; }
     if (d.ptbsel != null && S.ptg && S.ptg.bord) { S.ptg.bord.sel = d.ptbsel || null; render(); window.scrollTo(0, 0); return; }
