@@ -809,7 +809,9 @@
     if (att) sous.push(att + ' ' + pl(att, 'demande') + ' à valider');
     if (cmd) sous.push(cmd + ' à commander');
     var h = '<header class="a-hd a-maison h-hd"><div class="a-mh-top"><img src="assets/logo-evydent.jpg" alt="Evydent"><span class="grow">Espace dentaire Val d’Yerres</span>'
-      + '<button class="h-rond" data-tab="reglages" aria-label="Réglages">' + ico('reglage', 22) + '</button></div>'
+      + '<button class="h-rond clair" data-tab="compte" aria-label="Changer mon mot de passe" title="Changer mon mot de passe">' + ico('cadenas', 20) + '</button>'
+      + '<button class="h-rond" data-tab="reglages" aria-label="Réglages" title="Réglages">' + ico('reglage', 22) + '</button>'
+      + '<button class="h-moi" data-act="out" aria-label="Changer de personne (' + esc(S.me.nom) + ')" title="Changer de personne"><span class="h-av" aria-hidden="true">' + esc((S.me.nom || '?').charAt(0).toUpperCase()) + '</span><span class="h-moi-t">' + esc(S.me.nom) + ' · changer</span></button></div>'
       + '<div><h1>Bonjour ' + esc(S.me.nom) + '</h1><p>' + LABEL[S.me.role] + ' · ' + j + '</p></div></header>';
     var ca = congesAttente().length + congesAnnul().length;
     h += '<div class="a-corps h-corps">' + vBienvenue()
@@ -817,11 +819,9 @@
       + (ca ? '<button class="h-alerte" data-tab="pconges">' + ico('attente', 22) + '<span><b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à traiter</span>' + ico('suiv', 20, 2.4) + '</button>' : '')
       + '<div class="h-tuiles">'
       + '<button class="h-tuile fonce" data-tab="accueil"><span class="ti">' + ico('boite', 34) + '</span><span class="tt"><b>Gestion de stock</b><span>' + (sous.length ? sous.join(' · ') : 'Sorties, inventaires, commandes') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
-      + (telephone() ? '<div class="h-tuile pc" aria-disabled="true"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span><b class="pc-t">À ouvrir sur ordinateur</b>Le planning et les heures se gèrent sur un écran de PC.</span></span></div>'
-        : '<button class="h-tuile" data-tab="planning"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span>Qui travaille, avec quel dentiste, et les heures</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>') + tuilePointage() + '</div>'
-      + '<button class="h-ligne" data-tab="pconges"><span class="a-lii">' + ico('agenda', 20) + '</span><span class="a-it-n"><b>Congés</b><span>Demandes à valider, prochains congés</span></span>' + ico('suiv', 20, 2.2) + '</button>'
-      + '<button class="h-ligne" data-tab="reglages"><span class="a-lii">' + ico('equipe', 20) + '</span><span class="a-it-n"><b>Réglages</b><span>Tous les réglages, regroupés par outil</span></span>' + ico('suiv', 20, 2.2) + '</button>'
-      + '<div class="h-bas"><button class="a-btn blanc" data-tab="compte">' + ico('code', 20) + 'Mot de passe</button><button class="a-btn navy" data-act="out">' + ico('changer', 20, 2.2) + 'Changer</button></div>'
+      + (telephone() ? '' : '<button class="h-tuile" data-tab="planning"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span>Qui travaille, avec quel dentiste, et les heures</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>' + tuilePointage())
+      + '<button class="h-tuile cg" data-tab="pconges"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Congés</b><span' + (ca ? ' class="h-av-t"' : '') + '>' + (ca ? ca + ' ' + pl(ca, 'demande') + ' à valider' : 'Demandes, absences du mois, soldes') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button></div>'
+      + (telephone() ? '<div class="h-pc"><span class="h-pc-l">À ouvrir sur ordinateur</span><div class="h-pc-g"><span>' + ico('agenda', 20) + '<b>Planning</b></span><span>' + ico('qr', 20) + '<b>Pointage</b></span></div></div>' : '')
       + '</div>';
     return h;
   }

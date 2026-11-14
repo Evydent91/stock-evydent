@@ -1,7 +1,12 @@
 // Journal des versions (affiché dans Plus, pour la référente et la responsable).
 // Types : Majeure (changement profond), Mineure (nouvelle fonction), Correctif (réparation).
 // c = changements visibles ; x = opérations sur les données (pour la responsable).
-window.JOURNAL = [{v:"2.4",t:"Mineure",n:"Congés payés : 30 jours ouvrables, report N-1 et saisie de départ",d:"14 novembre 2026",
+window.JOURNAL = [{v:"2.4.1",t:"Mineure",n:"Accueil de la référente et de la responsable revu",d:"14 novembre 2026",
+c:["Accueil : nouvelle tuile « Congés » à côté de Stock, Planning et Pointage ; elle indique le nombre de demandes à valider. Sur ordinateur, les quatre tuiles tiennent sur une ligne.",
+ "Accueil : la ligne « Réglages » est retirée (la roue en haut à droite suffit). « Mot de passe » et « Changer » quittent le bas de l’écran pour le bandeau du haut : un cadenas, la roue, puis « Prénom · changer » (un rond doré avec l’initiale sur téléphone).",
+ "Accueil sur téléphone : Stock et Congés sont les deux grandes tuiles. Planning et Pointage, à ouvrir sur ordinateur, descendent en bas en deux petites pastilles grises.",
+ "Téléphone (application installée) : en faisant défiler l’accueil, le texte ne passe plus sous l’heure et la batterie."]},
+{v:"2.4",t:"Mineure",n:"Congés payés : 30 jours ouvrables, report N-1 et saisie de départ",d:"14 novembre 2026",
 c:["Règles des heures › Jours décomptés : nouveau mode « Jours ouvrables : lundi au samedi (30 j) », désormais proposé par défaut. Le samedi compte une seule fois par semaine, et seulement quand toute la semaine (lundi → vendredi) est posée, même en deux demandes : un vendredi seul = 1 j, du lundi au vendredi = 6 j, du vendredi au lundi suivant = 2 j. Les dimanches et jours fériés ne comptent jamais. En changeant de mode, les droits passent de 25 à 30 j (ou l’inverse) s’ils étaient restés à la valeur par défaut.",
  "Report N-1 : il est décompté en premier et ne se perd jamais. Dans la fiche (rubrique Absences), trois cases : « Report N-1 » (restant sur le report de départ), « Droits » de la période, « Disponible » (ex. 2 j de report + 30 j). Si des congés sont en attente, le solde après acceptation est indiqué. Chaque congé de la période montre sur quoi il est pris (« 1 j de report + 5 j N »).",
  "Saisie de départ (Congés › Soldes de congés payés › « Saisie de départ ») : une ligne par personne pour entrer le report de l’an dernier, les droits et les jours déjà pris depuis le 1er juin 2026, avant la mise en service. Le disponible se calcule pendant la saisie. Les jours déjà pris sont retirés du report d’abord ; dans la fiche, ils apparaissent comme « Avant la mise en service ». Ces valeurs restent modifiables dans chaque fiche.",
