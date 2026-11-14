@@ -2362,18 +2362,18 @@
     var w = window.open('', '_blank'); if (!w) { toast('Autorisez l’ouverture de fenêtres pour imprimer'); return; }
     var css = '@page{size:A4;margin:0}*{box-sizing:border-box}body{margin:0;font-family:"Source Sans 3",system-ui,sans-serif;color:#1f2a33;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
       + '.pg{width:210mm;height:297mm;display:flex;flex-direction:column;background:#f6f3ec}'
-      + 'header{background:#2b3e4c;color:#fff;padding:12mm 16mm 10mm;text-align:center}header small{display:block;font-size:11pt;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#c9b97a}header h1{margin:2mm 0 0;font-family:"EB Garamond",Georgia,serif;font-weight:600;font-size:46pt;line-height:1.05}header i{display:block;width:22mm;height:1mm;background:#c9b97a;margin:3mm auto 0}'
+      + 'header{background:#2b3e4c;color:#fff;padding:9mm 16mm 9mm;text-align:center}header img{display:block;width:34mm;height:34mm;margin:0 auto 3mm;border-radius:50%}header small{display:block;font-size:11pt;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#c9b97a}header h1{margin:2mm 0 0;font-family:"EB Garamond",Georgia,serif;font-weight:600;font-size:46pt;line-height:1.05}header i{display:block;width:22mm;height:1mm;background:#c9b97a;margin:3mm auto 0}'
       + 'main{flex:1;padding:11mm 18mm 6mm;display:flex;flex-direction:column;align-items:center;gap:9mm}'
-      + '.cadre{padding:6mm;border-radius:7mm;background:#fff;border:1.4mm solid #c9b97a}.cadre svg{width:105mm;height:105mm;display:block}'
+      + '.cadre{padding:6mm;border-radius:7mm;background:#fff;border:1.4mm solid #c9b97a}.cadre svg{width:98mm;height:98mm;display:block}'
       + '.et{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:6mm}.et div{background:#fff;border-radius:5mm;padding:6mm;display:flex;gap:4mm;align-items:center}'
       + '.et b.n{width:14mm;height:14mm;border-radius:50%;background:#2b3e4c;color:#fff;display:flex;align-items:center;justify-content:center;font-family:"EB Garamond",Georgia,serif;font-size:21pt;flex:none}.et div+div b.n{background:#c9b97a;color:#1f2a33}'
       + '.et span{display:flex;flex-direction:column}.et strong{font-size:17pt}.et em{font-style:normal;font-size:12pt;color:#333d46}'
       + 'p{margin:0;font-size:12.5pt;color:#333d46;text-align:center}footer{display:flex;justify-content:space-between;padding:4mm 16mm;font-size:9.5pt;color:#555f68;border-top:.3mm solid #e3e7eb;background:#fff}';
     w.document.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Affiche de pointage</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@600&family=Source+Sans+3:wght@400;700&display=swap"><style>' + css + '</style></head><body><div class="pg">'
-      + '<header><small>Espace dentaire Val d’Yerres</small><h1>Pointage</h1><i></i></header><main><div class="cadre">' + qrSvg(urlPointage(Q.jeton), 400) + '</div>'
+      + '<header><img id="logo" src="' + new URL('assets/icone-512.png', location.href).href + '" alt="Evydent – Espace dentaire Val d’Yerres"><small>Espace dentaire Val d’Yerres</small><h1>Pointage</h1><i></i></header><main><div class="cadre">' + qrSvg(urlPointage(Q.jeton), 400) + '</div>'
       + '<div class="et"><div><b class="n">1</b><span><strong>En arrivant</strong><em>Ouvrez l’appli, tuile « Pointage », et scannez</em></span></div><div><b class="n">2</b><span><strong>En partant</strong><em>Scannez le même QR code</em></span></div></div>'
       + '<p>Un oubli ? Prévenez la référente : elle complètera votre journée.</p></main><footer><span>Réf. ' + esc(refQR(Q)) + '</span><span>QR code du ' + dDe(String(Q.cree_le).slice(0, 10)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) + '</span></footer></div>'
-      + '<script>setTimeout(function(){print()},700)<\/script></body></html>');
+      + '<script>(function(){var f=false,go=function(){if(!f){f=true;setTimeout(function(){print()},400)}},i=document.getElementById("logo");if(i.complete)go();else{i.onload=go;i.onerror=go}setTimeout(go,2500)})()<\/script></body></html>');
     w.document.close();
   }
   function regenererQR() {
