@@ -1672,11 +1672,8 @@
   function vPointage() {
     var G = S.ptg = S.ptg || { mode: 'jour', jour: dIso(new Date()), rows: {} }, J = G.jour, L = lundiDe(J);
     if (G.mode === 'bord') return vPtBord();
-    var titre = G.mode === 'jour' ? JOURS[jourSem(J)] ? JOURS[jourSem(J)] + ' ' + dateCourte(J) : dateCourte(J) : 'Semaine du ' + periode(L, addJ(L, 4)).replace(/^du /, '');
-    var h = '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" data-tab="hub">' + ico('prec', 22, 2.4) + 'Accueil</button><h1>Pointage</h1><span class="pl-hbtns"><button class="pl-imp" data-act="ptlog">' + ico('histo', 18, 2) + '<span class="m-hide">Journal</span></button><button class="pl-imp" data-act="ptqr">' + ico('qr', 18, 2) + '<span class="m-hide">QR code</span></button></span></div>'
-      + '<div class="hr-nav"><div class="hr-seg" role="group" aria-label="Affichage">' + [['jour', 'Jour'], ['semaine', 'Semaine'], ['bord', 'Tableau de bord']].map(function (m) { return '<button data-ptmode="' + m[0] + '" aria-pressed="' + (G.mode === m[0]) + '"' + (G.mode === m[0] ? ' class="on"' : '') + '>' + m[1] + '</button>'; }).join('') + '</div>'
-      + '<div class="hr-per"><button class="h-rond" data-ptnav="-1" aria-label="Précédent">' + ico('prec', 20, 2.4) + '</button><span class="hr-titre"><b>' + titre + '</b></span><button class="h-rond" data-ptnav="1" aria-label="Suivant">' + ico('suiv', 20, 2.4) + '</button>'
-      + (J !== dIso(new Date()) ? '<button class="pl-auj" data-ptnav="0">Aujourd’hui</button>' : '') + '</div></div></header><div class="a-corps hr-corps">';
+    var titre = G.mode === 'jour' ? jourLong(J) : 'Semaine du ' + periode(L, addJ(L, 4)).replace(/^du /, '');
+    var h = enTetePt({ mode: G.mode, titre: titre, nav: 'ptnav', fleches: true, auj: J !== dIso(new Date()) ? 'Aujourd’hui' : '', sous: G.mode === 'jour' ? 'Heures prévues = total de la journée, coupure de midi déduite' : 'Semaine du lundi au vendredi' }) + '<div class="a-corps hr-corps">';
     if (!pointagePret()) return h + '<div class="ban warn">La mise à jour 016 de la base (pointage) n’est pas encore faite.</div></div>' + (S.ptQR ? vQR() : '');
     if (assurerPlage(addJ(L, 6)) || S.pl.chargeH || chargerPointages() || G.charge) return h + '<p class="a-vide">Chargement…</p></div>';
     if (G.err) h += '<div class="ban warn">' + esc(G.err) + '</div>';
@@ -1697,8 +1694,8 @@
     W.forEach(function (L) {
       var er = 0, ep = 0;
       for (var k = 0; k < 5; k++) {
-        var iso = addJ(L, k); if (iso > auj) continue;
-        var r = ptRow(p.id, iso), c = calculJour(p, iso, r), b = bornesPrevues(p, iso);
+        var iso = addJ(L, k), r = ptRow(p.id, iso); if (iso > auj && !r) continue;
+        var c = calculJour(p, iso, r), b = bornesPrevues(p, iso);
         if (!c.travaille) { if (c.effMin != null) { o.reel += c.effMin / 60; o.prevu += c.prevu; er += c.effMin / 60; ep += c.prevu; } continue; }
         o.jT++;
         if (r && r.arrivee && r.sortie) {
@@ -1717,7 +1714,7 @@
     o.ecart = o.reel - o.prevu;
     var am = o.arr.length ? o.arr.reduce(function (a, b) { return a + b; }, 0) / o.arr.length : null;
     o.arrMoy = null;
-    if (o.arr.length) { var abs = 0, n = 0; W.forEach(function (L) { for (var k = 0; k < 5; k++) { var iso = addJ(L, k), r = ptRow(p.id, iso); if (r && r.arrivee && iso <= auj) { abs += minLoc(r.arrivee); n++; } } }); o.arrMoy = n ? Math.round(abs / n) : null; }
+    if (o.arr.length) { var abs = 0, n = 0; W.forEach(function (L) { for (var k = 0; k < 5; k++) { var iso = addJ(L, k), r = ptRow(p.id, iso); if (r && r.arrivee) { abs += minLoc(r.arrivee); n++; } } }); o.arrMoy = n ? Math.round(abs / n) : null; }
     o.arrEcartMoy = am;
     return o;
   }
@@ -1725,6 +1722,17 @@
     var G = S.ptg, k = de + a; if (G.jbK === k) return; G.jbK = k; G.jb = null;
     toutLire('pointage_journal', 'evenement,jour,quand,equipe_id,qr_ref', function (q) { return q.gte('quand', dDe(de).toISOString()).lt('quand', dDe(addJ(a, 1)).toISOString()); })
       .then(function (l) { if (S.ptg.jbK === k) { S.ptg.jb = l; render(); } }).catch(function () { if (S.ptg.jbK === k) { S.ptg.jb = []; render(); } });
+  }
+  function jourLong(iso) { var t = dDe(iso).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }); return t.charAt(0).toUpperCase() + t.slice(1); }
+  // En-tête commun aux vues du pointage : chaque bouton garde toujours la même place (emplacements réservés)
+  function enTetePt(o) {
+    var B = S.ptg && S.ptg.bord, bord = o.mode === 'bord', sel = bord && B && B.sel;
+    return '<header class="a-hd fixe pl-hd pt-hd"><div class="a-hd-row"><button class="a-back" data-' + (sel ? 'ptbsel=""' : 'tab="hub"') + '>' + ico('prec', 22, 2.4) + (sel ? 'Tableau de bord' : 'Accueil') + '</button><h1>' + (sel ? esc((persById(B.sel) || {}).prenom || '') : 'Pointage') + '</h1><span class="pl-hbtns"><button class="pl-imp" data-act="ptlog">' + ico('histo', 18, 2) + '<span class="m-hide">Journal</span></button><button class="pl-imp" data-act="ptqr">' + ico('qr', 18, 2) + '<span class="m-hide">QR code</span></button></span></div>'
+      + '<div class="pt-nav"><div class="hr-seg pt-s1" role="group" aria-label="Affichage">' + [['jour', 'Jour'], ['semaine', 'Semaine'], ['bord', 'Tableau de bord']].map(function (m) { return '<button data-ptmode="' + m[0] + '" aria-pressed="' + (o.mode === m[0]) + '"' + (o.mode === m[0] ? ' class="on"' : '') + '>' + m[1] + '</button>'; }).join('') + '</div>'
+      + '<div class="hr-seg pt-s2' + (bord ? '' : ' cache') + '" role="group" aria-label="Période"' + (bord ? '' : ' aria-hidden="true"') + '>' + [['semaine', 'Semaine'], ['mois', 'Mois'], ['depuis', 'Depuis le début']].map(function (m) { var on = bord && B && B.per === m[0]; return '<button data-ptbper="' + m[0] + '"' + (bord ? '' : ' tabindex="-1"') + ' aria-pressed="' + !!on + '"' + (on ? ' class="on2"' : '') + '>' + m[1] + '</button>'; }).join('') + '</div>'
+      + '<div class="pt-per"><button class="h-rond' + (o.fleches ? '' : ' cache') + '" data-' + o.nav + '="-1" aria-label="Précédent"' + (o.fleches ? '' : ' tabindex="-1"') + '>' + ico('prec', 20, 2.4) + '</button><span class="pt-titre"><b>' + o.titre + '</b></span><button class="h-rond' + (o.fleches ? '' : ' cache') + '" data-' + o.nav + '="1" aria-label="Suivant"' + (o.fleches ? '' : ' tabindex="-1"') + '>' + ico('suiv', 20, 2.4) + '</button></div>'
+      + '<button class="pl-auj pt-auj' + (o.auj ? '' : ' cache') + '" data-' + o.nav + '="0"' + (o.auj ? '' : ' tabindex="-1" aria-hidden="true"') + '>' + (o.auj || 'Aujourd’hui') + '</button></div>'
+      + '<p class="hr-sous pt-sous">' + (o.sous || '&nbsp;') + '</p></header>';
   }
   function enteteBord(B, titre, sous) {
     var nav = B.per === 'depuis' ? '<span class="hr-titre"><b>' + titre + '</b></span>' : '<button class="h-rond" data-ptbnav="-1" aria-label="Précédent">' + ico('prec', 20, 2.4) + '</button><span class="hr-titre"><b>' + titre + '</b></span><button class="h-rond" data-ptbnav="1" aria-label="Suivant">' + ico('suiv', 20, 2.4) + '</button>';
@@ -1739,7 +1747,8 @@
     var titre = B.per === 'semaine' ? 'Semaine du ' + periode(B.lundi, addJ(B.lundi, 4)).replace(/^du /, '') : B.per === 'mois' ? nomMois(B.mois).replace(/^./, function (c) { return c.toUpperCase(); }) : 'Depuis le ' + dateCourte(regles().depuis || '2026-11-02');
     var ps = (S.equipe || []).filter(function (e) { return e.actif && e.pointage; }).sort(function (a, b) { return (a.type === 'interimaire') - (b.type === 'interimaire') || a.ordre - b.ordre; });
     var sous = W.length + ' semaine' + (W.length > 1 ? 's' : '') + ' · ' + periode(W[0], addJ(der, 4)) + ' · ' + ps.length + ' ' + pl(ps.length, 'personne') + ' soumise' + (ps.length > 1 ? 's' : '') + ' au pointage';
-    var h = enteteBord(B, titre, sous) + '<div class="a-corps hr-corps">';
+    var auj0 = dIso(new Date()), estCourant = B.per === 'semaine' ? B.lundi === lundiDe(auj0) : B.per === 'mois' ? B.mois === addJ(lundiDe(auj0), 3).slice(0, 7) : true;
+    var h = enTetePt({ mode: 'bord', titre: titre, nav: 'ptbnav', fleches: B.per !== 'depuis', auj: estCourant ? '' : B.per === 'semaine' ? 'Cette semaine' : 'Ce mois-ci', sous: sous + (regles().pt_reliquat !== false ? ' · <b class="or">Le reliquat utilise le temps pointé</b>' : ' · le reliquat utilise le planning') }) + '<div class="a-corps hr-corps">';
     if (!pointagePret()) return h + '<div class="ban warn">La mise à jour 016 de la base (pointage) n’est pas encore faite.</div></div>';
     if (assurerPlage(addJ(der, 6)) || S.pl.chargeH || assurerPointages(lundiDe(regles().depuis || W[0]), addJ(der, 6))) return h + '<p class="a-vide">Chargement…</p></div>' + modalesPt();
     if (!ps.length) return h + '<div class="card"><b>Personne n’est soumis au pointage pour l’instant.</b></div></div>' + modalesPt();
@@ -1751,7 +1760,7 @@
     var som = function (l) { return l.reduce(function (a, b) { return a + b.m; }, 0); }, oub = sM + aM + nA, pc = jT ? Math.round(jC / jT * 100) : 100;
     var dO = [sM ? sM + ' sortie' + (sM > 1 ? 's' : '') + ' manquante' + (sM > 1 ? 's' : '') : '', aM ? aM + ' arrivée' + (aM > 1 ? 's' : '') + ' manquante' + (aM > 1 ? 's' : '') : '', nA ? nA + ' jour' + (nA > 1 ? 's' : '') + ' sans pointage' : ''].filter(Boolean).join(' · ');
     h += '<section class="hr-kpis" aria-label="Chiffres clés">'
-      + '<div class="hr-kpi"><span class="hr-k">Pointages complets</span><b class="' + (pc >= 95 ? 'ok' : 'plus') + '">' + pc + ' %</b><span>' + jC + ' ' + pl(jC, 'journée') + ' sur ' + jT + ' travaillée' + (jT > 1 ? 's' : '') + '</span></div>'
+      + '<div class="hr-kpi"><span class="hr-k">Pointages complets</span><b class="' + (pc >= 95 ? 'ok' : 'plus') + '">' + (jT ? pc + ' %' : '—') + '</b><span>' + (jT ? jC + ' ' + pl(jC, 'journée') + ' sur ' + jT + ' travaillée' + (jT > 1 ? 's' : '') : 'aucune journée travaillée pointable') + '</span></div>'
       + '<div class="hr-kpi"><span class="hr-k">Oublis</span><b class="' + (oub ? 'ko' : 'ok') + '">' + oub + '</b><span>' + (dO || 'aucun oubli') + '</span></div>'
       + '<div class="hr-kpi"><span class="hr-k">Retards</span><b class="' + (ret.length ? 'plus' : 'ok') + '">' + ret.length + '</b><span>' + (ret.length ? fh(som(ret) / 60) + ' cumulées · ' : '') + 'tolérance ' + tol + ' min</span></div>'
       + '<div class="hr-kpi"><span class="hr-k">Départs avant l’heure</span><b class="' + (dep.length ? 'plus' : 'ok') + '">' + dep.length + '</b><span>' + (dep.length ? fh(som(dep) / 60) + ' cumulées' : 'aucun') + '</span></div>'
@@ -1804,8 +1813,8 @@
     h += '<section class="hr-carte hr-tab"><div class="hr-ct"><h2>Jour par jour</h2><span class="mu">Touchez un jour pour corriger</span></div><div class="hr-scroll"><div class="pd-grille"><div class="pd-l hr-tete"><span>Jour</span><span>Prévu</span><span>Arrivée</span><span>Sortie</span><span>Réel</span><span>Prévu</span><span>Écart</span><span>Remarques</span></div>';
     W.slice().reverse().forEach(function (L) {
       for (var k = 4; k >= 0; k--) {
-        var iso = addJ(L, k); if (iso > auj) continue;
-        var r = ptRow(p.id, iso), cj = calculJour(p, iso, r), b = bornesPrevues(p, iso), tg = [];
+        var iso = addJ(L, k), r = ptRow(p.id, iso); if (iso > auj && !r) continue;
+        var cj = calculJour(p, iso, r), b = bornesPrevues(p, iso), tg = [];
         if (!cj.travaille && cj.effMin == null && !r) continue;
         if (r && r.arrivee && b.d != null && minLoc(r.arrivee) - b.d > tol) tg.push(['Retard ' + (minLoc(r.arrivee) - b.d) + ' min', 'ret']);
         if (r && r.sortie && b.f != null && b.f - minLoc(r.sortie) > tol) tg.push(['Départ ' + (b.f - minLoc(r.sortie)) + ' min avant', 'ret']);
@@ -1832,14 +1841,22 @@
       + '<p class="mu" style="margin:6px 0 0;font-size:13.5px">' + (regles().pt_reliquat !== false ? 'Le reliquat compte le temps réel des journées pointées en entier, sinon le prévu.' : 'Le reliquat utilise le planning (Réglages › Heures).') + ' Le report de ces lignes dans le planning sera étudié ensuite.</p></section>';
     return h;
   }
+  // Heure d'arrivée ou de sortie, avec « +12 min de retard » / « parti 20 min avant » en couleur
+  function celHeure(ts, prevu, sens) {
+    if (!ts) return '<b class="pt-h0">—</b>';
+    var m = minLoc(ts), tol = +regles().pt_tol || 0, d = prevu == null ? null : sens === 'a' ? m - prevu : prevu - m, mauvais = d != null && d > tol;
+    var lib = d == null || Math.abs(d) < 1 ? '' : sens === 'a' ? (d > 0 ? 'retard ' + fMinCourt(d) : 'avance ' + fMinCourt(-d)) : (d > 0 ? 'parti ' + fMinCourt(d) + ' avant' : 'parti ' + fMinCourt(-d) + ' après');
+    return '<span class="pt-hc' + (mauvais ? ' mal' : '') + '"><b>' + (mauvais ? '<i aria-hidden="true">' + (sens === 'a' ? '▲' : '▼') + '</i>' : '') + hTs(ts) + '</b>' + (lib ? '<small>' + lib + '</small>' : '') + '</span>';
+  }
+  function fMinCourt(m) { m = Math.round(m); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + ('0' + (m % 60)).slice(-2); }
   function vPointageJour(ps, J) {
     var tot = 0, totP = 0, h = '<section class="hr-carte hr-tab"><div class="hr-scroll"><div class="pt-grille"><div class="pt-l hr-tete"><span>Personne</span><span>Prévu au planning</span><span>Arrivée</span><span>Sortie</span><span>Pause déduite</span><span>Temps effectif</span><span>Écart</span></div>';
     ps.forEach(function (p) {
-      var r = S.ptg.rows[p.id + '|' + J], c = calculJour(p, J, r), et = etatPointage(p, J, r, c), ec = c.effMin != null ? c.effMin / 60 - c.prevu : null;
+      var r = S.ptg.rows[p.id + '|' + J], c = calculJour(p, J, r), et = etatPointage(p, J, r, c), ec = c.effMin != null ? c.effMin / 60 - c.prevu : null, b = bornesPrevues(p, J);
       if (c.effMin != null) { tot += c.effMin; totP += c.prevu; }
       h += '<button class="pt-l" data-pted="' + p.id + '|' + J + '"><span class="hr-p"><span class="a-av">' + esc((p.prenom || '?')[0]) + '</span><span><b>' + esc(p.type === 'interimaire' ? 'Intérimaire' : p.prenom) + '</b>' + (r && r.corrige_par ? '<small>corrigé par ' + esc(nomProfil(r.corrige_par) || '?') + '</small>' : r && r.note ? '<small>' + esc(r.note) + '</small>' : '') + '</span></span>'
-        + '<span><b>' + esc(c.hor) + '</b>' + (c.prevu ? '<small>' + fh(c.prevu) + '</small>' : '') + '</span>'
-        + '<b>' + (r && r.arrivee ? hTs(r.arrivee) : '—') + '</b><b>' + (r && r.sortie ? hTs(r.sortie) : '—') + '</b>'
+        + '<span class="pt-prev"><b>' + esc(c.hor) + '</b>' + (c.prevu ? '<em>= ' + fh(c.prevu) + '</em>' : '') + '</span>'
+        + celHeure(r && r.arrivee, b.d, 'a') + celHeure(r && r.sortie, b.f, 's')
         + '<span>' + (c.effMin != null ? (c.pauseMin ? fMin(c.pauseMin) : '0h00') : '') + '</span>'
         + '<span>' + (c.effMin != null ? '<b class="pt-eff">' + fh(c.effMin / 60) + '</b>' + (c.hEF ? '<small>dont ' + (c.absTxt || 'école').toLowerCase() + ' ' + fh(c.hEF) + '</small>' : '') : et ? '<span class="pt-et ' + et.k + '">' + et.t + '</span>' : '<span class="mu">—</span>') + '</span>'
         + '<b class="' + hrCouleur(ec) + '">' + (ec == null ? '' : Math.abs(ec) < 0.01 ? '0 h' : relTxt(ec)) + '</b></button>';
@@ -1855,7 +1872,8 @@
       for (var k = 0; k < 5; k++) {
         var iso = addJ(L, k), r = S.ptg.rows[p.id + '|' + iso], c = calculJour(p, iso, r), et = etatPointage(p, iso, r, c);
         tp += c.prevu; if (c.effMin != null) { te += c.effMin; tpp += c.prevu; } else if (c.travaille && iso < auj) manq++;
-        h += '<button class="pt-sc" data-pted="' + p.id + '|' + iso + '">' + (c.effMin != null ? '<b>' + fh(c.effMin / 60) + '</b><small>' + (r && r.arrivee && r.sortie ? hTs(r.arrivee).replace(' h ', 'h') + '–' + hTs(r.sortie).replace(' h ', 'h') + (c.hEF ? ' + ' + c.absTxt.toLowerCase() : '') : esc(c.absTxt || '')) + '</small>' : et ? '<span class="pt-et ' + et.k + '">' + et.t + '</span>' : '<small class="mu">' + esc(c.absTxt || (c.travaille ? '—' : 'repos')) + '</small>') + '</button>';
+        var bs = bornesPrevues(p, iso), tl = +regles().pt_tol || 0, rt = r && r.arrivee && bs.d != null && minLoc(r.arrivee) - bs.d > tl, dp = r && r.sortie && bs.f != null && bs.f - minLoc(r.sortie) > tl;
+        h += '<button class="pt-sc' + (rt || dp ? ' mal' : '') + '" data-pted="' + p.id + '|' + iso + '">' + (c.effMin != null ? '<b>' + fh(c.effMin / 60) + '</b><small>' + (r && r.arrivee && r.sortie ? hTs(r.arrivee).replace(' h ', 'h') + '–' + hTs(r.sortie).replace(' h ', 'h') + (c.hEF ? ' + ' + c.absTxt.toLowerCase() : '') : esc(c.absTxt || '')) + '</small>' + (rt || dp ? '<span class="pt-mal">' + (rt ? '▲ retard ' + fMinCourt(minLoc(r.arrivee) - bs.d) : '') + (rt && dp ? ' · ' : '') + (dp ? '▼ parti ' + fMinCourt(bs.f - minLoc(r.sortie)) + ' avant' : '') + '</span>' : '') : et ? '<span class="pt-et ' + et.k + '">' + et.t + '</span>' : '<small class="mu">' + esc(c.absTxt || (c.travaille ? '—' : 'repos')) + '</small>') + '</button>';
       }
       var ec = te / 60 - tpp;
       h += '<b>' + fh(te / 60) + '</b><span>' + fh(tp) + '</span><span class="pt-ec"><b class="' + hrCouleur(tpp ? ec : null) + '">' + (!tpp ? '—' : Math.abs(ec) < 0.01 ? '0 h' : relTxt(ec)) + '</b>' + (manq ? '<small class="ko">' + manq + ' jour' + (manq > 1 ? 's' : '') + ' sans pointage complet</small>' : '') + '</span></div>';
@@ -3887,7 +3905,7 @@
     if (d.act === 'ptregen') return regenererQR();
     if (d.ptmode && S.ptg) { S.ptg.mode = d.ptmode; render(); return; }
     if (d.ptbper && S.ptg && S.ptg.bord) { S.ptg.bord.per = d.ptbper; S.ptg.bord.sel = null; render(); return; }
-    if (d.ptbnav && S.ptg && S.ptg.bord) { var Bn = S.ptg.bord, bn = +d.ptbnav; if (Bn.per === 'semaine') Bn.lundi = addJ(Bn.lundi, 7 * bn); else { var bx = Bn.mois.split('-'), bd = new Date(+bx[0], +bx[1] - 1 + bn, 1); Bn.mois = bd.getFullYear() + '-' + ('0' + (bd.getMonth() + 1)).slice(-2); } render(); return; }
+    if (d.ptbnav != null && d.ptbnav !== '' && S.ptg && S.ptg.bord) { var Bn = S.ptg.bord, bn = +d.ptbnav; if (!bn) { Bn.lundi = lundiDe(dIso(new Date())); Bn.mois = addJ(Bn.lundi, 3).slice(0, 7); render(); return; } if (Bn.per === 'semaine') Bn.lundi = addJ(Bn.lundi, 7 * bn); else { var bx = Bn.mois.split('-'), bd = new Date(+bx[0], +bx[1] - 1 + bn, 1); Bn.mois = bd.getFullYear() + '-' + ('0' + (bd.getMonth() + 1)).slice(-2); } render(); return; }
     if (d.ptbsel != null && S.ptg && S.ptg.bord) { S.ptg.bord.sel = d.ptbsel || null; render(); window.scrollTo(0, 0); return; }
     if (d.ptnav != null && d.ptnav !== '' && S.ptg) { var pn = +d.ptnav, G = S.ptg; if (!pn) G.jour = dIso(new Date()); else if (G.mode === 'semaine') G.jour = addJ(lundiDe(G.jour), 7 * pn); else { var jx = addJ(G.jour, pn); while (jourSem(jx) < 1 || jourSem(jx) > 5) jx = addJ(jx, pn); G.jour = jx; } render(); return; }
     if (d.pted && S.ptg) { var pe = d.pted.split('|'); S.ptEd = { eid: pe[0], jour: pe[1] }; render(); return; }

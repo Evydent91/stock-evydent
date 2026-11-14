@@ -1057,3 +1057,26 @@ button.pb-l:hover,button.pd-l:hover{background:var(--ivory)}
 .pt-ign input{width:20px;height:20px;flex:none;margin-top:2px}
 .pt-ign > span{display:flex;flex-direction:column;gap:2px}.pt-ign .mu{font-size:13.5px}
 .hr-kpi > span b{font-size:inherit}
+/* Pointage : en-tête aux emplacements fixes */
+.pt-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:6px;flex-wrap:nowrap}
+.pt-nav .cache{visibility:hidden;pointer-events:none}
+.pt-s1,.pt-s2{flex:none}
+.pt-s2 button{font-size:14px;padding:0 13px}
+.pt-per{display:flex;align-items:center;gap:8px;flex:none}
+.pt-titre{width:270px;text-align:center;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pt-auj{flex:none;width:136px;padding:0 10px}
+.pt-sous{min-height:20px}
+/* Pointage, vue Jour : total prévu, retards et départs avant l'heure */
+.pt-prev{display:flex;flex-direction:row !important;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.pt-prev em{font-style:normal;font-weight:700;color:var(--navy);background:var(--soft);border-radius:999px;padding:1px 9px;font-size:14px}
+.pt-hc{display:flex;flex-direction:column}
+.pt-hc small{font-size:12.5px;color:var(--mute)}
+.pt-hc.mal b{color:var(--warn)}
+.pt-hc.mal small{color:var(--warn);font-weight:700}
+.pt-hc i{font-style:normal;font-size:11px;margin-right:3px}
+.pt-sc.mal{border-color:#e8c19a;background:#fffaf4}
+.pt-mal{font-size:12px;font-weight:700;color:var(--warn)}
+.pt-nav .hr-seg button{font-weight:700}
+.pt-s1 button:nth-child(1){width:70px}.pt-s1 button:nth-child(2){width:96px}.pt-s1 button:nth-child(3){width:150px}
+.pt-s2 button:nth-child(1){width:90px}.pt-s2 button:nth-child(2){width:66px}.pt-s2 button:nth-child(3){width:140px}
+.pt-nav .hr-seg button{padding:0 6px}
