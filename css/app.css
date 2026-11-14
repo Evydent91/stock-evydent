@@ -1627,3 +1627,51 @@ button.stk-k{cursor:pointer}
   .cm-go{width:100%}
   .cm-c{flex-wrap:wrap;gap:6px 10px}.cm-cn{flex:1 1 100%}
 }
+
+/* Écran Inventaire */
+.iv-emps{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:8px;margin:0 0 14px}
+.iv-emp{border-radius:14px;padding:8px 4px;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:#fff;border:1.5px solid var(--line);color:var(--ink);font:inherit;cursor:pointer}
+.iv-emp b{font-size:15px}.iv-emp span{font-size:12.5px;font-weight:600;color:var(--mute)}
+.iv-emp.warn span{color:var(--warn)}.iv-emp.ko span{color:var(--ko)}.iv-emp.ko{border-color:#e6a49e}
+.iv-emp.on{background:var(--navy);border-color:var(--navy);color:#fff}.iv-emp.on span{color:var(--gold)}
+.iv-w{display:flex;gap:14px;align-items:flex-start}
+.iv-l{flex:1;min-width:0;background:#fff;border-radius:18px;box-shadow:0 1px 3px rgba(31,42,51,.08);overflow:hidden}
+.iv-h{padding:14px 18px 12px;border-bottom:1px solid var(--soft);display:flex;flex-direction:column;gap:10px}
+.iv-h1{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.iv-t{flex:1;min-width:220px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.iv-t h3{margin:0;font-family:var(--serif);font-weight:600;font-size:24px}
+.iv-t .mu{font-size:14px}.iv-t .mu b{color:var(--ink)}
+.iv-seg{background:var(--ivory);box-shadow:none}
+.iv-seg button{min-height:38px;font-size:14px;padding:0 12px}
+.iv-h2{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.iv-q{flex:0 1 340px}
+.iv-der{font-size:13.5px}
+.iv-bar{height:8px;border-radius:4px;background:var(--soft);overflow:hidden}
+.iv-bar i{display:block;height:100%;border-radius:4px;background:var(--gold)}
+.iv-sect{margin:0;padding:8px 18px;background:#fbfaf6;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--mute)}
+.iv-r{display:grid;grid-template-columns:minmax(0,1fr) 120px auto;gap:14px;padding:9px 18px;border-top:1px solid var(--soft);align-items:center}
+.iv-r.fait{background:#fbfaf3}
+.iv-a{display:flex;flex-direction:column;min-width:0}.iv-a b{font-size:15.5px}.iv-a > span{font-size:13px;color:var(--mute)}
+.iv-p{font-size:14px;color:var(--mute)}.iv-p b{color:var(--ink)}
+.iv-st{display:flex;align-items:center;gap:6px;justify-content:flex-end}
+.iv-eq{min-height:44px;min-width:56px;padding:0 10px;border-radius:12px;border:1.5px solid var(--line);background:#fff;font:inherit;font-weight:700;font-size:14px;color:var(--ok);cursor:pointer;white-space:nowrap}
+.iv-st input{width:62px;height:44px;border:1.5px solid var(--line);border-radius:12px;text-align:center;font:inherit;font-size:17px;font-weight:700;color:var(--ink)}
+.iv-st input:focus{outline:none;border-color:var(--gold)}
+.iv-r.fait .iv-st input{border-color:var(--gold);background:#fffdf6}
+.iv-plus{width:calc(100% - 36px);margin:10px 18px 14px}
+.iv-side{flex:0 0 280px;display:flex;flex-direction:column;gap:10px}
+.iv-ec{background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(31,42,51,.08);padding:14px 16px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.iv-ec b.moins{color:var(--warn)}.iv-ec b.plus{color:var(--ok)}.iv-ec .mu{font-size:13px}
+.iv-add{min-height:46px;border-radius:12px;border:1.5px dashed var(--gold2);background:#fffdf6;color:#7a6a2a;font:inherit;font-weight:700;font-size:14.5px;cursor:pointer;padding:0 12px}
+.iv-add.on{border-style:solid}
+.iv-b{min-height:46px;border-radius:12px;border:1.5px solid var(--line);background:#fff;color:var(--ink2);font:inherit;font-weight:700;font-size:14.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 12px;text-align:center}
+@media (max-width:1100px){.iv-emps{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media (max-width:900px){.iv-w{flex-direction:column;align-items:stretch}.iv-side{flex:none}}
+@media (max-width:700px){
+  .iv-emps{display:flex;overflow-x:auto;gap:6px;padding-bottom:4px}.iv-emp{flex:0 0 88px}
+  .iv-h{padding:12px 14px}
+  .iv-r{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"a p" "s s";gap:6px 10px;padding:10px 14px}
+  .iv-a{grid-area:a}.iv-p{grid-area:p}.iv-st{grid-area:s;justify-content:flex-start}
+  .iv-st input{flex:1}
+  .iv-sect{padding:8px 14px}
+}

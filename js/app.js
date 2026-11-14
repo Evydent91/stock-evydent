@@ -3573,34 +3573,43 @@
     }).sort(parUsage(emp || null));
   }
   function nbComptes() { return Object.keys(S.inv.d).filter(function (k) { return S.inv.d[k] !== '' && S.inv.d[k] != null && S.byId[k]; }).length; }
+  function nomEmp(e) { return e === 0 ? 'Réserve' : e === 9 ? 'La Sté' : 'Cabinet ' + e; }
   function vInventaire() {
-    var I = S.inv, emp = I.emp, h = retourAcc('Inventaire');
+    var I = S.inv, emp = I.emp, h = '';
     if (I.msg) h += '<div class="ban ' + I.msg[0] + '" role="status">' + I.msg[1] + '</div>';
     if (j0Actif()) h += '<div class="ban j0">🚩 <b>Inventaire de départ (J0)</b> jusqu’au ' + S.j0.fin.split('-').reverse().slice(0, 2).join('/') + ' : les quantités comptées <b>remplacent</b> le stock, sans perte ni gain.' + (emp != null && j0Premier(emp) ? ' <b>Les articles non comptés de cet emplacement passeront à 0.</b>' : '') + (gestion() ? ' <button class="lnk" data-act="j0off">Terminer le J0</button>' : '') + '</div>';
-    else if (gestion()) h += (I.j0ask ? '<div class="ban j0"><b>Lancer l’inventaire de départ (J0) ?</b><br>Pendant 7 jours, chaque inventaire remplacera directement le stock : aucune perte, aucun gain, aucun motif. Au premier comptage de chaque emplacement, les articles non comptés passeront à 0.<div class="row" style="margin-top:10px"><button class="btn l sm" data-act="j0non">Non</button><button class="btn sm" data-act="j0oui">Oui, lancer le J0</button></div></div>' : '<button class="btn l sm" style="margin-bottom:12px" data-act="j0ask">🚩 Lancer l’inventaire de départ (J0)</button>');
-    var opts = (peutReserve() ? '<option value="0"' + (emp === 0 ? ' selected' : '') + '>Réserve</option>' : '') + [1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (c) { return '<option value="' + c + '"' + (emp === c ? ' selected' : '') + '>' + (c === 9 ? 'La Sté' : 'Cabinet ' + c + (S.me.cabinet === c ? ' (le mien)' : '')) + '</option>'; }).join('');
-    h += '<div class="card' + (emp != null ? ' filtre' : '') + '"><div class="' + (emp != null ? 'frow' : 'g2') + '"><label class="mu fcab"><span class="m-hide">Emplacement à compter</span><select class="in" id="iemp" aria-label="Emplacement à compter"><option value="">— Choisir —</option>' + opts.replace(/>Cabinet (\d)( \(le mien\))?</g, function (m0, c, mien) { return '>Cab. ' + c + (mien ? ' ★' : '') + '<'; }) + '</select></label>'
-      + (emp != null ? '<label class="mu fq"><span class="m-hide">Rechercher</span><input class="in" id="iq" type="search" placeholder="🔍 Nom ou référence" value="' + esc(I.q) + '" aria-label="Rechercher"></label>' : '') + '</div>'
-      + (emp != null && horsCab(emp) ? '<p class="ban warn" style="margin:10px 0 0">Ce n’est pas votre cabinet : l’inventaire sera enregistré « hors cabinet » (remplacement).</p>' : '')
-      + (!peutReserve() ? '<p class="mu" style="margin:8px 0 0">L’inventaire de la réserve est fait par la responsable ou la référente (ou sur autorisation).</p>' : '') + '</div>';
-    if (emp == null) return h + (peutReserve() ? '<p class="mu">💡 Pour compter la réserve avec un fichier Excel, choisissez <b>Réserve</b> : les boutons « Fichier de comptage Excel » et « Importer le comptage » apparaissent.</p>' : '');
-    if (emp === 0 && !I.recap && peutReserve()) h += '<div class="row wrap" style="margin:0 0 10px"><button class="btn l sm" data-act="iexp">⬇️ Fichier de comptage Excel</button><label class="btn l sm" style="display:inline-flex;align-items:center">⬆️ Importer le comptage<input type="file" id="iimpf" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label></div>';
+    else if (gestion()) h += (I.j0ask ? '<div class="ban j0"><b>Lancer l’inventaire de départ (J0) ?</b><br>Pendant 7 jours, chaque inventaire remplacera directement le stock : aucune perte, aucun gain, aucun motif. Au premier comptage de chaque emplacement, les articles non comptés passeront à 0.<div class="row" style="margin-top:10px"><button class="btn l sm" data-act="j0non">Non</button><button class="btn sm" data-act="j0oui">Oui, lancer le J0</button></div></div>' : '');
+    var emps = (peutReserve() ? [0] : []).concat([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    h += '<section class="iv-emps" aria-label="Emplacement à compter">' + emps.map(function (e) {
+      var st = etatInventaire(e), on = emp === e;
+      return '<button class="iv-emp ' + st.cls + (on ? ' on' : '') + '" data-iemp="' + e + '" aria-pressed="' + on + '" title="' + esc(st.txt) + '"><b>' + (e === 0 ? 'Réserve' : e === 9 ? 'La Sté' : 'Cab. ' + e + (S.me.cabinet === e ? ' ★' : '')) + '</b><span>' + (on ? 'en cours' : st.der ? new Date(st.der).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : 'jamais compté') + '</span></button>';
+    }).join('') + '</section>';
+    if (!peutReserve()) h += '<p class="mu">L’inventaire de la réserve est fait par la responsable ou la référente (ou sur autorisation).</p>';
+    if (emp == null) return h + '<p class="mu">Choisissez l’emplacement à compter. En orange : à faire bientôt ou jamais compté ; en rouge : en retard.</p>' + (peutReserve() ? '<p class="mu">Pour compter la réserve avec un fichier Excel, choisissez <b>Réserve</b> : les boutons « Fichier de comptage Excel » et « Importer le comptage » apparaissent.</p>' : '');
+    if (horsCab(emp)) h += '<p class="ban warn">Ce n’est pas votre cabinet : l’inventaire sera enregistré « hors cabinet » (remplacement).</p>';
     if (I.recap) return h + vRecap();
-    var der = S.dernierInv[emp];
-    h += '<p class="mu">' + (der ? 'Dernier inventaire : ' + new Date(der).toLocaleDateString('fr-FR') : 'Premier inventaire de cet emplacement : tous les articles sont listés, saisissez ceux qui sont présents.') + ' Votre saisie est gardée sur cet appareil jusqu’à la validation.</p>';
-    if (emp > 0 && der) h += '<label class="row" style="margin:0 0 10px"><input type="checkbox" id="itous"' + (I.tous ? ' checked' : '') + ' style="width:20px;height:20px"> Afficher tous les articles (produit trouvé qui n’était pas prévu)</label>';
-    var l = listeInv(), max = I.max || 80, tot = l.length, faits = l.filter(function (a) { return I.d[a.id] != null && I.d[a.id] !== ''; }).length;
-    h += '<div class="prog"><div class="row"><b class="grow">' + faits + ' compté(s) sur ' + tot + '</b><span class="mu">gardé sur cet appareil</span></div><div class="prog-b"><i style="width:' + (tot ? Math.round(faits * 100 / tot) : 0) + '%"></i></div>'
-      + '<div class="chips"><button class="chip' + (I.reste ? ' on' : '') + '" data-act="ireste">Pas encore comptés · ' + (tot - faits) + '</button><button class="chip' + (!I.reste ? ' on' : '') + '" data-act="itout">Tous</button></div></div>';
+    var der = S.dernierInv[emp], l = listeInv(), max = I.max || 80, tot = l.length, faits = l.filter(function (a) { return I.d[a.id] != null && I.d[a.id] !== ''; }).length;
+    h += '<div class="iv-w"><section class="iv-l"><div class="iv-h"><div class="iv-h1"><span class="iv-t"><h3>' + nomEmp(emp) + '</h3><span class="mu"><b>' + faits + ' compté' + (faits > 1 ? 's' : '') + ' sur ' + tot + '</b> · gardé sur cet appareil jusqu’à la validation</span></span>'
+      + '<span class="cm-seg iv-seg" role="tablist" aria-label="Filtre"><button role="tab" aria-selected="' + !!I.reste + '" class="' + (I.reste ? 'on' : '') + '" data-act="ireste">Reste à compter · ' + (tot - faits) + '</button><button role="tab" aria-selected="' + !I.reste + '" class="' + (!I.reste ? 'on' : '') + '" data-act="itout">Tous</button></span></div>'
+      + '<div class="iv-h2"><label class="stk-q iv-q">' + ico('loupe', 18, 2.2) + '<input id="iq" type="search" placeholder="Nom ou référence" value="' + esc(I.q) + '" aria-label="Rechercher"></label><span class="mu iv-der">' + (der ? 'Dernier inventaire : ' + new Date(der).toLocaleDateString('fr-FR') : 'Premier inventaire ici : tous les articles sont listés, saisissez ceux qui sont présents.') + '</span></div>'
+      + '<div class="iv-bar"><i style="width:' + (tot ? Math.round(faits * 100 / tot) : 0) + '%"></i></div></div>';
     if (I.reste) l = l.filter(function (a) { return I.d[a.id] == null || I.d[a.id] === ''; });
-    if (!l.length) h += '<p class="mu">Aucun article.</p>';
-    else h += '<div class="sect">' + (emp ? '⭐ Les plus sortis du cabinet ' + emp + ' en premier' : '⭐ Les plus sortis du centre en premier') + ' · ' + nbComptes() + ' compté(s)</div><div class="card liste">' + l.slice(0, max).map(function (a) {
-      var v = I.d[a.id];
-      return '<div class="it' + (v != null && v !== '' ? ' choisi' : '') + '"><div class="it-n"><b>' + esc(a.nom) + (a.reference && !estSR(a) ? '<span class="ref">' + esc(a.reference) + '</span>' : '') + '</b><span>en ' + uInv(a, emp) + (gestion() ? ' · théorique : ' + fr(theo(a, emp)) : '') + '</span></div>'
-        + '<div class="stp"><button type="button" data-izero="' + a.id + '" class="zero" aria-label="Aucun">0</button><input inputmode="decimal" data-iq="' + a.id + '" value="' + esc(v == null ? '' : v) + '" placeholder="—" aria-label="Quantité comptée"></div></div>';
-    }).join('') + '</div>';
-    if (l.length > max) h += '<button class="btn l" style="width:100%" data-act="iplus">Afficher plus d’articles (' + (l.length - max) + ' restants)</button>';
-    return h;
+    if (!l.length) h += '<p class="mu stk-vide">' + (tot && I.reste ? 'Tout est compté : touchez « J’ai fini de compter ».' : 'Aucun article.') + '</p>';
+    else h += '<p class="iv-sect">' + (emp ? 'Les plus sortis ' + (emp === 9 ? 'de la Sté' : 'du cabinet ' + emp) : 'Les plus sortis du centre') + ' en premier</p>' + l.slice(0, max).map(function (a) {
+      var v = I.d[a.id], fait = v != null && v !== '', t = theo(a, emp);
+      return '<div class="iv-r' + (fait ? ' fait' : '') + '"><span class="iv-a"><b>' + esc(a.nom) + '</b><span>' + (a.reference && !estSR(a) ? esc(a.reference) + ' · ' : '') + 'compté en ' + uInv(a, emp) + '</span></span>'
+        + (gestion() ? '<span class="iv-p">prévu <b>' + fr(t) + '</b></span>' : '<span></span>')
+        + '<span class="iv-st">' + (gestion() ? '<button type="button" class="iv-eq" data-ieq="' + a.id + '" aria-label="Compté comme prévu : ' + fr(t) + '">= ' + fr(t) + '</button>' : '<button type="button" class="iv-eq" data-izero="' + a.id + '" aria-label="Aucun">0</button>')
+        + '<button type="button" class="cm-pm" data-istep="' + a.id + '|-1" aria-label="Un de moins">−</button><input inputmode="decimal" data-iq="' + a.id + '" value="' + esc(v == null ? '' : v) + '" placeholder="—" aria-label="Quantité comptée : ' + esc(a.nom) + '"><button type="button" class="cm-pm" data-istep="' + a.id + '|1" aria-label="Un de plus">+</button></span></div>';
+    }).join('');
+    if (l.length > max) h += '<button class="btn l iv-plus" data-act="iplus">Afficher plus d’articles (' + (l.length - max) + ' restants)</button>';
+    h += '</section><aside class="iv-side">';
+    var E = ecartsInv();
+    if (gestion() && E.length) h += '<div class="iv-ec"><b>Écarts déjà vus</b>' + E.slice(0, 8).map(function (e) { var d = e.apres - e.avant; return '<span>' + esc(e.a.nom) + ' : <b class="' + (d < 0 ? 'moins' : 'plus') + '">' + (d > 0 ? '+' : '') + fr(d) + '</b></span>'; }).join('') + (E.length > 8 ? '<span class="mu">et ' + (E.length - 8) + ' autre(s)</span>' : '') + '<span class="mu">' + (emp === 0 && !j0Actif() ? 'Un motif sera demandé à la validation.' : 'Le détail s’affiche au bilan.') + '</span></div>';
+    if (emp > 0 && der) h += '<button class="iv-add' + (I.tous ? ' on' : '') + '" data-act="itousb" aria-pressed="' + !!I.tous + '">' + (I.tous ? '✓ Tous les articles sont affichés' : '+ Article trouvé, pas prévu ici') + '</button>';
+    if (emp === 0 && peutReserve()) h += '<button class="iv-b" data-act="iexp">' + ico('telecharger', 18, 2.2) + 'Fichier de comptage Excel</button><label class="iv-b">' + ico('haut', 18, 2.2) + 'Importer le comptage<input type="file" id="iimpf" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label>';
+    if (gestion() && !j0Actif() && !I.j0ask) h += '<button class="iv-b" data-act="j0ask">Lancer l’inventaire de départ (J0)</button>';
+    return h + '</aside></div>';
   }
   function ecartsInv() {
     var emp = S.inv.emp, out = [];
@@ -4792,6 +4801,10 @@
     if (d.plus) { setQte(d.plus, (S.sortie.panier[d.plus] || 0) + 1); S.sortie.msg = null; render(); return; }
     if (d.moins) { setQte(d.moins, (S.sortie.panier[d.moins] || 0) - 1); render(); return; }
     if (d.izero) { S.inv.d[d.izero] = '0'; ecrireBrouillon(); render(); return; }
+    if (d.iemp != null && d.iemp !== '') { choisirEmp(+d.iemp); render(); return; }
+    if (d.ieq) { var ia = S.byId[+d.ieq]; if (ia) { S.inv.d[d.ieq] = String(theo(ia, S.inv.emp)).replace('.', ','); ecrireBrouillon(); render(); } return; }
+    if (d.istep) { var is = d.istep.split('|'), iv = S.inv.d[is[0]], ic = iv == null || iv === '' ? null : nb(String(iv).replace(',', '.')) || 0; ic = ic == null ? (+is[1] > 0 ? 1 : 0) : Math.max(0, Math.round((ic + +is[1]) * 100) / 100); S.inv.d[is[0]] = String(ic).replace('.', ','); ecrireBrouillon(); render(); return; }
+    if (d.act === 'itousb') { S.inv.tous = !S.inv.tous; render(); return; }
     if (d.act === 'iterminer') { S.inv.recap = true; render(); window.scrollTo(0, 0); return; }
     if (d.act === 'irevenir') { S.inv.recap = false; render(); return; }
     if (d.act === 'ivalider') return validerInv();
