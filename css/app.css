@@ -1981,3 +1981,5 @@ button.stk-k{cursor:pointer}
 .a-app:has(> .a-corps.rf){max-width:1100px}.a-app:has(> .a-corps.rf-ro){max-width:1640px}
 .rf-ro .cg2-f,.rf-ro .cg2-astuce,.rf-ro .cg2-note,.rf-ro .cp-note,.rf-ro .cg2-k > div:nth-child(2){display:none}
 @media (min-width:1100px){.cg2-2c.rf-ro .cg2-cg > .cg2-k{grid-row:2;grid-template-columns:repeat(2,minmax(0,1fr))}.cg2-2c.rf-ro .cg2-cg > .cg2-carte{grid-row:3}}
+.cp-mois{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14.5px}.cp-mois .in{width:auto;height:44px}
+.cp3-d span b{font-weight:700}
