@@ -1568,12 +1568,13 @@
   function chargerMesConges() {
     if (gestion() || !S.me) return Promise.resolve();
     return Promise.all([sb.from('equipe').select('*').eq('profil_id', S.me.id).maybeSingle(), sb.from('conges').select('*').order('du', { ascending: false }).limit(60),
-      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'roles'])]).then(function (r) {
+      sb.from('parametres').select('cle,valeur').in('cle', ['regles_heures', 'planning_visible', 'roles', 'simulation_pointage'])]).then(function (r) {
       S.moiEq = r[0].error ? null : r[0].data; S.mesConges = r[1].error ? [] : r[1].data || []; S.mesCongesOk = !r[0].error;
       if (S.moiEq && S.moiEq.pointage) { chargerMonPointage(); chargerMesOublis(); }
       var vuR = false;
-      if (r[2] && !r[2].error) (r[2].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'roles') { S.roles = Array.isArray(x.valeur) ? x.valeur : []; vuR = true; } else S.visible = x.valeur; });
+      if (r[2] && !r[2].error) (r[2].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'roles') { S.roles = Array.isArray(x.valeur) ? x.valeur : []; vuR = true; } else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else S.visible = x.valeur; });
       if (!vuR) S.roles = [];
+      if (!(r[2] && !r[2].error && (r[2].data || []).some(function (x) { return x.cle === 'simulation_pointage' && x.valeur === true; }))) S.simOn = false;
       if (S.tab !== 'maison' && !ongletPermis(S.tab)) S.tab = 'maison';
       render();
     }, function () { S.moiEq = null; S.mesConges = []; render(); });
@@ -1895,7 +1896,7 @@
   }
   // Simulation (site de test seulement) : jour et heure choisis par l'assistante pour tester sans attendre
   function simPt() {
-    if (CONFIG.env !== 'dev') return null;
+    if (CONFIG.env !== 'dev' || (!gestion() && S.simOn !== true)) return null;   // simulation coupée par la référente : heure réelle
     if (S.sim === undefined) try { S.sim = JSON.parse(sessionStorage.getItem('evy-sim') || 'null'); } catch (e) { S.sim = null; }
     if (!S.sim || !S.sim.jour || !S.sim.heure) return null;
     var x = S.sim.heure.split(':'), d = dDe(S.sim.jour); d.setHours(+x[0], +x[1], 0, 0); return d;
@@ -1932,7 +1933,7 @@
     return vSimA() + '<button class="tuile-pt' + (r && r.sortie ? ' fait' : '') + '" data-act="scan"><span class="ti">' + ico('qr', 34) + '</span><span class="tt"><b>' + t + '</b><span>' + sous + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>';
   }
   function vSimA() {
-    if (CONFIG.env !== 'dev') return '';
+    if (CONFIG.env !== 'dev' || S.simOn !== true) return '';   // encadré visible seulement quand la référente autorise la simulation
     simPt(); var Z = S.sim || {}, jt = ''; try { jt = localStorage.getItem('evy-jeton-test') || ''; } catch (e) {}
     return '<div class="sim"><b>Simulation (site de test)</b><span class="mu">Choisissez un jour et une heure, puis pointez : c’est cette heure qui est enregistrée. Laissez vide pour l’heure réelle.</span>'
       + '<div class="sim-l"><input class="in" type="date" id="simj" value="' + esc(Z.jour || '') + '" aria-label="Jour simulé"><input class="in" type="time" id="simh" value="' + esc(Z.heure || '') + '" aria-label="Heure simulée">'
