@@ -1792,7 +1792,7 @@
   // Pointages chargés par plage de dates (on garde ce qui est déjà chargé)
   function assurerPointages(de, a, force) {
     if (!pointagePret()) return null;
-    var G = S.ptg = S.ptg || { mode: 'jour', jour: dIso(new Date()), rows: {} };
+    var G = S.ptg = S.ptg || { mode: 'semaine', jour: dIso(new Date()), rows: {} };
     if (!force && G.de && G.de <= de && G.a >= a) return null;
     if (G.charge) return true;
     var d0 = G.de && G.de < de && !force ? G.de : de, a0 = G.a && G.a > a && !force ? G.a : a;
@@ -1804,7 +1804,7 @@
     }).catch(function (e) { G.charge = false; G.err = msgErr(e); G.de = d0; G.a = a0; render(); });
     return true;
   }
-  function chargerPointages(force) { var G = S.ptg = S.ptg || { mode: 'jour', jour: dIso(new Date()), rows: {} }, L = lundiDe(G.jour); return assurerPointages(L, addJ(L, 6), force); }
+  function chargerPointages(force) { var G = S.ptg = S.ptg || { mode: 'semaine', jour: dIso(new Date()), rows: {} }, L = lundiDe(G.jour); return assurerPointages(L, addJ(L, 6), force); }
   function minLoc(ts) { var d = new Date(ts); return d.getHours() * 60 + d.getMinutes(); }
   function fMin(m) { return Math.floor(m / 60) + 'h' + ('0' + (m % 60)).slice(-2); }
   // Temps effectif d'une journée : sortie − arrivée, moins la coupure de midi prévue au planning (seulement la partie
@@ -1836,7 +1836,7 @@
     return { t: 'Aucun pointage', k: 'ko' };
   }
   function vPointage() {
-    var G = S.ptg = S.ptg || { mode: 'jour', jour: dIso(new Date()), rows: {} }, J = G.jour, L = lundiDe(J);
+    var G = S.ptg = S.ptg || { mode: 'semaine', jour: dIso(new Date()), rows: {} }, J = G.jour, L = lundiDe(J);
     if (G.mode === 'bord') return vPtBord();
     var titre = G.mode === 'jour' ? jourLong(J) : 'Semaine du ' + periode(L, addJ(L, 4)).replace(/^du /, '');
     var h = enTetePt({ mode: G.mode, titre: titre, nav: 'ptnav', fleches: true, auj: J !== dIso(new Date()) ? 'Aujourd’hui' : '', sous: G.mode === 'jour' ? 'Heures prévues = total de la journée, coupure de midi déduite' : 'Semaine du lundi au vendredi' }) + '<div class="a-corps hr-corps">';
@@ -3983,7 +3983,8 @@
     if (d.act === 'bvno') { marquerVu('bienvenue'); render(); return; }
     if (d.essai) { marquerVu(d.gid); S.aideOuverte = d.gid; S.tab = d.essai; S.tabChoisi = true; if (d.essai === 'histo') chargerHisto(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'menu') { S.menu = !S.menu; render(); return; }
-    if (d.tab) { if (d.tab === 'ppostes') S.postesEd = null; if (d.tab === 'ptypes') S.typesEd = null; S.menu = false; S.fiche = null; if (d.tab === 'sortie') S.sortie.ok = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); if (d.tab === 'plus') chargerEcarts(); render(); window.scrollTo(0, 0); return; }
+    if (d.tab) { if (d.tab === 'pointage' && S.tab !== 'pointage') { S.ptg = S.ptg || { rows: {} }; S.ptg.mode = 'semaine'; S.ptg.jour = dIso(new Date()); if (S.ptg.bord) S.ptg.bord.sel = null; }   // le pointage s'ouvre toujours sur la semaine en cours
+    if (d.tab === 'ppostes') S.postesEd = null; if (d.tab === 'ptypes') S.typesEd = null; S.menu = false; S.fiche = null; if (d.tab === 'sortie') S.sortie.ok = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); if (d.tab === 'plus') chargerEcarts(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'out') { if (confirm('Changer de personne ? La personne suivante devra se connecter avec son identifiant et son code.')) deconnexion(); return; }
     if (d.act === 'maj') return mettreAJour();
     if (d.ecp) { S.ecarts = S.ecarts || {}; S.ecarts.p = d.ecp; chargerEcarts(); render(); return; }
@@ -4082,7 +4083,7 @@
     if (d.pfcel && S.pf) { S.pf.cel = d.pfcel; render(); return; }
     if (d.act === 'pfcopiejour' && S.pf) { var tj = S.pf.d.trame = S.pf.d.trame || {}, src = JSON.parse(JSON.stringify(tj[d.j] || {})); for (var jj2 = 1; jj2 <= 5; jj2++) if (String(jj2) !== String(d.j)) tj[jj2] = JSON.parse(JSON.stringify(src)); toast('Copié sur toute la semaine · pensez à enregistrer'); render(); return; }
     if ((d.poup != null || d.podown != null || d.poret != null || d.tyret != null || /^(poadd|posave|tyadd|tysave)$/.test(d.act || '')) && actionReglages(d)) return;
-    if (d.act === 'rgqr') { S.tab = 'pointage'; S.ptg = S.ptg || { mode: 'jour', jour: dIso(new Date()), rows: {} }; ouvrirQR(); return; }
+    if (d.act === 'rgqr') { S.tab = 'pointage'; S.ptg = S.ptg || { mode: 'semaine', jour: dIso(new Date()), rows: {} }; ouvrirQR(); return; }
     if (d.act === 'scan') return ouvrirScanner();
     if (d.ptsens && S.ptRes && S.ptRes.choix) return envoyerPointage(S.ptRes.choix, d.ptsens);
     if (d.act === 'simraz') { S.sim = null; try { sessionStorage.removeItem('evy-sim'); } catch (e) {} chargerMonPointage(); render(); return; }
