@@ -134,6 +134,7 @@
     S.session = session;
     S.loading = true; render();
     sb.from('profils').select('*').eq('id', session.user.id).maybeSingle().then(function (r) {
+      if (r.error && horsReseau(r.error) && demarrerHorsLigne(session)) { if (JETON_QR) pointerQR(); return; }
       S.me = r.data || null;
       if (!S.me || !S.me.actif) { S.loading = false; render(); return; }
       if (S.sortie.cab == null) S.sortie.cab = S.me.cabinet || 1;
@@ -455,11 +456,14 @@
     var j = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     var h = '<header class="a-hd a-maison"><div class="a-mh-top"><img src="assets/logo-evydent.jpg" alt="Evydent"><span class="grow">Espace dentaire Val d’Yerres</span></div>'
       + '<div><h1>Bonjour ' + esc(S.me.nom) + '</h1><p>' + esc(nomRole(S.me)) + (S.me.cabinet && droit('cab') ? ' · cabinet ' + S.me.cabinet : '') + ' · ' + j + '</p></div></header>';
+    var hl = S.horsLigne || (typeof navigator !== 'undefined' && navigator.onLine === false), aqt = attentePt();
     var pt = droit('pointage') ? tuilePointer() : '', t = [];
-    if (pt) { var obA = (S.mesOublis || []).filter(function (o) { return o.statut === 'attente'; }).length; pt += '<button class="ob-lien" data-tab="moubli">' + ico('attente', 18, 2.2) + 'J’ai oublié de pointer' + (obA ? ' <span>' + obA + ' en attente</span>' : '') + '</button>'; }
-    if (droit('stock')) t.push(tuileA('mstock', 'ts', 'boite', 'Stock', 'Sortie, inventaire, retour', inventaireAFaire() ? 'Inventaire à faire ce mois-ci' : ''));
-    if (droit('planning') && S.visible && S.visible.planning && S.moiEq) t.push(tuileA('mplanning', 'tp', 'histo', 'Mon planning', 'Mes jours, mon dentiste, mes horaires'));
-    if (droit('conges')) { var att = (S.mesConges || []).filter(function (c) { return c.statut === 'attente'; }).length; t.push(tuileA('mconges', 'tc2', 'agenda', 'Mes congés', att ? att + ' demande' + (att > 1 ? 's' : '') + ' en attente' : 'Demander, suivre la réponse')); }
+    if (hl) pt = '<div class="hl-ban">' + ico('attente', 20, 2.2) + '<span><b>Pas de réseau</b><span>Vous pouvez pointer : le pointage est gardé sur ce téléphone et transmis dès le retour du réseau. Le reste de l’appli revient avec le réseau.</span></span></div>' + pt;
+    if (aqt.length) pt += '<p class="hl-att">' + aqt.length + ' pointage' + (aqt.length > 1 ? 's' : '') + ' en attente de réseau : ' + aqt.map(function (x) { return (x.sens === 'arrivee' ? 'arrivée' : 'sortie') + ' ' + x.heure.replace(':', ' h '); }).join(', ') + '</p>';
+    if (pt && !hl) { var obA = (S.mesOublis || []).filter(function (o) { return o.statut === 'attente'; }).length; pt += '<button class="ob-lien" data-tab="moubli">' + ico('attente', 18, 2.2) + 'J’ai oublié de pointer' + (obA ? ' <span>' + obA + ' en attente</span>' : '') + '</button>'; }
+    if (!hl && droit('stock')) t.push(tuileA('mstock', 'ts', 'boite', 'Stock', 'Sortie, inventaire, retour', inventaireAFaire() ? 'Inventaire à faire ce mois-ci' : ''));
+    if (!hl && droit('planning') && S.visible && S.visible.planning && S.moiEq) t.push(tuileA('mplanning', 'tp', 'histo', 'Mon planning', 'Mes jours, mon dentiste, mes horaires'));
+    if (!hl && droit('conges')) { var att = (S.mesConges || []).filter(function (c) { return c.statut === 'attente'; }).length; t.push(tuileA('mconges', 'tc2', 'agenda', 'Mes congés', att ? att + ' demande' + (att > 1 ? 's' : '') + ' en attente' : 'Demander, suivre la réponse')); }
     var seule = !t.length && pt;
     h += '<div class="a-corps' + (seule ? ' a-seule' : '') + '">' + vBienvenue() + pt + (t.length ? '<div class="tuiles a-tuiles">' + t.join('') + '</div>' : '');
     if (!pt && !t.length) h += '<div class="card"><b>Rien à afficher pour l’instant.</b><p class="mu" style="margin:6px 0 0">' + (droit('pointage') ? 'Votre fiche n’est pas encore soumise au pointage, ou votre compte n’est pas relié à votre fiche.' : 'Votre rôle n’a encore aucun outil. Voyez avec la référente.') + '</p></div>';
@@ -1646,6 +1650,7 @@
       if (!vuR) S.roles = [];
       if (!(r[2] && !r[2].error && (r[2].data || []).some(function (x) { return x.cle === 'simulation_pointage' && x.valeur === true; }))) S.simOn = false;
       if (S.tab !== 'maison' && !ongletPermis(S.tab)) S.tab = 'maison';
+      memoriserHorsLigne(); envoyerAttentePt();
       render();
     }, function () { S.moiEq = null; S.mesConges = []; render(); });
   }
@@ -1939,6 +1944,43 @@
     h += '<button class="btn hr-ouvrir" data-hrouvrir="' + W[W.length - 1] + '">Ouvrir sa semaine dans le planning</button></div>';
     return h;
   }
+  // ---------- Hors ligne : pointages gardés sur le téléphone, transmis au retour du réseau ----------
+  function attentePt() { try { return JSON.parse(localStorage.getItem('evy-pt-attente') || '[]'); } catch (e) { return []; } }
+  function ecrireAttentePt(l) { try { localStorage.setItem('evy-pt-attente', JSON.stringify(l)); } catch (e) {} }
+  function horsReseau(e) { return (typeof navigator !== 'undefined' && navigator.onLine === false) || /fetch|network|réseau|load failed|internet/i.test(String(e && (e.message || e) || '')); }
+  function garderPointage(sens) {
+    var q = maintenantPt(), jour = dIso(q), hh = ('0' + q.getHours()).slice(-2) + ':' + ('0' + q.getMinutes()).slice(-2), l = attentePt();
+    if (!sens) { var dejaA = (S.monPt && S.monPt.arrivee) || l.some(function (x) { return x.jour === jour && x.sens === 'arrivee'; }); sens = dejaA ? 'sortie' : 'arrivee'; }
+    l = l.filter(function (x) { return !(x.jour === jour && x.sens === sens); }); l.push({ jour: jour, sens: sens, heure: hh });
+    ecrireAttentePt(l); return { jour: jour, sens: sens, heure: hh };
+  }
+  var ENVOI_ATTENTE = false;
+  function envoyerAttentePt() {
+    var l = attentePt(); if (!l.length || ENVOI_ATTENTE || !S.me || gestion() || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
+    ENVOI_ATTENTE = true;
+    var x = l[0];
+    sb.rpc('signaler_oubli', { p_jour: x.jour, p_sens: x.sens, p_heure: x.heure, p_mot: 'pointage sans réseau (scan à ' + x.heure.replace(':', ' h ') + ')' }).then(function (r) {
+      ENVOI_ATTENTE = false;
+      if (r.error && horsReseau(r.error)) return;
+      ecrireAttentePt(attentePt().filter(function (y) { return !(y.jour === x.jour && y.sens === x.sens); }));
+      if (!r.error) toast('✔ Pointage sans réseau transmis à la référente (' + (x.sens === 'arrivee' ? 'arrivée' : 'sortie') + ' à ' + x.heure.replace(':', ' h ') + ')');
+      if (typeof chargerMesOublis === 'function') chargerMesOublis();
+      envoyerAttentePt();
+    }, function () { ENVOI_ATTENTE = false; });
+  }
+  function memoriserHorsLigne() {
+    if (!S.me || gestion()) return;
+    try { localStorage.setItem('evy-hl', JSON.stringify({ uid: S.me.id, me: S.me, moiEq: S.moiEq ? { id: S.moiEq.id, prenom: S.moiEq.prenom, pointage: S.moiEq.pointage, trame: S.moiEq.trame, type: S.moiEq.type } : null, roles: S.roles || [] })); } catch (e) {}
+  }
+  function demarrerHorsLigne(session) {
+    var c = null; try { c = JSON.parse(localStorage.getItem('evy-hl') || 'null'); } catch (e) {}
+    if (!c || !session || c.uid !== session.user.id) return false;
+    S.me = c.me; S.moiEq = c.moiEq; S.roles = c.roles || []; S.horsLigne = true; S.loading = false; S.tab = 'maison'; S.mesConges = []; S.mesOublis = [];
+    render(); return true;
+  }
+  window.addEventListener('online', function () { if (S.horsLigne) { location.reload(); return; } envoyerAttentePt(); });
+  window.addEventListener('offline', function () { if (S.me && !gestion()) render(); });
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) { window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); }); }
   // ---------- Pointage journalier (QR code) ----------
   var JETON_QR = null;
   function pointagePret() { return (S.equipe || []).some(function (e) { return 'pointage' in e; }); }
@@ -1962,7 +2004,10 @@
     sb.rpc('pointer', a).then(function (r) {
       if (r.error) throw r.error; S.ptRes = r.data || { etat: 'erreur' }; render();
       if (!gestion() && S.moiEq) chargerMonPointage();
-    }).catch(function (e) { S.ptRes = { etat: 'erreur', msg: msgErr(e) }; render(); });
+    }).catch(function (e) {
+      if (!gestion() && horsReseau(e) && !simPt()) { var g = garderPointage(sens); S.ptRes = { etat: 'hors_ligne', g: g }; render(); return; }
+      S.ptRes = { etat: 'erreur', msg: msgErr(e) }; render();
+    });
   }
   function milieuJournee(p, iso) {
     var t = (p && p.trame || {})[jourSem(iso)] || {}, ok = function (c) { return c && c.a && c.a !== 'OFF' && c.de && c.fi; };
@@ -1987,6 +2032,7 @@
     else if (R.etat === 'sortie') { t = 'Sortie enregistrée'; g = hTs(R.heure); sous = (R.sans_arrivee ? 'Votre arrivée n’a pas été pointée : la référente la complètera.' : 'Arrivée à ' + hTs(R.arrivee) + '.') + ' Bonne soirée' + (R.prenom ? ', ' + esc(R.prenom) : '') + ' !'; }
     else if (R.etat === 'simulation_coupee') { t = 'Simulation coupée'; g = ''; sous = 'L’heure simulée n’est pas autorisée. La référente peut l’activer dans Pointage (site de test).'; }
     else if (R.etat === 'doublon') { t = 'Déjà enregistré'; g = ''; sous = 'Votre pointage vient d’être pris en compte, inutile de scanner deux fois.' + (R.arrivee ? ' Arrivée : ' + hTs(R.arrivee) + (R.sortie ? ', sortie : ' + hTs(R.sortie) : '') + '.' : ''); }
+    else if (R.etat === 'hors_ligne') { t = 'Pas de réseau'; g = ''; sous = 'Votre ' + (R.g.sens === 'arrivee' ? 'arrivée' : 'sortie') + ' de ' + R.g.heure.replace(':', ' h ') + ' est gardée sur ce téléphone. Elle sera transmise à la référente dès que le réseau revient (vous n’avez rien à faire).'; }
     else if (R.etat === 'qr_perime') { t = 'QR code périmé'; g = ''; sous = 'Ce QR code n’est plus valable. Scannez celui affiché au centre.'; }
     else if (R.etat === 'non_soumis') { t = 'Pas de pointage pour vous'; g = ''; sous = 'Votre fiche n’est pas soumise au pointage journalier.'; }
     else if (R.etat === 'sans_fiche') { t = 'Compte non relié'; g = ''; sous = 'Votre compte n’est pas encore relié à votre fiche. Prévenez la référente.'; }
@@ -2001,7 +2047,8 @@
   }
   function tuilePointer() {
     if (!S.moiEq || !S.moiEq.pointage) return '';
-    var r = S.monPt, t, sous;
+    var r = S.monPt, t, sous, jq = dIso(maintenantPt()), aq = attentePt().filter(function (x) { return x.jour === jq; });
+    aq.forEach(function (x) { var ts = dDe(jq); var hh = x.heure.split(':'); ts.setHours(+hh[0], +hh[1], 0, 0); r = Object.assign({}, r || {}); if (x.sens === 'arrivee' && !r.arrivee) r.arrivee = ts.toISOString(); if (x.sens === 'sortie') r.sortie = ts.toISOString(); });
     if ((!r || !r.arrivee) && !(r && r.sortie)) { t = 'Pointer mon arrivée'; sous = 'Scannez le QR code du centre'; }
     else if (!r.sortie) { t = 'Pointer ma sortie'; sous = 'Arrivée à ' + hTs(r.arrivee); }
     else return '<div class="tuile-pt fait"><span class="ti">' + ico('ok', 34, 2.4) + '</span><span class="tt"><b>Journée pointée</b><span>' + (r.arrivee ? 'Arrivée ' + hTs(r.arrivee) : 'Arrivée non pointée (la référente la complètera)') + ' · sortie ' + hTs(r.sortie) + '</span></span></div>' + vSimA();
