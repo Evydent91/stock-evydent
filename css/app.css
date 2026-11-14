@@ -1819,3 +1819,11 @@ button.stk-k{cursor:pointer}
 .tv-i i{width:11px;height:11px;border-radius:50%;background:var(--line);flex:none}.tv-i i.on{background:var(--gold)}
 .tv-i .grow{display:flex;flex-direction:column}.tv-i b{font-size:14.5px}.tv-i small{font-size:12.5px;color:var(--mute)}
 .pill.info{background:#e9f1fa;color:#1d4f86}
+/* Congés : le mois entier tient dans la largeur (plus de défilement latéral sur ordinateur) */
+@media (min-width:701px){
+  .cg2,.h-app.tres-large .cg2{--cg2-j:0px}
+  .cg2-g{min-width:0}
+  .cg2-scroll{padding:0 6px}
+  .cg2-h b{font-size:13px}.cg2-h small{font-size:10px}
+  .cg2-b{padding:0 5px;font-size:12px}
+}
