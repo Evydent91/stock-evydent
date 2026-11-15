@@ -306,10 +306,13 @@
       document.body.classList.remove('mode-a', 'ecran-ok', 'sans-nav'); document.body.classList.add('mode-h');
       var rgOn = RG_TABS.indexOf(S.tab) >= 0 && !telephone();
       document.body.classList.toggle('rg-on', rgOn);
+      var rglOn = rgOn && (S.tab === 'pfiche' || S.tab === 'dfiche');
+      document.body.classList.toggle('rgl-on', rglOn);
+      if (rglOn) app.insertAdjacentHTML('beforeend', listeFiches());
       if (rgOn) { app.insertAdjacentHTML('beforeend', navReglages()); var hdE = app.querySelector('.a-mh, header'); if (hdE) document.documentElement.style.setProperty('--hd-h', hdE.offsetHeight + 'px'); }
       placerTour(); return;
     }
-    document.body.classList.remove('mode-h', 'rg-on');
+    document.body.classList.remove('mode-h', 'rg-on', 'rgl-on');
     if (modeA()) {
       poser(app, renderA());
       document.body.classList.add('mode-a');
@@ -1277,6 +1280,35 @@
       + G('Application') + L('Sauvegarde et journal', 'data-tab="plus"', null, 'stock') + L('Transfert vers la prod', 'data-tab="ptransfert"', 'ptransfert') + L('Mon mot de passe', 'data-tab="compte"', null, 'stock')
       + '</nav>';
   }
+  // Sur ordinateur : la liste des prénoms reste à côté de la fiche ouverte
+  function listeFiches() {
+    var tri = function (a, b) { return (a.ordre - b.ordre) || a.prenom.localeCompare(b.prenom); };
+    var dent = S.tab === 'dfiche', F = dent ? S.df : S.pf, cur = F ? String(F.id) : '';
+    var li = function (attr, id, ini, cl, nom, sous) { var on = String(id) === cur; return '<button class="rgl-l' + (on ? ' on' : '') + '" ' + attr + '="' + id + '"' + (on ? ' aria-current="true"' : '') + ' data-rgln="' + esc(norm(nom)) + '"><span class="a-av ' + cl + '">' + ini + '</span><span><b>' + nom + '</b>' + (sous ? '<small>' + sous + '</small>' : '') + '</span></button>'; };
+    var h = '<nav class="rgl" aria-label="' + (dent ? 'Les dentistes' : 'L’équipe') + '"><div class="rgl-t"><b>' + (dent ? 'Les dentistes' : 'L’équipe') + '</b><button class="btn sm" data-rglnew="' + (dent ? 'd' : 'p') + '">+ Ajouter</button></div>'
+      + '<input class="in rgl-q" type="search" data-rglq placeholder="Chercher un prénom…" aria-label="Chercher un prénom">';
+    if (dent) {
+      var da = S.dentistes.filter(function (d) { return d.actif; }).sort(tri), dn = S.dentistes.filter(function (d) { return !d.actif; }).sort(tri);
+      var ld = function (d) { var js = [1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j]; }); return li('data-rgld', d.id, initiale(d.prenom), 'd', 'Dr ' + esc(d.prenom), js.length ? js.map(function (j) { return JC[j].toLowerCase(); }).join(' ') : 'jours à renseigner'); };
+      h += da.map(ld).join('') + (dn.length ? '<span class="rgl-g">Anciens</span>' + dn.map(ld).join('') : '');
+    } else {
+      var act = S.equipe.filter(function (p) { return p.actif; }).sort(tri), anc = S.equipe.filter(function (p) { return !p.actif; }).sort(tri);
+      var lp = function (p) { var ty = typeDe(p.type), c = +p.contrat_h || 0, sous = []; if (ty.contrat !== false && p.type !== 'interimaire' && c) sous.push(fh(c)); if (p.pointage) sous.push('pointe'); return li('data-rglp', p.id, initiale(p.prenom), 'p', esc(p.prenom), esc(sous.join(' · '))); };
+      h += groupesEquipe(act).map(function (g) { return '<span class="rgl-g">' + esc(g.n) + '</span>' + g.l.map(lp).join(''); }).join('') + (anc.length ? '<span class="rgl-g">Anciennes et anciens</span>' + anc.map(lp).join('') : '');
+    }
+    return h + '</nav>';
+  }
+  // Changer de fiche depuis la liste : on prévient si des changements ne sont pas enregistrés, et on garde la rubrique ouverte
+  function changerFiche(sorte, id) {
+    var F = sorte === 'd' ? S.df : S.pf, suite = function () {
+      if (sorte === 'd') return ouvrirDent(id);
+      var og = S.pf && S.pf.onglet, cel = S.pf && S.pf.cel; ouvrirPers(id);
+      if (S.pf && id !== 'new' && (og || cel)) { S.pf.onglet = og; S.pf.cel = cel; render(); }
+    };
+    if (F && String(F.id) === String(id)) return;
+    if (!F || !F.o || F.o === JSON.stringify(F.d)) return suite();
+    fenetre({ titre: 'Changements non enregistrés', texte: 'La fiche de ' + (F.d.prenom || 'cette personne') + ' a été modifiée sans être enregistrée.\n\nSi vous changez de fiche maintenant, ces changements seront perdus.', ok: 'Changer sans enregistrer', non: 'Rester sur la fiche' }).then(function (v) { if (v) suite(); });
+  }
   function vReglages() {
     var n = (S.equipe || []).filter(function (p) { return p.actif; }).length, nd = (S.dentistes || []).filter(function (d) { return d.actif; }).length;
     var np = (S.equipe || []).filter(function (p) { return p.actif && p.pointage; }).length, R = regles();
@@ -1548,7 +1580,7 @@
   function ouvrirPers(id) {
     var p = id === 'new' ? nouvellePers() : S.equipe.filter(function (x) { return String(x.id) === String(id); })[0];
     if (!p) return;
-    S.pf = { id: id, d: JSON.parse(JSON.stringify(p)) }; var vf = versionsTrame(p); if (vf.length) S.pf.d.trame = JSON.parse(JSON.stringify(vf[vf.length - 1].trame || {})); S.eqNew = null; S.eqEdit = null; S.tab = 'pfiche'; render(); window.scrollTo(0, 0);
+    S.pf = { id: id, d: JSON.parse(JSON.stringify(p)) }; var vf = versionsTrame(p); if (vf.length) S.pf.d.trame = JSON.parse(JSON.stringify(vf[vf.length - 1].trame || {})); S.eqNew = null; S.eqEdit = null; S.tab = 'pfiche'; render(); if (S.pf) S.pf.o = JSON.stringify(S.pf.d); window.scrollTo(0, 0);
   }
   function optAff(cur, sansDent) {
     var ds = (S.dentistes || []).filter(function (d) { return (d.actif && !sansDent) || 'D:' + d.id === cur; }).sort(function (a, b) { return a.ordre - b.ordre; });
@@ -1595,7 +1627,7 @@
       + (R.compte ? '<h3 class="fi-h3">Pointage et compte</h3>' + R.compte() : ''); };
     R.semaine = function () {
       var cel = F.cel || '1.am', cx = cel.split('.'), cj = +cx[0], ck = cx[1];
-      var g = '<div class="fi-sem"><span></span>' + [1, 2, 3, 4, 5].map(function (j) { var hj = heuresJour(t, j); return '<span class="fi-sj"><b>' + JC[j] + '</b><small>' + (hj ? fh(hj) : '—') + '</small></span>'; }).join('');
+      var g = '<div class="fi-sx"><div class="fi-sxg"><div class="fi-sem"><span></span>' + [1, 2, 3, 4, 5].map(function (j) { var hj = heuresJour(t, j); return '<span class="fi-sj"><b>' + JC[j] + '</b><small>' + (hj ? fh(hj) : '—') + '</small></span>'; }).join('');
       ['am', 'pm'].forEach(function (k) {
         g += '<span class="fi-sl">' + (k === 'am' ? 'Matin' : 'Après-midi') + '</span>';
         for (var j = 1; j <= 5; j++) {
@@ -1612,7 +1644,7 @@
           return '<b>' + JOURS[jd] + '</b>' + ['ad', 'af', 'pd', 'pf'].map(function (k2) { return '<span>' + tj2(k2); }).join('') + '<span class="mu">' + (hj2 > 0 ? fh(hj2) : '') + (ex[jd] ? ' · différent' : '') + '</span>'; }).join('');
         return '<div class="fi-fx"><span><b>Horaire « ' + esc(nomAff(code)) + ' »</b><small>poste à horaire fixe : saisi une fois, appliqué à tous ses jours sur ce poste</small></span><div class="fi-fx-h">' + tm('ad', 'Matin, de') + tm('af', 'à') + tm('pd', 'Après-midi, de') + tm('pf', 'à') + (hh > 0 ? '<span class="mu">= ' + fh(hh) + ' par jour complet</span>' : '') + '</div>'
           + (jours.length ? '<details class="fi-fxj"' + (nex ? ' open' : '') + '><summary>Un jour différent ? (ex. le vendredi finit plus tôt)' + (nex ? ' · ' + nex + ' ' + pl(nex, 'jour') + ' différent' + (nex > 1 ? 's' : '') : '') + '</summary><div class="fi-fxg"><span></span><small>Matin, de</small><small>à</small><small>Après-midi, de</small><small>à</small><span></span>' + lj + '</div><small class="mu">Changez seulement l’heure qui diffère ; le reste suit l’horaire ci-dessus.</small></details>' : '') + '</div>'; }).join('');
-      g += '<div class="fi-ed"><b>' + JOURS[cj] + ' ' + (ck === 'am' ? 'matin' : 'après-midi') + '</b>' + demiEdit(cj, ck, (t[cj] || {})[ck]) + '<div class="fi-rac"><button class="btn l sm" data-act="pfcopiejour" data-j="' + cj + '">Copier le ' + JOURS[cj].toLowerCase() + ' sur toute la semaine</button></div></div>';
+      g += '</div><div class="fi-ed"><b>' + JOURS[cj] + ' ' + (ck === 'am' ? 'matin' : 'après-midi') + '</b>' + demiEdit(cj, ck, (t[cj] || {})[ck]) + '<div class="fi-rac"><button class="btn l sm" data-act="pfcopiejour" data-j="' + cj + '">Copier le ' + JOURS[cj].toLowerCase() + ' sur toute la semaine</button></div></div></div>';
       return bandeauVersions(F) + '<p class="mu fi-intro">Touchez une case pour changer ' + (aDent(p.type) ? 'le dentiste ou le poste' : 'le poste') + ' et les horaires. ' + (ty.planning === false ? 'Hors planning : ces horaires servent seulement au pointage (heures prévues, retards, départs avant l’heure, coupure de midi déduite).' : 'Le planning de chaque semaine part de là.') + '</p>' + g;
     };
     R.absences = function () { return nouv ? avant : (ty.contrat !== false && p.type !== 'interimaire' ? blocSoldeFiche(p) : '') + '<h3 class="fi-h3">Congés</h3>' + blocConges(false, F.id, p) + '<h3 class="fi-h3">Formations</h3>' + blocConges(false, F.id, p, true) + '<h3 class="fi-h3">Jours off</h3>' + blocOffs(F); };
@@ -1885,7 +1917,7 @@
   function ouvrirDent(id) {
     var d = id === 'new' ? { prenom: '', jours: {}, note: '', actif: true } : S.dentistes.filter(function (x) { return String(x.id) === String(id); })[0];
     if (!d) return;
-    S.df = { id: id, d: JSON.parse(JSON.stringify(d)) }; S.tab = 'dfiche'; render(); window.scrollTo(0, 0);
+    S.df = { id: id, d: JSON.parse(JSON.stringify(d)) }; S.tab = 'dfiche'; render(); if (S.df) S.df.o = JSON.stringify(S.df.d); window.scrollTo(0, 0);
   }
   function vDFiche() {
     var F = S.df; if (!F) { S.tab = 'pdent'; return vPDent(); }
@@ -5708,6 +5740,9 @@
     if (d.act === 'eannule') { S.eqEdit = null; render(); return; }
     if (d.esave) return sauverProfil(d.esave);
     if (d.ereinit) return reinitMdp(d.ereinit);
+    if (d.rglp) return changerFiche('p', d.rglp);
+    if (d.rgld) return changerFiche('d', d.rgld);
+    if (d.rglnew) return changerFiche(d.rglnew, 'new');
     if (d.pf) { ouvrirPers(d.pf); if (d.pfo && S.pf) { S.pf.onglet = d.pfo; render(); } return; }
     if (d.dent) return ouvrirDent(d.dent);
     if (d.act === 'pfnew') return ouvrirPers('new');
@@ -5834,6 +5869,7 @@
     if (d.act === 'cmok') return changerMonMdp();
   });
   document.addEventListener('input', function (e) {
+    if (e.target.dataset && e.target.dataset.rglq != null) { var q = norm(e.target.value.trim()); [].forEach.call(document.querySelectorAll('.rgl-l'), function (b) { b.hidden = !!q && b.dataset.rgln.indexOf(q) < 0; }); return; }
     var t = e.target; if (!S.me) return;
     if (t.id === 'rgq') {   // recherche dans les réglages : on masque sans redessiner (le curseur reste dans le champ)
       var qq = norm(t.value).trim(), vus = 0;
