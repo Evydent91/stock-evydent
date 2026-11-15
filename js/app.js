@@ -1001,6 +1001,19 @@
       toast('✔ Plage « ' + g.n + ' » créée'); render();
     }).catch(function (e) { toast(msgErr(e)); });
   }
+  // Renommer ou modifier les plages d'un poste sans quitter la fiche ou le planning
+  async function modifierPlages(code) {
+    var q = posteDe(code); if (!q || !gestion()) return;
+    var L0 = (q.plages || []), G = null;
+    var lig = function (g, k) { var tm = function (f, lib) { return '<input class="in" type="time" data-mpf="' + k + '|' + f + '" value="' + esc(g[f] || '') + '" aria-label="' + esc((g.n || 'Plage') + ' : ' + lib) + '">'; };
+      return '<div class="mp-l"><input class="in" data-mpf="' + k + '|n" value="' + esc(g.n || '') + '" aria-label="Nom de la plage">' + tm('ad', 'matin, de') + tm('af', 'matin, à') + tm('pd', 'après-midi, de') + tm('pf', 'après-midi, à') + '<label class="mp-x"><input type="checkbox" data-mpx="' + k + '">Retirer</label></div>'; };
+    var r = await fenetre({ titre: 'Plages · ' + q.n, ok: 'Enregistrer les plages', large: true,
+      html: '<div class="mp-t"><span>Nom</span><span>Matin, de</span><span>à</span><span>Après-midi, de</span><span>à</span><span></span></div>' + L0.map(lig).join('') + '<p class="mu" style="margin:8px 0 0;font-size:13.5px">Pour tout le monde sur ce poste. Les cases déjà remplies gardent leurs heures ; le nouveau nom et les nouvelles heures servent aux prochains choix.</p>',
+      lire: function (bg) { var out = []; L0.forEach(function (g0, k) { if (bg.querySelector('[data-mpx="' + k + '"]').checked) return; var v = function (f) { return bg.querySelector('[data-mpf="' + k + '|' + f + '"]').value || null; }; out.push({ n: (v('n') || '').trim() || g0.n || 'Plage', ad: v('ad'), af: v('af'), pd: v('pd'), pf: v('pf') }); }); return (G = out); } });
+    if (!r || !G) return;
+    var L = JSON.parse(JSON.stringify(postes())), pq = L.filter(function (y) { return y.code === code; })[0]; pq.plages = G;
+    sb.from('parametres').upsert({ cle: 'postes', valeur: L }, { onConflict: 'cle' }).then(function (rr) { if (rr.error) throw rr.error; S.postes = L; S.postesEd = null; toast('✔ Plages enregistrées'); render(); }).catch(function (e) { toast(msgErr(e)); });
+  }
   function fixeDe(p, code) {   // horaire fixe de la personne pour ce poste : sa fiche, sinon déduit de sa semaine type
     var f = ((p && p.regles) || {}).hfixe; if (f && f[code]) return f[code];
     var t = (p && p.trame) || {}, o = {};
@@ -1486,7 +1499,7 @@
   function demiEdit(j, k, c) {
     c = c || {}; var off = !c.a || c.a === 'OFF', hp = off ? 'variable' : horPoste(c.a), pls = hp === 'plages' ? plagesPoste(c.a) : [];
     if (hp === 'fixe') return '<div class="h-demi"><span class="h-dl">' + (k === 'am' ? 'Matin' : 'Après-midi') + '</span><select class="in" data-tr="' + j + '.' + k + '.a" aria-label="' + JOURS[j] + ' ' + (k === 'am' ? 'matin' : 'après-midi') + '">' + optAff(c.a, !!(S.pf && S.pf.d && !aDent(S.pf.d.type))) + '</select><span class="h-fx">' + ft(c.de) + '–' + ft(c.fi) + ' <small>horaire fixe, réglé au-dessus</small></span></div>';
-    var plb = pls.length ? '<div class="h-pls" role="group" aria-label="Plages">' + pls.map(function (g, n) { var on = c.de === (k === 'am' ? g.ad : g.pd) && c.fi === (k === 'am' ? g.af : g.pf); return '<button class="h-pl' + (on ? ' on' : '') + '" data-trpl="' + j + '.' + k + '.' + n + '" aria-pressed="' + on + '"><b>' + esc(g.n || 'Plage') + '</b><small>' + plageTxt(g) + '</small></button>'; }).join('') + '<button class="h-pl h-pl-n" data-plnew="' + esc(c.a) + '|t|' + j + '">+ Nouvelle plage</button></div>' : '';
+    var plb = pls.length ? '<div class="h-pls" role="group" aria-label="Plages">' + pls.map(function (g, n) { var on = c.de === (k === 'am' ? g.ad : g.pd) && c.fi === (k === 'am' ? g.af : g.pf); return '<button class="h-pl' + (on ? ' on' : '') + '" data-trpl="' + j + '.' + k + '.' + n + '" aria-pressed="' + on + '"><b>' + esc(g.n || 'Plage') + '</b><small>' + plageTxt(g) + '</small></button>'; }).join('') + '<button class="h-pl h-pl-n" data-plnew="' + esc(c.a) + '|t|' + j + '">+ Nouvelle plage</button><button class="h-pl h-pl-m" data-plmod="' + esc(c.a) + '">Renommer ou modifier</button></div>' : '';
     return '<div class="h-demi"><span class="h-dl">' + (k === 'am' ? 'Matin' : 'Après-midi') + '</span><select class="in" data-tr="' + j + '.' + k + '.a" aria-label="' + JOURS[j] + ' ' + (k === 'am' ? 'matin' : 'après-midi') + '">' + optAff(c.a, !!(S.pf && S.pf.d && !aDent(S.pf.d.type))) + '</select>'
       + plb + '<span class="h-hh"><input class="in" type="time" data-tr="' + j + '.' + k + '.de" value="' + esc(off ? '' : c.de || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Arrivée"><span>–</span><input class="in" type="time" data-tr="' + j + '.' + k + '.fi" value="' + esc(off ? '' : c.fi || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Départ"></span></div>';
   }
@@ -3760,7 +3773,7 @@
       var c = K[d], off = !c.a || c.a === 'OFF' || ABS.indexOf(c.a) >= 0;
       if (abs(c) && !K.jc) return '<div class="pl-cd"><span class="h-dl">' + (d === 'AM' ? 'Matin' : 'Après-midi') + '</span><select class="in" data-plk="' + d + '.a">' + optAffPl(c.a, !aDent(p.type)) + '</select>' + champH(d + '.h', c.h, heuresRegle(p, iso, d, c.a), 'Heures comptées') + '</div>';
       if (abs(c) && K.jc) return '';
-      var pls = off ? [] : plagesPoste(c.a), plb = pls.length && (d === 'AM' || !K.jc || K.AM.a !== K.PM.a) ? '<div class="h-pls" role="group" aria-label="Plages">' + pls.map(function (g, n) { var on = c.de === (d === 'AM' ? g.ad : g.pd) && c.fi === (d === 'AM' ? g.af : g.pf); return '<button class="h-pl' + (on ? ' on' : '') + '" data-plpg="' + d + '|' + n + '" aria-pressed="' + on + '"><b>' + esc(g.n || 'Plage') + '</b><small>' + plageTxt(g) + '</small></button>'; }).join('') + (gestion() ? '<button class="h-pl h-pl-n" data-plnew="' + esc(c.a) + '|p|' + d + '">+ Nouvelle plage</button>' : '') + '</div>' : '';
+      var pls = off ? [] : plagesPoste(c.a), plb = pls.length && (d === 'AM' || !K.jc || K.AM.a !== K.PM.a) ? '<div class="h-pls" role="group" aria-label="Plages">' + pls.map(function (g, n) { var on = c.de === (d === 'AM' ? g.ad : g.pd) && c.fi === (d === 'AM' ? g.af : g.pf); return '<button class="h-pl' + (on ? ' on' : '') + '" data-plpg="' + d + '|' + n + '" aria-pressed="' + on + '"><b>' + esc(g.n || 'Plage') + '</b><small>' + plageTxt(g) + '</small></button>'; }).join('') + (gestion() ? '<button class="h-pl h-pl-n" data-plnew="' + esc(c.a) + '|p|' + d + '">+ Nouvelle plage</button><button class="h-pl h-pl-m" data-plmod="' + esc(c.a) + '">Renommer ou modifier</button>' : '') + '</div>' : '';
       return plb + '<div class="pl-cd"><span class="h-dl">' + (d === 'AM' ? 'Matin' : 'Après-midi') + '</span>' + (K.jc ? '' : '<select class="in" data-plk="' + d + '.a">' + optAffPl(c.a, !aDent(p.type)) + '</select>')
         + '<span class="h-hh"><input class="in" type="time" data-plk="' + d + '.de" value="' + esc(off ? '' : c.de || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Arrivée"><span>–</span><input class="in" type="time" data-plk="' + d + '.fi" value="' + esc(off ? '' : c.fi || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Départ"></span></div>';
     };
@@ -5657,6 +5670,7 @@
     if (d.pfong != null && S.pf) { S.pf.onglet = d.pfong || null; render(); window.scrollTo(0, 0); return; }
     if (d.pfcel && S.pf) { S.pf.cel = d.pfcel; render(); return; }
     if (d.plnew) return nouvellePlage(d.plnew);
+    if (d.plmod) return modifierPlages(d.plmod);
     if (d.trpl && S.pf) { var xq = d.trpl.split('.'), tq = S.pf.d.trame = S.pf.d.trame || {}, dq = tq[xq[0]] = tq[xq[0]] || {}, cq = dq[xq[1]] || {}, gq = plagesPoste(cq.a)[+xq[2]]; if (gq) { ['am', 'pm'].forEach(function (k) { var de = k === 'am' ? gq.ad : gq.pd, fi = k === 'am' ? gq.af : gq.pf; if (de && fi) dq[k] = { a: cq.a, de: de, fi: fi }; }); } render(); return; }
     if (d.act === 'pfcopiejour' && S.pf) { var tj = S.pf.d.trame = S.pf.d.trame || {}, src = JSON.parse(JSON.stringify(tj[d.j] || {})); for (var jj2 = 1; jj2 <= 5; jj2++) if (String(jj2) !== String(d.j)) { tj[jj2] = JSON.parse(JSON.stringify(src)); ['am', 'pm'].forEach(function (k) { var cc = tj[jj2][k]; if (cc && cc.a && horPoste(cc.a) === 'fixe') { var hk = horDemi(S.pf.d, cc.a, k, jj2); if (hk) { cc.de = hk.de; cc.fi = hk.fi; } } }); } toast('Copié sur toute la semaine · pensez à enregistrer'); render(); return; }
     if ((d.pfret != null || /^(pfadd|pfsavep)$/.test(d.act || '')) && actionProfils(d)) return;
