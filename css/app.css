@@ -2129,3 +2129,10 @@ button.stk-k{cursor:pointer}
   body.rg-on .po-add > b{padding-bottom:12px}
   body.rg-on .po-add .btn{align-self:flex-end}
 }
+/* Pastilles : couleur de la catégorie (comme au pointage), dentistes en bleu marine et or */
+.fi-avt.c1{background:#cfe0f3;color:#1d4f86}.fi-avt.c2{background:#cdeedd;color:#17643f}.fi-avt.c3{background:#e3d6f3;color:#4a2f73}
+.fi-avt.c4{background:#f8d9c4;color:#8a3d0c}.fi-avt.c5{background:#f6d3df;color:#8a2348}.fi-avt.c6{background:#dde3e8;color:#333d46}
+.rgl-l .a-av.d{border-radius:10px;background:var(--navy);color:var(--gold)}
+.fi-badges .pc.c1{background:#cfe0f3;color:#1d4f86}.fi-badges .pc.c2{background:#cdeedd;color:#17643f}.fi-badges .pc.c3{background:#e3d6f3;color:#4a2f73}
+.fi-badges .pc.c4{background:#f8d9c4;color:#8a3d0c}.fi-badges .pc.c5{background:#f6d3df;color:#8a2348}.fi-badges .pc.c6{background:#dde3e8;color:#333d46}
+.fi-badges .pc:not([class*=" c"]){background:#f3edd6;color:#6b5c22}
