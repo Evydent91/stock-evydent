@@ -610,19 +610,21 @@
   function hCourt(t) { if (!t) return ''; var m = /^(\d{1,2}):(\d{2})/.exec(t); return m ? +m[1] + 'h' + (m[2] === '00' ? '' : m[2]) : t; }
   function refTxt(a) { return a === 'CP' ? 'Congés' : a === 'ARRET' ? 'Maladie' : a === 'FORMATION' ? 'Formation' : a === 'FERIE' ? 'Férié' : a === 'OFF' ? 'OFF' : affTxt(a); }
   // Fermeture proposée : la personne du profil qui finit la dernière ce jour-là
+  // Plage « fermeture » d'un poste : celle dont le nom contient « ferm », sinon celle qui finit le plus tard
+  function plageFerme(code) { var l = plagesPoste(code); if (!l.length) return null; var f = l.filter(function (g) { return /ferm/i.test(g.n || ''); })[0]; if (f) return { g: f, n: l.indexOf(f) }; var b = 0; l.forEach(function (g, n) { if ((g.pf || g.af || '') > (l[b].pf || l[b].af || '')) b = n; }); return { g: l[b], n: b }; }
+  function plageDe(c, k) { return c && c.a ? plagesPoste(c.a).filter(function (g) { return c.de === (k === 'am' ? g.ad : g.pd) && c.fi === (k === 'am' ? g.af : g.pf); })[0] || null : null; }
+  // Fermeture proposée : la personne sur une plage « Fermeture », sinon la seule qui finit la dernière ; à égalité, à désigner (pas de choix au hasard)
   function refFermeAuto(iso) {
-    var fin = {}, max = null;
-    refPers().forEach(function (p) { ['AM', 'PM'].forEach(function (d) { var c = refCase(p, iso, d); if (refTravail(c) && c.fi && (!fin[p.id] || c.fi > fin[p.id].heure)) fin[p.id] = { equipe_id: p.id, nom: p.prenom, heure: c.fi, auto: 1 }; }); });
+    var fin = {}, max = null, pf = null;
+    refPers().forEach(function (p) { ['AM', 'PM'].forEach(function (d) { var c = refCase(p, iso, d); if (!refTravail(c)) return; var g = plageDe(c, d === 'AM' ? 'am' : 'pm'); if (d === 'PM' && g && /ferm/i.test(g.n || '') && !pf) pf = { equipe_id: p.id, nom: p.prenom, heure: c.fi, auto: 1, plage: g.n }; if (c.fi && (!fin[p.id] || c.fi > fin[p.id].heure)) fin[p.id] = { equipe_id: p.id, nom: p.prenom, heure: c.fi, auto: 1 }; }); });
+    if (pf) return pf;
     var l = Object.keys(fin).map(function (k) { return fin[k]; });
     l.forEach(function (x) { if (!max || x.heure > max) max = x.heure; });
-    l = l.filter(function (x) { return x.heure === max; });   // dans l'ordre des fiches
-    if (!l.length) return null;
-    // Plusieurs personnes finissent à la même heure : à tour de rôle, un soir chacune (jours ouvrés comptés depuis le lundi 5 janvier 2026)
-    var dj = Math.round((dDe(iso) - dDe('2026-01-05')) / 864e5), rang = Math.floor(dj / 7) * 5 + (jourSem(iso) - 1);
-    var x = l[((rang % l.length) + l.length) % l.length]; x.egal = l.length;
-    return x;
+    l = l.filter(function (x) { return x.heure === max; });
+    if (l.length === 1) return l[0];
+    return l.length ? { egal: l.length, heure: max, nom: null, auto: 1, vide: 1 } : null;
   }
-  function refFerme(iso) { var f = S.ref && S.ref.ferm[iso]; return f && (f.nom || f.equipe_id) ? { equipe_id: f.equipe_id, nom: f.nom, heure: f.heure } : refFermeAuto(iso); }
+  function refFerme(iso) { var f = S.ref && S.ref.ferm[iso]; if (f && (f.nom || f.equipe_id)) return { equipe_id: f.equipe_id, nom: f.nom, heure: f.heure }; var a = refFermeAuto(iso); return a && !a.vide ? a : null; }
   function refJours() { var L = S.refSem || lundiDe(dIso(new Date())), l = []; for (var i = 0; i < 5; i++) l.push(addJ(L, i)); return l; }
   function plAdmOn() { if (S.plAdm == null) S.plAdm = lsGet('evy-pl-adm') === '1'; return !!S.plAdm; }
   function chargerFermG() {
@@ -633,13 +635,14 @@
     }, function () { S.fermBusy = false; S.ref.fermOk = true; });
   }
   function minHm(t) { var m = /^(\d{1,2}):(\d{2})/.exec(t || ''); return m ? +m[1] * 60 + +m[2] : null; }
-  function refHeuresJ(p, iso) { var n = 0; ['AM', 'PM'].forEach(function (d) { var c = refCase(p, iso, d), a = minHm(c.de), b = minHm(c.fi); if (refTravail(c) && a != null && b != null && b > a) n += b - a; }); return n / 60; }
+  function refHeuresJ(p, iso) { var n = 0; ['AM', 'PM'].forEach(function (d) { var c = refCase(p, iso, d), a = minHm(c.de), b = minHm(c.fi); if (refTravail(c)) { if (a != null && b != null && b > a) n += b - a; } else if (c.a && c.a !== 'OFF') { try { n += 60 * (heuresDemi(p, iso, d, { a: c.a }) || 0); } catch (e) {} } }); return n / 60; }   // jours fériés et absences : heures comptées selon Réglages › Règles des heures
   function refGrille(js, ps, modif, nom) {
     var h = '';
     var cel = function (p, iso) {
       var am = refCase(p, iso, 'AM'), pm = refCase(p, iso, 'PM'), meme = am.a === pm.a, un = function (c) { return refTravail(c) ? '<b>' + esc(refTxt(c.a)) + '</b><span>' + hCourt(c.de) + (c.fi ? '–' + hCourt(c.fi) : '') + '</span>' : '<b>' + esc(refTxt(c.a)) + '</b>'; };
       var cls = function (c) { return refTravail(c) ? ' tr' : c.a === 'OFF' ? ' off' : c.a === 'FERIE' ? ' fe' : ' ab ab-' + c.a; }, st = function (c) { return refTravail(c) ? ' style="' + pastelPoste(c.a) + '"' : ''; };
-      var corps = meme && refTravail(am) ? '<span class="rf-d' + cls(am) + '"' + st(am) + '><b>' + esc(refTxt(am.a)) + '</b><span>' + hCourt(am.de) + '–' + hCourt(pm.fi || am.fi) + '</span></span>'
+      var gA = refTravail(am) ? plageDe(am, 'am') : null, gP = refTravail(pm) ? plageDe(pm, 'pm') : null, gn = gA && gP && gA === gP ? gA.n : gP ? gP.n : gA ? gA.n : '';
+      var corps = meme && refTravail(am) ? '<span class="rf-d' + cls(am) + '"' + st(am) + '><b>' + esc(refTxt(am.a)) + '</b><span>' + hCourt(am.de) + '–' + hCourt(pm.fi || am.fi) + '</span>' + (gn ? '<i class="rf-pn">' + esc(gn) + '</i>' : '') + '</span>'
         : meme ? '<span class="rf-d' + cls(am) + '">' + un(am) + '</span>'
         : '<span class="rf-d' + cls(am) + '"' + st(am) + '>' + un(am) + '</span><span class="rf-d' + cls(pm) + '"' + st(pm) + '>' + un(pm) + '</span>';
       if (gestion() && S.plVoirPt) corps += badgePt(p, iso);
@@ -653,7 +656,7 @@
           + '<span class="rf-h ' + (ok ? 'ok' : 'ko') + '"><b>' + fh(tot) + '</b>' + (ct ? '<small>' + (ok ? 'juste' : (ec > 0 ? '+' : '−') + fh(Math.abs(ec))) + '</small>' : '') + '</span>';
       }).join('')
       + '<span class="rf-n rf-fl"><b>Fermeture du centre</b><small>qui ferme le soir</small></span>' + js.map(function (iso) {
-        var f = ferie(iso) ? null : refFerme(iso), corps = ferie(iso) ? '<b>Férié</b>' : f ? '<b>' + esc(f.nom || '?') + '</b><span>' + (f.heure ? hCourt(f.heure) : '') + (f.auto ? (f.egal > 1 ? ' · à tour de rôle' : ' · proposé') : '') + '</span>' : '<b>À désigner</b><span>personne ne finit tard</span>';
+        var f = ferie(iso) ? null : refFerme(iso), corps = ferie(iso) ? '<b>Férié</b>' : f ? '<b>' + esc(f.nom || '?') + '</b><span>' + (f.heure ? hCourt(f.heure) : '') + (f.auto ? (f.plage ? ' · plage ' + esc(f.plage) : ' · proposé') : '') + '</span>' : '<b>À désigner</b><span>personne ne finit tard</span>';
         var cl = 'rf-f' + (ferie(iso) ? ' fe' : f ? (f.auto ? ' auto' : '') : ' vide');
         return modif && !ferie(iso) ? '<button class="' + cl + '" data-reff="' + iso + '">' + corps + '</button>' : '<div class="' + cl + '">' + corps + '</div>';
       }).join('') + '<span></span></div></div></section>';
@@ -667,7 +670,7 @@
       + (modif ? '<span class="mu">Touchez une case pour changer le poste ou les horaires</span>' : '<span class="mu">Lecture seule</span>') + '</div>';
     if (!ps.length) return h + '<div class="card"><b>Personne dans ce profil pour l’instant.</b><p class="mu" style="margin:6px 0 0">La référente ou la responsable doit créer les fiches au profil « ' + esc(nom) + ' ».</p></div></div>';
     h += refGrille(js, ps, modif, nom);
-    return h + '<p class="a-aide">Seules les personnes au profil « ' + esc(nom) + ' » apparaissent ici. La ligne « Fermeture » propose la personne qui finit la dernière ; si plusieurs finissent à la même heure, c’est à tour de rôle, un soir chacune. Touchez la case pour désigner quelqu’un d’autre. Une case orange signale un soir sans personne désignée.</p></div>';
+    return h + '<p class="a-aide">Seules les personnes au profil « ' + esc(nom) + ' » apparaissent ici. La ligne « Fermeture » propose la personne sur une plage « Fermeture », sinon la seule qui finit la dernière ; à égalité, la case reste « À désigner ». En touchant la case et en choisissant une personne, elle passe directement sur la plage de fermeture de son poste. Touchez la case pour désigner quelqu’un d’autre. Une case orange signale un soir sans personne désignée.</p></div>';
   }
   async function refOuvrirCase(v) {
     var x = v.split('|'), p = persById(x[0]), iso = x[1]; if (!p || !(gestion() || refDroit('planning_modif'))) return;
@@ -701,13 +704,20 @@
     if (!refDroit('planning_modif') && !gestion()) return;
     if (!S.ref) S.ref = { ferm: {} };
     var cur = S.ref.ferm[iso], auto = refFermeAuto(iso), c = admCode(), noms = refPers().map(function (p) { return { id: p.id, prenom: p.prenom, type: c }; });
-    var choix = [{ v: '', t: auto ? 'Proposition : ' + auto.nom : 'Personne (à désigner)', s: auto ? (auto.egal > 1 ? auto.egal + ' personnes finissent à ' + hCourt(auto.heure) + ' : à tour de rôle' : 'finit à ' + hCourt(auto.heure)) + ' · se met à jour avec le planning' : 'aucun horaire ce jour-là', on: !cur || !(cur.nom || cur.equipe_id) }]
-      .concat(noms.map(function (n) { return { v: String(n.id), t: n.prenom, on: !!cur && String(cur.equipe_id) === String(n.id) }; }));
+    var ps0 = refPers(), info = function (id) { var p = ps0.filter(function (y) { return String(y.id) === String(id); })[0]; if (!p) return null; var c = refCase(p, iso, 'PM'); if (!refTravail(c)) c = refCase(p, iso, 'AM'); if (!refTravail(c)) return { p: p, off: 1 }; var pf = plageFerme(c.a), g = plageDe(c, 'pm'); return { p: p, c: c, pf: pf, deja: pf && g && g === pf.g }; };
+    var choix = [{ v: '', t: auto && !auto.vide ? 'Proposition : ' + auto.nom : 'Personne (à désigner)', s: auto && !auto.vide ? (auto.plage ? 'sur la plage ' + auto.plage : 'finit à ' + hCourt(auto.heure)) + ' · se met à jour avec le planning' : auto && auto.vide ? auto.egal + ' personnes finissent à ' + hCourt(auto.heure) + ' : choisissez' : 'aucun horaire ce jour-là', on: !cur || !(cur.nom || cur.equipe_id) }]
+      .concat(noms.map(function (n) { var x = info(n.id), s2 = !x ? '' : x.off ? 'ne travaille pas ce jour' : x.pf && !x.deja ? 'passe en ' + (x.pf.g.n || 'fermeture') + ' (' + plageTxt(x.pf.g) + ')' : x.pf ? 'déjà en ' + (x.pf.g.n || 'fermeture') : 'finit à ' + hCourt(x.c.fi); return { v: String(n.id), t: n.prenom, s: s2, on: !!cur && String(cur.equipe_id) === String(n.id) }; }));
     var r = await fenetre({ titre: 'Qui ferme le ' + JOURS[jourSem(iso)].toLowerCase() + ' ' + dateCourte(iso) + ' ?', choix: choix, grille: true, ok: 'Enregistrer', html: '<label class="mu" style="display:flex;flex-direction:column;gap:4px;margin-top:8px">Heure de fermeture (facultatif)<input class="in" type="time" id="rfh" value="' + esc((cur && cur.heure) || (auto && auto.heure) || '') + '"></label>', lire: function (bg) { return { h: bg.querySelector('#rfh').value || null }; } });
     if (!r) return;
     var q;
     if (!r.v) q = sb.from('fermetures').delete().eq('jour', iso).then(function (x) { if (x.error) throw x.error; delete S.ref.ferm[iso]; });
-    else { var n = noms.filter(function (y) { return String(y.id) === String(r.v); })[0], row = { jour: iso, equipe_id: +r.v, nom: n ? n.prenom : null, heure: (r.extra && r.extra.h) || null, modifie_par: S.me.id, modifie_le: new Date().toISOString() }; q = sb.from('fermetures').upsert(row, { onConflict: 'jour' }).then(function (x) { if (x.error) throw x.error; S.ref.ferm[iso] = row; }); }
+    else {
+      var xi = info(r.v), basc = xi && xi.pf && !xi.deja && !xi.off ? xi : null;
+      if (basc) {   // la personne passe sur la plage de fermeture de son poste, matin et après-midi
+        var g = basc.pf.g, rws = [['AM', g.ad, g.af], ['PM', g.pd, g.pf]].filter(function (z) { return z[1] && z[2]; }).map(function (z) { return { equipe_id: basc.p.id, jour: iso, demi: z[0], aff: basc.c.a, debut: z[1], fin: z[2], modifie_par: S.me.id, modifie_le: new Date().toISOString() }; });
+        await sb.from('planning').upsert(rws, { onConflict: 'equipe_id,jour,demi' }).then(function (q2) { if (q2.error) throw q2.error; rws.forEach(function (x2) { refRows()[cleCase(x2.equipe_id, x2.jour, x2.demi)] = x2; }); }).catch(function (e) { toast(msgErr(e)); });
+      }
+      var n = noms.filter(function (y) { return String(y.id) === String(r.v); })[0], row = { jour: iso, equipe_id: +r.v, nom: n ? n.prenom : null, heure: (r.extra && r.extra.h) || (basc ? basc.pf.g.pf || basc.pf.g.af : null) || null, modifie_par: S.me.id, modifie_le: new Date().toISOString() }; q = sb.from('fermetures').upsert(row, { onConflict: 'jour' }).then(function (x) { if (x.error) throw x.error; S.ref.ferm[iso] = row; }); }
     q.then(function () { toast('✔ Fermeture enregistrée'); render(); }).catch(function (e) { toast(msgErr(e)); });
   }
   function vRefConges() {
