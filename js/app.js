@@ -1268,18 +1268,25 @@
   var RG_TABS = ['reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pregles', 'ppostes', 'pqui', 'pqr', 'pprofils', 'ptypes', 'proles', 'pvisible', 'ptransfert'];
   function navReglages() {
     var cur = S.tab === 'pfiche' ? 'pequipe' : S.tab === 'dfiche' ? 'pdent' : S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible' ? 'pprofils' : S.tab;
-    var G = function (t) { return '<span class="rgn-g">' + t + '</span>'; };
-    var L = function (t, attr, tab, ext) { return '<button class="rgn-l' + (tab && tab === cur ? ' on' : '') + (ext ? ' stk' : '') + '" ' + attr + (tab && tab === cur ? ' aria-current="page"' : '') + (ext ? ' title="Ouvre la gestion de stock"' : '') + '>' + t + '</button>'; };
+    var L = function (t, attr, tab) { return '<button class="rgn-l' + (tab && tab === cur ? ' on' : '') + '" ' + attr + (tab && tab === cur ? ' aria-current="page"' : '') + '>' + t + '</button>'; };
+    var plie = rgnPlie();
+    // Catégorie repliable : la flèche ouvre ou ferme ; celle de la page ouverte reste toujours dépliée
+    var G = function (k, t, items, cl) {
+      var ici = items.some(function (x) { return x[2] && x[2] === cur; }), ferme = plie[k] && !ici;
+      return '<div class="rgn-cat' + (cl ? ' ' + cl : '') + (ferme ? ' ferme' : '') + '"><button class="rgn-g" data-rgnc="' + k + '" aria-expanded="' + !ferme + '"' + (ici ? ' disabled' : '') + '><span>' + t + '</span>' + ico('bas', 14, 2.6) + '</button>'
+        + '<div class="rgn-in">' + items.map(function (x) { return L(x[0], x[1], x[2]); }).join('') + '</div></div>';
+    };
     return '<nav class="rgn" aria-label="Rubriques des réglages">'
       + L('Tous les réglages', 'data-tab="reglages"', 'reglages')
-      + G('Équipe et comptes') + L('L’équipe', 'data-act="rgeq"', 'pequipe') + L('Les dentistes', 'data-act="rgde"', 'pdent') + L('Comptes', 'data-tab="equipe"', null, 'stock') + L('Profils', 'data-tab="pprofils"', 'pprofils')
-      + G('Planning') + L('Postes', 'data-tab="ppostes"', 'ppostes') + L('Règles des heures', 'data-tab="pregles"', 'pregles')
-      + G('Pointage') + L('QR code', 'data-act="rgqr"', 'pqr') + L('Qui pointe', 'data-tab="pqui"', 'pqui')
-      + G('Congés') + L('Demandes et planning', 'data-tab="pconges"')
-      + G('Gestion de stock') + L('Articles', 'data-tab="articles"', null, 'stock') + L('Fournisseurs', 'data-tab="fournisseurs"', null, 'stock')
-      + G('Application') + L('Sauvegarde et journal', 'data-tab="plus"', null, 'stock') + L('Transfert vers la prod', 'data-tab="ptransfert"', 'ptransfert') + L('Mon mot de passe', 'data-tab="compte"', null, 'stock')
-      + '<span class="rgn-leg">ouvre la gestion de stock</span></nav>';
+      + G('eq', 'Équipe', [['L’équipe', 'data-act="rgeq"', 'pequipe'], ['Les dentistes', 'data-act="rgde"', 'pdent'], ['Profils', 'data-tab="pprofils"', 'pprofils']])
+      + G('pl', 'Planning', [['Postes', 'data-tab="ppostes"', 'ppostes'], ['Règles des heures', 'data-tab="pregles"', 'pregles']])
+      + G('pt', 'Pointage', [['QR code', 'data-act="rgqr"', 'pqr'], ['Qui pointe', 'data-tab="pqui"', 'pqui']])
+      + G('cg', 'Congés', [['Demandes et planning', 'data-tab="pconges"']])
+      + G('ap', 'Application', [['Transfert vers la prod', 'data-tab="ptransfert"', 'ptransfert']])
+      + G('st', 'Gestion de stock', [['Comptes de connexion', 'data-tab="equipe"'], ['Articles', 'data-tab="articles"'], ['Fournisseurs', 'data-tab="fournisseurs"'], ['Sauvegarde et journal', 'data-tab="plus"'], ['Mon mot de passe', 'data-tab="compte"']], 'stk')
+      + '</nav>';
   }
+  function rgnPlie() { if (!S.rgnPlie) { try { S.rgnPlie = JSON.parse(lsGet('evy-rgn-plie') || '{}') || {}; } catch (e) { S.rgnPlie = {}; } } return S.rgnPlie; }
   // Sur ordinateur : la liste des prénoms reste à côté de la fiche ouverte
   function listeFiches() {
     var tri = function (a, b) { return (a.ordre - b.ordre) || a.prenom.localeCompare(b.prenom); };
@@ -1339,8 +1346,8 @@
     h += '<label class="rg-cherche">' + ico('loupe', 18, 2) + '<input id="rgq" placeholder="Chercher un réglage" autocomplete="off"></label>';
     h += '<div class="rg-grille">'
       + bloc('É', 'b1', 'Équipe et comptes', 'Commun à tous les outils', [
-        it('L’équipe', (planPret() ? n + ' ' + pl(n, 'personne') + ' · ' : '') + 'fiches, semaine type, absences', 'data-tab="pequipe"'),
-        it('Les dentistes', (planPret() ? nd + ' ' + pl(nd, 'dentiste') + ' · ' : '') + 'jours de présence, départs anticipés', 'data-tab="pdent"'),
+        it('L’équipe', (planPret() ? n + ' ' + pl(n, 'personne') + ' · ' : '') + 'fiches, semaine type, absences', 'data-act="rgeq"'),
+        it('Les dentistes', (planPret() ? nd + ' ' + pl(nd, 'dentiste') + ' · ' : '') + 'jours de présence, départs anticipés', 'data-act="rgde"'),
         it('Comptes de connexion', 'Identifiants, codes, rôles, cabinet par défaut', 'data-tab="equipe"'),
         it('Profils', profilsListe().filter(function (x) { return !x.retire; }).length + ' profils · planning, contrat, ce que chacun voit dans son appli', 'data-tab="pprofils"', true)])
       + bloc('P', 'b2', 'Planning', 'Organisation des journées', [
@@ -5768,6 +5775,7 @@
     if (d.esave) return sauverProfil(d.esave);
     if (d.ereinit) return reinitMdp(d.ereinit);
     if (d.rgso) { var cs = document.getElementById(d.rgso); if (cs) cs.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    if (d.rgnc) { var pli = rgnPlie(); pli[d.rgnc] = !pli[d.rgnc]; lsSet('evy-rgn-plie', JSON.stringify(pli)); render(); return; }
     if (d.act === 'rgeq' || d.act === 'rgde') { var dfi = d.act === 'rgde' ? S.df : S.pf; if (dfi && (S.tab === 'pfiche' || S.tab === 'dfiche') && dfi.o && dfi.o !== JSON.stringify(dfi.d)) { fenetre({ titre: 'Changements non enregistrés', texte: 'La fiche ouverte a été modifiée sans être enregistrée.\n\nSi vous changez de page maintenant, ces changements seront perdus.', ok: 'Changer sans enregistrer', non: 'Rester sur la fiche' }).then(function (v) { if (v) ouvrirDepuisMenu(d.act === 'rgde'); }); return; } return ouvrirDepuisMenu(d.act === 'rgde'); }
     if (d.rglp) return changerFiche('p', d.rglp);
     if (d.rgld) return changerFiche('d', d.rgld);

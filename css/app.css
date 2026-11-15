@@ -2147,3 +2147,19 @@ button.stk-k{cursor:pointer}
   .rgn-leg{display:flex;align-items:center;gap:7px;margin-top:10px;padding:8px 8px 0;border-top:1px solid var(--soft);font-size:12px;color:var(--mute)}
   .rgn-leg::before{content:"";width:7px;height:7px;border-radius:50%;background:#3f9b6c;flex:none}
 }
+/* Menu des réglages : catégories repliables, la gestion de stock rassemblée en bas */
+@media (min-width:1100px){
+  .rgn-cat{display:flex;flex-direction:column}
+  button.rgn-g{display:flex;align-items:center;justify-content:space-between;width:100%;border:none;background:none;font-family:inherit;text-align:left;cursor:pointer;border-radius:6px;margin-top:4px}
+  button.rgn-g:hover:not(:disabled){background:#f4f1e8;color:var(--ink)}
+  button.rgn-g:disabled{cursor:default}
+  button.rgn-g:disabled .ic{opacity:.35}
+  button.rgn-g .ic{transition:transform .15s}
+  .rgn-cat.ferme .rgn-in{display:none}
+  .rgn-cat.ferme button.rgn-g .ic{transform:rotate(-90deg)}
+  .rgn-in{display:flex;flex-direction:column}
+  .rgn-cat.stk{margin-top:10px;padding-top:4px;border-top:1px solid var(--soft)}
+  .rgn-cat.stk button.rgn-g{color:#17643f}
+  .rgn-cat.stk .rgn-l{color:#17643f}
+  .rgn-cat.stk .rgn-l:hover{background:#e9f5ee}
+}
