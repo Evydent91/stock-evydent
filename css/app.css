@@ -1987,3 +1987,14 @@ button.stk-k{cursor:pointer}
 /* Planning (gestion) : planning des administratifs sous le planning des assistants, avec un interrupteur */
 .pl-adm{margin-top:18px;display:flex;flex-direction:column;gap:8px}.pl-adm h2{margin:0;font-family:var(--serif, 'EB Garamond', Georgia, serif);font-size:21px;font-weight:600}
 .rf-c .pl-pt{align-self:center;margin-top:0;flex:none}
+/* Planning d'un profil : colonne Heures et fenêtre de modification lisible */
+.rf-g{grid-template-columns:minmax(120px,160px) repeat(5,minmax(104px,1fr)) minmax(84px,100px)}
+.rf-hh{justify-content:flex-end}
+.rf-h{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;background:#fff;border:1.5px solid var(--soft)}
+.rf-h b{font-size:15.5px}.rf-h small{font-size:12.5px;font-weight:700}
+.rf-h.ok,.rf-h.ok b{color:var(--navy)}.rf-h.ko,.rf-h.ko b{color:#a24d12}.rf-h.ko{border-color:#f0c9a8;background:#fdf6ef}
+.rf-ed{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,1fr);gap:8px 10px;border:1.5px solid var(--soft);border-radius:14px;padding:6px 14px 14px;margin:10px 0 0}
+.rf-ed legend{font-weight:700;font-size:15px;padding:0 6px;color:var(--ink)}
+.rf-ed label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mute);min-width:0}
+.rf-ed .in{width:100%;height:46px;min-width:0;font-size:16px;padding:0 10px}
+@media (max-width:560px){.rf-ed{grid-template-columns:1fr 1fr}.rf-ed .rf-ed-p{grid-column:1/-1}}

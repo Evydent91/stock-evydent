@@ -632,6 +632,8 @@
       var fm = {}; (r.data || []).forEach(function (x) { fm[String(x.jour).slice(0, 10)] = x; }); S.ref.ferm = fm; render();
     }, function () { S.fermBusy = false; S.ref.fermOk = true; });
   }
+  function minHm(t) { var m = /^(\d{1,2}):(\d{2})/.exec(t || ''); return m ? +m[1] * 60 + +m[2] : null; }
+  function refHeuresJ(p, iso) { var n = 0; ['AM', 'PM'].forEach(function (d) { var c = refCase(p, iso, d), a = minHm(c.de), b = minHm(c.fi); if (refTravail(c) && a != null && b != null && b > a) n += b - a; }); return n / 60; }
   function refGrille(js, ps, modif, nom) {
     var h = '';
     var cel = function (p, iso) {
@@ -644,12 +646,17 @@
       return modif ? '<button class="rf-c" data-refc="' + p.id + '|' + iso + '" aria-label="' + esc(p.prenom) + ', ' + dateCourte(iso) + '">' + corps + '</button>' : '<div class="rf-c">' + corps + '</div>';
     };
     h += '<section class="cg2-carte rf-carte"><div class="rf-scroll"><div class="rf-g"><span class="cp-h">' + esc(nom) + '</span>' + js.map(function (iso) { return '<span class="rf-j' + (iso === dIso(new Date()) ? ' auj' : '') + '"><b>' + JOURS[jourSem(iso)] + '</b>' + dateCourte(iso) + '</span>'; }).join('')
-      + ps.map(function (p) { return '<span class="rf-n"><b>' + esc(p.prenom) + '</b><small>' + (p.contrat_h ? fr(p.contrat_h) + ' h' : '') + '</small></span>' + js.map(function (iso) { return cel(p, iso); }).join(''); }).join('')
+      + '<span class="rf-j rf-hh"><b>Heures</b>semaine</span>'
+      + ps.map(function (p) {
+        var tot = js.reduce(function (a, iso) { return a + refHeuresJ(p, iso); }, 0), ct = +p.contrat_h || 0, ec = tot - ct, ok = !ct || Math.abs(ec) < 0.09;
+        return '<span class="rf-n"><b>' + esc(p.prenom) + '</b><small>contrat ' + (ct ? fr(ct) + ' h' : '—') + '</small></span>' + js.map(function (iso) { return cel(p, iso); }).join('')
+          + '<span class="rf-h ' + (ok ? 'ok' : 'ko') + '"><b>' + fh(tot) + '</b>' + (ct ? '<small>' + (ok ? 'juste' : (ec > 0 ? '+' : '−') + fh(Math.abs(ec))) + '</small>' : '') + '</span>';
+      }).join('')
       + '<span class="rf-n rf-fl"><b>Fermeture du centre</b><small>qui ferme le soir</small></span>' + js.map(function (iso) {
         var f = ferie(iso) ? null : refFerme(iso), corps = ferie(iso) ? '<b>Férié</b>' : f ? '<b>' + esc(f.nom || '?') + '</b><span>' + (f.heure ? hCourt(f.heure) : '') + (f.auto ? (f.egal > 1 ? ' · à tour de rôle' : ' · proposé') : '') + '</span>' : '<b>À désigner</b><span>personne ne finit tard</span>';
         var cl = 'rf-f' + (ferie(iso) ? ' fe' : f ? (f.auto ? ' auto' : '') : ' vide');
         return modif && !ferie(iso) ? '<button class="' + cl + '" data-reff="' + iso + '">' + corps + '</button>' : '<div class="' + cl + '">' + corps + '</div>';
-      }).join('') + '</div></div></section>';
+      }).join('') + '<span></span></div></div></section>';
     return h;
   }
   function vRefPlanning() {
@@ -666,9 +673,9 @@
     var x = v.split('|'), p = persById(x[0]), iso = x[1]; if (!p || !(gestion() || refDroit('planning_modif'))) return;
     var am = refCase(p, iso, 'AM'), pm = refCase(p, iso, 'PM'), codes = postes().filter(function (q) { return !q.retire; }).map(function (q) { return [q.code, q.n]; }).concat([['OFF', 'OFF (ne travaille pas)']]);
     var sel = function (id, c) { var cur = refTravail(c) || c.a === 'OFF' ? c.a : 'OFF'; return '<select class="in" id="' + id + '">' + codes.map(function (q) { return '<option value="' + q[0] + '"' + (q[0] === cur ? ' selected' : '') + '>' + esc(q[1]) + '</option>'; }).join('') + '</select>'; };
-    var lig = function (t, k, c, d1, d2) { return '<div class="rf-ed"><b>' + t + '</b>' + sel('rf' + k + 'a', c) + '<input class="in" type="time" id="rf' + k + 'd" value="' + esc(c.de || (refTravail(c) ? d1 : '')) + '" aria-label="' + t + ' : début"><input class="in" type="time" id="rf' + k + 'f" value="' + esc(c.fi || (refTravail(c) ? d2 : '')) + '" aria-label="' + t + ' : fin"></div>'; };
+    var lig = function (t, k, c, d1, d2) { return '<fieldset class="rf-ed"><legend>' + t + '</legend><label class="rf-ed-p">Poste' + sel('rf' + k + 'a', c) + '</label><label>De<input class="in" type="time" id="rf' + k + 'd" value="' + esc(c.de || (refTravail(c) ? d1 : '')) + '"></label><label>À<input class="in" type="time" id="rf' + k + 'f" value="' + esc(c.fi || (refTravail(c) ? d2 : '')) + '"></label></fieldset>'; };
     var saisi = am.saisi || pm.saisi, E = null;
-    var r = await fenetre({ titre: p.prenom + ' · ' + JOURS[jourSem(iso)].toLowerCase() + ' ' + dateCourte(iso), html: lig('Matin', 'AM', am, '09:00', '13:00') + lig('Après-midi', 'PM', pm, '14:00', '19:00') + '<p class="mu" style="margin:6px 0 0;font-size:13.5px">Les congés et la maladie se posent dans la page Congés, par la référente ou la responsable.</p>', boutons: saisi ? [{ v: 'type', t: 'Revenir à la semaine type' }] : null, ok: 'Enregistrer',
+    var r = await fenetre({ titre: p.prenom + ' · ' + JOURS[jourSem(iso)].toLowerCase() + ' ' + dateCourte(iso), large: true, html: lig('Matin', 'AM', am, '09:00', '13:00') + lig('Après-midi', 'PM', pm, '14:00', '19:00') + '<p class="mu" style="margin:6px 0 0;font-size:13.5px">Les congés et la maladie se posent dans la page Congés, par la référente ou la responsable.</p>', boutons: saisi ? [{ v: 'type', t: 'Revenir à la semaine type' }] : null, ok: 'Enregistrer',
       lire: function (bg) { var o = E = {}; ['AM', 'PM'].forEach(function (k) { o[k] = { a: bg.querySelector('#rf' + k + 'a').value, de: bg.querySelector('#rf' + k + 'd').value || null, fi: bg.querySelector('#rf' + k + 'f').value || null }; }); return o; } });
     if (!r) return;
     if (r.bouton === 'type') {
