@@ -687,7 +687,7 @@
       + '<span class="rf-j rf-hh"><b>Heures</b>semaine</span>'
       + ps.map(function (p) {
         var tot = js.reduce(function (a, iso) { return a + refHeuresJ(p, iso); }, 0), ct = +p.contrat_h || 0, ec = tot - ct, ok = !ct || Math.abs(ec) < 0.09;
-        return '<span class="rf-n"><b>' + esc(p.prenom) + '</b><small>contrat ' + (ct ? fr(ct) + ' h' : '—') + '</small></span>' + js.map(function (iso) { return cel(p, iso); }).join('')
+        return '<span class="rf-n rf-nav"><span class="a-av p' + coulPers(p) + '" aria-hidden="true">' + initiale(p.prenom) + '</span><span><b>' + esc(p.prenom) + '</b><small>contrat ' + (ct ? fr(ct) + ' h' : '—') + '</small></span></span>' + js.map(function (iso) { return cel(p, iso); }).join('')
           + (gestion() && S.plVoirPt ? (function () {   // « Planning + pointé » : le même résumé que pour les assistantes
             var L0 = lundiDe(js[0]), pt = p.pointage ? ptSem(p, L0) : null, eP = pt ? pt.h - tot : 0, rl = ct ? reliquatAvant(p, L0) + tot - ct : null;
             return '<span class="rf-h pl-h4"><span>Planning</span><b>' + fh(tot) + '</b><span>Pointé</span><b class="' + (pt && pt.n ? hrCouleur(Math.abs(eP) < 0.09 ? 0 : eP) : 'mu') + '">' + (!pt ? '—' : pt.n ? fh(pt.h) : '—') + '</b><span>Contrat</span><b>' + (ct ? fh(ct) : '—') + '</b><span class="pl-h4r">Reliquat</span><b class="pl-h4r ' + (rl == null ? 'mu' : hrCouleur(Math.abs(rl) < 0.01 ? 0 : rl)) + '">' + (rl == null ? '—' : relTxt(rl)) + '</b></span>';
@@ -3873,7 +3873,7 @@
     for (var k = 0; k < 5; k++) { var iso = addJ(L, k), fe = ferie(iso); h += '<div class="pl-tete' + (iso === auj ? ' auj' : '') + '"><b>' + JOURS[k + 1] + '</b><span>' + dateCourte(iso) + (fe ? ' · <em>' + fe + '</em>' : '') + '</span></div>'; }
     h += '<div class="pl-tete pl-h"><b>Heures</b><span>semaine · reliquat</span></div>';
     ps.filter(function (p) { return p.type !== 'interimaire' || interimVisible(p, L); }).forEach(function (p) {
-      h += '<div class="pl-nom"><span class="a-av p">' + initiale(p.prenom) + '</span><span><b>' + esc(p.prenom) + '</b><small>' + (p.type === 'interimaire' ? 'intérimaire' : (p.statut === 'apprentie' ? 'apprentie · ' : '') + fh(+p.contrat_h || 0)) + '</small></span></div>';
+      h += '<div class="pl-nom"><span class="a-av p' + coulPers(p) + '">' + initiale(p.prenom) + '</span><span><b>' + esc(p.prenom) + '</b><small>' + (p.type === 'interimaire' ? 'intérimaire' : (p.statut === 'apprentie' ? 'apprentie · ' : '') + fh(+p.contrat_h || 0)) + '</small></span></div>';
       var hs = heuresSem(p, L), c = +p.contrat_h || 0, hx = c > 0 && Math.abs(hs - c) >= 0.01;
       for (var k2 = 0; k2 < 5; k2++) h += celluleJour(p, addJ(L, k2));
       if (S.plVoirPt) {

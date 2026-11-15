@@ -2172,3 +2172,6 @@ input[data-hm]{font-variant-numeric:tabular-nums}
 .rf-h.pl-h4 > b.mu{color:var(--mute);font-weight:600}
 .rf-g:has(.pl-h4){grid-template-columns:minmax(120px,160px) repeat(5,minmax(104px,1fr)) minmax(132px,150px)}
 .rf-h.pl-h4 > b.plus{color:#1d5fa0}.rf-h.pl-h4 > b.moins{color:#9a4a0b}.rf-h.pl-h4 > b.ok{color:var(--ok)}
+.rf-n.rf-nav{flex-direction:row;align-items:center;justify-content:flex-start;gap:10px}
+.rf-n.rf-nav > span:last-child{display:flex;flex-direction:column;min-width:0}
+.rf-nav .a-av{width:32px;height:32px;border-radius:16px;font-size:15px;flex:none}
