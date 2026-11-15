@@ -304,9 +304,12 @@
     if (gestion() && HUB.indexOf(S.tab) >= 0) {
       poser(app, renderH());
       document.body.classList.remove('mode-a', 'ecran-ok', 'sans-nav'); document.body.classList.add('mode-h');
+      var rgOn = RG_TABS.indexOf(S.tab) >= 0 && !telephone();
+      document.body.classList.toggle('rg-on', rgOn);
+      if (rgOn) { app.insertAdjacentHTML('beforeend', navReglages()); var hdE = app.querySelector('.a-mh, header'); if (hdE) document.documentElement.style.setProperty('--hd-h', hdE.offsetHeight + 'px'); }
       placerTour(); return;
     }
-    document.body.classList.remove('mode-h');
+    document.body.classList.remove('mode-h', 'rg-on');
     if (modeA()) {
       poser(app, renderA());
       document.body.classList.add('mode-a');
@@ -1258,6 +1261,22 @@
   }
 
   // Réglages : tous les réglages de l'application, regroupés par outil
+  // Réglages sur ordinateur : menu fixe à gauche, toujours visible, pour passer d'un réglage à l'autre en un clic
+  var RG_TABS = ['reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pregles', 'ppostes', 'pqui', 'pqr', 'pprofils', 'ptypes', 'proles', 'pvisible', 'ptransfert'];
+  function navReglages() {
+    var cur = S.tab === 'pfiche' ? 'pequipe' : S.tab === 'dfiche' ? 'pdent' : S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible' ? 'pprofils' : S.tab;
+    var G = function (t) { return '<span class="rgn-g">' + t + '</span>'; };
+    var L = function (t, attr, tab, ext) { return '<button class="rgn-l' + (tab && tab === cur ? ' on' : '') + '" ' + attr + (tab && tab === cur ? ' aria-current="page"' : '') + '>' + t + (ext ? '<small>' + ext + '</small>' : '') + '</button>'; };
+    return '<nav class="rgn" aria-label="Rubriques des réglages">'
+      + L('Tous les réglages', 'data-tab="reglages"', 'reglages')
+      + G('Équipe et comptes') + L('L’équipe', 'data-tab="pequipe"', 'pequipe') + L('Les dentistes', 'data-tab="pdent"', 'pdent') + L('Comptes', 'data-tab="equipe"', null, 'stock') + L('Profils', 'data-tab="pprofils"', 'pprofils')
+      + G('Planning') + L('Postes', 'data-tab="ppostes"', 'ppostes') + L('Règles des heures', 'data-tab="pregles"', 'pregles')
+      + G('Pointage') + L('QR code', 'data-act="rgqr"', 'pqr') + L('Qui pointe', 'data-tab="pqui"', 'pqui')
+      + G('Congés') + L('Demandes et planning', 'data-tab="pconges"')
+      + G('Gestion de stock') + L('Articles', 'data-tab="articles"', null, 'stock') + L('Fournisseurs', 'data-tab="fournisseurs"', null, 'stock')
+      + G('Application') + L('Sauvegarde et journal', 'data-tab="plus"', null, 'stock') + L('Transfert vers la prod', 'data-tab="ptransfert"', 'ptransfert') + L('Mon mot de passe', 'data-tab="compte"', null, 'stock')
+      + '</nav>';
+  }
   function vReglages() {
     var n = (S.equipe || []).filter(function (p) { return p.actif; }).length, nd = (S.dentistes || []).filter(function (d) { return d.actif; }).length;
     var np = (S.equipe || []).filter(function (p) { return p.actif && p.pointage; }).length, R = regles();
