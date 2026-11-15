@@ -1392,6 +1392,23 @@
     var bloc = function (lettre, cl, t, d, items) { return '<section class="rg-bloc"><div class="rg-bt"><span class="rg-ic ' + cl + '" aria-hidden="true">' + lettre + '</span><span><h2>' + t + '</h2><small>' + d + '</small></span></div>' + items.join('') + '</section>'; };
     var h = hdA({ back: ACC_H, t: 'Réglages', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps rg-corps">';
     if (!planPret()) h += '<div class="ban warn">La mise à jour 009 de la base n’est pas encore faite : l’équipe et les dentistes ne peuvent pas s’afficher.</div>';
+    if (!telephone()) {
+      // Sur ordinateur : la page suit le menu de gauche (mêmes rubriques, même ordre), une ligne courte par réglage, et ce qui demande une action en haut
+      var ca = typeof congesAttente === 'function' ? congesAttente().length + congesAnnul().length : 0, sv = sauvegardeEnRetard();
+      var li = function (t, fait, attr, mots) { return '<button class="rg-it rgc" ' + attr + ' data-rgi="' + esc((t + ' ' + fait + ' ' + (mots || '')).toLowerCase()) + '"><b>' + t + '</b><small>' + fait + '</small>' + ico('suiv', 16, 2.4) + '</button>'; };
+      var bc = function (t, items, cl) { return '<section class="rg-bloc rgc' + (cl ? ' ' + cl : '') + '"><h2 class="rgc-t">' + t + '</h2>' + items.join('') + '</section>'; };
+      h += '<div class="rgc-top"><label class="rg-cherche">' + ico('loupe', 18, 2) + '<input id="rgq" placeholder="Chercher un réglage" autocomplete="off"></label></div>';
+      if (ca || sv) h += '<div class="rgc-faire">' + (ca ? '<button class="rgc-a" data-tab="pconges">' + ico('agenda', 20) + '<b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à traiter' + ico('suiv', 16, 2.4) + '</button>' : '') + (sv ? '<button class="rgc-a" data-tab="plus">' + ico('telecharger', 20) + '<b>Sauvegarde du mois</b> à télécharger' + ico('suiv', 16, 2.4) + '</button>' : '') + '</div>';
+      h += '<div class="rg-grille rgc-g">'
+        + bc('Équipe', [li('L’équipe', planPret() ? n + ' ' + pl(n, 'personne') : '', 'data-act="rgeq"', 'fiches semaine type absences contrat'), li('Les dentistes', planPret() ? nd + ' ' + pl(nd, 'dentiste') : '', 'data-act="rgde"', 'jours de présence départs anticipés'), li('Profils', profilsListe().filter(function (x) { return !x.retire; }).length + ' profils', 'data-tab="pprofils"', 'planning contrat ce que chacun voit référente')])
+        + bc('Planning', [li('Postes', postes().filter(function (x) { return !x.retire; }).length + ' postes', 'data-tab="ppostes"', 'sté admin accueil plages horaires fixe variable couleur'), li('Règles des heures', 'congés, férié, reliquat', 'data-tab="pregles"', 'maladie école formation cp samedi')])
+        + bc('Pointage', [li('QR code', 'afficher, imprimer', 'data-act="rgqr"', 'régénérer'), li('Calcul et alertes', 'retard ' + R.pt_tol + ' min', 'data-tab="pregles"', 'reliquat temps pointé départ'), li('Qui pointe', np + ' ' + pl(np, 'personne'), 'data-tab="pqui"', 'soumise compte')])
+        + bc('Congés', [li('Demandes et planning', ca ? ca + ' à traiter' : 'congés du mois', 'data-tab="pconges"', 'valider soldes absences')])
+        + bc('Application', [li('Transfert vers la prod', 'test → site réel', 'data-tab="ptransfert"', 'exporter importer équipe dentistes réglages congés')])
+        + bc('Gestion de stock', [li('Comptes de connexion', 'identifiants, codes', 'data-tab="equipe"', 'rôles cabinet par défaut'), li('Articles', 'seuils, lieux', 'data-tab="articles"', 'types de soins'), li('Fournisseurs', 'coordonnées', 'data-tab="fournisseurs"', 'comptes'), li('Sauvegarde et journal', sv ? 'à télécharger' : 'à jour', 'data-tab="plus"', 'versions données'), li('Mon mot de passe', 'changer', 'data-tab="compte"', '')], 'stk')
+        + '</div><p class="rg-vide" hidden>Aucun réglage ne correspond.</p>';
+      return h + '</div>';
+    }
     h += '<label class="rg-cherche">' + ico('loupe', 18, 2) + '<input id="rgq" placeholder="Chercher un réglage" autocomplete="off"></label>';
     h += '<div class="rg-grille">'
       + bloc('É', 'b1', 'Équipe et comptes', 'Commun à tous les outils', [

@@ -1,7 +1,9 @@
 // Journal des versions (affiché dans Plus, pour la référente et la responsable).
 // Types : Majeure (changement profond), Mineure (nouvelle fonction), Correctif (réparation).
 // c = changements visibles ; x = opérations sur les données (pour la responsable).
-window.JOURNAL = [{v:"2.4.6",t:"Correctif",n:"Barre de la gestion de stock sur une ligne",d:"15 novembre 2026",
+window.JOURNAL = [{v:"2.4.7",t:"Mineure",n:"Page Réglages allégée sur ordinateur",d:"16 novembre 2026",
+c:["« Tous les réglages » sur ordinateur suit maintenant le menu de gauche : mêmes rubriques dans le même ordre (Équipe, Planning, Pointage, Congés, Application, puis Gestion de stock en vert), une ligne courte par réglage avec un seul repère à droite (nombre de personnes, de postes…), sans les longues descriptions ni les étiquettes « Nouveau ». Ce qui demande une action (congés à traiter, sauvegarde du mois) s’affiche en haut. La recherche marche toujours, y compris sur les mots des anciennes descriptions. Sur téléphone, rien ne change."]},
+{v:"2.4.6",t:"Correctif",n:"Barre de la gestion de stock sur une ligne",d:"15 novembre 2026",
 c:["Gestion de stock sur ordinateur : la barre des rubriques tient sur une seule ligne (les titres « Au quotidien » et « Gestion » s’effacent sur les écrans moyens). « Fin d’année » n’est plus un onglet : une carte « Inventaire de fin d’année » l’ouvre depuis le tableau de bord et depuis la page Plus (et toujours depuis le bouton « Plus » sur téléphone)."]},
 {v:"2.4.5",t:"Mineure",n:"Inventaire de fin d’année, import de facture direct",d:"15 novembre 2026",
 c:["Reliquat : pour une semaine antérieure à la date « Compté à partir du » (Réglages › Règles des heures), l’appli ajoutait quand même l’écart de cette semaine (ex. +0 h 48 en novembre alors que le reliquat ne démarre que le 30 novembre). Le reliquat reste maintenant à zéro avant cette date, partout : page Heures (« compté à partir du 30 nov. »), planning, fenêtre d’une case, clôture et « Mon reliquat ».",

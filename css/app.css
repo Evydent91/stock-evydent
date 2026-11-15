@@ -2261,3 +2261,16 @@ button.pl-seul.pl-fb:hover{box-shadow:0 0 0 2px var(--gold)}
 .if-carte .grow{display:flex;flex-direction:column;gap:2px}.if-carte b{font-size:16.5px}.if-carte .grow span{font-size:14px;color:var(--mute)}
 .if-ci{width:46px;height:46px;border-radius:12px;background:var(--soft);color:var(--navy);display:flex;align-items:center;justify-content:center;flex:none}
 .if-carte:hover{box-shadow:0 0 0 2px var(--gold)}
+/* « Tous les réglages » sur ordinateur : la page suit le menu de gauche, une ligne courte par réglage */
+.rgc-top{display:flex;align-items:center;gap:14px}.rgc-top .rg-cherche{flex:0 1 420px;height:42px}
+.rgc-faire{display:flex;flex-wrap:wrap;gap:10px}
+.rgc-a{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;border:none;border-radius:12px;background:var(--warnbg);color:#7a3a08;font:inherit;font-size:15px;cursor:pointer}
+.rgc-a .ic:last-child{margin-left:4px}
+.rgc-g{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:1600px){.rgc-g{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.rg-bloc.rgc{padding:6px 0 4px}
+.rgc-t{margin:0;padding:8px 16px 6px;font:700 12px var(--font);letter-spacing:.07em;text-transform:uppercase;color:var(--mute)}
+.rg-it.rgc{display:grid;grid-template-columns:minmax(0,1fr) auto 16px;align-items:center;gap:10px;padding:0 16px;min-height:44px;border-top:1px solid var(--soft)}
+.rg-it.rgc b{font-size:15px;font-weight:600}.rg-it.rgc small{font-size:13.5px;color:var(--mute);white-space:nowrap}
+.rg-bloc.rgc.stk .rgc-t,.rg-bloc.rgc.stk .rg-it b{color:#17643f}
+.rg-bloc.rgc.stk .rg-it:hover{background:#e9f5ee}
