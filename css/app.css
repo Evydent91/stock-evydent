@@ -2014,3 +2014,8 @@ button.stk-k{cursor:pointer}
 .fi-fx-h{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}.fi-fx-h label{display:flex;flex-direction:column;gap:4px;font-size:13px}.fi-fx-h .in{width:120px;height:44px}.fi-fx-h > .mu{padding-bottom:12px}
 
 @media (max-width:640px){.a-li.po{grid-template-columns:auto 1fr 1fr}.po-dt{grid-column:1/-1}}
+.fi-fxj{margin-top:2px}.fi-fxj summary{cursor:pointer;font-weight:700;font-size:14.5px;color:var(--navy);min-height:36px;display:flex;align-items:center}
+.fi-fxg{display:grid;grid-template-columns:90px repeat(4,minmax(96px,120px)) auto;gap:6px 8px;align-items:center;margin:6px 0}
+.fi-fxg small{font-size:12.5px;color:var(--mute)}.fi-fxg .in{height:40px;width:100%;min-width:0;padding:0 8px}.fi-fxg .in.diff{border-color:var(--gold);background:#fff8e6;font-weight:700}
+@media (max-width:700px){.fi-fxg{grid-template-columns:70px repeat(4,minmax(0,1fr))}.fi-fxg > .mu,.fi-fxg > span:first-child{display:none}}
+.h-demi .h-fx{grid-column:2;flex-direction:row;align-items:baseline;gap:8px;flex-wrap:wrap}

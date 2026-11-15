@@ -683,7 +683,7 @@
     }
     E = E || {}; ['AM', 'PM'].forEach(function (d) { var c = E[d]; if (!c) return; var k = d === 'AM' ? 'am' : 'pm', m = /^(.+)#(\d+)$/.exec(c.a || '');
       if (m) { var g = plagesPoste(m[1])[+m[2]]; c.a = m[1]; if (g && (k === 'am' ? g.ad : g.pd)) { c.de = k === 'am' ? g.ad : g.pd; c.fi = k === 'am' ? g.af : g.pf; } }
-      else if (c.a && horPoste(c.a) === 'fixe') { var hd = horDemi(p, c.a, k); if (hd) { c.de = hd.de; c.fi = hd.fi; } } });
+      else if (c.a && horPoste(c.a) === 'fixe') { var hd = horDemi(p, c.a, k, jourSem(iso)); if (hd) { c.de = hd.de; c.fi = hd.fi; } } });
     var rows = ['AM', 'PM'].map(function (d) { var c = E[d] || { a: 'OFF' }, tr = c.a !== 'OFF'; return { equipe_id: p.id, jour: iso, demi: d, aff: c.a || 'OFF', debut: tr ? c.de : null, fin: tr ? c.fi : null, modifie_par: S.me.id, modifie_le: new Date().toISOString() }; });
     sb.from('planning').upsert(rows, { onConflict: 'equipe_id,jour,demi' }).then(function (q) { if (q.error) throw q.error; rows.forEach(function (x) { refRows()[cleCase(x.equipe_id, x.jour, x.demi)] = x; }); toast('✔ Case enregistrée'); render(); }).catch(function (e) { toast(msgErr(e)); });
   }
@@ -990,8 +990,10 @@
     for (var j = 1; j <= 5; j++) { var c = t[j] || {}; if (!o.ad && c.am && c.am.a === code && c.am.de) { o.ad = c.am.de; o.af = c.am.fi; } if (!o.pd && c.pm && c.pm.a === code && c.pm.de) { o.pd = c.pm.de; o.pf = c.pm.fi; } }
     return { ad: o.ad || '09:00', af: o.af || '13:00', pd: o.pd || '14:00', pf: o.pf || '17:00' };
   }
-  function horDemi(p, code, k) {   // horaire proposé pour une demi-journée (k = am | pm) d'un poste fixe ou à plages, sinon null
-    var h = horPoste(code), g = h === 'fixe' ? fixeDe(p, code) : h === 'plages' ? plagesPoste(code)[0] : null;
+  // Horaire fixe d'un jour (1 = lundi … 5 = vendredi) : l'horaire de base, sauf ce que ce jour change (ex. le vendredi finit 1 h plus tôt)
+  function fixeJour(p, code, j) { var f = fixeDe(p, code), x = (f.j || {})[j] || {}; return { ad: x.ad || f.ad, af: x.af || f.af, pd: x.pd || f.pd, pf: x.pf || f.pf }; }
+  function horDemi(p, code, k, j) {   // horaire proposé pour une demi-journée (k = am | pm, j = jour) d'un poste fixe ou à plages, sinon null
+    var h = horPoste(code), g = h === 'fixe' ? (j ? fixeJour(p, code, j) : fixeDe(p, code)) : h === 'plages' ? plagesPoste(code)[0] : null;
     if (!g) return null; var x = k === 'am' ? [g.ad, g.af] : [g.pd, g.pf]; return x[0] && x[1] ? { de: x[0], fi: x[1] } : null;
   }
   function listeCodes(cur) {   // [code, nom] pour les listes : postes en service (+ celui déjà choisi), puis École et Ne travaille pas
@@ -1515,7 +1517,12 @@
       g += '</div><div class="h-total ' + (ecT ? 'warn' : 'ok') + '"><span>Total de la semaine type</span><b>' + fh(tot) + (c ? ' / ' + fh(c) + ' · ' + (ecT ? relTxt(tot - c) : 'équilibré') : '') + '</b></div>';
       var fx = {}; for (var jf = 1; jf <= 5; jf++) ['am', 'pm'].forEach(function (kf) { var xf = (t[jf] || {})[kf]; if (xf && xf.a && horPoste(xf.a) === 'fixe') fx[xf.a] = 1; });
       g += Object.keys(fx).map(function (code) { var f = fixeDe(p, code), tm = function (k2, lib) { return '<label class="mu">' + lib + '<input class="in" type="time" data-hfx="' + code + '|' + k2 + '" value="' + esc(f[k2] || '') + '"></label>'; }, hh = (minHm(f.af) - minHm(f.ad) + minHm(f.pf) - minHm(f.pd)) / 60;
-        return '<div class="fi-fx"><span><b>Horaire « ' + esc(nomAff(code)) + ' »</b><small>poste à horaire fixe : saisi une fois, appliqué à tous ses jours sur ce poste</small></span><div class="fi-fx-h">' + tm('ad', 'Matin, de') + tm('af', 'à') + tm('pd', 'Après-midi, de') + tm('pf', 'à') + (hh > 0 ? '<span class="mu">= ' + fh(hh) + ' par jour complet</span>' : '') + '</div></div>'; }).join('');
+        var jours = []; for (var jd = 1; jd <= 5; jd++) { var tj = t[jd] || {}; if ((tj.am && tj.am.a === code) || (tj.pm && tj.pm.a === code)) jours.push(jd); }
+        var ex = f.j || {}, nex = Object.keys(ex).length;
+        var lj = jours.map(function (jd) { var fj = fixeJour(p, code, jd), tj2 = function (k2) { return '<input class="in' + (ex[jd] && ex[jd][k2] ? ' diff' : '') + '" type="time" data-hfx="' + code + '|' + jd + '|' + k2 + '" value="' + esc(fj[k2] || '') + '" aria-label="' + JOURS[jd] + '"></span>'; }, hj2 = (minHm(fj.af) - minHm(fj.ad) + minHm(fj.pf) - minHm(fj.pd)) / 60;
+          return '<b>' + JOURS[jd] + '</b>' + ['ad', 'af', 'pd', 'pf'].map(function (k2) { return '<span>' + tj2(k2); }).join('') + '<span class="mu">' + (hj2 > 0 ? fh(hj2) : '') + (ex[jd] ? ' · différent' : '') + '</span>'; }).join('');
+        return '<div class="fi-fx"><span><b>Horaire « ' + esc(nomAff(code)) + ' »</b><small>poste à horaire fixe : saisi une fois, appliqué à tous ses jours sur ce poste</small></span><div class="fi-fx-h">' + tm('ad', 'Matin, de') + tm('af', 'à') + tm('pd', 'Après-midi, de') + tm('pf', 'à') + (hh > 0 ? '<span class="mu">= ' + fh(hh) + ' par jour complet</span>' : '') + '</div>'
+          + (jours.length ? '<details class="fi-fxj"' + (nex ? ' open' : '') + '><summary>Un jour différent ? (ex. le vendredi finit plus tôt)' + (nex ? ' · ' + nex + ' ' + pl(nex, 'jour') + ' différent' + (nex > 1 ? 's' : '') : '') + '</summary><div class="fi-fxg"><span></span><small>Matin, de</small><small>à</small><small>Après-midi, de</small><small>à</small><span></span>' + lj + '</div><small class="mu">Changez seulement l’heure qui diffère ; le reste suit l’horaire ci-dessus.</small></details>' : '') + '</div>'; }).join('');
       g += '<div class="fi-ed"><b>' + JOURS[cj] + ' ' + (ck === 'am' ? 'matin' : 'après-midi') + '</b>' + demiEdit(cj, ck, (t[cj] || {})[ck]) + '<div class="fi-rac"><button class="btn l sm" data-act="pfcopiejour" data-j="' + cj + '">Copier le ' + JOURS[cj].toLowerCase() + ' sur toute la semaine</button></div></div>';
       return bandeauVersions(F) + '<p class="mu fi-intro">Touchez une case pour changer ' + (aDent(p.type) ? 'le dentiste ou le poste' : 'le poste') + ' et les horaires. ' + (ty.planning === false ? 'Hors planning : ces horaires servent seulement au pointage (heures prévues, retards, départs avant l’heure, coupure de midi déduite).' : 'Le planning de chaque semaine part de là.') + '</p>' + g;
     };
@@ -1573,12 +1580,14 @@
       c[p[2]] = el.value;
       if (p[2] === 'a') {
         if (!el.value || el.value === 'OFF') { delete c.de; delete c.fi; if (!el.value) delete j[p[1]]; }
+        else if (horPoste(el.value) === 'fixe') { ['am', 'pm'].forEach(function (k) { var hk = horDemi(F.d, el.value, k, +p[0]); if (hk) { j[k] = { a: el.value, de: hk.de, fi: hk.fi }; } }); }
         else { var hd = horDemi(F.d, el.value, p[1]); if (hd) { c.de = hd.de; c.fi = hd.fi; } else if (!c.de) { c.de = p[1] === 'am' ? '09:00' : '14:00'; c.fi = p[1] === 'am' ? '13:00' : '19:00'; } }
       }
     } else if (el.dataset.hfx) {
-      var xf = el.dataset.hfx.split('|'), rgf = F.d.regles = Object.assign({}, F.d.regles || {}), hf = rgf.hfixe = Object.assign({}, rgf.hfixe || {}), f = hf[xf[0]] = Object.assign({}, fixeDe(F.d, xf[0]));
-      f[xf[1]] = el.value || null;
-      var tt = F.d.trame || {}; for (var jj = 1; jj <= 5; jj++) { var dj = tt[jj] || {}; if (dj.am && dj.am.a === xf[0]) { dj.am.de = f.ad; dj.am.fi = f.af; } if (dj.pm && dj.pm.a === xf[0]) { dj.pm.de = f.pd; dj.pm.fi = f.pf; } }
+      var xf = el.dataset.hfx.split('|'), rgf = F.d.regles = Object.assign({}, F.d.regles || {}), hf = rgf.hfixe = Object.assign({}, rgf.hfixe || {}), f = hf[xf[0]] = JSON.parse(JSON.stringify(fixeDe(F.d, xf[0])));
+      if (xf.length === 3) { var jx = f.j = f.j || {}, dx = jx[xf[1]] = jx[xf[1]] || {}; if (el.value && el.value !== f[xf[2]]) dx[xf[2]] = el.value; else delete dx[xf[2]]; if (!Object.keys(dx).length) delete jx[xf[1]]; }
+      else f[xf[1]] = el.value || null;
+      var tt = F.d.trame || {}; for (var jj = 1; jj <= 5; jj++) { var dj = tt[jj] || {}, fj = fixeJour(F.d, xf[0], jj); if (dj.am && dj.am.a === xf[0]) { dj.am.de = fj.ad; dj.am.fi = fj.af; } if (dj.pm && dj.pm.a === xf[0]) { dj.pm.de = fj.pd; dj.pm.fi = fj.pf; } }
     }
   }
   // ---------- Jours off récurrents (fiche d'une assistante) ----------
@@ -3766,7 +3775,7 @@
     if (x[1] === 'a') c.h = null;
     if (x[1] === 'a') {
       if (!el.value || el.value === 'OFF' || ABS.indexOf(el.value) >= 0) { c.de = null; c.fi = null; }
-      else { var p = persById(K.eid), hd = horDemi(p, el.value, x[0] === 'AM' ? 'am' : 'pm'); if (hd) { c.de = hd.de; c.fi = hd.fi; } else if (!c.de) { var t = (((trameDe(p, K.jour) || {})[jourSem(K.jour)] || {})[x[0] === 'AM' ? 'am' : 'pm']) || {}; c.de = t.de || (x[0] === 'AM' ? '09:00' : '14:00'); c.fi = t.fi || (x[0] === 'AM' ? '13:00' : '19:00'); } }
+      else { var p = persById(K.eid), hd = horDemi(p, el.value, x[0] === 'AM' ? 'am' : 'pm', jourSem(K.jour)); if (hd) { c.de = hd.de; c.fi = hd.fi; } else if (!c.de) { var t = (((trameDe(p, K.jour) || {})[jourSem(K.jour)] || {})[x[0] === 'AM' ? 'am' : 'pm']) || {}; c.de = t.de || (x[0] === 'AM' ? '09:00' : '14:00'); c.fi = t.fi || (x[0] === 'AM' ? '13:00' : '19:00'); } }
     }
   }
   function sauverCase() {
@@ -5630,7 +5639,7 @@
     if (d.pfong != null && S.pf) { S.pf.onglet = d.pfong || null; render(); window.scrollTo(0, 0); return; }
     if (d.pfcel && S.pf) { S.pf.cel = d.pfcel; render(); return; }
     if (d.trpl && S.pf) { var xq = d.trpl.split('.'), tq = S.pf.d.trame = S.pf.d.trame || {}, dq = tq[xq[0]] = tq[xq[0]] || {}, cq = dq[xq[1]] || {}, gq = plagesPoste(cq.a)[+xq[2]]; if (gq) { ['am', 'pm'].forEach(function (k) { var ck2 = dq[k]; if (ck2 && ck2.a === cq.a || k === xq[1]) { var de = k === 'am' ? gq.ad : gq.pd, fi = k === 'am' ? gq.af : gq.pf; if (de && fi) { ck2 = dq[k] = dq[k] || { a: cq.a }; ck2.de = de; ck2.fi = fi; } } }); } render(); return; }
-    if (d.act === 'pfcopiejour' && S.pf) { var tj = S.pf.d.trame = S.pf.d.trame || {}, src = JSON.parse(JSON.stringify(tj[d.j] || {})); for (var jj2 = 1; jj2 <= 5; jj2++) if (String(jj2) !== String(d.j)) tj[jj2] = JSON.parse(JSON.stringify(src)); toast('Copié sur toute la semaine · pensez à enregistrer'); render(); return; }
+    if (d.act === 'pfcopiejour' && S.pf) { var tj = S.pf.d.trame = S.pf.d.trame || {}, src = JSON.parse(JSON.stringify(tj[d.j] || {})); for (var jj2 = 1; jj2 <= 5; jj2++) if (String(jj2) !== String(d.j)) { tj[jj2] = JSON.parse(JSON.stringify(src)); ['am', 'pm'].forEach(function (k) { var cc = tj[jj2][k]; if (cc && cc.a && horPoste(cc.a) === 'fixe') { var hk = horDemi(S.pf.d, cc.a, k, jj2); if (hk) { cc.de = hk.de; cc.fi = hk.fi; } } }); } toast('Copié sur toute la semaine · pensez à enregistrer'); render(); return; }
     if ((d.pfret != null || /^(pfadd|pfsavep)$/.test(d.act || '')) && actionProfils(d)) return;
     if ((d.roret != null || /^(roadd|rosave)$/.test(d.act || '')) && actionRoles(d)) return;
     if ((d.poup != null || d.podown != null || d.poret != null || d.pgadd != null || d.pgdel != null || d.tyret != null || /^(poadd|posave|tyadd|tysave)$/.test(d.act || '')) && actionReglages(d)) return;
