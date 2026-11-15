@@ -2228,3 +2228,4 @@ button.pl-seul.pl-fb:hover{box-shadow:0 0 0 2px var(--gold)}
   .sheet-acc{border:none;background:var(--navy);color:#fff}
   .sheet-out{border:1.5px solid var(--line);background:#fff;color:var(--ink)}
 }
+.cm-imp{display:inline-flex;align-items:center;gap:8px;margin-right:8px;background:var(--gold);border-color:var(--gold);color:var(--ink)}

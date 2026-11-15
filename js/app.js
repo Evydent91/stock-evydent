@@ -5056,7 +5056,7 @@
     var sub = S.cmdSub || 'sug', ouvertes = S.commandes.filter(function (c) { return c.statut === 'attente' || c.statut === 'partielle'; });
     var h = '<div class="cm-top"><span class="cm-seg" role="tablist" aria-label="Commandes">'
       + [['sug', 'À commander'], ['enc', 'En cours' + (ouvertes.length ? ' · ' + ouvertes.length : '')], ['his', 'Historique']].map(function (x) { return '<button role="tab" aria-selected="' + (sub === x[0]) + '" class="' + (sub === x[0] ? 'on' : '') + '" data-csub="' + x[0] + '">' + x[1] + '</button>'; }).join('')
-      + '</span><span class="grow"></span><button class="cm-new' + (sub === 'new' ? ' on' : '') + '" data-csub="new">+ Nouvelle commande</button></div>';
+      + '</span><span class="grow"></span><label class="cm-new cm-imp">' + ico('haut', 18, 2.2) + 'Importer une facture<input type="file" accept="application/pdf,.pdf" id="impfd" hidden></label><button class="cm-new' + (sub === 'new' ? ' on' : '') + '" data-csub="new">+ Nouvelle commande</button></div>';
     if (sub === 'sug') return h + vSuggestions();
     if (sub === 'new') return h + vNouvelleCommande();
     var l = sub === 'enc' ? ouvertes : S.commandes.filter(function (c) { return c.statut === 'recue' || c.statut === 'close'; });
@@ -5202,6 +5202,34 @@
     if (a) return a;
     S.articles.some(function (x) { if (nRef(x.reference) === k && x.reference !== 'SR') { a = x; return true; } });
     return a;
+  }
+  // Import direct depuis Commandes : la facture trouve (ou crée) la commande en cours de son fournisseur, puis s'importe dedans
+  function importerFactureDirecte(file) {
+    if (!file) return;
+    toast('Lecture de la facture…');
+    file.arrayBuffer().then(FACTURES.extraireLignes).then(async function (lignes) {
+      var R = FACTURES.lireFacture(lignes);
+      if (!R.fournisseur) { await fenetre({ titre: 'Fournisseur pas encore reconnu', texte: 'L’import sait lire les factures ' + FACTURES.modeles.join(' et ') + '.\n\nPour une autre facture, créez la commande à la main (« + Nouvelle commande ») et ajoutez les articles.', ok: 'Compris', seul: true }); return; }
+      var cle0 = function (x) { return norm(x).replace(/[^a-z0-9]/g, ''); }, fid = null;
+      Object.keys(S.fournisseurs || {}).forEach(function (id) { if (!fid && cle0(S.fournisseurs[id]).indexOf(cle0(R.fournisseur)) >= 0) fid = +id; });
+      if (!fid) { await fenetre({ titre: 'Fournisseur ' + R.fournisseur + ' introuvable', texte: 'Aucun fournisseur « ' + R.fournisseur + ' » dans l’appli.\n\nCréez-le dans Fournisseurs, puis importez à nouveau la facture.', ok: 'Compris', seul: true }); return; }
+      var ouv = S.commandes.filter(function (c) { return c.fournisseur_id === fid && (c.statut === 'attente' || c.statut === 'partielle'); });
+      var c = ouv.filter(function (x) { return x.numero && R.commandes.indexOf(String(x.numero).trim()) >= 0; })[0], id = c ? c.id : null;
+      if (!id) {
+        var choix = ouv.map(function (x) { return { v: x.id, t: 'Commande ' + (x.numero ? 'n° ' + x.numero : 'sans numéro') + ' du ' + new Date(x.cree_le).toLocaleDateString('fr-FR'), s: CST[x.statut] ? CST[x.statut][1] : '' }; });
+        choix.push({ v: 0, t: 'Nouvelle commande ' + R.fournisseur, s: R.commandes.length ? 'enregistrée sous le n° ' + R.commandes[0] : 'créée à partir de la facture', on: !ouv.length });
+        if (ouv.length) choix[0].on = true;
+        var r = await fenetre({ titre: 'Facture ' + R.fournisseur + (R.facture ? ' n° ' + R.facture : ''), texte: 'À quelle commande rattacher cette facture ?', choix: choix, ok: 'Continuer' });
+        if (!r) return;
+        id = +r.v;
+        if (!id) {
+          var ins = await sb.from('commandes').insert({ fournisseur_id: fid, numero: R.commandes[0] || null, manuelle: true }).select().single();
+          if (ins.error) throw ins.error;
+          id = ins.data.id; await chargerCommandes();
+        }
+      }
+      ouvrirCommande(id); importerFacture(file);
+    }).catch(function (e) { toast(msgErr(e)); });
   }
   function importerFacture(file) {
     var F = S.fiche, c = S.commandes.filter(function (x) { return x.id === F.id; })[0];
@@ -6100,6 +6128,7 @@
     else if (t.id === 'ncab' && S.eqNew) { S.eqNew.cabinet = t.value; }
     else if (t.id === 'aimpf') { var fa = t.files && t.files[0]; t.value = ''; importerArticles(fa); }
     else if (t.id === 'iimpf') { var fc = t.files && t.files[0]; t.value = ''; importerComptage(fc); }
+    else if (t.id === 'impfd') { var fd = t.files && t.files[0]; t.value = ''; importerFactureDirecte(fd); }
     else if (t.id === 'impf') { var fi = t.files && t.files[0]; t.value = ''; importerFacture(fi); }
     else if (t.dataset && t.dataset.impc != null && S.fiche && S.fiche.imp) { S.fiche.imp.items[+t.dataset.impc].choix = t.value; render(); }
     else if (t.id === 'scab') { S.sortie.cab = +t.value; render(); }
