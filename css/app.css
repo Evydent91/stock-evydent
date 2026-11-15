@@ -2175,3 +2175,8 @@ input[data-hm]{font-variant-numeric:tabular-nums}
 .rf-n.rf-nav{flex-direction:row;align-items:center;justify-content:flex-start;gap:10px}
 .rf-n.rf-nav > span:last-child{display:flex;flex-direction:column;min-width:0}
 .rf-nav .a-av{width:32px;height:32px;border-radius:16px;font-size:15px;flex:none}
+/* Planning administratif : même grille que les assistantes ; la ligne Fermeture comme « La Sté » */
+button.pl-seul.pl-fb{border:none;font:inherit;font-size:13px;cursor:pointer;width:auto}
+button.pl-seul.pl-fb:hover{box-shadow:0 0 0 2px var(--gold)}
+.pl-c .rf-pn{display:block;font-style:normal;font-size:11.5px;font-weight:700;opacity:.8}
+.pl-adm > .pl-scroll{margin-top:8px}

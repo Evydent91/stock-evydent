@@ -3786,7 +3786,7 @@
     var cls = 'pl-c', h;
     var itm = p.type === 'interimaire', ofc = itm ? ' off' : ' off2', acl = function (c) { return ' abs ab-' + String(c.a).toLowerCase(); };
     if (am.a === pm.a && (ab(am) || am.a === 'OFF')) { cls += am.a === 'OFF' ? ofc : acl(am); h = '<b>' + (am.a === 'OFF' ? (am.off || pm.off ? 'Jour off' : itm ? '—' : 'OFF') : nomAff(am.a)) + '</b>'; }
-    else if (am.a === pm.a) { cls += ' on'; if (pastelPoste(am.a)) { cls += ' pst'; var stP = pastelPoste(am.a); } h = '<b>' + esc(nomAff(am.a)) + '</b><span>' + ft(am.de) + '–' + ft(am.fi) + ' · ' + ft(pm.de) + '–' + ft(pm.fi) + '</span>'; }
+    else if (am.a === pm.a) { cls += ' on'; if (pastelPoste(am.a)) { cls += ' pst'; var stP = pastelPoste(am.a); } h = '<b>' + esc(nomAff(am.a)) + '</b><span>' + ft(am.de) + '–' + ft(am.fi) + ' · ' + ft(pm.de) + '–' + ft(pm.fi) + '</span>'; var gA = plageDe(am, 'am'), gP = plageDe(pm, 'pm'), gn = gA && gP && gA === gP ? gA.n : gP ? gP.n : gA ? gA.n : ''; if (gn) h += '<i class="rf-pn">' + esc(gn) + '</i>'; }
     else {
       var demi = function (c) { var sp = !ab(c) && c.a !== 'OFF' && pastelPoste(c.a); return '<span class="pl-d' + (ab(c) ? acl(c) : c.a === 'OFF' ? ofc : '') + '"' + (sp ? ' style="' + sp + '"' : '') + '><b>' + (c.off ? 'Off' : c.a === 'OFF' ? (itm ? '—' : 'OFF') : esc(nomAff(c.a))) + '</b>' + (c.de ? ' ' + ft(c.de) + '–' + ft(c.fi) : '') + '</span>'; };
       cls += ' mix'; h = demi(am) + demi(pm);
@@ -3800,6 +3800,13 @@
     var cat = !(am.a === 'OFF' && pm.a === 'OFF') && congeAttenteLe(p.id, iso);
     if (cat) { cls += ' cg-at'; h += '<small class="pl-at" title="Demande du ' + dateCourte(cat.du) + (cat.au !== cat.du ? ' au ' + dateCourte(cat.au) : '') + ', pas encore validée">' + ico('attente', 13, 2.4) + esc(cat.type === 'FORMATION' ? 'Formation' : typeTxt(cat.type)) + ' demandé' + (cat.type === 'FORMATION' ? 'e' : 's') + '</small>'; }
     return '<button class="' + cls + (jourClos(iso) ? ' clos' : '') + '"' + (stP ? ' style="' + stP + '"' : '') + ' data-plc="' + p.id + '|' + iso + '" aria-label="' + esc(p.prenom) + ', ' + JOURS[jourSem(iso)] + '">' + h + '</button>';
+  }
+  // Qui ferme le centre ce jour-là (planning administratif) : même style que « La Sté »
+  function celluleFerme(iso, modif) {
+    if (ferie(iso)) return '<div class="pl-seul vide"><span>Férié</span></div>';
+    var f = refFerme(iso), corps = f ? '<b>' + esc(f.nom || '?') + '</b><span>' + (f.heure ? hCourt(f.heure) : '') + (f.plage ? ' · ' + esc(f.plage) : '') + '</span>' + (f.auto ? '<small>proposé</small>' : '') : '<b>À désigner</b><span>personne ne finit tard</span>';
+    var cl = 'pl-seul' + (f ? ' ok' : '');
+    return modif ? '<button class="' + cl + ' pl-fb" data-reff="' + iso + '">' + corps + '</button>' : '<div class="' + cl + '">' + corps + '</div>';
   }
   // Dentistes présents qui travaillent sans assistante ce jour-là (journée entière, matin ou après-midi)
   function dentistesSeuls(iso) {
@@ -3869,23 +3876,9 @@
     var sc = semClose(L);
     if (sc) h += '<div class="clo-ban">' + ico('cadenas', 20, 2.2) + '<span><b>Semaine clôturée le ' + dateCourte(String(sc.cloture_le).slice(0, 10)) + (sc.cloture_par ? ' par ' + esc(nomProfil(sc.cloture_par) || '?') : '') + '</b><span>Heures figées : les cases et les pointages de cette semaine ne se modifient plus.</span></span><button class="btn l" data-clorouv="' + L + '">Rouvrir…</button></div>';
     if (P.charge) h += '<p class="mu">Chargement…</p>';
-    h += '<div class="pl-scroll"><div class="pl-grille"><div class="pl-tete pl-nom">Assistantes</div>';
-    for (var k = 0; k < 5; k++) { var iso = addJ(L, k), fe = ferie(iso); h += '<div class="pl-tete' + (iso === auj ? ' auj' : '') + '"><b>' + JOURS[k + 1] + '</b><span>' + dateCourte(iso) + (fe ? ' · <em>' + fe + '</em>' : '') + '</span></div>'; }
-    h += '<div class="pl-tete pl-h"><b>Heures</b><span>semaine · reliquat</span></div>';
-    ps.filter(function (p) { return p.type !== 'interimaire' || interimVisible(p, L); }).forEach(function (p) {
-      h += '<div class="pl-nom"><span class="a-av p' + coulPers(p) + '">' + initiale(p.prenom) + '</span><span><b>' + esc(p.prenom) + '</b><small>' + (p.type === 'interimaire' ? 'intérimaire' : (p.statut === 'apprentie' ? 'apprentie · ' : '') + fh(+p.contrat_h || 0)) + '</small></span></div>';
-      var hs = heuresSem(p, L), c = +p.contrat_h || 0, hx = c > 0 && Math.abs(hs - c) >= 0.01;
-      for (var k2 = 0; k2 < 5; k2++) h += celluleJour(p, addJ(L, k2));
-      if (S.plVoirPt) {
-        var pt = p.pointage ? ptSem(p, L) : null, rl = c ? reliquatAvant(p, L) + hs - c : null, eP = pt ? pt.h - heuresSemPrevu(p, L) : 0;
-        h += '<div class="pl-h pl-h4"><span>Planning</span><b>' + fh(heuresSemPrevu(p, L)) + '</b><span>Pointé</span><b class="' + (pt && pt.n ? hrCouleur(Math.abs(eP) < 0.09 ? 0 : eP) : 'mu') + '">' + (!pt ? '—' : pt.n ? fh(pt.h) : '—') + '</b><span>Contrat</span><b>' + (c ? fh(c) : '—') + '</b><span class="pl-h4r">Reliquat</span><b class="pl-h4r ' + (rl == null ? 'mu' : hrCouleur(Math.abs(rl) < 0.01 ? 0 : rl)) + '">' + (rl == null ? '—' : Math.abs(rl) < 0.01 ? 'à jour' : relTxt(rl)) + '</b></div>';
-      }
-      else if (!c) h += '<div class="pl-h"><span><b>' + fh(hs) + '</b></span></div>';
-      else {
-        var r = reliquatAvant(p, L) + hs - c;
-        h += '<div class="pl-h"><span class="' + (hx ? 'pl-hko' : 'pl-hok') + '"' + (hx ? ' title="' + (hs > c ? 'Plus' : 'Moins') + ' que le contrat cette semaine : à ajuster"' : '') + '><b>' + fh(hs) + '</b> / ' + fh(c) + '</span>' + (Math.abs(r) < 0.01 ? '<span class="ok">à jour</span>' : r < 0 ? '<span class="moins">' + relTxt(r) + ' · à rattraper</span>' : '<span class="plus">' + relTxt(r) + ' · à alléger</span>') + '</div>';
-      }
-    });
+    var tetes = function (nom) { var t = '<div class="pl-tete pl-nom">' + nom + '</div>'; for (var k = 0; k < 5; k++) { var iso = addJ(L, k), fe = ferie(iso); t += '<div class="pl-tete' + (iso === auj ? ' auj' : '') + '"><b>' + JOURS[k + 1] + '</b><span>' + dateCourte(iso) + (fe ? ' · <em>' + fe + '</em>' : '') + '</span></div>'; } return t + '<div class="pl-tete pl-h"><b>Heures</b><span>semaine · reliquat</span></div>'; };
+    h += '<div class="pl-scroll"><div class="pl-grille">' + tetes('Assistantes');
+    ps.filter(function (p) { return p.type !== 'interimaire' || interimVisible(p, L); }).forEach(function (p) { h += lignePlanning(p, L); });
     h += '<div class="pl-nom pl-seul-t"><span class="a-av d">' + ico('dent', 16) + '</span><span><b>Dentistes seuls</b><small>sans assistante</small></span></div>';
     for (var k3 = 0; k3 < 5; k3++) h += celluleSeuls(addJ(L, k3));
     h += '<div class="pl-h"></div>';
@@ -3900,11 +3893,30 @@
     if (plAdmOn() && admCode() && refPers().length) {
       var jsA = []; for (var kA = 0; kA < 5; kA++) jsA.push(addJ(L, kA));
       if (!S.ref || !S.ref.fermOk) chargerFermG();
-      h += '<div class="pl-adm"><h2>Planning ' + esc(refNom()) + '</h2>' + refGrille(jsA, refPers(), !semClose(L), refNom()) + '</div>';
+      h += '<div class="pl-adm"><h2>Planning ' + esc(refNom()) + '</h2><div class="pl-scroll"><div class="pl-grille">' + tetes(esc(refNom())) + refPers().map(function (p) { return lignePlanning(p, L); }).join('')
+        + '<div class="pl-nom pl-seul-t"><span class="a-av d">' + ico('cadenas', 16) + '</span><span><b>Fermeture</b><small>qui ferme le centre le soir</small></span></div>'
+        + jsA.map(function (iso) { return celluleFerme(iso, !semClose(L)); }).join('') + '<div class="pl-h"></div></div></div></div>';
     }
     return h + '</div>' + (P.cas ? vCasePlanning() : '') + (S.plExp ? vExportPlanning() : '') + (S.plClo ? vCloture() : '');
   }
 
+  // Une ligne du planning (une personne) : nom, 5 jours, colonne des heures ; la même pour les assistantes et les administratifs
+  function lignePlanning(p, L) {
+    var h = '';
+      h += '<div class="pl-nom"><span class="a-av p' + coulPers(p) + '">' + initiale(p.prenom) + '</span><span><b>' + esc(p.prenom) + '</b><small>' + (p.type === 'interimaire' ? 'intérimaire' : (p.statut === 'apprentie' ? 'apprentie · ' : '') + fh(+p.contrat_h || 0)) + '</small></span></div>';
+      var hs = heuresSem(p, L), c = +p.contrat_h || 0, hx = c > 0 && Math.abs(hs - c) >= 0.01;
+      for (var k2 = 0; k2 < 5; k2++) h += celluleJour(p, addJ(L, k2));
+      if (S.plVoirPt) {
+        var pt = p.pointage ? ptSem(p, L) : null, rl = c ? reliquatAvant(p, L) + hs - c : null, eP = pt ? pt.h - heuresSemPrevu(p, L) : 0;
+        h += '<div class="pl-h pl-h4"><span>Planning</span><b>' + fh(heuresSemPrevu(p, L)) + '</b><span>Pointé</span><b class="' + (pt && pt.n ? hrCouleur(Math.abs(eP) < 0.09 ? 0 : eP) : 'mu') + '">' + (!pt ? '—' : pt.n ? fh(pt.h) : '—') + '</b><span>Contrat</span><b>' + (c ? fh(c) : '—') + '</b><span class="pl-h4r">Reliquat</span><b class="pl-h4r ' + (rl == null ? 'mu' : hrCouleur(Math.abs(rl) < 0.01 ? 0 : rl)) + '">' + (rl == null ? '—' : Math.abs(rl) < 0.01 ? 'à jour' : relTxt(rl)) + '</b></div>';
+      }
+      else if (!c) h += '<div class="pl-h"><span><b>' + fh(hs) + '</b></span></div>';
+      else {
+        var r = reliquatAvant(p, L) + hs - c;
+        h += '<div class="pl-h"><span class="' + (hx ? 'pl-hko' : 'pl-hok') + '"' + (hx ? ' title="' + (hs > c ? 'Plus' : 'Moins') + ' que le contrat cette semaine : à ajuster"' : '') + '><b>' + fh(hs) + '</b> / ' + fh(c) + '</span>' + (Math.abs(r) < 0.01 ? '<span class="ok">à jour</span>' : r < 0 ? '<span class="moins">' + relTxt(r) + ' · à rattraper</span>' : '<span class="plus">' + relTxt(r) + ' · à alléger</span>') + '</div>';
+      }
+    return h;
+  }
   // Fenêtre d'une case (une personne, un jour)
   function optAffPl(cur, sansDent) {
     return optAff(cur, sansDent).replace('<optgroup label="Autres">', '<optgroup label="Absences">' + ['CP', 'ARRET', 'FORMATION', 'FERIE'].map(function (a) { return '<option value="' + a + '"' + (cur === a ? ' selected' : '') + '>' + ABS_TXT[a] + '</option>'; }).join('') + '</optgroup><optgroup label="Autres">');
