@@ -3184,6 +3184,8 @@
   function catPt(p) {
     if (p.type === 'interimaire') return { k: 'interimaire', n: 'Intérimaire', o: 90 };
     var prof = p.profil_id ? (S.profils || []).filter(function (x) { return x.id === p.profil_id; })[0] : null;
+    // Apprenties : d'après la fiche (statut), qu'elles aient ou non une fonction « apprentie » sur leur compte
+    if ((!p.type || p.type === 'assistante') && (p.statut === 'apprentie' || (prof && prof.fonction && /apprenti/.test(norm(roleEqDe(prof.fonction).n))))) return { k: 'apprentie', n: 'Apprenties / apprentis', o: 5 };
     if (prof && prof.role === 'assistante' && prof.fonction) return { k: 'r:' + prof.fonction, n: roleEqDe(prof.fonction).n, o: 10 };
     if (p.type && p.type !== 'assistante') return { k: 't:' + p.type, n: typeDe(p.type).n, o: 10 };
     return { k: 'assistante', n: 'Assistantes', o: 0 };
