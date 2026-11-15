@@ -627,7 +627,7 @@
   // Case d'un jour pour une personne du profil : saisie du planning, sinon congé accepté, férié, semaine type
   function refCase(p, iso, demi) {
     var x = refRows()[cleCase(p.id, iso, demi)];
-    if (x) return { a: x.aff, de: hm(x.debut), fi: hm(x.fin), saisi: 1 };
+    if (x) return x.aff === 'OFF' && ferie(iso) ? { a: 'FERIE', h: x.heures != null ? +x.heures : null, saisi: 1 } : { a: x.aff, de: hm(x.debut), fi: hm(x.fin), h: x.heures != null ? +x.heures : null, saisi: 1 };
     if (ferie(iso)) return { a: 'FERIE' };
     var c = congeLe(p.id, iso); if (c) return { a: c.type === 'AUTRE' ? 'CP' : c.type };
     if (offLe(p, iso, demi)) return { a: 'OFF' };
@@ -670,7 +670,7 @@
     }, function () { S.fermBusy = false; S.ref.fermOk = true; });
   }
   function minHm(t) { var m = /^(\d{1,2}):(\d{2})/.exec(t || ''); return m ? +m[1] * 60 + +m[2] : null; }
-  function refHeuresJ(p, iso) { var n = 0; ['AM', 'PM'].forEach(function (d) { var c = refCase(p, iso, d), a = minHm(c.de), b = minHm(c.fi); if (refTravail(c)) { if (a != null && b != null && b > a) n += b - a; } else if (c.a && c.a !== 'OFF') { try { n += 60 * (heuresDemi(p, iso, d, { a: c.a }) || 0); } catch (e) {} } }); return n / 60; }   // jours fériés et absences : heures comptées selon Réglages › Règles des heures
+  function refHeuresJ(p, iso) { var n = 0; ['AM', 'PM'].forEach(function (d) { var c = refCase(p, iso, d), a = minHm(c.de), b = minHm(c.fi); if (refTravail(c)) { if (a != null && b != null && b > a) n += b - a; } else if (c.a && c.a !== 'OFF') { try { n += 60 * (heuresDemi(p, iso, d, { a: c.a, h: c.h }) || 0); } catch (e) {} } }); return n / 60; }   // jours fériés et absences : heures comptées selon Réglages › Règles des heures
   function refGrille(js, ps, modif, nom) {
     var h = '';
     var cel = function (p, iso) {
@@ -3940,7 +3940,7 @@
       + (K.jc ? '<div class="pl-cd"><span class="h-dl">Journée</span><select class="in" data-plk="J.a">' + optAffPl(K.AM.a, !aDent(p.type)) + '</select>'
         + (abs(K.AM) && K.AM.a === K.PM.a ? champH('J.h', K.AM.h != null && K.AM.h !== '' || K.PM.h != null && K.PM.h !== '' ? (+K.AM.h || 0) + (+K.PM.h || 0) : null, heuresRegle(p, iso, 'AM', K.AM.a) + heuresRegle(p, iso, 'PM', K.AM.a), 'Heures comptées pour la journée') : '') + '</div>' : '')
       + dem('AM') + dem('PM')
-      + '<div class="pl-vite"><span class="mu">Toute la journée :</span>' + ['CP', 'ARRET', 'ECOLE', 'FORMATION'].map(function (a) { return '<button data-plabs="' + a + '">' + ABS_TXT[a] + '</button>'; }).join('') + '</div>'
+      + '<div class="pl-vite"><span class="mu">Toute la journée :</span>' + ['CP', 'ARRET', 'ECOLE', 'FORMATION'].filter(function (a) { return a !== 'ECOLE' || aDent(p.type) || p.statut === 'apprentie'; }).map(function (a) { return '<button data-plabs="' + a + '">' + ABS_TXT[a] + '</button>'; }).join('') + '</div>'
       + '<div class="pl-tot"><span>Heures ce jour</span><b>' + fh(hj) + '</b></div>'
       + (c ? '<div class="pl-rel"><div><span>Semaine de ' + esc(p.prenom) + '</span><b>' + fh(avant) + ' / ' + fh(c) + '</b></div><div><span>Reliquat des semaines précédentes</span><b>' + relTxt(relA) + '</b></div><div><span>Reliquat après cette semaine</span><b class="' + (relB < -0.01 ? 'moins' : relB > 0.01 ? 'plus' : 'ok') + '">' + relTxt(relB) + (relB < -0.01 ? ' · à rattraper' : relB > 0.01 ? ' · à alléger' : ' · à jour') + '</b></div></div>' : '')
       + '<div class="pl-btns"><button class="a-btn blanc" data-act="plreset"' + (K.enreg ? '' : ' disabled') + '>Semaine type</button><button class="a-btn navy" data-act="plsave"' + (K.busy ? ' disabled' : '') + '>' + (K.busy ? 'Enregistrement…' : 'Enregistrer') + '</button></div>'
@@ -5903,7 +5903,7 @@
     if (d.cok) return repondre(d.cok, true);
     if (d.canok) return repondreAnnul(d.canok, true);
     if (d.refsem) { S.refSem = addJ(S.refSem || lundiDe(dIso(new Date())), 7 * +d.refsem); render(); return; }
-    if (d.refc) return refOuvrirCase(d.refc);
+    if (d.refc) return gestion() && S.tab === 'planning' && S.pl ? ouvrirCase(d.refc) : refOuvrirCase(d.refc);   // gestion : la même fenêtre que pour les assistantes
     if (d.reff) return refOuvrirFerme(d.reff);
     if (d.refcg) return refRepondreConge(d.refcg);
     if (d.act === 'rfsave') return sauverReferent();
