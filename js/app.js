@@ -712,9 +712,14 @@
     if (!S.ref) S.ref = { ferm: {} };
     var cur = S.ref.ferm[iso], auto = refFermeAuto(iso), c = admCode(), noms = refPers().map(function (p) { return { id: p.id, prenom: p.prenom, type: c }; });
     var ps0 = refPers(), info = function (id) { var p = ps0.filter(function (y) { return String(y.id) === String(id); })[0]; if (!p) return null; var c = refCase(p, iso, 'PM'); if (!refTravail(c)) c = refCase(p, iso, 'AM'); if (!refTravail(c)) return { p: p, off: 1 }; var pf = plageFerme(c.a), g = plageDe(c, 'pm'); return { p: p, c: c, pf: pf, deja: pf && g && g === pf.g }; };
-    var choix = [{ v: '', t: auto && !auto.vide ? 'Proposition : ' + auto.nom : 'Personne (à désigner)', s: auto && !auto.vide ? (auto.plage ? 'sur la plage ' + auto.plage : 'finit à ' + hCourt(auto.heure)) + ' · se met à jour avec le planning' : auto && auto.vide ? auto.egal + ' personnes finissent à ' + hCourt(auto.heure) + ' : choisissez' : 'aucun horaire ce jour-là', on: !cur || !(cur.nom || cur.equipe_id) }]
-      .concat(noms.map(function (n) { var x = info(n.id), s2 = !x ? '' : x.off ? 'ne travaille pas ce jour' : x.pf && !x.deja ? 'passe en ' + (x.pf.g.n || 'fermeture') + ' (' + plageTxt(x.pf.g) + ')' : x.pf ? 'déjà en ' + (x.pf.g.n || 'fermeture') : 'finit à ' + hCourt(x.c.fi); return { v: String(n.id), t: n.prenom, s: s2, on: !!cur && String(cur.equipe_id) === String(n.id) }; }));
-    var r = await fenetre({ titre: 'Qui ferme le ' + JOURS[jourSem(iso)].toLowerCase() + ' ' + dateCourte(iso) + ' ?', choix: choix, grille: true, ok: 'Enregistrer', html: '<label class="mu" style="display:flex;flex-direction:column;gap:4px;margin-top:8px">Heure de fermeture (facultatif)<input class="in" type="time" id="rfh" value="' + esc((cur && cur.heure) || (auto && auto.heure) || '') + '"></label>', lire: function (bg) { return { h: bg.querySelector('#rfh').value || null }; } });
+    // Seules les personnes dont le poste du jour a une plage de fermeture (ex. Secrétariat) ; sinon, toutes celles qui travaillent
+    var elig = noms.map(function (n) { return { n: n, x: info(n.id) }; }).filter(function (o) { return o.x && !o.x.off; }), avecPl = elig.filter(function (o) { return o.x.pf; });
+    if (avecPl.length) elig = avecPl;
+    var sel = cur && (cur.nom || cur.equipe_id) ? String(cur.equipe_id) : auto && !auto.vide ? String(auto.equipe_id) : '';
+    var choix = elig.map(function (o) { var x = o.x, sub = x.pf ? (x.deja ? 'déjà en ' + (x.pf.g.n || 'Fermeture') + ' · finit à ' + hCourt(x.c.fi) : 'passera en ' + (x.pf.g.n || 'Fermeture') + ' · ' + plageTxt(x.pf.g)) : 'finit à ' + hCourt(x.c.fi);
+      return { v: String(o.n.id), t: o.n.prenom + (auto && !auto.vide && String(auto.equipe_id) === String(o.n.id) && !(cur && cur.equipe_id) ? ' · proposée' : ''), s: sub, on: sel === String(o.n.id) }; })
+      .concat([{ v: '', t: 'Personne pour l’instant', s: 'la case restera « À désigner »', on: !sel }]);
+    var r = await fenetre({ titre: 'Qui ferme le ' + JOURS[jourSem(iso)].toLowerCase() + ' ' + dateCourte(iso) + ' ?', texte: avecPl.length ? 'La personne choisie passe sur la plage de fermeture de son poste, matin et après-midi.' : '', choix: choix, ok: 'Enregistrer' });
     if (!r) return;
     var q;
     if (!r.v) q = sb.from('fermetures').delete().eq('jour', iso).then(function (x) { if (x.error) throw x.error; delete S.ref.ferm[iso]; });
@@ -724,7 +729,7 @@
         var g = basc.pf.g, rws = [['AM', g.ad, g.af], ['PM', g.pd, g.pf]].filter(function (z) { return z[1] && z[2]; }).map(function (z) { return { equipe_id: basc.p.id, jour: iso, demi: z[0], aff: basc.c.a, debut: z[1], fin: z[2], modifie_par: S.me.id, modifie_le: new Date().toISOString() }; });
         await sb.from('planning').upsert(rws, { onConflict: 'equipe_id,jour,demi' }).then(function (q2) { if (q2.error) throw q2.error; rws.forEach(function (x2) { refRows()[cleCase(x2.equipe_id, x2.jour, x2.demi)] = x2; }); }).catch(function (e) { toast(msgErr(e)); });
       }
-      var n = noms.filter(function (y) { return String(y.id) === String(r.v); })[0], row = { jour: iso, equipe_id: +r.v, nom: n ? n.prenom : null, heure: (r.extra && r.extra.h) || (basc ? basc.pf.g.pf || basc.pf.g.af : null) || null, modifie_par: S.me.id, modifie_le: new Date().toISOString() }; q = sb.from('fermetures').upsert(row, { onConflict: 'jour' }).then(function (x) { if (x.error) throw x.error; S.ref.ferm[iso] = row; }); }
+      var n = noms.filter(function (y) { return String(y.id) === String(r.v); })[0], row = { jour: iso, equipe_id: +r.v, nom: n ? n.prenom : null, heure: basc ? basc.pf.g.pf || basc.pf.g.af : (xi && xi.c ? xi.c.fi : null), modifie_par: S.me.id, modifie_le: new Date().toISOString() }; q = sb.from('fermetures').upsert(row, { onConflict: 'jour' }).then(function (x) { if (x.error) throw x.error; S.ref.ferm[iso] = row; }); }
     q.then(function () { toast('✔ Fermeture enregistrée'); render(); }).catch(function (e) { toast(msgErr(e)); });
   }
   function vRefConges() {
