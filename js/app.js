@@ -1269,7 +1269,7 @@
   function navReglages() {
     var cur = S.tab === 'pfiche' ? 'pequipe' : S.tab === 'dfiche' ? 'pdent' : S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible' ? 'pprofils' : S.tab;
     var G = function (t) { return '<span class="rgn-g">' + t + '</span>'; };
-    var L = function (t, attr, tab, ext) { return '<button class="rgn-l' + (tab && tab === cur ? ' on' : '') + '" ' + attr + (tab && tab === cur ? ' aria-current="page"' : '') + '>' + t + (ext ? '<small>' + ext + '</small>' : '') + '</button>'; };
+    var L = function (t, attr, tab, ext) { return '<button class="rgn-l' + (tab && tab === cur ? ' on' : '') + (ext ? ' stk' : '') + '" ' + attr + (tab && tab === cur ? ' aria-current="page"' : '') + (ext ? ' title="Ouvre la gestion de stock"' : '') + '>' + t + '</button>'; };
     return '<nav class="rgn" aria-label="Rubriques des réglages">'
       + L('Tous les réglages', 'data-tab="reglages"', 'reglages')
       + G('Équipe et comptes') + L('L’équipe', 'data-act="rgeq"', 'pequipe') + L('Les dentistes', 'data-act="rgde"', 'pdent') + L('Comptes', 'data-tab="equipe"', null, 'stock') + L('Profils', 'data-tab="pprofils"', 'pprofils')
@@ -1278,7 +1278,7 @@
       + G('Congés') + L('Demandes et planning', 'data-tab="pconges"')
       + G('Gestion de stock') + L('Articles', 'data-tab="articles"', null, 'stock') + L('Fournisseurs', 'data-tab="fournisseurs"', null, 'stock')
       + G('Application') + L('Sauvegarde et journal', 'data-tab="plus"', null, 'stock') + L('Transfert vers la prod', 'data-tab="ptransfert"', 'ptransfert') + L('Mon mot de passe', 'data-tab="compte"', null, 'stock')
-      + '</nav>';
+      + '<span class="rgn-leg">ouvre la gestion de stock</span></nav>';
   }
   // Sur ordinateur : la liste des prénoms reste à côté de la fiche ouverte
   function listeFiches() {
