@@ -624,7 +624,14 @@
     if (l.length === 1) return l[0];
     return l.length ? { egal: l.length, heure: max, nom: null, auto: 1, vide: 1 } : null;
   }
-  function refFerme(iso) { var f = S.ref && S.ref.ferm[iso]; if (f && (f.nom || f.equipe_id)) return { equipe_id: f.equipe_id, nom: f.nom, heure: f.heure }; var a = refFermeAuto(iso); return a && !a.vide ? a : null; }
+  function refFerme(iso) {
+    var f = S.ref && S.ref.ferm[iso];
+    if (f && (f.nom || f.equipe_id)) {   // personne désignée : l'heure et la plage suivent son planning du jour
+      var p = refPers().filter(function (y) { return String(y.id) === String(f.equipe_id); })[0], c = p ? refCase(p, iso, 'PM') : null, g = c && refTravail(c) ? plageDe(c, 'pm') : null;
+      return { equipe_id: f.equipe_id, nom: f.nom, heure: c && refTravail(c) && c.fi ? c.fi : f.heure, plage: g ? g.n : null };
+    }
+    var a = refFermeAuto(iso); return a && !a.vide ? a : null;
+  }
   function refJours() { var L = S.refSem || lundiDe(dIso(new Date())), l = []; for (var i = 0; i < 5; i++) l.push(addJ(L, i)); return l; }
   function plAdmOn() { if (S.plAdm == null) S.plAdm = lsGet('evy-pl-adm') === '1'; return !!S.plAdm; }
   function chargerFermG() {
@@ -656,7 +663,7 @@
           + '<span class="rf-h ' + (ok ? 'ok' : 'ko') + '"><b>' + fh(tot) + '</b>' + (ct ? '<small>' + (ok ? 'juste' : (ec > 0 ? '+' : '−') + fh(Math.abs(ec))) + '</small>' : '') + '</span>';
       }).join('')
       + '<span class="rf-n rf-fl"><b>Fermeture du centre</b><small>qui ferme le soir</small></span>' + js.map(function (iso) {
-        var f = ferie(iso) ? null : refFerme(iso), corps = ferie(iso) ? '<b>Férié</b>' : f ? '<b>' + esc(f.nom || '?') + '</b><span>' + (f.heure ? hCourt(f.heure) : '') + (f.auto ? (f.plage ? ' · plage ' + esc(f.plage) : ' · proposé') : '') + '</span>' : '<b>À désigner</b><span>personne ne finit tard</span>';
+        var f = ferie(iso) ? null : refFerme(iso), corps = ferie(iso) ? '<b>Férié</b>' : f ? '<b>' + esc(f.nom || '?') + '</b><span>' + (f.heure ? hCourt(f.heure) : '') + (f.plage ? ' · plage ' + esc(f.plage) : f.auto ? ' · proposé' : '') + '</span>' : '<b>À désigner</b><span>personne ne finit tard</span>';
         var cl = 'rf-f' + (ferie(iso) ? ' fe' : f ? (f.auto ? ' auto' : '') : ' vide');
         return modif && !ferie(iso) ? '<button class="' + cl + '" data-reff="' + iso + '">' + corps + '</button>' : '<div class="' + cl + '">' + corps + '</div>';
       }).join('') + '<span></span></div></div></section>';
