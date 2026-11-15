@@ -1998,3 +1998,19 @@ button.stk-k{cursor:pointer}
 .rf-ed label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mute);min-width:0}
 .rf-ed .in{width:100%;height:46px;min-width:0;font-size:16px;padding:0 10px}
 @media (max-width:560px){.rf-ed{grid-template-columns:1fr 1fr}.rf-ed .rf-ed-p{grid-column:1/-1}}
+/* Horaires des postes : variable, fixe, plages */
+.a-li.po{grid-template-columns:auto minmax(0,1.3fr) minmax(0,1fr) 92px minmax(150px,.9fr) auto}.po-h select{min-width:0;width:100%}
+.po-dt{grid-column:2/-1;margin:0 0 2px;font-size:13.5px}
+.po-pl{display:flex;flex-direction:column;gap:6px}
+.po-pg{display:grid;grid-template-columns:minmax(120px,1.2fr) repeat(4,minmax(104px,1fr)) 44px;gap:6px;align-items:center}
+.po-pg .in{height:42px;min-width:0}.po-pga{align-self:flex-start;border-style:dashed}
+@media (max-width:700px){.po-pg{grid-template-columns:1fr 1fr}.po-pg > :first-child{grid-column:1/-1}}
+.h-pls{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;grid-column:1/-1}.h-demi .h-pls{grid-column:2}
+.h-pl{display:flex;flex-direction:column;align-items:flex-start;min-height:44px;padding:6px 12px;border-radius:10px;border:1.5px solid var(--line);background:#fff;font:inherit;color:var(--ink);cursor:pointer;text-align:left}
+.h-pl b{font-size:14.5px}.h-pl small{font-size:12.5px;color:var(--mute)}.h-pl.on{border-color:var(--navy);background:#f4f6f8}
+.h-fx{display:flex;flex-direction:column;font-weight:700;font-size:15px}.h-fx small{font-weight:400;font-size:12.5px;color:var(--mute)}
+.fi-fx{display:flex;flex-direction:column;gap:8px;background:#fbf8ee;border:1.5px solid #e6dcb8;border-radius:14px;padding:12px 14px;margin:10px 0}
+.fi-fx > span{display:flex;flex-direction:column}.fi-fx small{font-size:13px;color:#6b5c22}
+.fi-fx-h{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}.fi-fx-h label{display:flex;flex-direction:column;gap:4px;font-size:13px}.fi-fx-h .in{width:120px;height:44px}.fi-fx-h > .mu{padding-bottom:12px}
+
+@media (max-width:640px){.a-li.po{grid-template-columns:auto 1fr 1fr}.po-dt{grid-column:1/-1}}
