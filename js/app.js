@@ -5633,7 +5633,7 @@
     if (d.act === 'pfcopiejour' && S.pf) { var tj = S.pf.d.trame = S.pf.d.trame || {}, src = JSON.parse(JSON.stringify(tj[d.j] || {})); for (var jj2 = 1; jj2 <= 5; jj2++) if (String(jj2) !== String(d.j)) tj[jj2] = JSON.parse(JSON.stringify(src)); toast('Copié sur toute la semaine · pensez à enregistrer'); render(); return; }
     if ((d.pfret != null || /^(pfadd|pfsavep)$/.test(d.act || '')) && actionProfils(d)) return;
     if ((d.roret != null || /^(roadd|rosave)$/.test(d.act || '')) && actionRoles(d)) return;
-    if ((d.poup != null || d.podown != null || d.poret != null || d.tyret != null || /^(poadd|posave|tyadd|tysave)$/.test(d.act || '')) && actionReglages(d)) return;
+    if ((d.poup != null || d.podown != null || d.poret != null || d.pgadd != null || d.pgdel != null || d.tyret != null || /^(poadd|posave|tyadd|tysave)$/.test(d.act || '')) && actionReglages(d)) return;
     if (d.act === 'rgqr') return ouvrirPageQR('reglages');
     if (d.act === 'scan') return ouvrirScanner();
     if (d.ptsens && S.ptRes && S.ptRes.choix) return envoyerPointage(S.ptRes.choix, d.ptsens);
