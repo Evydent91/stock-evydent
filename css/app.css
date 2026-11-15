@@ -2019,3 +2019,6 @@ button.stk-k{cursor:pointer}
 .fi-fxg small{font-size:12.5px;color:var(--mute)}.fi-fxg .in{height:40px;width:100%;min-width:0;padding:0 8px}.fi-fxg .in.diff{border-color:var(--gold);background:#fff8e6;font-weight:700}
 @media (max-width:700px){.fi-fxg{grid-template-columns:70px repeat(4,minmax(0,1fr))}.fi-fxg > .mu,.fi-fxg > span:first-child{display:none}}
 .h-demi .h-fx{grid-column:2;flex-direction:row;align-items:baseline;gap:8px;flex-wrap:wrap}
+.h-pl-n{border-style:dashed;border-color:var(--gold);background:#fbf8ee;color:#6b5c22;font-weight:700;justify-content:center}
+.np-g{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:8px}.np-g .in{height:44px;min-width:0}
+@media (max-width:560px){.np-g{grid-template-columns:1fr 1fr}}
