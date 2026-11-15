@@ -278,6 +278,28 @@
   }
 
   // ---------- Rendu général ----------
+  // Heures saisies au clavier : sur ordinateur, une case texte qui accepte 17, 1730, 17h30 ou 17:30 (le champ « heure » du navigateur
+  // mélangeait les chiffres tapés). Sur téléphone, on garde la roue native.
+  var HM = telephone() ? 'type="time"' : 'type="text" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="hh:mm" data-hm="1"';
+  function hmNorm(v) {
+    var x = String(v || '').trim().toLowerCase().replace(/\s+/g, '').replace(/h/, ':').replace(/[.,]/, ':'), h, m, r;
+    if (!x) return '';
+    if ((r = /^(\d{1,2})(?::(\d{0,2}))?(?::\d{2})?$/.exec(x))) { h = +r[1]; m = r[2] ? +(r[2].length === 1 ? r[2] + '0' : r[2]) : 0; }
+    else if ((r = /^(\d{3,4})$/.exec(x))) { h = +x.slice(0, -2); m = +x.slice(-2); }
+    else return null;
+    if (h > 23 || m > 59) return null;
+    return ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2);
+  }
+  function hmPrep(root) { [].forEach.call((root || document).querySelectorAll('input[data-hm]:not([data-hmok])'), function (el) { el.setAttribute('data-hmok', '1'); var n = hmNorm(el.value); if (n != null && n !== el.value) el.value = n; }); }
+  if (window.MutationObserver) new MutationObserver(function () { hmPrep(document); }).observe(document.documentElement, { childList: true, subtree: true });
+  document.addEventListener('input', function (e) { var t = e.target; if (t && t.dataset && t.dataset.hm && !t.__hmIn) { var c = t.value.replace(/[^0-9:hH.,]/g, ''); if (c !== t.value) t.value = c; t.classList.remove('hm-err'); } }, true);
+  document.addEventListener('change', function (e) {
+    var t = e.target; if (!t || !t.dataset || !t.dataset.hm) return;
+    var n = hmNorm(t.value);
+    if (n == null) { t.classList.add('hm-err'); toast('Heure non reconnue : tapez par exemple 17, 1730 ou 17:30'); return; }
+    t.classList.remove('hm-err');
+    if (n !== t.value) { t.value = n; t.__hmIn = true; try { t.dispatchEvent(new Event('input', { bubbles: true })); } finally { t.__hmIn = false; } }
+  }, true);
   function poser(app, h) {
     var ae = document.activeElement, fq = ae && ae.id && ae.tagName === 'INPUT' ? ae.id : null, pos = fq && ae.selectionStart;
     app.innerHTML = h;
@@ -689,7 +711,7 @@
     var x = v.split('|'), p = persById(x[0]), iso = x[1]; if (!p || !(gestion() || refDroit('planning_modif'))) return;
     var am = refCase(p, iso, 'AM'), pm = refCase(p, iso, 'PM'), codes = []; postes().filter(function (q) { return !q.retire; }).forEach(function (q) { var pls = plagesPoste(q.code); if (pls.length) pls.forEach(function (g, n) { codes.push([q.code + '#' + n, q.n + ' · ' + (g.n || 'Plage') + ' (' + plageTxt(g) + ')']); }); else codes.push([q.code, q.n + (horPoste(q.code) === 'fixe' ? ' (horaire fixe)' : '')]); }); codes.push(['OFF', 'OFF (ne travaille pas)']);
     var sel = function (id, c, k) { var cur = refTravail(c) || c.a === 'OFF' ? c.a : 'OFF'; plagesPoste(cur).forEach(function (g, n) { if (c.de === (k === 'am' ? g.ad : g.pd) && c.fi === (k === 'am' ? g.af : g.pf)) cur = c.a + '#' + n; }); if (plagesPoste(cur).length) cur = cur + '#0'; return '<select class="in" id="' + id + '">' + codes.map(function (q) { return '<option value="' + q[0] + '"' + (q[0] === cur ? ' selected' : '') + '>' + esc(q[1]) + '</option>'; }).join('') + '</select>'; };
-    var lig = function (t, k, c, d1, d2) { return '<fieldset class="rf-ed"><legend>' + t + '</legend><label class="rf-ed-p">Poste' + sel('rf' + k + 'a', c, k === 'AM' ? 'am' : 'pm') + '</label><label>De<input class="in" type="time" id="rf' + k + 'd" value="' + esc(c.de || (refTravail(c) ? d1 : '')) + '"></label><label>À<input class="in" type="time" id="rf' + k + 'f" value="' + esc(c.fi || (refTravail(c) ? d2 : '')) + '"></label></fieldset>'; };
+    var lig = function (t, k, c, d1, d2) { return '<fieldset class="rf-ed"><legend>' + t + '</legend><label class="rf-ed-p">Poste' + sel('rf' + k + 'a', c, k === 'AM' ? 'am' : 'pm') + '</label><label>De<input class="in" ' + HM + ' id="rf' + k + 'd" value="' + esc(c.de || (refTravail(c) ? d1 : '')) + '"></label><label>À<input class="in" ' + HM + ' id="rf' + k + 'f" value="' + esc(c.fi || (refTravail(c) ? d2 : '')) + '"></label></fieldset>'; };
     var saisi = am.saisi || pm.saisi, E = null;
     var plc = postes().filter(function (q) { return !q.retire && plagesPoste(q.code).length; });
     var barre = plc.length ? '<div class="rf-pls">' + plc.map(function (q) { return '<div class="h-pls" role="group" aria-label="Plages ' + esc(q.n) + '"><span class="h-pls-t">' + esc(q.n) + ' :</span>' + plagesPoste(q.code).map(function (g, n) { var on = am.a === q.code && am.de === g.ad && pm.de === g.pd; return '<button type="button" class="h-pl' + (on ? ' on' : '') + '" data-rfpl="' + esc(q.code) + '|' + n + '"><b>' + esc(g.n || 'Plage') + '</b><small>' + plageTxt(g) + '</small></button>'; }).join('') + '</div>'; }).join('') + '</div>' : '';
@@ -1025,7 +1047,7 @@
   // Nouvelle plage créée depuis une fiche ou le planning : enregistrée dans le poste (Réglages › Postes) puis appliquée à la journée
   async function nouvellePlage(v) {
     var x = v.split('|'), code = x[0], q = posteDe(code); if (!q || !gestion()) return;
-    var G = null, tm = function (id, lib, val) { return '<label class="mu" style="display:flex;flex-direction:column;gap:4px">' + lib + '<input class="in" type="time" id="' + id + '" value="' + val + '"></label>'; };
+    var G = null, tm = function (id, lib, val) { return '<label class="mu" style="display:flex;flex-direction:column;gap:4px">' + lib + '<input class="in" ' + HM + ' id="' + id + '" value="' + val + '"></label>'; };
     var r = await fenetre({ titre: 'Nouvelle plage · ' + q.n, ok: 'Créer la plage', large: true,
       html: '<label class="mu" style="display:flex;flex-direction:column;gap:4px">Nom de la plage<input class="in" id="npn" placeholder="Ex. : Ouverture, Fermeture, Journée courte"></label><div class="np-g">' + tm('npad', 'Matin, de', '09:00') + tm('npaf', 'à', '13:00') + tm('nppd', 'Après-midi, de', '14:00') + tm('nppf', 'à', '18:00') + '</div><p class="mu" style="margin:6px 0 0;font-size:13.5px">Elle sera proposée pour tout le monde sur ce poste (modifiable dans Réglages › Postes). Laissez vide la demi-journée qui ne sert pas.</p>',
       lire: function (bg) { var n = bg.querySelector('#npn').value.trim(); if (!n) { toast('Indiquez le nom de la plage'); return false; } return (G = { n: n, ad: bg.querySelector('#npad').value || null, af: bg.querySelector('#npaf').value || null, pd: bg.querySelector('#nppd').value || null, pf: bg.querySelector('#nppf').value || null }); } });
@@ -1043,7 +1065,7 @@
   async function modifierPlages(code) {
     var q = posteDe(code); if (!q || !gestion()) return;
     var L0 = (q.plages || []), G = null;
-    var lig = function (g, k) { var tm = function (f, lib) { return '<input class="in" type="time" data-mpf="' + k + '|' + f + '" value="' + esc(g[f] || '') + '" aria-label="' + esc((g.n || 'Plage') + ' : ' + lib) + '">'; };
+    var lig = function (g, k) { var tm = function (f, lib) { return '<input class="in" ' + HM + ' data-mpf="' + k + '|' + f + '" value="' + esc(g[f] || '') + '" aria-label="' + esc((g.n || 'Plage') + ' : ' + lib) + '">'; };
       return '<div class="mp-l"><input class="in" data-mpf="' + k + '|n" value="' + esc(g.n || '') + '" aria-label="Nom de la plage">' + tm('ad', 'matin, de') + tm('af', 'matin, à') + tm('pd', 'après-midi, de') + tm('pf', 'après-midi, à') + '<label class="mp-x"><input type="checkbox" data-mpx="' + k + '">Retirer</label></div>'; };
     var r = await fenetre({ titre: 'Plages · ' + q.n, ok: 'Enregistrer les plages', large: true,
       html: '<div class="mp-t"><span>Nom</span><span>Matin, de</span><span>à</span><span>Après-midi, de</span><span>à</span><span></span></div>' + L0.map(lig).join('') + '<p class="mu" style="margin:8px 0 0;font-size:13.5px">Pour tout le monde sur ce poste. Les cases déjà remplies gardent leurs heures ; le nouveau nom et les nouvelles heures servent aux prochains choix.</p>',
@@ -1383,7 +1405,7 @@
         + '<label class="mu po-h">Horaires<select class="in" data-pohor="' + i + '"><option value="variable"' + (!x.hor || x.hor === 'variable' ? ' selected' : '') + '>Variable</option><option value="fixe"' + (x.hor === 'fixe' ? ' selected' : '') + '>Fixe</option><option value="plages"' + (x.hor === 'plages' ? ' selected' : '') + '>Plusieurs plages</option></select></label>'
         + '<button class="btn l sm po-r" data-poret="' + i + '">' + (x.retire ? 'Rétablir' : 'Retirer') + '</button>'
         + (x.hor === 'fixe' ? '<p class="po-dt mu">Fixe : dans la fiche de chaque personne, un seul horaire à saisir, appliqué à tous ses jours sur ce poste.</p>'
-          : x.hor === 'plages' ? '<div class="po-dt po-ch">' + (x.plages || []).map(function (g) { return '<button class="po-chip' + (S.poOuv === i ? ' on' : '') + '" data-poouv="' + i + '"><b>' + esc(g.n || 'Plage') + '</b> ' + plageTxt(g) + '</button>'; }).join('') + '<button class="po-chip plus" data-pgadd="' + i + '">+ Plage</button>' + ((x.plages || []).length ? '<button class="po-chip lien" data-poouv="' + i + '">' + (S.poOuv === i ? 'Fermer' : 'Modifier') + '</button>' : '') + '</div><div class="po-dt po-pl' + (S.poOuv === i ? '' : ' ferme') + '"><span class="mu">Plages proposées (matin de / à, après-midi de / à ; laissez vide la demi-journée qui ne sert pas)</span>' + (x.plages || []).map(function (g, k) { var tm = function (f, lib) { return '<input class="in" type="time" data-pgv="' + i + '|' + k + '|' + f + '" value="' + esc(g[f] || '') + '" aria-label="' + esc((g.n || 'Plage') + ' : ' + lib) + '">'; };
+          : x.hor === 'plages' ? '<div class="po-dt po-ch">' + (x.plages || []).map(function (g) { return '<button class="po-chip' + (S.poOuv === i ? ' on' : '') + '" data-poouv="' + i + '"><b>' + esc(g.n || 'Plage') + '</b> ' + plageTxt(g) + '</button>'; }).join('') + '<button class="po-chip plus" data-pgadd="' + i + '">+ Plage</button>' + ((x.plages || []).length ? '<button class="po-chip lien" data-poouv="' + i + '">' + (S.poOuv === i ? 'Fermer' : 'Modifier') + '</button>' : '') + '</div><div class="po-dt po-pl' + (S.poOuv === i ? '' : ' ferme') + '"><span class="mu">Plages proposées (matin de / à, après-midi de / à ; laissez vide la demi-journée qui ne sert pas)</span>' + (x.plages || []).map(function (g, k) { var tm = function (f, lib) { return '<input class="in" ' + HM + ' data-pgv="' + i + '|' + k + '|' + f + '" value="' + esc(g[f] || '') + '" aria-label="' + esc((g.n || 'Plage') + ' : ' + lib) + '">'; };
               return '<div class="po-pg"><input class="in" data-pgv="' + i + '|' + k + '|n" value="' + esc(g.n || '') + '" placeholder="Nom (ex. Ouverture)" aria-label="Nom de la plage">' + tm('ad', 'matin, de') + tm('af', 'matin, à') + tm('pd', 'après-midi, de') + tm('pf', 'après-midi, à') + '<button class="btn l sm" data-pgdel="' + i + '|' + k + '" aria-label="Retirer la plage">' + ico('croix', 16, 2.4) + '</button></div>'; }).join('')
             + '<button class="btn l sm po-pga" data-pgadd="' + i + '">+ Ajouter une plage</button></div>'
           : '<p class="po-dt mu">Variable : les heures se saisissent à chaque demi-journée.</p>') + '</div>';
@@ -1621,7 +1643,7 @@
     if (hp === 'fixe') return '<div class="h-demi"><span class="h-dl">' + (k === 'am' ? 'Matin' : 'Après-midi') + '</span><select class="in" data-tr="' + j + '.' + k + '.a" aria-label="' + JOURS[j] + ' ' + (k === 'am' ? 'matin' : 'après-midi') + '">' + optAff(c.a, !!(S.pf && S.pf.d && !aDent(S.pf.d.type))) + '</select><span class="h-fx">' + ft(c.de) + '–' + ft(c.fi) + ' <small>horaire fixe, réglé au-dessus</small></span></div>';
     var plb = hp === 'fixe' ? '' : barrePlages(codePl(off ? null : c.a), c, 'data-trpl', j + '.' + k, k);
     return '<div class="h-demi"><span class="h-dl">' + (k === 'am' ? 'Matin' : 'Après-midi') + '</span><select class="in" data-tr="' + j + '.' + k + '.a" aria-label="' + JOURS[j] + ' ' + (k === 'am' ? 'matin' : 'après-midi') + '">' + optAff(c.a, !!(S.pf && S.pf.d && !aDent(S.pf.d.type))) + '</select>'
-      + plb + '<span class="h-hh"><input class="in" type="time" data-tr="' + j + '.' + k + '.de" value="' + esc(off ? '' : c.de || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Arrivée"><span>–</span><input class="in" type="time" data-tr="' + j + '.' + k + '.fi" value="' + esc(off ? '' : c.fi || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Départ"></span></div>';
+      + plb + '<span class="h-hh"><input class="in" ' + HM + ' data-tr="' + j + '.' + k + '.de" value="' + esc(off ? '' : c.de || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Arrivée"><span>–</span><input class="in" ' + HM + ' data-tr="' + j + '.' + k + '.fi" value="' + esc(off ? '' : c.fi || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Départ"></span></div>';
   }
   // Fiche d'une personne : résumé à gauche, rubriques en onglets (sur téléphone : une rubrique à la fois)
   function vPFiche() {
@@ -1666,10 +1688,10 @@
       });
       g += '</div><div class="h-total ' + (ecT ? 'warn' : 'ok') + '"><span>Total de la semaine type</span><b>' + fh(tot) + (c ? ' / ' + fh(c) + ' · ' + (ecT ? relTxt(tot - c) : 'équilibré') : '') + '</b></div>';
       var fx = {}; for (var jf = 1; jf <= 5; jf++) ['am', 'pm'].forEach(function (kf) { var xf = (t[jf] || {})[kf]; if (xf && xf.a && horPoste(xf.a) === 'fixe') fx[xf.a] = 1; });
-      g += Object.keys(fx).map(function (code) { var f = fixeDe(p, code), tm = function (k2, lib) { return '<label class="mu">' + lib + '<input class="in" type="time" data-hfx="' + code + '|' + k2 + '" value="' + esc(f[k2] || '') + '"></label>'; }, hh = (minHm(f.af) - minHm(f.ad) + minHm(f.pf) - minHm(f.pd)) / 60;
+      g += Object.keys(fx).map(function (code) { var f = fixeDe(p, code), tm = function (k2, lib) { return '<label class="mu">' + lib + '<input class="in" ' + HM + ' data-hfx="' + code + '|' + k2 + '" value="' + esc(f[k2] || '') + '"></label>'; }, hh = (minHm(f.af) - minHm(f.ad) + minHm(f.pf) - minHm(f.pd)) / 60;
         var jours = []; for (var jd = 1; jd <= 5; jd++) { var tj = t[jd] || {}; if ((tj.am && tj.am.a === code) || (tj.pm && tj.pm.a === code)) jours.push(jd); }
         var ex = f.j || {}, nex = Object.keys(ex).length;
-        var lj = jours.map(function (jd) { var fj = fixeJour(p, code, jd), tj2 = function (k2) { return '<input class="in' + (ex[jd] && ex[jd][k2] ? ' diff' : '') + '" type="time" data-hfx="' + code + '|' + jd + '|' + k2 + '" value="' + esc(fj[k2] || '') + '" aria-label="' + JOURS[jd] + '"></span>'; }, hj2 = (minHm(fj.af) - minHm(fj.ad) + minHm(fj.pf) - minHm(fj.pd)) / 60;
+        var lj = jours.map(function (jd) { var fj = fixeJour(p, code, jd), tj2 = function (k2) { return '<input class="in' + (ex[jd] && ex[jd][k2] ? ' diff' : '') + '" ' + HM + ' data-hfx="' + code + '|' + jd + '|' + k2 + '" value="' + esc(fj[k2] || '') + '" aria-label="' + JOURS[jd] + '"></span>'; }, hj2 = (minHm(fj.af) - minHm(fj.ad) + minHm(fj.pf) - minHm(fj.pd)) / 60;
           return '<b>' + JOURS[jd] + '</b>' + ['ad', 'af', 'pd', 'pf'].map(function (k2) { return '<span>' + tj2(k2); }).join('') + '<span class="mu">' + (hj2 > 0 ? fh(hj2) : '') + (ex[jd] ? ' · différent' : '') + '</span>'; }).join('');
         return '<div class="fi-fx"><span><b>Horaire « ' + esc(nomAff(code)) + ' »</b><small>poste à horaire fixe : saisi une fois, appliqué à tous ses jours sur ce poste</small></span><div class="fi-fx-h">' + tm('ad', 'Matin, de') + tm('af', 'à') + tm('pd', 'Après-midi, de') + tm('pf', 'à') + (hh > 0 ? '<span class="mu">= ' + fh(hh) + ' par jour complet</span>' : '') + '</div>'
           + (jours.length ? '<details class="fi-fxj"' + (nex ? ' open' : '') + '><summary>Un jour différent ? (ex. le vendredi finit plus tôt)' + (nex ? ' · ' + nex + ' ' + pl(nex, 'jour') + ' différent' + (nex > 1 ? 's' : '') : '') + '</summary><div class="fi-fxg"><span></span><small>Matin, de</small><small>à</small><small>Après-midi, de</small><small>à</small><span></span>' + lj + '</div><small class="mu">Changez seulement l’heure qui diffère ; le reste suit l’horaire ci-dessus.</small></details>' : '') + '</div>'; }).join('');
@@ -1961,7 +1983,7 @@
     if (!nouv) h += '<h2 class="a-jour">Jours de présence et assistantes</h2><div class="a-liste">' + [1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j] || as[j]; }).map(function (j) {
       var pres = d.jours && d.jours[j], dep = typeof pres === 'string' ? pres : '';
       return '<div class="a-li h-djl"><span class="a-it-n"><b>' + JOURS[j] + '</b>' + (as[j] ? '<span>' + as[j].map(esc).join(', ') + '</span>' : '<span class="warn">pas d’assistante</span>') + '</span>'
-        + (pres ? '<label class="h-dep"><span>Départ anticipé</span><input class="in" type="time" data-ddep="' + j + '" value="' + esc(dep) + '" aria-label="Départ anticipé le ' + JOURS[j].toLowerCase() + ' (vide = heure normale)"></label>' : '<span class="mu">pas présent</span>') + '</div>';
+        + (pres ? '<label class="h-dep"><span>Départ anticipé</span><input class="in" ' + HM + ' data-ddep="' + j + '" value="' + esc(dep) + '" aria-label="Départ anticipé le ' + JOURS[j].toLowerCase() + ' (vide = heure normale)"></label>' : '<span class="mu">pas présent</span>') + '</div>';
     }).join('') + '</div><p class="a-aide">Départ anticipé : laissez vide s’il finit à l’heure habituelle. Il s’affiche dans le planning sur la case de son assistante, qui garde ses horaires. Pour changer les assistantes, modifiez leur semaine type (Réglages › L’équipe).</p>';
     if (!nouv) h += blocExtra(d);
     h += '<h2 class="a-jour">Congés</h2>' + (nouv ? '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>' : blocConges(true, F.id, d)) + '<h2 class="a-jour">Formations</h2>' + (nouv ? '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>' : blocConges(true, F.id, d, true));
@@ -2548,7 +2570,7 @@
     h += '<p class="a-aide" style="margin-top:0">Vous avez oublié de scanner le QR code ? Indiquez l’heure réelle : la référente la vérifie et l’enregistre.</p>'
       + '<div class="card ob-f"><label class="mu">Jour<select class="in" id="objour">' + joursOubli().map(function (x) { return '<option value="' + x + '"' + (O.jour === x ? ' selected' : '') + '>' + libJourOubli(x) + '</option>'; }).join('') + '</select></label>'
       + '<div class="h-choix"><button class="' + (O.sens === 'arrivee' ? 'on' : '') + '" data-obsens="arrivee">Mon arrivée</button><button class="' + (O.sens === 'sortie' ? 'on' : '') + '" data-obsens="sortie">Ma sortie</button></div>'
-      + '<label class="mu">Heure ' + (O.sens === 'arrivee' ? 'd’arrivée' : 'de sortie') + '<input class="in" type="time" id="obheure" value="' + esc(O.heure) + '"></label>'
+      + '<label class="mu">Heure ' + (O.sens === 'arrivee' ? 'd’arrivée' : 'de sortie') + '<input class="in" ' + HM + ' id="obheure" value="' + esc(O.heure) + '"></label>'
       + '<label class="mu">Petit mot (facultatif)<textarea class="in" rows="2" id="obmot" placeholder="Ex. : téléphone déchargé">' + esc(O.mot) + '</textarea></label>'
       + '<button class="a-btn gold" data-act="obenvoi"' + (O.busy ? ' disabled' : '') + '>' + (O.busy ? 'Envoi…' : 'Envoyer à la référente') + '</button></div>';
     var l = (S.mesOublis || []).filter(function (o) { return o.statut !== 'annule'; });
@@ -3021,7 +3043,7 @@
     if (CONFIG.env !== 'dev' || S.simOn !== true) return '';   // encadré visible seulement quand la référente autorise la simulation
     simPt(); var Z = S.sim || {}, jt = ''; try { jt = localStorage.getItem('evy-jeton-test') || ''; } catch (e) {}
     return '<div class="sim"><b>Simulation (site de test)</b><span class="mu">Choisissez un jour et une heure, puis pointez : c’est cette heure qui est enregistrée. Laissez vide pour l’heure réelle.</span>'
-      + '<div class="sim-l"><input class="in" type="date" id="simj" value="' + esc(Z.jour || '') + '" aria-label="Jour simulé"><input class="in" type="time" id="simh" value="' + esc(Z.heure || '') + '" aria-label="Heure simulée">'
+      + '<div class="sim-l"><input class="in" type="date" id="simj" value="' + esc(Z.jour || '') + '" aria-label="Jour simulé"><input class="in" ' + HM + ' id="simh" value="' + esc(Z.heure || '') + '" aria-label="Heure simulée">'
       + (Z.jour || Z.heure ? '<button class="btn l sm" data-act="simraz">Heure réelle</button>' : '') + '</div>'
       + (jt ? '<button class="btn sm" data-act="simscan">Pointer sans caméra (QR déjà scanné)</button>' : '<span class="mu" style="font-size:13px">Après un premier scan avec la caméra, un bouton « Pointer sans caméra » apparaîtra ici.</span>') + '</div>';
   }
@@ -3395,7 +3417,7 @@
     var E = S.ptEd, p = persById(E.eid) || {}, r = S.ptg.rows[E.eid + '|' + E.jour], t = function (ts) { if (!ts) return ''; var d = new Date(ts); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); };
     return '<div class="pl-modal" role="dialog" aria-modal="true" aria-label="Corriger le pointage"><button class="pl-fond" data-act="ptedfermer" aria-label="Fermer"></button><div class="pl-fen">'
       + '<div class="pl-ft"><span class="a-av">' + esc((p.prenom || '?')[0]) + '</span><div><b>' + esc(p.prenom || '') + '</b><span class="mu">' + JOURS[jourSem(E.jour)] + ' ' + dateCourte(E.jour) + '</span></div><button class="h-rond gris" data-act="ptedfermer" aria-label="Fermer">' + ico('croix', 20, 2.4) + '</button></div>'
-      + '<div class="h-g2"><label class="mu">Arrivée<input class="in" type="time" id="ptarr" value="' + t(r && r.arrivee) + '"></label><label class="mu">Sortie<input class="in" type="time" id="ptsor" value="' + t(r && r.sortie) + '"></label></div>'
+      + '<div class="h-g2"><label class="mu">Arrivée<input class="in" ' + HM + ' id="ptarr" value="' + t(r && r.arrivee) + '"></label><label class="mu">Sortie<input class="in" ' + HM + ' id="ptsor" value="' + t(r && r.sortie) + '"></label></div>'
       + '<label class="mu">Note (facultatif)<input class="in" id="ptnote" value="' + esc(r && r.note || '') + '" placeholder="Ex. : oubli de pointage, badge à 17 h 05"></label>'
       + '<label class="pt-ign"><input type="checkbox" id="ptign"' + (r && r.ignorer ? ' checked' : '') + '><span><b>Ne pas compter ce pointage</b><span class="mu">Le reliquat garde les heures prévues au planning pour cette journée. Le pointage reste visible et dans le journal.</span></span></label>'
       + (r && r.corrige_par ? '<p class="mu" style="margin:0">Corrigé par ' + esc(nomProfil(r.corrige_par)) + ' le ' + dateCourte(r.corrige_le) + ' à ' + hTs(r.corrige_le) + '.</p>' : '')
@@ -3897,7 +3919,7 @@
       if (abs(c) && K.jc) return '';
       var plb = (d === 'AM' || !K.jc || K.AM.a !== K.PM.a) && (off || horPoste(c.a) !== 'fixe') ? barrePlages(codePl(off ? null : c.a), { a: c.a, de: c.de, fi: c.fi }, 'data-plpg', d, d === 'AM' ? 'am' : 'pm') : '';
       return plb + '<div class="pl-cd"><span class="h-dl">' + (d === 'AM' ? 'Matin' : 'Après-midi') + '</span>' + (K.jc ? '' : '<select class="in" data-plk="' + d + '.a">' + optAffPl(c.a, !aDent(p.type)) + '</select>')
-        + '<span class="h-hh"><input class="in" type="time" data-plk="' + d + '.de" value="' + esc(off ? '' : c.de || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Arrivée"><span>–</span><input class="in" type="time" data-plk="' + d + '.fi" value="' + esc(off ? '' : c.fi || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Départ"></span></div>';
+        + '<span class="h-hh"><input class="in" ' + HM + ' data-plk="' + d + '.de" value="' + esc(off ? '' : c.de || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Arrivée"><span>–</span><input class="in" ' + HM + ' data-plk="' + d + '.fi" value="' + esc(off ? '' : c.fi || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Départ"></span></div>';
     };
     var hj = heuresDemi(p, iso, 'AM', K.AM) + heuresDemi(p, iso, 'PM', K.PM);
     var L = lundiDe(iso), avant = 0; for (var k = 0; k < 5; k++) { var d2 = addJ(L, k); avant += d2 === iso ? hj : heuresJ(p, d2); }

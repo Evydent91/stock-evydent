@@ -2163,3 +2163,5 @@ button.stk-k{cursor:pointer}
   .rgn-cat.stk .rgn-l{color:#17643f}
   .rgn-cat.stk .rgn-l:hover{background:#e9f5ee}
 }
+.in.hm-err{border-color:var(--ko);background:var(--kobg)}
+input[data-hm]{font-variant-numeric:tabular-nums}
