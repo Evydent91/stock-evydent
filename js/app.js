@@ -1346,8 +1346,9 @@
   function vPPostes() {
     var E = S.postesEd = S.postesEd || JSON.parse(JSON.stringify(postes()));
     var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'Postes', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    h += '<div class="rg-top"><p class="a-aide">Une ligne par poste. Touchez une plage pour la renommer ou changer ses heures.</p><button class="btn" data-act="posave">Enregistrer les postes</button></div>';
     h += '<p class="a-aide" style="margin-top:0">Ce qu’une assistante peut faire quand elle n’est pas au fauteuil. Proposés dans la semaine type, le planning et l’export Excel. « École », « Ne travaille pas » et les absences sont fixes.</p>';
-    h += '<div class="a-liste po-l">' + E.map(function (x, i) {
+    h += '<div class="a-liste po-l"><div class="po-th" aria-hidden="true"><span>Ordre</span><span>Nom affiché</span><span>Dans l’Excel</span><span>Couleur</span><span>Horaires</span><span>Détail</span><span></span></div>' + E.map(function (x, i) {
       return '<div class="a-li po' + (x.retire ? ' retire' : '') + '"><span class="po-ord"><button class="btn l sm" data-poup="' + i + '" aria-label="Monter"' + (i ? '' : ' disabled') + '>' + ico('haut', 16, 2.4) + '</button><button class="btn l sm" data-podown="' + i + '" aria-label="Descendre"' + (i < E.length - 1 ? '' : ' disabled') + '>' + ico('bas', 16, 2.4) + '</button></span>'
         + '<label class="mu">Nom affiché<input class="in" data-pon="' + i + '" value="' + esc(x.n) + '"></label>'
         + '<label class="mu">Dans l’Excel<input class="in po-xl" data-poxl="' + i + '" value="' + esc(x.xl || '') + '"></label>'
@@ -1355,14 +1356,14 @@
         + '<label class="mu po-h">Horaires<select class="in" data-pohor="' + i + '"><option value="variable"' + (!x.hor || x.hor === 'variable' ? ' selected' : '') + '>Variable</option><option value="fixe"' + (x.hor === 'fixe' ? ' selected' : '') + '>Fixe</option><option value="plages"' + (x.hor === 'plages' ? ' selected' : '') + '>Plusieurs plages</option></select></label>'
         + '<button class="btn l sm po-r" data-poret="' + i + '">' + (x.retire ? 'Rétablir' : 'Retirer') + '</button>'
         + (x.hor === 'fixe' ? '<p class="po-dt mu">Fixe : dans la fiche de chaque personne, un seul horaire à saisir, appliqué à tous ses jours sur ce poste.</p>'
-          : x.hor === 'plages' ? '<div class="po-dt po-pl"><span class="mu">Plages proposées (matin de / à, après-midi de / à ; laissez vide la demi-journée qui ne sert pas)</span>' + (x.plages || []).map(function (g, k) { var tm = function (f, lib) { return '<input class="in" type="time" data-pgv="' + i + '|' + k + '|' + f + '" value="' + esc(g[f] || '') + '" aria-label="' + esc((g.n || 'Plage') + ' : ' + lib) + '">'; };
+          : x.hor === 'plages' ? '<div class="po-dt po-ch">' + (x.plages || []).map(function (g) { return '<button class="po-chip' + (S.poOuv === i ? ' on' : '') + '" data-poouv="' + i + '"><b>' + esc(g.n || 'Plage') + '</b> ' + plageTxt(g) + '</button>'; }).join('') + '<button class="po-chip plus" data-pgadd="' + i + '">+ Plage</button>' + ((x.plages || []).length ? '<button class="po-chip lien" data-poouv="' + i + '">' + (S.poOuv === i ? 'Fermer' : 'Modifier') + '</button>' : '') + '</div><div class="po-dt po-pl' + (S.poOuv === i ? '' : ' ferme') + '"><span class="mu">Plages proposées (matin de / à, après-midi de / à ; laissez vide la demi-journée qui ne sert pas)</span>' + (x.plages || []).map(function (g, k) { var tm = function (f, lib) { return '<input class="in" type="time" data-pgv="' + i + '|' + k + '|' + f + '" value="' + esc(g[f] || '') + '" aria-label="' + esc((g.n || 'Plage') + ' : ' + lib) + '">'; };
               return '<div class="po-pg"><input class="in" data-pgv="' + i + '|' + k + '|n" value="' + esc(g.n || '') + '" placeholder="Nom (ex. Ouverture)" aria-label="Nom de la plage">' + tm('ad', 'matin, de') + tm('af', 'matin, à') + tm('pd', 'après-midi, de') + tm('pf', 'après-midi, à') + '<button class="btn l sm" data-pgdel="' + i + '|' + k + '" aria-label="Retirer la plage">' + ico('croix', 16, 2.4) + '</button></div>'; }).join('')
             + '<button class="btn l sm po-pga" data-pgadd="' + i + '">+ Ajouter une plage</button></div>'
           : '<p class="po-dt mu">Variable : les heures se saisissent à chaque demi-journée.</p>') + '</div>';
     }).join('') + '</div>';
     h += '<div class="card po-add"><b>Ajouter un poste</b><div class="h-g2"><label class="mu">Nom affiché<input class="in" id="ponew" placeholder="Ex. : Secrétariat, Stérilisation 2"></label><label class="mu">Couleur<input class="in po-c" type="color" id="ponewc" value="#E2EFDA"></label></div><button class="btn" data-act="poadd">Ajouter</button></div>';
     h += '<p class="a-aide">Un poste retiré n’est plus proposé, mais reste lisible dans les plannings où il apparaît déjà.</p>';
-    return h + '<button class="a-btn navy" data-act="posave">Enregistrer les postes</button></div>';
+    return h + '<button class="a-btn navy rg-bas" data-act="posave">Enregistrer les postes</button></div>';
   }
   function sauverParam(cle0, val, msg, apres) {
     sb.from('parametres').upsert({ cle: cle0, valeur: val }, { onConflict: 'cle' }).then(function (r) { if (r.error) throw r.error; toast(msg); if (apres) apres(); render(); }).catch(function (e) { toast(msgErr(e)); });
@@ -1386,7 +1387,8 @@
     if (d.poup != null && E) { i = +d.poup; var a = E[i]; E[i] = E[i - 1]; E[i - 1] = a; render(); return true; }
     if (d.podown != null && E) { i = +d.podown; var b = E[i]; E[i] = E[i + 1]; E[i + 1] = b; render(); return true; }
     if (d.poret != null && E) { E[+d.poret].retire = !E[+d.poret].retire; render(); return true; }
-    if (d.pgadd != null && E) { var pg = E[+d.pgadd]; pg.plages = (pg.plages || []).concat([{ n: 'Plage ' + ((pg.plages || []).length + 1), ad: '09:00', af: '13:00', pd: '14:00', pf: '17:00' }]); render(); return true; }
+    if (d.poouv != null && E) { S.poOuv = S.poOuv === +d.poouv ? null : +d.poouv; render(); return true; }
+    if (d.pgadd != null && E) { S.poOuv = +d.pgadd; var pg = E[+d.pgadd]; pg.plages = (pg.plages || []).concat([{ n: 'Plage ' + ((pg.plages || []).length + 1), ad: '09:00', af: '13:00', pd: '14:00', pf: '17:00' }]); render(); return true; }
     if (d.pgdel != null && E) { var xd = d.pgdel.split('|'); E[+xd[0]].plages.splice(+xd[1], 1); render(); return true; }
     if (d.act === 'poadd' && E) {
       var n = $('ponew').value.trim(); if (!n) { toast('Indiquez le nom du poste'); return true; }
@@ -2019,7 +2021,7 @@
     var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pprofils: vPProfils, ptransfert: vPTransfert }[S.tab] || vHub;
     if ((S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage') && telephone()) ecr = vSurPC;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
-    h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr' || S.tab === 'pequipe' || S.tab === 'pprofils') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || (S.tab === 'pconges' && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
+    h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr' || S.tab === 'pequipe') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || ((S.tab === 'pconges' || S.tab === 'ppostes' || S.tab === 'pregles' || S.tab === 'pprofils' || S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible') && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
     if (S.tab === 'pfiche') h += vBarPFiche();
     if (S.tab === 'dfiche') h += vBarDFiche();
     return h;
@@ -4118,19 +4120,22 @@
   function vPRegles() {
     var R = regles(), E = S.rgEdit;
     var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'Heures', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
-    h += '<p class="a-aide">Heures comptées dans la semaine quand la personne ne travaille pas ce jour-là (journée entière ; une demi-journée compte la moitié) :</p><div class="a-liste">'
+    var som = [['rgs-h', 'Heures comptées'], ['rgs-cp', 'Congés payés'], ['rgs-rl', 'Reliquat']].concat(pointagePret() ? [['rgs-pt', 'Pointage']] : []).concat([['rgs-pp', 'Règles par personne']]);
+    h += '<div class="rg-top"><p class="a-aide">Les règles générales valent pour toute l’équipe. Une règle par personne peut les remplacer, tout en bas.</p><button class="btn" data-act="rgsave">Enregistrer les règles</button></div>';
+    h += '<nav class="rgso" aria-label="Sur cette page"><span>Sur cette page</span>' + som.map(function (x) { return '<button data-rgso="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</nav>';
+    h += '<div class="rgr"><section class="rgs" id="rgs-h"><h2 class="a-jour">Heures comptées</h2><p class="a-aide">Heures comptées dans la semaine quand la personne ne travaille pas ce jour-là (journée entière ; une demi-journée compte la moitié) :</p><div class="a-liste">'
       + [['CP', 'Congés'], ['ARRET', 'Maladie'], ['ECOLE', 'École (apprentie)'], ['FORMATION', 'Formation'], ['FERIE', 'Jour férié']].map(function (x) {
         return '<label class="a-li"><span class="a-it-n"><b>' + x[1] + '</b></span><span class="h-hval"><input class="in" inputmode="decimal" data-rg="' + x[0] + '" value="' + esc(fr(R[x[0]])) + '" aria-label="Heures pour ' + x[1] + '"> h</span></label>';
       }).join('') + '</div>';
-    h += '<h2 class="a-jour">Jour férié</h2><div class="a-liste">'
+    h += '<h3 class="rg-sous">Jour férié</h3><div class="a-liste">'
       + '<label class="a-li"><input type="radio" name="rgferie" data-rgf="habituel"' + (R.ferie !== 'tous' ? ' checked' : '') + '><span class="a-it-n"><b>Compte seulement si elle travaille ce jour-là d’habitude</b></span></label>'
       + '<label class="a-li"><input type="radio" name="rgferie" data-rgf="tous"' + (R.ferie === 'tous' ? ' checked' : '') + '><span class="a-it-n"><b>Compte pour tout le monde</b></span></label></div>';
-    h += '<h2 class="a-jour">Congés payés</h2><div class="a-liste">'
+    h += '</section><section class="rgs" id="rgs-cp"><h2 class="a-jour">Congés payés</h2><div class="a-liste">'
       + '<label class="a-li"><span class="a-it-n"><b>Droits par période</b><span>jours de congés payés par défaut (réglable personne par personne dans sa fiche)</span></span><span class="h-hval"><input class="in" inputmode="decimal" data-rg="cp_droits" value="' + esc(fr(R.cp_droits)) + '"> j</span></label>'
       + '<label class="a-li"><span class="a-it-n"><b>Début de la période</b><span>la période dure un an à partir de ce jour</span></span><select class="in" data-rg="cp_debut" style="max-width:170px">' + MOIS.map(function (mo, i) { var v = ('0' + (i + 1)).slice(-2) + '-01'; return '<option value="' + v + '"' + ((R.cp_debut || '06-01') === v ? ' selected' : '') + '>1er ' + mo + '</option>'; }).join('') + '</select></label>'
       + '<label class="a-li"><span class="a-it-n"><b>Jours décomptés</b><span>ouvrables : 30 j par an, 2,5 j acquis par mois, comme sur les fiches de paie</span></span><select class="in" data-rg="cp_mode" style="max-width:300px"><option value="ouvrables"' + (R.cp_mode === 'ouvrables' ? ' selected' : '') + '>Jours ouvrables : lundi au samedi (30 j)</option><option value="ouvres"' + (R.cp_mode === 'ouvres' ? ' selected' : '') + '>Jours ouvrés : lundi au vendredi (25 j)</option><option value="travail"' + (R.cp_mode === 'travail' ? ' selected' : '') + '>Jours de travail habituels de la personne</option></select></label></div>';
-    h += '<h2 class="a-jour">Reliquat</h2><div class="a-liste"><label class="a-li"><span class="a-it-n"><b>Compté à partir du</b><span>les semaines d’avant ne comptent pas</span></span><input class="in" type="date" data-rg="depuis" value="' + esc(R.depuis || '') + '" style="max-width:170px"></label></div>';
-    if (pointagePret()) h += '<h2 class="a-jour">Pointage</h2><div class="a-liste">'
+    h += '</section><section class="rgs" id="rgs-rl"><h2 class="a-jour">Reliquat</h2><div class="a-liste"><label class="a-li"><span class="a-it-n"><b>Compté à partir du</b><span>les semaines d’avant ne comptent pas</span></span><input class="in" type="date" data-rg="depuis" value="' + esc(R.depuis || '') + '" style="max-width:170px"></label></div>';
+    if (pointagePret()) h += '</section><section class="rgs" id="rgs-pt"><h2 class="a-jour">Pointage</h2><div class="a-liste">'
       + '<label class="a-li"><span class="a-it-n"><b>Le reliquat utilise le temps pointé</b><span>Journée pointée en entier : temps réel ; sinon : heures prévues au planning. Décoché : tout revient au planning.</span></span><input type="checkbox" data-rg="pt_reliquat"' + (R.pt_reliquat !== false ? ' checked' : '') + ' style="width:22px;height:22px;flex:none"></label>'
 + '</div><h3 class="rg-sous">Retards</h3><div class="a-liste">'
       + '<label class="a-li"><span class="a-it-n"><b>Tolérance de retard</b><span>Une arrivée compte comme un retard au-delà de</span></span><span class="h-hval"><input class="in" inputmode="numeric" data-rg="pt_tol" value="' + esc(String(R.pt_tol)) + '"> min</span></label>'
@@ -4141,8 +4146,8 @@
       + '</div><h3 class="rg-sous">Écarts</h3><div class="a-liste">'
       + '<label class="a-li"><span class="a-it-n"><b>Alerte écart de la semaine</b><span>« À surveiller » si réel − prévu dépasse (heures)</span></span><span class="h-hval"><input class="in" inputmode="decimal" data-rg="pt_ecart" value="' + esc(fr(R.pt_ecart)) + '"> h</span></label></div>'
       + '<p class="a-aide">Une journée particulière peut être exclue depuis sa correction (« Ne pas compter ce pointage »).</p>';
-    h += '<button class="a-btn navy" data-act="rgsave">Enregistrer les règles générales</button>';
-    h += '<h2 class="a-jour">Règles et consignes par personne</h2><div class="a-liste">' + persPlanning().map(function (p) {
+    h += '</section></div><button class="a-btn navy rg-bas" data-act="rgsave">Enregistrer les règles générales</button>';
+    h += '<section class="rgs rgs-pp" id="rgs-pp"><h2 class="a-jour">Règles et consignes par personne</h2><div class="a-liste">' + persPlanning().map(function (p) {
       var rg = p.regles || {}, k = Object.keys(rg).filter(function (x) { return ABS.indexOf(x) >= 0 && rg[x] !== '' && rg[x] != null; });
       if (E && String(E.id) === String(p.id)) {
         return '<div class="a-li h-cadd"><b>' + esc(p.prenom) + '</b><p class="mu" style="margin:4px 0 8px">Laissez vide pour garder la règle générale.</p><div class="h-g2">'
@@ -4151,7 +4156,7 @@
           + '<div class="row" style="margin-top:10px"><button class="btn l" data-act="rgpno">Annuler</button><button class="btn" data-act="rgpok">Enregistrer</button></div></div>';
       }
       return '<button class="a-li" data-rgp-ouvrir="' + p.id + '"><span class="a-av p">' + initiale(p.prenom) + '</span><span class="a-it-n"><b>' + esc(p.prenom) + '</b><span>' + (k.length ? k.map(function (a) { return ABS_TXT[a] + ' ' + fh(+rg[a]); }).join(' · ') : 'règle générale') + '</span>' + (p.consigne ? '<span class="h-cons">« ' + esc(p.consigne) + ' »</span>' : '') + '</span>' + ico('suiv', 20, 2.2) + '</button>';
-    }).join('') + '</div><p class="a-aide">Une règle par personne remplace la règle générale pour elle seule. La consigne s’affiche dans le planning quand vous touchez une de ses cases.</p>';
+    }).join('') + '</div><p class="a-aide">Une règle par personne remplace la règle générale pour elle seule. La consigne s’affiche dans le planning quand vous touchez une de ses cases.</p></section>';
     return h + '</div>';
   }
   function sauverRegles() {
@@ -5740,6 +5745,7 @@
     if (d.act === 'eannule') { S.eqEdit = null; render(); return; }
     if (d.esave) return sauverProfil(d.esave);
     if (d.ereinit) return reinitMdp(d.ereinit);
+    if (d.rgso) { var cs = document.getElementById(d.rgso); if (cs) cs.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
     if (d.rglp) return changerFiche('p', d.rglp);
     if (d.rgld) return changerFiche('d', d.rgld);
     if (d.rglnew) return changerFiche(d.rglnew, 'new');
@@ -5769,7 +5775,7 @@
     if (d.act === 'pfcopiejour' && S.pf) { var tj = S.pf.d.trame = S.pf.d.trame || {}, src = JSON.parse(JSON.stringify(tj[d.j] || {})); for (var jj2 = 1; jj2 <= 5; jj2++) if (String(jj2) !== String(d.j)) { tj[jj2] = JSON.parse(JSON.stringify(src)); ['am', 'pm'].forEach(function (k) { var cc = tj[jj2][k]; if (cc && cc.a && horPoste(cc.a) === 'fixe') { var hk = horDemi(S.pf.d, cc.a, k, jj2); if (hk) { cc.de = hk.de; cc.fi = hk.fi; } } }); } toast('Copié sur toute la semaine · pensez à enregistrer'); render(); return; }
     if ((d.pfret != null || /^(pfadd|pfsavep)$/.test(d.act || '')) && actionProfils(d)) return;
     if ((d.roret != null || /^(roadd|rosave)$/.test(d.act || '')) && actionRoles(d)) return;
-    if ((d.poup != null || d.podown != null || d.poret != null || d.pgadd != null || d.pgdel != null || d.tyret != null || /^(poadd|posave|tyadd|tysave)$/.test(d.act || '')) && actionReglages(d)) return;
+    if ((d.poup != null || d.podown != null || d.poret != null || d.poouv != null || d.pgadd != null || d.pgdel != null || d.tyret != null || /^(poadd|posave|tyadd|tysave)$/.test(d.act || '')) && actionReglages(d)) return;
     if (d.act === 'rgqr') return ouvrirPageQR('reglages');
     if (d.act === 'scan') return ouvrirScanner();
     if (d.ptsens && S.ptRes && S.ptRes.choix) return envoyerPointage(S.ptRes.choix, d.ptsens);
