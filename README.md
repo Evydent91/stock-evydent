@@ -17,7 +17,7 @@ Aucun secret dans ce dépôt : seules les clés publiques Supabase y figurent.
 Le schéma est maintenu uniquement par les fichiers numérotés de `supabase/migrations/`,
 appliqués dans l'éditeur SQL de Supabase : d'abord sur Evydent-Dev, puis sur Evydent-Prod après validation.
 
-**Dernière migration appliquée : dev 026, prod 026 (script supabase/prod/passage-prod-007-026.sql, 14/11/2026)** — 007 et 008 iront en prod avec la version 2.2
+**Dernière migration appliquée : dev 027, prod 027 (027_referent_profil.sql, à lancer sur la prod avec la version 2.4.1, 15/11/2026)** — avant : passage-prod-007-026.sql (14/11/2026)
 
 ## Fonctions Supabase (Edge Functions)
 
