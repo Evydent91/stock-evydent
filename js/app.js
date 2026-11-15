@@ -1315,6 +1315,7 @@
   function coulPers(p) {
     var k = catPt(p).k, m = S.coulCat;
     if (!m) { m = S.coulCat = { c: {} }; catsPt(S.equipe.filter(function (x) { return x.actif; })).forEach(function (c) { m.c[c.k] = c.coul; }); }
+    if (!p.type || p.type === 'assistante') return '';   // assistantes et apprenties : toujours en or, même avec une fonction sur leur compte
     var c = m.c[k]; return c && c !== 'c0' ? ' ' + c : '';
   }
   // Changer de fiche depuis la liste : on prévient si des changements ne sont pas enregistrés, et on garde la rubrique ouverte
