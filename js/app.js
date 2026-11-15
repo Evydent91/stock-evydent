@@ -509,8 +509,14 @@
     equipe: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2.2.6 3.5 2.4 3.5 5.2"/>',
     dent: '<path d="M7.5 3.5c-2.5 0-4 2-4 4.5 0 3 1.2 4.5 1.8 7.5.5 2.5 1 5 2.4 5 1.6 0 1.6-4.5 4.3-4.5s2.7 4.5 4.3 4.5c1.4 0 1.9-2.5 2.4-5 .6-3 1.8-4.5 1.8-7.5 0-2.5-1.5-4.5-4-4.5-1.8 0-2.8 1-4.5 1s-2.7-1-4.5-1z"/>',
     fleche: '<path d="M12 19V5M6 11l6-6 6 6"/>',
-    invok: '<rect x="6" y="4" width="12" height="16" rx="2"/><path d="M9 12l2 2 4-4"/>'
+    invok: '<rect x="6" y="4" width="12" height="16" rx="2"/><path d="M9 12l2 2 4-4"/>',
+    panier: '<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.5 12h11L21 7H6.2"/>',
+    menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+    etiquette: '<path d="M20 12l-8 8-9-9V3h8z"/><path d="M7.5 7.5h.01"/>',
+    camion: '<path d="M1 6h13v10H1zM14 10h4l3 3v3h-7"/><circle cx="5.5" cy="17.5" r="1.5"/><circle cx="17.5" cy="17.5" r="1.5"/>'
   };
+  // Icônes au trait de la gestion de stock (barre du bas et bouton « Plus »)
+  var ICO_G = { accueil: 'maison', sortie: 'sortie', inventaire: 'invok', commandes: 'panier', demandes: 'attente', retour: 'retour', stock: 'boite', articles: 'etiquette', fournisseurs: 'camion', histo: 'histo', plus: 'telecharger', aide: 'aide', compte: 'cadenas', hub: 'maison' };
   function ico(n, sz, ep) { return '<svg class="ic" width="' + (sz || 24) + '" height="' + (sz || 24) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (ep || 2) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + SVGI[n] + '</svg>'; }
 
   // ---------- Accueil des assistantes : 3 grandes tuiles ----------
@@ -4338,9 +4344,9 @@
     if (g) g1.push(['demandes', 'Demandes' + (att ? '<span class="badge">' + att + '</span>' : '')]);
     var g2 = g ? [['stock', 'Stock'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs'], ['histo', 'Historique'], ['plus', 'Plus']] : [['histo', 'Historique']];
     var bt = function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; };
-    var titreTel = S.tab === 'accueil' ? 'Tableau de bord' : NOMS[S.tab] || 'Stock';
+    var titreTel = S.tab === 'accueil' ? 'Gestion de stock' : NOMS[S.tab] || 'Stock';
     return '<header class="top t2"><div class="top-in">'
-      + '<span class="t2-g">' + (g ? '<button class="t2-back" data-tab="hub" aria-label="Menu principal">' + ico('prec', 20, 2.4) + '<span>Menu</span></button>' : '<button class="t2-back" data-tab="maison">' + ico('prec', 20, 2.4) + '<span>Accueil</span></button>') + '</span>'
+      + '<span class="t2-g">' + (g ? '<button class="t2-back" data-tab="hub" aria-label="Accueil">' + ico('prec', 20, 2.4) + '<span>Accueil</span></button>' : '<button class="t2-back" data-tab="maison">' + ico('prec', 20, 2.4) + '<span>Accueil</span></button>') + '</span>'
       + '<h1 class="t2-t"><span class="m-hide">Gestion de stock</span><span class="m-only">' + esc(titreTel) + '</span></h1>'
       + '<span class="t2-d"><button class="t2-ic" data-tab="aide" aria-label="Aide" title="Aide">' + ico('aide', 20, 2.2) + '</button>'
       + '<button class="t2-ic" data-tab="compte" aria-label="Changer mon ' + (g ? 'mot de passe' : 'code') + '" title="Changer mon ' + (g ? 'mot de passe' : 'code') + '">' + ico('cadenas', 19, 2.2) + '</button>'
@@ -4359,14 +4365,17 @@
       }).join('') + '</nav>';
     }
     var bas = ['accueil', 'sortie', 'inventaire', 'commandes'];
-    var menu = gestion() ? ['hub', 'demandes', 'retour', 'stock', 'articles', 'fournisseurs', 'histo', 'plus', 'aide', 'compte'] : ['aide', 'compte'];
-    var att = gestion() ? S.attente.length : 0, dansMenu = menu.indexOf(S.tab) >= 0;
-    var h = '<nav class="bnav" aria-label="Menu principal">' + bas.map(function (t) {
-      return '<button data-tab="' + t + '" class="' + (S.tab === t && !S.menu ? 'on' : '') + '"><span class="bi">' + ICO[t] + '</span><span>' + NOMS[t] + '</span></button>';
-    }).join('') + '<button data-act="menu" class="' + (S.menu || dansMenu ? 'on' : '') + '" aria-expanded="' + !!S.menu + '"><span class="bi">☰' + (att ? '<span class="badge">' + att + '</span>' : '') + '</span><span>' + (dansMenu && !S.menu ? NOMS[S.tab] : 'Menu') + '</span></button></nav>';
-    if (S.menu) h += '<button class="sheet-bg" data-act="menu" aria-label="Fermer le menu"></button><div class="sheet" role="dialog" aria-label="Menu"><div class="sheet-grip"></div><div class="sheet-grid">'
-      + menu.map(function (t) { return '<button data-tab="' + t + '" class="' + (S.tab === t ? 'on' : '') + '"><span class="bi">' + ICO[t] + (t === 'demandes' && att ? '<span class="badge">' + att + '</span>' : '') + '</span><span>' + NOMS[t] + '</span></button>'; }).join('')
-      + '<button data-act="out"><span class="bi">👤</span><span>Changer de personne</span></button></div></div>';
+    var quot = ['demandes', 'retour', 'histo'], cat = ['stock', 'articles', 'fournisseurs', 'plus', 'compte', 'aide'], menu = quot.concat(cat, ['hub']);
+    var att = S.attente.length, dansMenu = menu.indexOf(S.tab) >= 0;
+    var NOMS_G = { plus: 'Sauvegarde', compte: 'Mon mot de passe' };
+    var h = '<nav class="bnav g5" aria-label="Menu principal">' + bas.map(function (t) {
+      return '<button data-tab="' + t + '" class="' + (S.tab === t && !S.menu ? 'on' : '') + '"><span class="bi">' + ico(ICO_G[t], 24) + '</span><span>' + NOMS[t] + '</span></button>';
+    }).join('') + '<button data-act="menu" class="' + (S.menu || dansMenu ? 'on' : '') + '" aria-expanded="' + !!S.menu + '"><span class="bi">' + ico('menu', 24) + (att ? '<span class="badge">' + att + '</span>' : '') + '</span><span>Plus</span></button></nav>';
+    var carte = function (t) { return '<button data-tab="' + t + '" class="' + (S.tab === t ? 'on' : '') + '"><span class="bi">' + ico(ICO_G[t], 24) + (t === 'demandes' && att ? '<span class="badge">' + att + '</span>' : '') + '</span><span>' + (NOMS_G[t] || NOMS[t]) + '</span></button>'; };
+    if (S.menu) h += '<button class="sheet-bg" data-act="menu" aria-label="Fermer le menu"></button><div class="sheet g5" role="dialog" aria-label="Plus"><div class="sheet-grip"></div><h2 class="sheet-t">Plus</h2>'
+      + '<span class="sheet-lab">Au quotidien</span><div class="sheet-grid">' + quot.map(carte).join('') + '</div>'
+      + '<span class="sheet-lab">Catalogue et réglages</span><div class="sheet-grid">' + cat.map(carte).join('') + '</div>'
+      + '<div class="sheet-bas"><button class="sheet-acc" data-tab="hub">' + ico('prec', 20, 2.4) + 'Retour à l’accueil (planning, congés)</button><button class="sheet-out" data-act="out">' + ico('moi', 20) + 'Changer de personne</button></div></div>';
     return h;
   }
 
@@ -4669,7 +4678,31 @@
   function tuile(n, label, cls, go, sous) {
     return '<button class="tile ' + (cls || '') + '" data-go="' + go + '"><b>' + n + '</b><span>' + label + '</span>' + (sous ? '<small>' + sous + '</small>' : '') + '</button>';
   }
+  // Accueil de la gestion de stock sur téléphone : grandes tuiles comme l'appli de l'équipe
+  function vAccueilTel() {
+    var A = S.articles, n = function (f) { return A.filter(function (a) { return filtreStock(a, f); }).length; };
+    var att = S.attente.length, cmd = n('commander'), rup = n('rupture'), cmdR = A.filter(function (a) { return filtreStock(a, 'commander') && stockDe(a.id, 0) <= 0; }).length;
+    var valR = 0, valC = 0; A.forEach(function (a) { var cm = +a.cout_moyen || 0, f = facteur(a); valR += stockDe(a.id, 0) * cm; for (var c = 1; c <= 9; c++) valC += stockDe(a.id, c) / f * cm; });
+    var emps = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (e) { var x = etatInventaire(e); x.emp = e; return x; }), aF = emps.filter(function (x) { return x.cls !== 'ok'; }).length;
+    var T = function (tab, fonce, ic, titre, sous, em) { return '<button class="ga-t' + (fonce ? ' fonce' : '') + '" data-tab="' + tab + '"><span class="ga-ic" aria-hidden="true">' + ico(ic, 30) + '</span><span class="ga-tx"><b>' + titre + '</b><span>' + sous + '</span>' + (em ? '<em>' + em + '</em>' : '') + '</span>' + ico('suiv', 22, 2.4) + '</button>'; };
+    var h = '<div class="ga">';
+    if (sauvegardeEnRetard()) h += '<button class="ga-al" data-tab="plus">' + ico('telecharger', 22) + '<span><b>Sauvegarde du mois</b> à télécharger</span>' + ico('suiv', 20, 2.4) + '</button>';
+    if (att) h += '<button class="ga-al" data-tab="demandes">' + ico('attente', 22) + '<span><b>' + att + ' ' + pl(att, 'demande') + ' à confirmer</b> · sorties au-delà de la réserve</span>' + ico('suiv', 20, 2.4) + '</button>';
+    h += T('sortie', true, 'sortie', 'Sortie', 'Prendre dans la réserve')
+      + T('commandes', false, 'panier', 'Commandes', 'Par fournisseur, prêtes à envoyer', cmd ? cmd + ' à commander' + (cmdR ? ' · ' + cmdR + ' en rupture' : '') : '')
+      + T('inventaire', false, 'invok', 'Inventaires', 'Réserve, cabinets et Sté', aF ? aF + ' à faire ce mois-ci' : '');
+    h += '<h2 class="ga-h">En un coup d’œil</h2><div class="ga-g2">'
+      + '<button class="ga-c" data-go="stock:rupture"><b class="' + (rup ? 'ko' : '') + '">' + rup + '</b><span>en rupture</span><small>réserve à zéro</small></button>'
+      + '<button class="ga-c" data-go="stock:"><b class="eur">' + eur(valR) + '</b><span>valeur réserve</span><small>cabinets : ' + eur(valC) + '</small></button></div>';
+    h += '<section class="ga-s"><div class="ga-sh"><b>Inventaires du mois</b><span>' + (10 - aF) + ' à jour · ' + aF + ' à faire</span></div><div class="ga-inv">'
+      + emps.map(function (x) { return '<button class="' + (x.cls === 'ok' ? 'ok' : 'af') + '" data-go="inventaire:' + x.emp + '" title="' + esc(cabTxt(x.emp) + ' : ' + x.txt) + '"><b>' + (x.emp === 0 ? 'Rés.' : x.emp === 9 ? 'Sté' : x.emp) + '</b><i aria-hidden="true"></i></button>'; }).join('')
+      + '</div><small>Vert : à jour · orange : à faire</small></section>';
+    var fc = ['sr', 'sf', 'seuil'].filter(function (f) { return n(f); });
+    if (fc.length) h += '<section class="ga-s"><b>Fiches à compléter</b><div class="ga-ch">' + fc.map(function (f) { return '<button data-go="stock:' + f + '">' + STF[f] + ' · ' + n(f) + '</button>'; }).join('') + '</div></section>';
+    return h + '</div>';
+  }
   function vAccueil() {
+    if (telephone()) return vAccueilTel();
     var A = S.articles, cnt = {};
     Object.keys(STF).forEach(function (f) { cnt[f] = A.filter(function (a) { return filtreStock(a, f); }).length; });
     var valR = 0, valC = 0;
