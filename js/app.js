@@ -675,8 +675,18 @@
     var sel = function (id, c, k) { var cur = refTravail(c) || c.a === 'OFF' ? c.a : 'OFF'; plagesPoste(cur).forEach(function (g, n) { if (c.de === (k === 'am' ? g.ad : g.pd) && c.fi === (k === 'am' ? g.af : g.pf)) cur = c.a + '#' + n; }); if (plagesPoste(cur).length) cur = cur + '#0'; return '<select class="in" id="' + id + '">' + codes.map(function (q) { return '<option value="' + q[0] + '"' + (q[0] === cur ? ' selected' : '') + '>' + esc(q[1]) + '</option>'; }).join('') + '</select>'; };
     var lig = function (t, k, c, d1, d2) { return '<fieldset class="rf-ed"><legend>' + t + '</legend><label class="rf-ed-p">Poste' + sel('rf' + k + 'a', c, k === 'AM' ? 'am' : 'pm') + '</label><label>De<input class="in" type="time" id="rf' + k + 'd" value="' + esc(c.de || (refTravail(c) ? d1 : '')) + '"></label><label>À<input class="in" type="time" id="rf' + k + 'f" value="' + esc(c.fi || (refTravail(c) ? d2 : '')) + '"></label></fieldset>'; };
     var saisi = am.saisi || pm.saisi, E = null;
-    var r = await fenetre({ titre: p.prenom + ' · ' + JOURS[jourSem(iso)].toLowerCase() + ' ' + dateCourte(iso), large: true, html: lig('Matin', 'AM', am, '09:00', '13:00') + lig('Après-midi', 'PM', pm, '14:00', '19:00') + '<p class="mu" style="margin:6px 0 0;font-size:13.5px">Les congés et la maladie se posent dans la page Congés, par la référente ou la responsable.</p>', boutons: saisi ? [{ v: 'type', t: 'Revenir à la semaine type' }] : null, ok: 'Enregistrer',
+    var plc = postes().filter(function (q) { return !q.retire && plagesPoste(q.code).length; });
+    var barre = plc.length ? '<div class="rf-pls">' + plc.map(function (q) { return '<div class="h-pls" role="group" aria-label="Plages ' + esc(q.n) + '"><span class="h-pls-t">' + esc(q.n) + ' :</span>' + plagesPoste(q.code).map(function (g, n) { var on = am.a === q.code && am.de === g.ad && pm.de === g.pd; return '<button type="button" class="h-pl' + (on ? ' on' : '') + '" data-rfpl="' + esc(q.code) + '|' + n + '"><b>' + esc(g.n || 'Plage') + '</b><small>' + plageTxt(g) + '</small></button>'; }).join('') + '</div>'; }).join('') + '</div>' : '';
+    var clicPl = function (e) {
+      var t = e.target.closest && e.target.closest('[data-rfpl]'); if (!t) return; e.preventDefault(); e.stopPropagation();
+      var xr = t.dataset.rfpl.split('|'), gr = plagesPoste(xr[0])[+xr[1]], bgr = t.closest('.dlg'); if (!gr || !bgr) return;
+      [['AM', gr.ad, gr.af], ['PM', gr.pd, gr.pf]].forEach(function (z) { var sa = bgr.querySelector('#rf' + z[0] + 'a'); if (!z[1] || !z[2] || !sa) return; sa.value = xr[0] + '#' + xr[1]; if (sa.value !== xr[0] + '#' + xr[1]) sa.value = xr[0]; bgr.querySelector('#rf' + z[0] + 'd').value = z[1]; bgr.querySelector('#rf' + z[0] + 'f').value = z[2]; });
+      bgr.querySelectorAll('[data-rfpl]').forEach(function (b) { b.classList.toggle('on', b === t); }); S.lastPl = xr[0];
+    };
+    document.addEventListener('click', clicPl, true);
+    var r = await fenetre({ titre: p.prenom + ' · ' + JOURS[jourSem(iso)].toLowerCase() + ' ' + dateCourte(iso), large: true, html: barre + lig('Matin', 'AM', am, '09:00', '13:00') + lig('Après-midi', 'PM', pm, '14:00', '19:00') + '<p class="mu" style="margin:6px 0 0;font-size:13.5px">Les congés et la maladie se posent dans la page Congés, par la référente ou la responsable.</p>', boutons: saisi ? [{ v: 'type', t: 'Revenir à la semaine type' }] : null, ok: 'Enregistrer',
       lire: function (bg) { var o = E = {}; ['AM', 'PM'].forEach(function (k) { o[k] = { a: bg.querySelector('#rf' + k + 'a').value, de: bg.querySelector('#rf' + k + 'd').value || null, fi: bg.querySelector('#rf' + k + 'f').value || null }; }); return o; } });
+    document.removeEventListener('click', clicPl, true);
     if (!r) return;
     if (r.bouton === 'type') {
       return sb.from('planning').delete().eq('equipe_id', p.id).eq('jour', iso).then(function (q) { if (q.error) throw q.error; delete refRows()[cleCase(p.id, iso, 'AM')]; delete refRows()[cleCase(p.id, iso, 'PM')]; toast('✔ Semaine type rétablie'); render(); }).catch(function (e) { toast(msgErr(e)); });
@@ -1013,6 +1023,14 @@
     if (!r || !G) return;
     var L = JSON.parse(JSON.stringify(postes())), pq = L.filter(function (y) { return y.code === code; })[0]; pq.plages = G;
     sb.from('parametres').upsert({ cle: 'postes', valeur: L }, { onConflict: 'cle' }).then(function (rr) { if (rr.error) throw rr.error; S.postes = L; S.postesEd = null; toast('✔ Plages enregistrées'); render(); }).catch(function (e) { toast(msgErr(e)); });
+  }
+  // Barre de plages : celles du poste de la case, sinon celles du dernier poste à plages utilisé (elle reste ouverte d'un jour à l'autre)
+  function codePl(a) { return a && plagesPoste(a).length ? a : (S.lastPl && plagesPoste(S.lastPl).length ? S.lastPl : null); }
+  function barrePlages(code, cur, attr, ctx, k) {
+    var pls = code ? plagesPoste(code) : []; if (!pls.length) return '';
+    var autre = cur.a !== code;
+    return '<div class="h-pls" role="group" aria-label="Plages ' + esc(nomAff(code)) + '">' + (autre ? '<span class="h-pls-t">' + esc(nomAff(code)) + ' :</span>' : '') + pls.map(function (g, n) { var on = !autre && cur.de === (k === 'am' ? g.ad : g.pd) && cur.fi === (k === 'am' ? g.af : g.pf); return '<button class="h-pl' + (on ? ' on' : '') + '" ' + attr + '="' + ctx + '|' + esc(code) + '|' + n + '" aria-pressed="' + on + '"><b>' + esc(g.n || 'Plage') + '</b><small>' + plageTxt(g) + '</small></button>'; }).join('')
+      + (gestion() ? '<button class="h-pl h-pl-n" data-plnew="' + esc(code) + '|' + (attr === 'data-trpl' ? 't' : 'p') + '|' + ctx.split('.')[0] + '">+ Nouvelle plage</button><button class="h-pl h-pl-m" data-plmod="' + esc(code) + '">Renommer ou modifier</button>' : '') + '</div>';
   }
   function fixeDe(p, code) {   // horaire fixe de la personne pour ce poste : sa fiche, sinon déduit de sa semaine type
     var f = ((p && p.regles) || {}).hfixe; if (f && f[code]) return f[code];
@@ -1499,7 +1517,7 @@
   function demiEdit(j, k, c) {
     c = c || {}; var off = !c.a || c.a === 'OFF', hp = off ? 'variable' : horPoste(c.a), pls = hp === 'plages' ? plagesPoste(c.a) : [];
     if (hp === 'fixe') return '<div class="h-demi"><span class="h-dl">' + (k === 'am' ? 'Matin' : 'Après-midi') + '</span><select class="in" data-tr="' + j + '.' + k + '.a" aria-label="' + JOURS[j] + ' ' + (k === 'am' ? 'matin' : 'après-midi') + '">' + optAff(c.a, !!(S.pf && S.pf.d && !aDent(S.pf.d.type))) + '</select><span class="h-fx">' + ft(c.de) + '–' + ft(c.fi) + ' <small>horaire fixe, réglé au-dessus</small></span></div>';
-    var plb = pls.length ? '<div class="h-pls" role="group" aria-label="Plages">' + pls.map(function (g, n) { var on = c.de === (k === 'am' ? g.ad : g.pd) && c.fi === (k === 'am' ? g.af : g.pf); return '<button class="h-pl' + (on ? ' on' : '') + '" data-trpl="' + j + '.' + k + '.' + n + '" aria-pressed="' + on + '"><b>' + esc(g.n || 'Plage') + '</b><small>' + plageTxt(g) + '</small></button>'; }).join('') + '<button class="h-pl h-pl-n" data-plnew="' + esc(c.a) + '|t|' + j + '">+ Nouvelle plage</button><button class="h-pl h-pl-m" data-plmod="' + esc(c.a) + '">Renommer ou modifier</button></div>' : '';
+    var plb = hp === 'fixe' ? '' : barrePlages(codePl(off ? null : c.a), c, 'data-trpl', j + '.' + k, k);
     return '<div class="h-demi"><span class="h-dl">' + (k === 'am' ? 'Matin' : 'Après-midi') + '</span><select class="in" data-tr="' + j + '.' + k + '.a" aria-label="' + JOURS[j] + ' ' + (k === 'am' ? 'matin' : 'après-midi') + '">' + optAff(c.a, !!(S.pf && S.pf.d && !aDent(S.pf.d.type))) + '</select>'
       + plb + '<span class="h-hh"><input class="in" type="time" data-tr="' + j + '.' + k + '.de" value="' + esc(off ? '' : c.de || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Arrivée"><span>–</span><input class="in" type="time" data-tr="' + j + '.' + k + '.fi" value="' + esc(off ? '' : c.fi || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Départ"></span></div>';
   }
@@ -1541,7 +1559,7 @@
         g += '<span class="fi-sl">' + (k === 'am' ? 'Matin' : 'Après-midi') + '</span>';
         for (var j = 1; j <= 5; j++) {
           var x = (t[j] || {})[k] || {}, a = x.a || 'OFF', cl = a === 'OFF' ? 'off' : a === 'ECOLE' ? 'ec' : a.slice(0, 2) === 'D:' ? 'de' : 'po';
-          g += '<button class="fi-c ' + cl + (cel === j + '.' + k ? ' sel' : '') + '" data-pfcel="' + j + '.' + k + '" aria-pressed="' + (cel === j + '.' + k) + '" aria-label="' + JOURS[j] + ' ' + (k === 'am' ? 'matin' : 'après-midi') + '"><b>' + esc(a === 'OFF' ? 'Off' : nomAff(a)) + '</b><small>' + (a !== 'OFF' && x.de ? ft(x.de) + '–' + ft(x.fi) : a === 'OFF' ? 'ne travaille pas' : '') + '</small></button>';
+          g += '<button class="fi-c ' + cl + (cel === j + '.' + k ? ' sel' : '') + '" data-pfcel="' + j + '.' + k + '" aria-pressed="' + (cel === j + '.' + k) + '" aria-label="' + JOURS[j] + ' ' + (k === 'am' ? 'matin' : 'après-midi') + '"><b>' + esc(a === 'OFF' ? 'Off' : nomAff(a)) + '</b><small>' + (a !== 'OFF' && x.de ? ft(x.de) + '–' + ft(x.fi) : a === 'OFF' ? 'ne travaille pas' : '') + '</small>' + (function () { var gn = plagesPoste(a).filter(function (g) { return x.de === (k === 'am' ? g.ad : g.pd) && x.fi === (k === 'am' ? g.af : g.pf); })[0]; return gn ? '<i class="fi-pn">' + esc(gn.n) + '</i>' : ''; })() + '</button>';
         }
       });
       g += '</div><div class="h-total ' + (ecT ? 'warn' : 'ok') + '"><span>Total de la semaine type</span><b>' + fh(tot) + (c ? ' / ' + fh(c) + ' · ' + (ecT ? relTxt(tot - c) : 'équilibré') : '') + '</b></div>';
@@ -1610,7 +1628,7 @@
       c[p[2]] = el.value;
       if (p[2] === 'a') {
         if (!el.value || el.value === 'OFF') { delete c.de; delete c.fi; if (!el.value) delete j[p[1]]; }
-        else if (horPoste(el.value) !== 'variable') { ['am', 'pm'].forEach(function (k) { var hk = horDemi(F.d, el.value, k, +p[0]); if (hk) { j[k] = { a: el.value, de: hk.de, fi: hk.fi }; } }); }
+        else if (horPoste(el.value) !== 'variable') { if (horPoste(el.value) === 'plages') S.lastPl = el.value; ['am', 'pm'].forEach(function (k) { var hk = horDemi(F.d, el.value, k, +p[0]); if (hk) { j[k] = { a: el.value, de: hk.de, fi: hk.fi }; } }); }
         else { var hd = horDemi(F.d, el.value, p[1]); if (hd) { c.de = hd.de; c.fi = hd.fi; } else if (!c.de) { c.de = p[1] === 'am' ? '09:00' : '14:00'; c.fi = p[1] === 'am' ? '13:00' : '19:00'; } }
       }
     } else if (el.dataset.hfx) {
@@ -3773,7 +3791,7 @@
       var c = K[d], off = !c.a || c.a === 'OFF' || ABS.indexOf(c.a) >= 0;
       if (abs(c) && !K.jc) return '<div class="pl-cd"><span class="h-dl">' + (d === 'AM' ? 'Matin' : 'Après-midi') + '</span><select class="in" data-plk="' + d + '.a">' + optAffPl(c.a, !aDent(p.type)) + '</select>' + champH(d + '.h', c.h, heuresRegle(p, iso, d, c.a), 'Heures comptées') + '</div>';
       if (abs(c) && K.jc) return '';
-      var pls = off ? [] : plagesPoste(c.a), plb = pls.length && (d === 'AM' || !K.jc || K.AM.a !== K.PM.a) ? '<div class="h-pls" role="group" aria-label="Plages">' + pls.map(function (g, n) { var on = c.de === (d === 'AM' ? g.ad : g.pd) && c.fi === (d === 'AM' ? g.af : g.pf); return '<button class="h-pl' + (on ? ' on' : '') + '" data-plpg="' + d + '|' + n + '" aria-pressed="' + on + '"><b>' + esc(g.n || 'Plage') + '</b><small>' + plageTxt(g) + '</small></button>'; }).join('') + (gestion() ? '<button class="h-pl h-pl-n" data-plnew="' + esc(c.a) + '|p|' + d + '">+ Nouvelle plage</button><button class="h-pl h-pl-m" data-plmod="' + esc(c.a) + '">Renommer ou modifier</button>' : '') + '</div>' : '';
+      var plb = (d === 'AM' || !K.jc || K.AM.a !== K.PM.a) && (off || horPoste(c.a) !== 'fixe') ? barrePlages(codePl(off ? null : c.a), { a: c.a, de: c.de, fi: c.fi }, 'data-plpg', d, d === 'AM' ? 'am' : 'pm') : '';
       return plb + '<div class="pl-cd"><span class="h-dl">' + (d === 'AM' ? 'Matin' : 'Après-midi') + '</span>' + (K.jc ? '' : '<select class="in" data-plk="' + d + '.a">' + optAffPl(c.a, !aDent(p.type)) + '</select>')
         + '<span class="h-hh"><input class="in" type="time" data-plk="' + d + '.de" value="' + esc(off ? '' : c.de || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Arrivée"><span>–</span><input class="in" type="time" data-plk="' + d + '.fi" value="' + esc(off ? '' : c.fi || '') + '"' + (off ? ' disabled' : '') + ' aria-label="Départ"></span></div>';
     };
@@ -3805,7 +3823,7 @@
     if (x[1] === 'a') c.h = null;
     if (x[1] === 'a') {
       if (!el.value || el.value === 'OFF' || ABS.indexOf(el.value) >= 0) { c.de = null; c.fi = null; }
-      else if (horPoste(el.value) !== 'variable') { var pz = persById(K.eid); ['AM', 'PM'].forEach(function (dd) { var hz = horDemi(pz, el.value, dd === 'AM' ? 'am' : 'pm', jourSem(K.jour)); if (hz) { K[dd].a = el.value; K[dd].de = hz.de; K[dd].fi = hz.fi; K[dd].h = null; } }); }
+      else if (horPoste(el.value) !== 'variable') { if (horPoste(el.value) === 'plages') S.lastPl = el.value; var pz = persById(K.eid); ['AM', 'PM'].forEach(function (dd) { var hz = horDemi(pz, el.value, dd === 'AM' ? 'am' : 'pm', jourSem(K.jour)); if (hz) { K[dd].a = el.value; K[dd].de = hz.de; K[dd].fi = hz.fi; K[dd].h = null; } }); }
       else { var p = persById(K.eid), hd = horDemi(p, el.value, x[0] === 'AM' ? 'am' : 'pm', jourSem(K.jour)); if (hd) { c.de = hd.de; c.fi = hd.fi; } else if (!c.de) { var t = (((trameDe(p, K.jour) || {})[jourSem(K.jour)] || {})[x[0] === 'AM' ? 'am' : 'pm']) || {}; c.de = t.de || (x[0] === 'AM' ? '09:00' : '14:00'); c.fi = t.fi || (x[0] === 'AM' ? '13:00' : '19:00'); } }
     }
   }
@@ -5671,7 +5689,7 @@
     if (d.pfcel && S.pf) { S.pf.cel = d.pfcel; render(); return; }
     if (d.plnew) return nouvellePlage(d.plnew);
     if (d.plmod) return modifierPlages(d.plmod);
-    if (d.trpl && S.pf) { var xq = d.trpl.split('.'), tq = S.pf.d.trame = S.pf.d.trame || {}, dq = tq[xq[0]] = tq[xq[0]] || {}, cq = dq[xq[1]] || {}, gq = plagesPoste(cq.a)[+xq[2]]; if (gq) { ['am', 'pm'].forEach(function (k) { var de = k === 'am' ? gq.ad : gq.pd, fi = k === 'am' ? gq.af : gq.pf; if (de && fi) dq[k] = { a: cq.a, de: de, fi: fi }; }); } render(); return; }
+    if (d.trpl && S.pf) { var xq = d.trpl.split('|'), jq = xq[0].split('.')[0], tq = S.pf.d.trame = S.pf.d.trame || {}, dq = tq[jq] = tq[jq] || {}, gq = plagesPoste(xq[1])[+xq[2]]; if (gq) { S.lastPl = xq[1]; ['am', 'pm'].forEach(function (k) { var de = k === 'am' ? gq.ad : gq.pd, fi = k === 'am' ? gq.af : gq.pf; if (de && fi) dq[k] = { a: xq[1], de: de, fi: fi }; }); } render(); return; }
     if (d.act === 'pfcopiejour' && S.pf) { var tj = S.pf.d.trame = S.pf.d.trame || {}, src = JSON.parse(JSON.stringify(tj[d.j] || {})); for (var jj2 = 1; jj2 <= 5; jj2++) if (String(jj2) !== String(d.j)) { tj[jj2] = JSON.parse(JSON.stringify(src)); ['am', 'pm'].forEach(function (k) { var cc = tj[jj2][k]; if (cc && cc.a && horPoste(cc.a) === 'fixe') { var hk = horDemi(S.pf.d, cc.a, k, jj2); if (hk) { cc.de = hk.de; cc.fi = hk.fi; } } }); } toast('Copié sur toute la semaine · pensez à enregistrer'); render(); return; }
     if ((d.pfret != null || /^(pfadd|pfsavep)$/.test(d.act || '')) && actionProfils(d)) return;
     if ((d.roret != null || /^(roadd|rosave)$/.test(d.act || '')) && actionRoles(d)) return;
@@ -5687,7 +5705,7 @@
     if (d.act === 'ptexpok' && S.ptExp) return exporterPointage();
     if (d.ptplan) { S.pl = S.pl || { rows: {} }; S.pl.rows = S.pl.rows || {}; S.pl.lundi = d.ptplan; S.pl.cas = null; S.tab = 'planning'; S.tabChoisi = true; chargerSemaine(); render(); window.scrollTo(0, 0); return; }
     if (d.plpt != null) { S.plVoirPt = d.plpt === '1'; render(); return; }
-    if (d.plpg && S.pl && S.pl.cas) { var K2 = S.pl.cas, xg = d.plpg.split('|'), g2 = plagesPoste(K2[xg[0]].a)[+xg[1]]; if (g2) { var pa = K2[xg[0]].a; ['AM', 'PM'].forEach(function (dd) { var de = dd === 'AM' ? g2.ad : g2.pd, fi = dd === 'AM' ? g2.af : g2.pf; if (de && fi) { K2[dd].a = pa; K2[dd].de = de; K2[dd].fi = fi; K2[dd].h = null; } }); } render(); return; }
+    if (d.plpg && S.pl && S.pl.cas) { var K2 = S.pl.cas, xg = d.plpg.split('|'), g2 = plagesPoste(xg[1])[+xg[2]]; if (g2) { S.lastPl = xg[1]; ['AM', 'PM'].forEach(function (dd) { var de = dd === 'AM' ? g2.ad : g2.pd, fi = dd === 'AM' ? g2.af : g2.pf; if (de && fi) { K2[dd].a = xg[1]; K2[dd].de = de; K2[dd].fi = fi; K2[dd].h = null; } }); } render(); return; }
     if (d.act === 'clo' && S.pl) { if (!S.clos) { toast(S.clos === null ? 'La clôture demande la mise à jour 023 de la base (SQL Editor de Supabase)' : 'Chargement… réessayez dans un instant'); if (S.clos === null) chargerClos(); return; } S.plClo = { L: S.pl.lundi }; render(); return; }
     if (d.act === 'clox') { S.plClo = null; render(); return; }
     if (d.act === 'clook' && S.plClo) return cloturerSemaine();
