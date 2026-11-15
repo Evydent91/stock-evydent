@@ -578,12 +578,17 @@
     if (!hl && (droit('conges') || refDe())) { var att = (S.mesConges || []).filter(function (c) { return c.statut === 'attente'; }).length; t.push(tuileA('mconges', 'tc2', 'agenda', 'Mes congés', att ? att + ' demande' + (att > 1 ? 's' : '') + ' en attente' : 'Demander, suivre la réponse')); }
     if (!hl && refDe()) {
       var rn = refNom(), ratt = (S.conges || []).filter(function (c) { return c.statut === 'attente'; }).length;
-      if (refDroit('planning_voir')) t.push(tuileA('rplanning', 'tp', 'agenda', 'Planning ' + esc(rn), 'Postes, horaires, qui ferme le soir'));
-      if (refDroit('conges_voir')) t.push(tuileA('rconges', 'tc2', 'agenda', 'Congés · ' + esc(rn), ratt ? ratt + ' ' + pl(ratt, 'demande') + ' en attente' : 'Absences du mois, soldes'));
-      if (refDroit('pointage')) t.push(tuileA('rpointage', 'tp', 'qr', 'Pointage · ' + esc(rn), 'Arrivées et sorties de la semaine'));
+      if (telephone()) {   // sur téléphone, comme pour la référente et la responsable : ces pages s'ouvrent sur ordinateur
+        var gp = []; if (refDroit('planning_voir')) gp.push(['agenda', 'Planning ' + esc(rn)]); if (refDroit('conges_voir')) gp.push(['agenda', 'Congés ' + esc(rn)]); if (refDroit('pointage')) gp.push(['qr', 'Pointage ' + esc(rn)]);
+        if (gp.length) var pcRef = '<div class="h-pc"><span class="h-pc-l">À ouvrir sur ordinateur</span><div class="h-pc-g">' + gp.map(function (x) { return '<span>' + ico(x[0], 20) + '<b>' + x[1] + '</b></span>'; }).join('') + '</div></div>';
+      } else {
+        if (refDroit('planning_voir')) t.push(tuileA('rplanning', 'tp', 'agenda', 'Planning ' + esc(rn), 'Postes, horaires, qui ferme le soir'));
+        if (refDroit('conges_voir')) t.push(tuileA('rconges', 'tc2', 'agenda', 'Congés · ' + esc(rn), ratt ? ratt + ' ' + pl(ratt, 'demande') + ' en attente' : 'Absences du mois, soldes'));
+        if (refDroit('pointage')) t.push(tuileA('rpointage', 'tp', 'qr', 'Pointage · ' + esc(rn), 'Arrivées et sorties de la semaine'));
+      }
     }
     var seule = !t.length && pt;
-    h += '<div class="a-corps' + (seule ? ' a-seule' : '') + '">' + vBienvenue() + pt + (t.length ? '<div class="tuiles a-tuiles">' + t.join('') + '</div>' : '');
+    h += '<div class="a-corps' + (seule ? ' a-seule' : '') + '">' + vBienvenue() + pt + (t.length ? '<div class="tuiles a-tuiles">' + t.join('') + '</div>' : '') + (typeof pcRef === 'string' ? pcRef : '');
     if (!pt && !t.length) h += '<div class="card"><b>Rien à afficher pour l’instant.</b><p class="mu" style="margin:6px 0 0">' + (droit('pointage') ? 'Votre fiche n’est pas encore soumise au pointage, ou votre compte n’est pas relié à votre fiche.' : 'Votre rôle n’a encore aucun outil. Voyez avec la référente.') + '</p></div>';
     return h + '</div>';
   }
