@@ -2166,3 +2166,9 @@ button.stk-k{cursor:pointer}
 .in.hm-err{border-color:var(--ko);background:var(--kobg)}
 input[data-hm]{font-variant-numeric:tabular-nums}
 .h-alerte.cg-eq:not(.a){background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(31,42,51,.08)}.h-alerte.cg-eq:not(.a) .ic{color:var(--navy)}
+/* Planning administratif avec « Planning + pointé » : résumé de la semaine comme pour les assistantes */
+.rf-h.pl-h4{display:grid;grid-template-columns:auto 1fr;gap:1px 8px;align-items:center;align-content:center;padding:6px 10px;font-size:12.5px;border-radius:10px;background:#fff;border:1.5px solid var(--soft)}
+.rf-h.pl-h4 > span{color:var(--mute)}.rf-h.pl-h4 > b{text-align:right;font-size:12.5px;color:var(--ink)}
+.rf-h.pl-h4 > b.mu{color:var(--mute);font-weight:600}
+.rf-g:has(.pl-h4){grid-template-columns:minmax(120px,160px) repeat(5,minmax(104px,1fr)) minmax(132px,150px)}
+.rf-h.pl-h4 > b.plus{color:#1d5fa0}.rf-h.pl-h4 > b.moins{color:#9a4a0b}.rf-h.pl-h4 > b.ok{color:var(--ok)}

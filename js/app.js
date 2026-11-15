@@ -688,7 +688,10 @@
       + ps.map(function (p) {
         var tot = js.reduce(function (a, iso) { return a + refHeuresJ(p, iso); }, 0), ct = +p.contrat_h || 0, ec = tot - ct, ok = !ct || Math.abs(ec) < 0.09;
         return '<span class="rf-n"><b>' + esc(p.prenom) + '</b><small>contrat ' + (ct ? fr(ct) + ' h' : '—') + '</small></span>' + js.map(function (iso) { return cel(p, iso); }).join('')
-          + '<span class="rf-h ' + (ok ? 'ok' : 'ko') + '"><b>' + fh(tot) + '</b>' + (ct ? '<small>' + (ok ? 'juste' : (ec > 0 ? '+' : '−') + fh(Math.abs(ec))) + '</small>' : '') + '</span>';
+          + (gestion() && S.plVoirPt ? (function () {   // « Planning + pointé » : le même résumé que pour les assistantes
+            var L0 = lundiDe(js[0]), pt = p.pointage ? ptSem(p, L0) : null, eP = pt ? pt.h - tot : 0, rl = ct ? reliquatAvant(p, L0) + tot - ct : null;
+            return '<span class="rf-h pl-h4"><span>Planning</span><b>' + fh(tot) + '</b><span>Pointé</span><b class="' + (pt && pt.n ? hrCouleur(Math.abs(eP) < 0.09 ? 0 : eP) : 'mu') + '">' + (!pt ? '—' : pt.n ? fh(pt.h) : '—') + '</b><span>Contrat</span><b>' + (ct ? fh(ct) : '—') + '</b><span class="pl-h4r">Reliquat</span><b class="pl-h4r ' + (rl == null ? 'mu' : hrCouleur(Math.abs(rl) < 0.01 ? 0 : rl)) + '">' + (rl == null ? '—' : relTxt(rl)) + '</b></span>';
+          })() : '<span class="rf-h ' + (ok ? 'ok' : 'ko') + '"><b>' + fh(tot) + '</b>' + (ct ? '<small>' + (ok ? 'juste' : (ec > 0 ? '+' : '−') + fh(Math.abs(ec))) + '</small>' : '') + '</span>');
       }).join('')
       + '<span class="rf-n rf-fl"><b>Fermeture du centre</b><small>qui ferme le soir</small></span>' + js.map(function (iso) {
         var f = ferie(iso) ? null : refFerme(iso), corps = ferie(iso) ? '<b>Férié</b>' : f ? '<b>' + esc(f.nom || '?') + '</b><span>' + (f.heure ? hCourt(f.heure) : '') + (f.plage ? ' · plage ' + esc(f.plage) : f.auto ? ' · proposé' : '') + '</span>' : '<b>À désigner</b><span>personne ne finit tard</span>';
