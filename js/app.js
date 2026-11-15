@@ -1580,7 +1580,7 @@
       c[p[2]] = el.value;
       if (p[2] === 'a') {
         if (!el.value || el.value === 'OFF') { delete c.de; delete c.fi; if (!el.value) delete j[p[1]]; }
-        else if (horPoste(el.value) === 'fixe') { ['am', 'pm'].forEach(function (k) { var hk = horDemi(F.d, el.value, k, +p[0]); if (hk) { j[k] = { a: el.value, de: hk.de, fi: hk.fi }; } }); }
+        else if (horPoste(el.value) !== 'variable') { ['am', 'pm'].forEach(function (k) { var hk = horDemi(F.d, el.value, k, +p[0]); if (hk) { j[k] = { a: el.value, de: hk.de, fi: hk.fi }; } }); }
         else { var hd = horDemi(F.d, el.value, p[1]); if (hd) { c.de = hd.de; c.fi = hd.fi; } else if (!c.de) { c.de = p[1] === 'am' ? '09:00' : '14:00'; c.fi = p[1] === 'am' ? '13:00' : '19:00'; } }
       }
     } else if (el.dataset.hfx) {
@@ -3775,6 +3775,7 @@
     if (x[1] === 'a') c.h = null;
     if (x[1] === 'a') {
       if (!el.value || el.value === 'OFF' || ABS.indexOf(el.value) >= 0) { c.de = null; c.fi = null; }
+      else if (horPoste(el.value) !== 'variable') { var pz = persById(K.eid); ['AM', 'PM'].forEach(function (dd) { var hz = horDemi(pz, el.value, dd === 'AM' ? 'am' : 'pm', jourSem(K.jour)); if (hz) { K[dd].a = el.value; K[dd].de = hz.de; K[dd].fi = hz.fi; K[dd].h = null; } }); }
       else { var p = persById(K.eid), hd = horDemi(p, el.value, x[0] === 'AM' ? 'am' : 'pm', jourSem(K.jour)); if (hd) { c.de = hd.de; c.fi = hd.fi; } else if (!c.de) { var t = (((trameDe(p, K.jour) || {})[jourSem(K.jour)] || {})[x[0] === 'AM' ? 'am' : 'pm']) || {}; c.de = t.de || (x[0] === 'AM' ? '09:00' : '14:00'); c.fi = t.fi || (x[0] === 'AM' ? '13:00' : '19:00'); } }
     }
   }
@@ -5638,7 +5639,7 @@
     if (d.act === 'ptok') { S.ptRes = null; render(); return; }
     if (d.pfong != null && S.pf) { S.pf.onglet = d.pfong || null; render(); window.scrollTo(0, 0); return; }
     if (d.pfcel && S.pf) { S.pf.cel = d.pfcel; render(); return; }
-    if (d.trpl && S.pf) { var xq = d.trpl.split('.'), tq = S.pf.d.trame = S.pf.d.trame || {}, dq = tq[xq[0]] = tq[xq[0]] || {}, cq = dq[xq[1]] || {}, gq = plagesPoste(cq.a)[+xq[2]]; if (gq) { ['am', 'pm'].forEach(function (k) { var ck2 = dq[k]; if (ck2 && ck2.a === cq.a || k === xq[1]) { var de = k === 'am' ? gq.ad : gq.pd, fi = k === 'am' ? gq.af : gq.pf; if (de && fi) { ck2 = dq[k] = dq[k] || { a: cq.a }; ck2.de = de; ck2.fi = fi; } } }); } render(); return; }
+    if (d.trpl && S.pf) { var xq = d.trpl.split('.'), tq = S.pf.d.trame = S.pf.d.trame || {}, dq = tq[xq[0]] = tq[xq[0]] || {}, cq = dq[xq[1]] || {}, gq = plagesPoste(cq.a)[+xq[2]]; if (gq) { ['am', 'pm'].forEach(function (k) { var de = k === 'am' ? gq.ad : gq.pd, fi = k === 'am' ? gq.af : gq.pf; if (de && fi) dq[k] = { a: cq.a, de: de, fi: fi }; }); } render(); return; }
     if (d.act === 'pfcopiejour' && S.pf) { var tj = S.pf.d.trame = S.pf.d.trame || {}, src = JSON.parse(JSON.stringify(tj[d.j] || {})); for (var jj2 = 1; jj2 <= 5; jj2++) if (String(jj2) !== String(d.j)) { tj[jj2] = JSON.parse(JSON.stringify(src)); ['am', 'pm'].forEach(function (k) { var cc = tj[jj2][k]; if (cc && cc.a && horPoste(cc.a) === 'fixe') { var hk = horDemi(S.pf.d, cc.a, k, jj2); if (hk) { cc.de = hk.de; cc.fi = hk.fi; } } }); } toast('Copié sur toute la semaine · pensez à enregistrer'); render(); return; }
     if ((d.pfret != null || /^(pfadd|pfsavep)$/.test(d.act || '')) && actionProfils(d)) return;
     if ((d.roret != null || /^(roadd|rosave)$/.test(d.act || '')) && actionRoles(d)) return;
@@ -5654,7 +5655,7 @@
     if (d.act === 'ptexpok' && S.ptExp) return exporterPointage();
     if (d.ptplan) { S.pl = S.pl || { rows: {} }; S.pl.rows = S.pl.rows || {}; S.pl.lundi = d.ptplan; S.pl.cas = null; S.tab = 'planning'; S.tabChoisi = true; chargerSemaine(); render(); window.scrollTo(0, 0); return; }
     if (d.plpt != null) { S.plVoirPt = d.plpt === '1'; render(); return; }
-    if (d.plpg && S.pl && S.pl.cas) { var K2 = S.pl.cas, xg = d.plpg.split('|'), g2 = plagesPoste(K2[xg[0]].a)[+xg[1]]; if (g2) ['AM', 'PM'].forEach(function (dd) { if (dd === xg[0] || K2[dd].a === K2[xg[0]].a) { var de = dd === 'AM' ? g2.ad : g2.pd, fi = dd === 'AM' ? g2.af : g2.pf; if (de && fi) { K2[dd].de = de; K2[dd].fi = fi; } } }); render(); return; }
+    if (d.plpg && S.pl && S.pl.cas) { var K2 = S.pl.cas, xg = d.plpg.split('|'), g2 = plagesPoste(K2[xg[0]].a)[+xg[1]]; if (g2) { var pa = K2[xg[0]].a; ['AM', 'PM'].forEach(function (dd) { var de = dd === 'AM' ? g2.ad : g2.pd, fi = dd === 'AM' ? g2.af : g2.pf; if (de && fi) { K2[dd].a = pa; K2[dd].de = de; K2[dd].fi = fi; K2[dd].h = null; } }); } render(); return; }
     if (d.act === 'clo' && S.pl) { if (!S.clos) { toast(S.clos === null ? 'La clôture demande la mise à jour 023 de la base (SQL Editor de Supabase)' : 'Chargement… réessayez dans un instant'); if (S.clos === null) chargerClos(); return; } S.plClo = { L: S.pl.lundi }; render(); return; }
     if (d.act === 'clox') { S.plClo = null; render(); return; }
     if (d.act === 'clook' && S.plClo) return cloturerSemaine();
