@@ -700,7 +700,7 @@
         var tot = js.reduce(function (a, iso) { return a + refHeuresJ(p, iso); }, 0), ct = +p.contrat_h || 0, ec = tot - ct, ok = !ct || Math.abs(ec) < 0.09;
         return '<span class="rf-n rf-nav"><span class="a-av p' + coulPers(p) + '" aria-hidden="true">' + initiale(p.prenom) + '</span><span><b>' + esc(p.prenom) + '</b><small>contrat ' + (ct ? fr(ct) + ' h' : '—') + '</small></span></span>' + js.map(function (iso) { return cel(p, iso); }).join('')
           + (gestion() && S.plVoirPt ? (function () {   // « Planning + pointé » : le même résumé que pour les assistantes
-            var L0 = lundiDe(js[0]), pt = p.pointage ? ptSem(p, L0) : null, eP = pt ? pt.h - tot : 0, rl = ct ? reliquatAvant(p, L0) + tot - ct : null;
+            var L0 = lundiDe(js[0]), pt = p.pointage ? ptSem(p, L0) : null, eP = pt ? pt.h - tot : 0, rl = relFin(p, L0, tot);
             return '<span class="rf-h pl-h4"><span>Planning</span><b>' + fh(tot) + '</b><span>Pointé</span><b class="' + (pt && pt.n ? hrCouleur(Math.abs(eP) < 0.09 ? 0 : eP) : 'mu') + '">' + (!pt ? '—' : pt.n ? fh(pt.h) : '—') + '</b><span>Contrat</span><b>' + (ct ? fh(ct) : '—') + '</b><span class="pl-h4r">Reliquat</span><b class="pl-h4r ' + (rl == null ? 'mu' : hrCouleur(Math.abs(rl) < 0.01 ? 0 : rl)) + '">' + (rl == null ? '—' : relTxt(rl)) + '</b></span>';
           })() : '<span class="rf-h ' + (ok ? 'ok' : 'ko') + '"><b>' + fh(tot) + '</b>' + (ct ? '<small>' + (ok ? 'juste' : (ec > 0 ? '+' : '−') + fh(Math.abs(ec))) + '</small>' : '') + '</span>');
       }).join('')
@@ -2823,6 +2823,9 @@
   function ptRow(eid, iso) { return S.ptg && S.ptg.rows ? S.ptg.rows[eid + '|' + iso] : null; }
   function heuresSem(p, lundi) { var fg = typeof figeDe === 'function' ? figeDe(lundi, p) : null; if (fg && fg.ret != null) return +fg.ret; var s = 0; for (var k = 0; k < 5; k++) s += heuresJ(p, addJ(lundi, k)); return s; }
   // Reliquat avant la semaine affichée : somme des (heures faites − contrat) depuis la date de départ
+  // Reliquat à la fin d'une semaine ; 0 tant que la semaine est avant la date « Compté à partir du » (Réglages › Règles des heures)
+  function relAvantDebut(L) { var d = regles().depuis; return !!d && L < lundiDe(d); }
+  function relFin(p, L, hs) { var c = +p.contrat_h || 0; if (!c) return null; if (relAvantDebut(L)) return 0; return reliquatAvant(p, L) + (hs != null ? hs : heuresSem(p, L)) - c; }
   function reliquatAvant(p, lundi) {
     var c = +p.contrat_h || 0, w = lundiDe(regles().depuis || lundi), s = 0;
     if (!c) return 0;
@@ -2875,12 +2878,12 @@
   }
   function hrPersonne(p, W) {
     var c = +p.contrat_h || 0, sem = W.map(function (L) { return heuresSem(p, L); }), fait = sem.reduce(function (a, b) { return a + b; }, 0);
-    var der = W[W.length - 1], rel = c ? reliquatAvant(p, der) + sem[sem.length - 1] - c : null, abs = {}, rep = { fauteuil: 0, postes: 0, abs: 0 };
+    var der = W[W.length - 1], rel = relFin(p, der, sem[sem.length - 1]), avDeb = relAvantDebut(der), abs = {}, rep = { fauteuil: 0, postes: 0, abs: 0 };
     W.forEach(function (L) { for (var k = 0; k < 5; k++) { var iso = addJ(L, k); ['AM', 'PM'].forEach(function (dm) {
       var cz = caseEff(p, iso, dm), hh = heuresDemi(p, iso, dm, cz); if (!hh) return;
       if (ABS.indexOf(cz.a) >= 0) { abs[cz.a] = (abs[cz.a] || 0) + hh; rep.abs += hh; } else if (cz.a.slice(0, 2) === 'D:') rep.fauteuil += hh; else rep.postes += hh;
     }); } });
-    return { p: p, c: c, contrat: c * W.length, fait: fait, ecart: c ? fait - c * W.length : null, rel: rel, sem: sem, abs: abs, rep: rep };
+    return { p: p, c: c, contrat: c * W.length, fait: fait, ecart: c ? fait - c * W.length : null, rel: rel, avDeb: avDeb, sem: sem, abs: abs, rep: rep };
   }
   function hrCouleur(v) { return v == null || Math.abs(v) < 0.01 ? 'ok' : v > 0 ? 'plus' : 'moins'; }
   function hrResumeSem(p, L) {   // « École jeu. · Congés lun. » pour une semaine
@@ -2923,7 +2926,7 @@
       var pct = r.rel == null ? 0 : Math.min(50, Math.abs(r.rel) / maxR * 50), cl = hrCouleur(r.rel), wsem = W.length > 12 ? r.sem.slice(-12) : r.sem;
       h += '<button class="hr-l" data-hrsel="' + r.p.id + '"><span class="hr-p"><span class="a-av">' + esc((r.p.prenom || '?')[0]) + '</span><span><b>' + esc(r.p.type === 'interimaire' ? 'Intérimaire' : r.p.prenom) + '</b><small>' + (r.p.statut === 'apprentie' ? 'Apprentie' : r.p.type === 'interimaire' ? 'Sans contrat' : 'Assistante') + (r.c ? ' · ' + fh(r.c) : '') + '</small></span></span>'
         + '<span>' + (r.c ? fh(r.contrat) : '—') + '</span><b>' + fh(r.fait) + '</b><b class="' + hrCouleur(r.ecart) + '">' + (r.ecart == null ? '—' : Math.abs(r.ecart) < 0.01 ? '0 h' : relTxt(r.ecart)) + '</b>'
-        + '<span class="hr-rel"><span class="hr-barre"><i class="hr-zero"></i>' + (r.rel != null && Math.abs(r.rel) >= 0.01 ? '<i class="hr-v ' + cl + '" style="' + (r.rel > 0 ? 'left' : 'right') + ':50%;width:' + pct.toFixed(1) + '%"></i>' : '') + '</span><small class="' + cl + '">' + (r.rel == null ? 'pas de contrat' : Math.abs(r.rel) < 0.01 ? 'à jour' : relTxt(r.rel) + (r.rel > 0 ? ' · à alléger' : ' · à rattraper')) + '</small></span>'
+        + '<span class="hr-rel"><span class="hr-barre"><i class="hr-zero"></i>' + (r.rel != null && Math.abs(r.rel) >= 0.01 ? '<i class="hr-v ' + cl + '" style="' + (r.rel > 0 ? 'left' : 'right') + ':50%;width:' + pct.toFixed(1) + '%"></i>' : '') + '</span><small class="' + cl + '">' + (r.rel == null ? 'pas de contrat' : r.avDeb ? 'compté à partir du ' + dateCourte(regles().depuis) : Math.abs(r.rel) < 0.01 ? 'à jour' : relTxt(r.rel) + (r.rel > 0 ? ' · à alléger' : ' · à rattraper')) + '</small></span>'
         + '<span class="hr-mini" role="img" aria-label="' + esc(wsem.map(fh).join(', ')) + '">' + (r.c ? '<i class="hr-ligne"></i>' : '') + wsem.map(function (v) { var ht = Math.max(3, Math.round(v / (r.c || 39) * 30)); return '<i class="' + (!v ? 'z' : !r.c || Math.abs(v - r.c) < 0.01 ? '' : v > r.c ? 'plus' : 'moins') + '" style="height:' + Math.min(40, ht) + 'px"></i>'; }).join('') + '</span></button>';
     });
     h += '</div></div><p class="a-aide">Ligne pointillée : le contrat de la semaine. Reliquat à gauche : heures à rattraper ; à droite : heures à alléger (cumulé depuis le ' + dateCourte(regles().depuis || '2026-11-30') + ', Réglages › Heures).</p></section>';
@@ -3404,7 +3407,7 @@
       + '<tr><th>Théorique (planning)</th>' + ws.map(function (L) { return '<td>' + fh(heuresSemPrevu(p, L)) + '</td>'; }).join('') + '</tr>'
       + '<tr><th>Contrat</th>' + ws.map(function () { return '<td>' + (c ? fh(c) : '—') + '</td>'; }).join('') + '</tr>'
       + '<tr><th>Compté (réel si pointé)</th>' + ws.map(function (L) { return '<td><b>' + fh(heuresSem(p, L)) + '</b></td>'; }).join('') + '</tr>'
-      + '<tr><th>Reliquat fin de semaine</th>' + ws.map(function (L) { var rl = c ? reliquatAvant(p, L) + heuresSem(p, L) - c : null; return '<td><b class="' + hrCouleur(rl) + '">' + (rl == null ? '—' : Math.abs(rl) < 0.01 ? 'à jour' : relTxt(rl)) + '</b></td>'; }).join('') + '</tr></tbody></table></div>'
+      + '<tr><th>Reliquat fin de semaine</th>' + ws.map(function (L) { var rl = relFin(p, L); return '<td><b class="' + hrCouleur(rl) + '">' + (rl == null ? '—' : Math.abs(rl) < 0.01 ? 'à jour' : relTxt(rl)) + '</b></td>'; }).join('') + '</tr></tbody></table></div>'
       + '<p class="mu" style="margin:6px 0 0;font-size:13.5px">' + (regles().pt_reliquat !== false ? 'Le reliquat compte le temps réel des journées pointées en entier, sinon le prévu.' : 'Le reliquat utilise le planning (Réglages › Heures).') + ' Le report de ces lignes dans le planning sera étudié ensuite.</p></section>';
     return h;
   }
@@ -3781,7 +3784,7 @@
     else h += '<p class="cg-ok">' + ico('ok', 16, 2.6) + 'Aucun oubli de pointage à régler cette semaine.</p>';
     h += '<div class="clo-t"><span class="clo-h">Personne</span><span class="clo-h">Planning</span><span class="clo-h">Pointé</span><span class="clo-h">Retenu</span><span class="clo-h">Reliquat après</span>'
       + ps.map(function (p) {
-        var c = +p.contrat_h || 0, ret = heuresSem(p, L), pt = p.pointage ? ptSem(p, L) : null, rel = c ? reliquatAvant(p, L) + ret - c : null;
+        var c = +p.contrat_h || 0, ret = heuresSem(p, L), pt = p.pointage ? ptSem(p, L) : null, rel = relFin(p, L, ret);
         return '<b>' + esc(p.type === 'interimaire' ? 'Intérimaire' : p.prenom) + '</b><span>' + fh(heuresSemPrevu(p, L)) + '</span><span>' + (pt ? fh(pt.h) + (pt.n < 5 ? ' <small class="mu">(' + pt.n + ' j)</small>' : '') : '<span class="mu">ne pointe pas</span>') + '</span><b>' + fh(ret) + '</b><b class="' + (rel == null ? 'mu' : hrCouleur(rel)) + '">' + (rel == null ? '—' : Math.abs(rel) < 0.01 ? 'à jour' : relTxt(rel)) + '</b>';
       }).join('') + '</div>'
       + '<p class="mu" style="margin:0;font-size:13.5px">« Retenu » : le temps pointé pour les journées pointées en entier, sinon le planning (même règle que le reliquat). Une semaine clôturée ne se modifie plus (cases du planning et pointages en lecture seule). La référente ou la responsable peut la rouvrir ; c’est noté dans le journal.</p>'
@@ -3790,7 +3793,7 @@
   }
   function cloturerSemaine() {
     var L = S.plClo.L, figes = {};
-    persPlanning().forEach(function (p) { var c = +p.contrat_h || 0, ret = heuresSem(p, L); figes[p.id] = { ret: Math.round(ret * 1000) / 1000, rel: c ? Math.round((reliquatAvant(p, L) + ret - c) * 1000) / 1000 : null }; });
+    persPlanning().forEach(function (p) { var c = +p.contrat_h || 0, ret = heuresSem(p, L); figes[p.id] = { ret: Math.round(ret * 1000) / 1000, rel: (function (v) { return v == null ? null : Math.round(v * 1000) / 1000; })(relFin(p, L, ret)) }; });
     S.plClo.busy = true; render();
     sb.rpc('cloturer_semaine', { p_lundi: L, p_figes: figes }).then(function (r) { if (r.error) throw r.error; S.plClo = null; toast('✔ Semaine clôturée'); chargerClos(); })
       .catch(function (e) { S.plClo.busy = false; toast(msgErr(e)); render(); });
@@ -3941,12 +3944,12 @@
       var hs = heuresSem(p, L), c = +p.contrat_h || 0, hx = c > 0 && Math.abs(hs - c) >= 0.01;
       for (var k2 = 0; k2 < 5; k2++) h += celluleJour(p, addJ(L, k2));
       if (S.plVoirPt) {
-        var pt = p.pointage ? ptSem(p, L) : null, rl = c ? reliquatAvant(p, L) + hs - c : null, eP = pt ? pt.h - heuresSemPrevu(p, L) : 0;
+        var pt = p.pointage ? ptSem(p, L) : null, rl = relFin(p, L, hs), eP = pt ? pt.h - heuresSemPrevu(p, L) : 0;
         h += '<div class="pl-h pl-h4"><span>Planning</span><b>' + fh(heuresSemPrevu(p, L)) + '</b><span>Pointé</span><b class="' + (pt && pt.n ? hrCouleur(Math.abs(eP) < 0.09 ? 0 : eP) : 'mu') + '">' + (!pt ? '—' : pt.n ? fh(pt.h) : '—') + '</b><span>Contrat</span><b>' + (c ? fh(c) : '—') + '</b><span class="pl-h4r">Reliquat</span><b class="pl-h4r ' + (rl == null ? 'mu' : hrCouleur(Math.abs(rl) < 0.01 ? 0 : rl)) + '">' + (rl == null ? '—' : Math.abs(rl) < 0.01 ? 'à jour' : relTxt(rl)) + '</b></div>';
       }
       else if (!c) h += '<div class="pl-h"><span><b>' + fh(hs) + '</b></span></div>';
       else {
-        var r = reliquatAvant(p, L) + hs - c;
+        var r = relFin(p, L, hs);
         h += '<div class="pl-h"><span class="' + (hx ? 'pl-hko' : 'pl-hok') + '"' + (hx ? ' title="' + (hs > c ? 'Plus' : 'Moins') + ' que le contrat cette semaine : à ajuster"' : '') + '><b>' + fh(hs) + '</b> / ' + fh(c) + '</span>' + (Math.abs(r) < 0.01 ? '<span class="ok">à jour</span>' : r < 0 ? '<span class="moins">' + relTxt(r) + ' · à rattraper</span>' : '<span class="plus">' + relTxt(r) + ' · à alléger</span>') + '</div>';
       }
     return h;
@@ -3979,7 +3982,7 @@
     };
     var hj = heuresDemi(p, iso, 'AM', K.AM) + heuresDemi(p, iso, 'PM', K.PM);
     var L = lundiDe(iso), avant = 0; for (var k = 0; k < 5; k++) { var d2 = addJ(L, k); avant += d2 === iso ? hj : heuresJ(p, d2); }
-    var c = +p.contrat_h || 0, relA = c ? reliquatAvant(p, L) : 0, relB = relA + avant - c;
+    var c = +p.contrat_h || 0, relA = c ? reliquatAvant(p, L) : 0, relB = relAvantDebut(L) ? 0 : relA + avant - c;
     var fe = ferie(iso);
     return '<div class="pl-modal" role="dialog" aria-modal="true" aria-label="' + esc(p.prenom) + '"><button class="pl-fond" data-act="plfermer" aria-label="Fermer"></button><div class="pl-fen">'
       + '<div class="pl-ft"><span class="a-av p">' + initiale(p.prenom) + '</span><div><b>' + esc(p.prenom) + '</b><span class="mu">' + JOURS[jourSem(iso)] + ' ' + dateCourte(iso) + (fe ? ' · ' + fe : '') + '</span></div><button class="h-rond gris" data-act="plfermer" aria-label="Fermer">' + ico('croix', 20, 2.4) + '</button></div>'
@@ -4335,7 +4338,7 @@
     h += '</div>';
     var hs = heuresSem(p, L), c = +p.contrat_h || 0;
     h += '<div class="h-total ok"><span>Heures de la semaine</span><b>' + fh(hs) + (c ? ' / ' + fh(c) : '') + '</b></div>';
-    if (S.visible.reliquat && c) { var r = reliquatAvant(p, L) + hs - c; h += '<div class="h-total ' + (r < -0.01 ? 'warn' : 'ok') + '"><span>Mon reliquat</span><b>' + relTxt(r) + '</b></div>'; }
+    if (S.visible.reliquat && c) { var r = relFin(p, L, hs); h += '<div class="h-total ' + (r < -0.01 ? 'warn' : 'ok') + '"><span>Mon reliquat</span><b>' + relTxt(r) + '</b></div>'; }
     return h + '</div>';
   }
 

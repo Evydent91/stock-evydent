@@ -1,7 +1,9 @@
 // Journal des versions (affiché dans Plus, pour la référente et la responsable).
 // Types : Majeure (changement profond), Mineure (nouvelle fonction), Correctif (réparation).
 // c = changements visibles ; x = opérations sur les données (pour la responsable).
-window.JOURNAL = [{v:"2.4.4",t:"Mineure",n:"Référente d’un profil : pages de gestion sur ordinateur",d:"15 novembre 2026",
+window.JOURNAL = [{v:"2.4.5",t:"Correctif",n:"Reliquat avant sa date de départ",d:"15 novembre 2026",
+c:["Reliquat : pour une semaine antérieure à la date « Compté à partir du » (Réglages › Règles des heures), l’appli ajoutait quand même l’écart de cette semaine (ex. +0 h 48 en novembre alors que le reliquat ne démarre que le 30 novembre). Le reliquat reste maintenant à zéro avant cette date, partout : page Heures (« compté à partir du 30 nov. »), planning, fenêtre d’une case, clôture et « Mon reliquat »."]},
+{v:"2.4.4",t:"Mineure",n:"Référente d’un profil : pages de gestion sur ordinateur",d:"15 novembre 2026",
 c:["Téléphone de la référente d’un profil (ex. Marie pour les administratifs) : comme pour la référente et la responsable, les tuiles « Planning administratif », « Congés administratif » (et « Pointage » si l’option est active) passent en gris sous « À ouvrir sur ordinateur ». Sur téléphone, elle garde « Mes congés » pour poser ses propres congés."]},
 {v:"2.4.3",t:"Mineure",n:"Planning administratif harmonisé, stock au nouveau thème sur téléphone",d:"15 novembre 2026",
 c:["Sur ordinateur, les cases d’heure (plages, semaine type, horaire fixe, planning, pointage) acceptent maintenant la frappe directe : 17, 1730, 17h30 ou 17:30 deviennent 17:00 ou 17:30 en quittant la case. Avant, le champ « heure » du navigateur gardait parfois 01 quand on tapait 17. Une heure impossible (25, 1790…) est signalée en rouge. Sur téléphone, la roue habituelle ne change pas.",
