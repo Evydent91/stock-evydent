@@ -345,7 +345,7 @@
     document.body.classList.remove('mode-a', 'ecran-ok');
     var h = vTopStock();
     if (S.nouvelleVersion) h += '<div class="ban ok" style="max-width:1100px;margin:10px auto 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1">Une nouvelle version de l’application est disponible (' + esc(S.nouvelleVersion) + ').</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>';
-    h += '<main>' + vBienvenue() + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour, plus: vPlus, aide: vAide, maison: vMaison, moi: vMoiA }[S.tab] || vSortie)() + '</main>';
+    h += '<main>' + vBienvenue() + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour, plus: vPlus, aide: vAide, maison: vMaison, moi: vMoiA, invfin: vInvFin }[S.tab] || vSortie)() + '</main>';
     h += '<p class="mu" style="text-align:center;font-size:12px;margin:0 0 90px">Version ' + esc(C.version || '') + '</p>';
     h += vNavMobile();
     h += (S.tab === 'sortie' ? vBarSortie() : S.tab === 'retour' ? vBarRetour() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
@@ -516,7 +516,7 @@
     camion: '<path d="M1 6h13v10H1zM14 10h4l3 3v3h-7"/><circle cx="5.5" cy="17.5" r="1.5"/><circle cx="17.5" cy="17.5" r="1.5"/>'
   };
   // Icônes au trait de la gestion de stock (barre du bas et bouton « Plus »)
-  var ICO_G = { accueil: 'maison', sortie: 'sortie', inventaire: 'invok', commandes: 'panier', demandes: 'attente', retour: 'retour', stock: 'boite', articles: 'etiquette', fournisseurs: 'camion', histo: 'histo', plus: 'telecharger', aide: 'aide', compte: 'cadenas', hub: 'maison' };
+  var ICO_G = { invfin: 'agenda', accueil: 'maison', sortie: 'sortie', inventaire: 'invok', commandes: 'panier', demandes: 'attente', retour: 'retour', stock: 'boite', articles: 'etiquette', fournisseurs: 'camion', histo: 'histo', plus: 'telecharger', aide: 'aide', compte: 'cadenas', hub: 'maison' };
   function ico(n, sz, ep) { return '<svg class="ic" width="' + (sz || 24) + '" height="' + (sz || 24) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (ep || 2) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + SVGI[n] + '</svg>'; }
 
   // ---------- Accueil des assistantes : 3 grandes tuiles ----------
@@ -4344,7 +4344,7 @@
 
   // ---------- Navigation téléphone : barre du bas + menu ----------
   var ICO = { accueil: '🏠', sortie: '📤', retour: '↩️', inventaire: '📋', demandes: '⏳', stock: '📦', commandes: '🛒', articles: '🏷️', fournisseurs: '🚚', histo: '🕘', equipe: '👥', hub: '🏠', plus: '⚙️', compte: '🔑', aide: '❓', maison: '🏠', moi: '👤' };
-  var NOMS = { accueil: 'Accueil', sortie: 'Sortie', retour: 'Retour', inventaire: 'Inventaire', demandes: 'Demandes', stock: 'Stock', commandes: 'Commandes', articles: 'Articles', fournisseurs: 'Fournisseurs', histo: 'Historique', equipe: 'Équipe', hub: 'Menu principal', plus: 'Plus', compte: 'Mon code', aide: 'Aide', maison: 'Accueil', moi: 'Moi' };
+  var NOMS = { accueil: 'Accueil', sortie: 'Sortie', retour: 'Retour', inventaire: 'Inventaire', demandes: 'Demandes', stock: 'Stock', commandes: 'Commandes', articles: 'Articles', fournisseurs: 'Fournisseurs', histo: 'Historique', invfin: 'Fin d’année', equipe: 'Équipe', hub: 'Menu principal', plus: 'Plus', compte: 'Mon code', aide: 'Aide', maison: 'Accueil', moi: 'Moi' };
   function retourAcc(titre) { return '<div class="tache-hd">' + (!gestion() ? '<button class="retour-acc" data-act="accueil">' + ico('prec', 18, 2.6) + 'Accueil</button>' : '') + '<h2>' + titre + '</h2></div>'; }
   function enTache() { return !gestion() && ['sortie', 'retour', 'inventaire', 'mdemande'].indexOf(S.tab) >= 0; }
   // En-tête de la gestion de stock : retour au menu, titre, onglets en deux groupes
@@ -4352,7 +4352,7 @@
     var g = gestion(), att = g ? S.attente.length : 0;
     var g1 = (g ? [['accueil', 'Tableau de bord']] : []).concat([['sortie', 'Sortie'], ['retour', 'Retour'], ['inventaire', 'Inventaire']]);
     if (g) g1.push(['demandes', 'Demandes' + (att ? '<span class="badge">' + att + '</span>' : '')]);
-    var g2 = g ? [['stock', 'Stock'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs'], ['histo', 'Historique'], ['plus', 'Plus']] : [['histo', 'Historique']];
+    var g2 = g ? [['stock', 'Stock'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs'], ['histo', 'Historique'], ['invfin', 'Fin d’année'], ['plus', 'Plus']] : [['histo', 'Historique']];
     var bt = function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; };
     var titreTel = S.tab === 'accueil' ? 'Gestion de stock' : NOMS[S.tab] || 'Stock';
     return '<header class="top t2"><div class="top-in">'
@@ -4375,7 +4375,7 @@
       }).join('') + '</nav>';
     }
     var bas = ['accueil', 'sortie', 'inventaire', 'commandes'];
-    var quot = ['demandes', 'retour', 'histo'], cat = ['stock', 'articles', 'fournisseurs', 'plus', 'compte', 'aide'], menu = quot.concat(cat, ['hub']);
+    var quot = ['demandes', 'retour', 'histo'], cat = ['stock', 'articles', 'fournisseurs', 'invfin', 'plus', 'compte', 'aide'], menu = quot.concat(cat, ['hub']);
     var att = S.attente.length, dansMenu = menu.indexOf(S.tab) >= 0;
     var NOMS_G = { plus: 'Sauvegarde', compte: 'Mon mot de passe' };
     var h = '<nav class="bnav g5" aria-label="Menu principal">' + bas.map(function (t) {
@@ -5192,6 +5192,124 @@
     sb.from('commandes').update({ statut: 'close' }).eq('id', id).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } toast('Commande clôturée'); chargerCommandes().then(function () { ouvrirCommande(id); }); });
   }
 
+
+  // ---------- Inventaire de fin d'année et export comptable ----------
+  // Seule la réserve compte : ce qui est sorti vers un cabinet ou la Sté est considéré comme consommé.
+  // La clôture fige les quantités et les valeurs dans parametres « inv_fin_<année> » ; l'export Excel part de ce cliché.
+  function invFinAnnee() { var d = new Date(); return d.getMonth() === 0 ? d.getFullYear() - 1 : d.getFullYear(); }
+  function chargerInvFin() {
+    S.invFin = S.invFin || { y: invFinAnnee(), clos: {}, charge: true };
+    var ys = []; for (var k = 2025; k <= invFinAnnee() + 1; k++) ys.push('inv_fin_' + k);
+    sb.from('parametres').select('cle,valeur').in('cle', ys).then(function (r) {
+      var o = {}; (r.data || []).forEach(function (x) { o[+x.cle.slice(8)] = x.valeur; });
+      S.invFin.clos = o; S.invFin.charge = false; render();
+    });
+  }
+  function invFinLignes() {
+    var fo = S.fournisseurs || {};
+    return S.articles.map(function (a) {
+      var q = stockDe(a.id, 0), cu = +a.cout_moyen || 0;
+      return { id: a.id, ref: a.reference && a.reference !== 'SR' ? a.reference : '', nom: a.nom, fo: fo[a.fournisseur_id] || '', u: uRes(a), q: q, cu: cu, v: Math.round(q * cu * 100) / 100 };
+    }).filter(function (l) { return l.q !== 0; }).sort(function (a, b) { return (a.fo || 'zz').localeCompare(b.fo || 'zz') || a.nom.localeCompare(b.nom); });
+  }
+  function invFinPoints(L, dateC) {
+    var der = S.dernierInv[0] ? String(S.dernierInv[0]).slice(0, 10) : null;
+    return {
+      der: der, compte: !!der && der.slice(0, 7) === dateC.slice(0, 7) && der <= dateC,
+      sansPrix: L.filter(function (l) { return l.q > 0 && !l.cu; }),
+      negatifs: L.filter(function (l) { return l.q < 0; }),
+      suspects: L.filter(function (l) { return l.cu > 500 || l.v > 3000; }),
+      attente: S.attente.length
+    };
+  }
+  function vInvFin() {
+    if (!S.invFin || S.invFin.charge == null) chargerInvFin();
+    var I = S.invFin, y = I.y, snap = I.clos[y], prev = I.clos[y - 1], dateC = I.date || (snap && snap.date) || y + '-12-31';
+    var L = snap ? snap.lignes : invFinLignes(), P = snap ? snap.points : invFinPoints(L, dateC);
+    var tot = L.reduce(function (a, l) { return a + l.v; }, 0), qt = L.reduce(function (a, l) { return a + l.q; }, 0);
+    var nRegler = (snap ? 0 : (!P.compte ? 1 : 0) + (P.sansPrix.length ? 1 : 0) + (P.negatifs.length ? 1 : 0) + (P.attente ? 1 : 0));
+    var h = '<div class="if"><div class="card if-top"><span class="grow"><b>Exercice ' + y + '</b><span class="mu">Seule la réserve compte : ce qui est en cabinet ou à la Sté est déjà sorti, donc consommé. À la clôture, le stock est figé : les sorties de janvier ne changent plus le chiffre envoyé au comptable.</span></span>'
+      + '<span class="if-y"><button class="btn l sm" data-ify="-1" aria-label="Année précédente">' + ico('prec', 18, 2.4) + '</button><b>' + y + '</b><button class="btn l sm" data-ify="1" aria-label="Année suivante"' + (y >= invFinAnnee() ? ' disabled' : '') + '>' + ico('suiv', 18, 2.4) + '</button></span>'
+      + '<label class="mu if-d">Date de clôture<input class="in" type="date" id="ifdate" value="' + dateC + '"' + (snap ? ' disabled' : '') + '></label></div>';
+    if (I.charge) return h + '<p class="mu">Chargement…</p></div>';
+    var pt = function (ok, t, s2, act, liste) { return '<div class="if-p ' + (ok ? 'ok' : 'ko') + '"><span class="if-pi" aria-hidden="true">' + ico(ok ? 'ok' : 'attente', 16, 2.6) + '</span><span class="grow"><b>' + t + '</b><span class="mu">' + s2 + '</span>' + (liste && liste.length ? '<details><summary>Voir la liste (' + liste.length + ')</summary><ul>' + liste.slice(0, 60).map(function (l) { return '<li>' + esc(l.nom) + (l.fo ? ' · ' + esc(l.fo) : '') + ' : ' + fr(l.q) + ' ' + l.u + (l.cu ? ' × ' + eur(l.cu) + ' = ' + eur(l.v) : '') + '</li>'; }).join('') + '</ul></details>' : '') + '</span>' + (act || '') + '</div>'; };
+    h += '<div class="if-g"><section class="card if-s"><div class="if-h"><span class="if-n">1</span><b class="grow">Avant de clôturer</b>' + (snap ? '<span class="pill ok">clôturé</span>' : nRegler ? '<span class="pill warn">' + nRegler + ' ' + pl(nRegler, 'point') + ' à régler</span>' : '<span class="pill ok">prêt</span>') + '</div>'
+      + pt(P.compte, 'Réserve comptée en ' + MOIS[+dateC.slice(5, 7) - 1], P.der ? 'dernier inventaire de la réserve le ' + dateCourte(P.der) : 'la réserve n’a jamais été comptée', snap ? '' : '<button class="btn l sm" data-go="inventaire:0">Compter</button>')
+      + pt(!P.sansPrix.length, 'Articles sans prix', P.sansPrix.length ? P.sansPrix.length + ' en réserve compteraient pour 0 €' : 'tous les articles en réserve ont un prix', '', P.sansPrix)
+      + pt(!P.attente, 'Sorties en attente de confirmation', P.attente ? P.attente + ' à confirmer ou refuser avant de figer' : 'aucune', P.attente && !snap ? '<button class="btn l sm" data-tab="demandes">Voir</button>' : '')
+      + pt(!P.negatifs.length, 'Quantités négatives', P.negatifs.length ? P.negatifs.length + ' article(s) sous zéro en réserve' : 'aucune', '', P.negatifs)
+      + pt(!P.suspects.length, 'Valeurs à vérifier', P.suspects.length ? P.suspects.length + ' article(s) au coût élevé (plus de 500 € l’unité ou 3 000 € la ligne) : prix ou conditionnement à contrôler' : 'aucune valeur anormale', '', P.suspects)
+      + '</section><div class="if-c">'
+      + '<section class="card if-s"><div class="if-h"><span class="if-n">2</span><b class="grow">Valeur du stock</b><span class="mu">' + (snap ? 'figée au ' + dateCourte(snap.date) : 'provisoire, avant clôture') + '</span></div>'
+      + '<div class="if-l"><span>Réserve</span><span class="mu">' + L.length + ' réf. · ' + fr(Math.round(qt * 100) / 100) + ' unités</span><b>' + eur(tot) + '</b></div>'
+      + '<div class="if-l"><span>Cabinets et Sté</span><span class="mu">consommés</span><b class="mu">non comptés</b></div>'
+      + '<div class="if-l if-tot"><b>Stock final ' + y + '</b><span></span><b>' + eur(tot) + '</b></div>'
+      + '<div class="if-l"><span>Stock final ' + (y - 1) + '</span><span></span>' + (prev ? '<b>' + eur(prev.total) + '</b>' : snap ? '<b>' + (snap.n1 != null ? eur(snap.n1) : '—') + '</b>' : '<input class="in if-n1" id="ifn1" inputmode="decimal" placeholder="si connu" value="' + esc(I.n1 || '') + '" aria-label="Stock final ' + (y - 1) + '">') + '</div>'
+      + '</section><section class="card if-s"><div class="if-h"><span class="if-n">3</span><b class="grow">Clôturer et exporter</b></div>'
+      + (snap ? '<p class="if-ok">' + ico('cadenas', 18, 2.2) + 'Clôturé le ' + new Date(snap.cloture_le).toLocaleDateString('fr-FR') + ' par ' + esc(snap.par || '?') + '</p><button class="a-btn navy" data-act="ifexp">' + ico('telecharger', 20) + 'Export comptable (Excel)</button><button class="btn l" data-act="ifrouvre">Annuler la clôture</button>'
+        : '<button class="a-btn navy" data-act="ifclos"' + (L.length ? '' : ' disabled') + '>' + ico('cadenas', 20, 2.2) + 'Clôturer l’inventaire au ' + dateCourte(dateC) + '</button><button class="a-btn" disabled>' + ico('telecharger', 20) + 'Export comptable (Excel)</button><p class="mu" style="margin:0">L’export s’active une fois l’inventaire clôturé.</p>')
+      + '</section></div></div></div>';
+    return h;
+  }
+  async function cloturerInvFin() {
+    var I = S.invFin, y = I.y, dateC = ($('ifdate') || {}).value || I.date || y + '-12-31', L = invFinLignes(), P = invFinPoints(L, dateC);
+    var n1v = $('ifn1') ? String($('ifn1').value).replace(/\s/g, '').replace('€', '').replace(',', '.') : '', n1 = n1v !== '' && !isNaN(+n1v) ? +n1v : null;
+    var reste = (!P.compte ? 1 : 0) + (P.sansPrix.length ? 1 : 0) + (P.negatifs.length ? 1 : 0) + (P.attente ? 1 : 0);
+    if (!(await demander('Clôturer l’inventaire au ' + dateCourte(dateC) + ' ?', (dIso(new Date()) < dateC ? 'Attention : le ' + dateCourte(dateC) + ' n’est pas encore passé. Le stock figé sera celui d’aujourd’hui ; clôturez plutôt le dernier jour, après l’inventaire de la réserve.\n\n' : '') + (reste ? 'Il reste ' + reste + ' point(s) à régler : ils seront signalés dans le fichier.\n\n' : '') + 'Les quantités et les valeurs de la réserve sont figées pour le comptable.', 'Clôturer'))) return;
+    var tot = Math.round(L.reduce(function (a, l) { return a + l.v; }, 0) * 100) / 100;
+    var snap = { date: dateC, mode: 'TTC', cloture_le: new Date().toISOString(), par: S.me.nom, total: tot, n1: I.clos[y - 1] ? I.clos[y - 1].total : n1, lignes: L, points: P };
+    sauverParam('inv_fin_' + y, snap, '✔ Inventaire ' + y + ' clôturé', function () { I.clos[y] = snap; });
+  }
+  async function rouvrirInvFin() {
+    var y = S.invFin.y;
+    if (!(await demander('Annuler la clôture ' + y + ' ?', 'Le stock redevient celui du jour. À ne faire que si le fichier n’a pas encore été envoyé au comptable.', 'Annuler la clôture', true))) return;
+    sb.from('parametres').delete().eq('cle', 'inv_fin_' + y).then(function (r) { if (r.error) throw r.error; delete S.invFin.clos[y]; toast('Clôture ' + y + ' annulée'); render(); }).catch(function (e) { toast(msgErr(e)); });
+  }
+  function exporterInvFin() {
+    var y = S.invFin.y, sn = S.invFin.clos[y]; if (!sn) return;
+    var EUR = '#,##0.00 "€"', NB = '#,##0.##', H = { gras: true, fond: '2B3E4C', coul: 'FFFFFF', bord: 'fin', ali: 'left', retour: true }, B = { bord: 'fin', ali: 'left' }, BN = { bord: 'fin', ali: 'right', fmt: NB }, BE = { bord: 'fin', ali: 'right', fmt: EUR };
+    var f = function (nom, larg) { var o = { nom: nom, cases: [], fusions: [], larg: larg, haut: {} }; o.put = function (r, c, v, st) { o.cases.push({ r: r, c: c, v: v, st: st }); }; return o; };
+    var dj = function (iso) { return dDe(iso).toLocaleDateString('fr-FR'); }, dC = dj(sn.date), dL = dDe(sn.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }), L = sn.lignes, P = sn.points, qt = L.reduce(function (a, l) { return a + l.q; }, 0);
+    // Synthèse
+    var s1 = f('Synthèse', [34, 18, 16, 20]), r = 0;
+    s1.put(0, 0, 'INVENTAIRE DU STOCK AU ' + dL.toUpperCase(), { gras: true, taille: 16, ali: 'left' }); s1.fusions.push('A1:D1'); s1.haut[0] = 28;
+    s1.put(1, 0, 'Evydent – Espace dentaire Val d’Yerres · exercice ' + y, { ali: 'left' }); s1.fusions.push('A2:D2');
+    r = 3;
+    [['Date d’inventaire', dC], ['Clôturé le', new Date(sn.cloture_le).toLocaleDateString('fr-FR') + ' par ' + (sn.par || '?')], ['Méthode de valorisation', 'Coût unitaire moyen pondéré (CUMP)'], ['Prix', 'TTC (TVA sur achats non récupérée)'], ['Lieu compté', 'Réserve (cabinets et Sté : sortis, donc consommés)'], ['Dernier comptage de la réserve', P.der ? dj(P.der) : 'jamais']].forEach(function (x) { s1.put(r, 0, x[0], B); s1.put(r, 1, x[1], { bord: 'fin', ali: 'left', gras: true }); s1.put(r, 2, null, B); s1.put(r, 3, null, B); s1.fusions.push('B' + (r + 1) + ':D' + (r + 1)); r++; });
+    r++;
+    ['Valeur du stock', 'Références', 'Quantités', 'Valeur TTC'].forEach(function (t, c) { s1.put(r, c, t, H); }); r++;
+    s1.put(r, 0, 'Réserve', B); s1.put(r, 1, L.length, BN); s1.put(r, 2, Math.round(qt * 100) / 100, BN); s1.put(r, 3, sn.total, BE); r++;
+    s1.put(r, 0, 'Cabinets et Sté', B); s1.put(r, 1, '—', B); s1.put(r, 2, '—', B); s1.put(r, 3, 'consommés, non comptés', B); r++;
+    var T = { gras: true, bord: 'moyen', fond: 'F3EDD6', ali: 'left' };
+    s1.put(r, 0, 'STOCK FINAL ' + y, T); s1.put(r, 1, L.length, Object.assign({}, T, { ali: 'right', fmt: NB })); s1.put(r, 2, Math.round(qt * 100) / 100, Object.assign({}, T, { ali: 'right', fmt: NB })); s1.put(r, 3, sn.total, Object.assign({}, T, { ali: 'right', fmt: EUR })); r += 2;
+    s1.put(r, 0, 'Stock final ' + (y - 1), B); s1.put(r, 3, sn.n1 != null ? sn.n1 : 'à renseigner', sn.n1 != null ? BE : B); r++;
+    s1.put(r, 0, 'Stock final ' + y, B); s1.put(r, 3, sn.total, BE); r++;
+    s1.put(r, 0, 'Variation de stock (' + y + ' − ' + (y - 1) + ')', { bord: 'fin', ali: 'left', gras: true }); s1.put(r, 3, sn.n1 != null ? Math.round((sn.total - sn.n1) * 100) / 100 : '—', sn.n1 != null ? Object.assign({ gras: true }, BE) : B); r += 2;
+    var pts = []; if (P.sansPrix.length) pts.push(P.sansPrix.length + ' article(s) sans prix (comptés à 0 €)'); if (P.negatifs.length) pts.push(P.negatifs.length + ' quantité(s) négative(s)'); if (P.suspects.length) pts.push(P.suspects.length + ' valeur(s) élevée(s) à vérifier'); if (!P.compte) pts.push('réserve pas comptée le mois de la clôture'); if (P.attente) pts.push(P.attente + ' sortie(s) en attente de confirmation');
+    s1.put(r, 0, 'Points signalés : ' + (pts.length ? pts.join(' · ') + ' (voir l’onglet « Points à vérifier »)' : 'aucun'), { ali: 'left', retour: true }); s1.fusions.push('A' + (r + 1) + ':D' + (r + 1)); s1.haut[r] = 32; r += 2;
+    s1.put(r, 0, 'Inventaire réalisé par : ' + (sn.par || '') + '\nDate et signature :', { bord: 'fin', ali: 'left', retour: true }); s1.put(r, 1, null, B); s1.fusions.push('A' + (r + 1) + ':B' + (r + 1));
+    s1.put(r, 2, 'Visa de la direction\nDate et signature :', { bord: 'fin', ali: 'left', retour: true }); s1.put(r, 3, null, B); s1.fusions.push('C' + (r + 1) + ':D' + (r + 1)); s1.haut[r] = 70;
+    // Détail par article
+    var s2 = f('Détail par article', [14, 46, 22, 10, 12, 14, 15, 30]); r = 0;
+    ['Réf.', 'Désignation', 'Fournisseur', 'Unité', 'Quantité', 'Coût unitaire', 'Valeur TTC', 'À vérifier'].forEach(function (t, c) { s2.put(r, c, t, H); }); r++;
+    var marq = {}; P.sansPrix.forEach(function (l) { marq[l.id] = 'sans prix'; }); P.negatifs.forEach(function (l) { marq[l.id] = 'quantité négative'; }); P.suspects.forEach(function (l) { marq[l.id] = 'valeur élevée : prix ou conditionnement ?'; });
+    L.forEach(function (l) { var w = marq[l.id], st = function (o) { return w ? Object.assign({ fond: 'FDF0E6' }, o) : o; }; s2.put(r, 0, l.ref, st(B)); s2.put(r, 1, l.nom, st(B)); s2.put(r, 2, l.fo, st(B)); s2.put(r, 3, l.u, st(B)); s2.put(r, 4, l.q, st(BN)); s2.put(r, 5, l.cu, st(BE)); s2.put(r, 6, l.v, st(BE)); s2.put(r, 7, w || '', st(B)); r++; });
+    s2.put(r, 1, 'TOTAL · ' + L.length + ' articles', T); s2.put(r, 4, Math.round(qt * 100) / 100, Object.assign({}, T, { ali: 'right', fmt: NB })); s2.put(r, 6, sn.total, Object.assign({}, T, { ali: 'right', fmt: EUR }));
+    // Par fournisseur
+    var s3 = f('Par fournisseur', [34, 14, 18]); r = 0; var pf = {};
+    L.forEach(function (l) { var k = l.fo || 'Fournisseur non renseigné'; pf[k] = pf[k] || { n: 0, v: 0 }; pf[k].n++; pf[k].v += l.v; });
+    ['Fournisseur', 'Références', 'Valeur TTC'].forEach(function (t, c) { s3.put(r, c, t, H); }); r++;
+    Object.keys(pf).sort(function (a, b) { return pf[b].v - pf[a].v; }).forEach(function (k) { s3.put(r, 0, k, B); s3.put(r, 1, pf[k].n, BN); s3.put(r, 2, Math.round(pf[k].v * 100) / 100, BE); r++; });
+    s3.put(r, 0, 'TOTAL', T); s3.put(r, 1, L.length, Object.assign({}, T, { ali: 'right', fmt: NB })); s3.put(r, 2, sn.total, Object.assign({}, T, { ali: 'right', fmt: EUR }));
+    // Points à vérifier
+    var s4 = f('Points à vérifier', [40, 46, 22, 12, 14, 15]); r = 0;
+    var bloc = function (titre, l) { s4.put(r, 0, titre + ' · ' + l.length, { gras: true, ali: 'left', taille: 12 }); r++; if (!l.length) { s4.put(r, 0, 'aucun', { ali: 'left' }); r += 2; return; } ['Désignation', 'Fournisseur', 'Quantité', 'Coût unitaire', 'Valeur TTC'].forEach(function (t, c) { s4.put(r, c, t, H); }); r++; l.forEach(function (x) { s4.put(r, 0, x.nom, B); s4.put(r, 1, x.fo, B); s4.put(r, 2, x.q, BN); s4.put(r, 3, x.cu, BE); s4.put(r, 4, x.v, BE); r++; }); r++; };
+    s4.put(r, 0, 'Réserve comptée le mois de la clôture : ' + (P.compte ? 'oui' : 'non') + (P.der ? ' (dernier comptage le ' + dj(P.der) + ')' : ''), { ali: 'left' }); r++;
+    s4.put(r, 0, 'Sorties en attente de confirmation au moment de la clôture : ' + P.attente, { ali: 'left' }); r += 2;
+    bloc('Articles sans prix (comptés à 0 €)', P.sansPrix); bloc('Quantités négatives', P.negatifs); bloc('Valeurs élevées à vérifier (prix ou conditionnement)', P.suspects);
+    var feuilles = [s1, s2, s3, s4].map(function (o) { return { nom: o.nom, cases: o.cases, fusions: o.fusions, larg: o.larg, haut: o.haut }; });
+    XLSX_EVY.creerMiseEnForme(feuilles).then(function (blob) { telecharger(blob, nomFichier('inventaire-fin-annee-' + y)); toast('✔ Export comptable téléchargé'); }).catch(function (e) { toast(msgErr(e)); });
+  }
   // ---------- Import d'une facture PDF dans une commande en cours ----------
   function nRef(r) { return String(r || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
   function trouverArticle(ref, fid) {
@@ -6004,6 +6122,10 @@
     if (d.hrouvrir) { S.pl = S.pl || { rows: {} }; S.pl.lundi = d.hrouvrir; S.tab = 'planning'; render(); window.scrollTo(0, 0); return; }
     if (d.act === 'plexpadm' && S.pl) { S.plExp = { mois: [addJ(S.pl.lundi, 2).slice(0, 7)], adm: true }; render(); return; }
     if (d.act === 'plexp' && S.pl) { var mw = addJ(S.pl.lundi, 2).slice(0, 7); S.plExp = { mois: [mw] }; render(); return; }
+    if (d.ify && S.invFin) { S.invFin.y += +d.ify; S.invFin.date = null; render(); return; }
+    if (d.act === 'ifclos') return cloturerInvFin();
+    if (d.act === 'ifrouvre') return rouvrirInvFin();
+    if (d.act === 'ifexp') return exporterInvFin();
     if (d.act === 'plexpfermer') { S.plExp = null; render(); return; }
     if (d.act === 'plexpok' && S.plExp) return exporterPlanning();
     if (d.plmois && S.plExp && !S.plExp.busy) { var em = S.plExp.mois, ei = em.indexOf(d.plmois); if (ei >= 0) em.splice(ei, 1); else em.push(d.plmois); render(); return; }
@@ -6128,6 +6250,8 @@
     else if (t.id === 'ncab' && S.eqNew) { S.eqNew.cabinet = t.value; }
     else if (t.id === 'aimpf') { var fa = t.files && t.files[0]; t.value = ''; importerArticles(fa); }
     else if (t.id === 'iimpf') { var fc = t.files && t.files[0]; t.value = ''; importerComptage(fc); }
+    else if (t.id === 'ifdate' && S.invFin) { S.invFin.date = t.value || null; render(); }
+    else if (t.id === 'ifn1' && S.invFin) { S.invFin.n1 = t.value; }
     else if (t.id === 'impfd') { var fd = t.files && t.files[0]; t.value = ''; importerFactureDirecte(fd); }
     else if (t.id === 'impf') { var fi = t.files && t.files[0]; t.value = ''; importerFacture(fi); }
     else if (t.dataset && t.dataset.impc != null && S.fiche && S.fiche.imp) { S.fiche.imp.items[+t.dataset.impc].choix = t.value; render(); }
