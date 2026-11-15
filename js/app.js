@@ -1031,7 +1031,7 @@
 
   // ---------- Accueil de la référente et de la responsable (2 tuiles), Réglages, Équipe, Dentistes ----------
   // Écrans de la maquette « Accueil référente et responsable ». Chaque écran a son en-tête bleu.
-  var HUB = ['ptransfert', 'hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
+  var HUB = ['mconges', 'mdemande', 'ptransfert', 'hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
   var JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'], JC = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
   // Affectations possibles d'une demi-journée (en plus des dentistes)
   // Postes (modifiables dans Réglages › Postes) ; École et « Ne travaille pas » sont fixes
@@ -1139,7 +1139,9 @@
       + '<div class="h-tuiles">'
       + '<button class="h-tuile fonce" data-tab="accueil"><span class="ti">' + ico('boite', 34) + '</span><span class="tt"><b>Gestion de stock</b><span>' + (sous.length ? sous.join(' · ') : 'Sorties, inventaires, commandes') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
       + (telephone() ? '' : '<button class="h-tuile" data-tab="planning"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span>Qui travaille, avec quel dentiste, et les heures</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>' + tuilePointage())
-      + '<button class="h-tuile cg" data-tab="pconges"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Congés</b><span' + (ca ? ' class="h-av-t"' : '') + '>' + (ca ? ca + ' ' + pl(ca, 'demande') + ' à valider' : 'Demandes, absences du mois, soldes') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button></div>'
+      + (telephone() ? '<button class="h-tuile cg" data-tab="mconges"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Mes congés</b><span>Demander, suivre mes demandes, mon solde</span></span>'
+        : '<button class="h-tuile cg" data-tab="pconges"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Congés</b><span' + (ca ? ' class="h-av-t"' : '') + '>' + (ca ? ca + ' ' + pl(ca, 'demande') + ' à valider' : 'Demandes, absences du mois, soldes') + '</span></span>')
+        + '<span class="tc">' + ico('suiv', 22, 2.4) + '</span></button></div>'
       + ((S.oublis || []).length ? '<button class="h-alerte" data-tab="pointage">' + ico('attente', 22) + '<span><b>' + S.oublis.length + ' ' + pl(S.oublis.length, 'oubli') + ' de pointage</b> ' + pl(S.oublis.length, 'signalé') + ' à valider</span>' + ico('suiv', 20, 2.2) + '</button>' : '')
       + (ca ? '<button class="h-alerte" data-tab="pconges">' + ico('attente', 22) + '<span><b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à traiter</span>' + ico('suiv', 20, 2.4) + '</button>' : '')
       + (telephone() ? '<div class="h-pc"><span class="h-pc-l">À ouvrir sur ordinateur</span><div class="h-pc-g"><span>' + ico('agenda', 20) + '<b>Planning</b></span><span>' + ico('qr', 20) + '<b>Pointage</b></span></div></div>' : '')
@@ -2068,13 +2070,14 @@
   }
   function renderH() {
     S.coulCat = null;
-    var ecr = { hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pprofils: vPProfils, ptransfert: vPTransfert }[S.tab] || vHub;
+    var ecr = { mconges: function () { moiG(); return vMesCongesA(); }, mdemande: function () { moiG(); return vDemandeA(); }, hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pprofils: vPProfils, ptransfert: vPTransfert }[S.tab] || vHub;
     if ((S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage') && telephone()) ecr = vSurPC;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
     h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr' || S.tab === 'pequipe') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || ((S.tab === 'pconges' || S.tab === 'ppostes' || S.tab === 'pregles' || S.tab === 'pprofils' || S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible') && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
     [S.pf, S.df].forEach(function (F) { if (F && F.raz) { F.raz = false; F.o = JSON.stringify(F.d); } });
     if (S.tab === 'pfiche') h += vBarPFiche();
     if (S.tab === 'dfiche') h += vBarDFiche();
+    if (S.tab === 'mdemande') h += vBarDemandeA();
     return h;
   }
 
@@ -2488,7 +2491,7 @@
   async function demanderAnnul(id) {
     var mot = await saisir('Demander l’annulation de ces congés ?', 'La référente ou la responsable doit valider. En attendant, vos congés restent posés.', { label: 'Raison (facultatif)', ok: 'Envoyer la demande' });
     if (mot === null) return;
-    sb.rpc('demander_annulation_conges', { p_id: +id, p_mot: mot.trim() || null }).then(function (r) { if (r.error) throw r.error; toast('✔ Demande d’annulation envoyée'); chargerMesConges(); })
+    sb.rpc('demander_annulation_conges', { p_id: +id, p_mot: mot.trim() || null }).then(function (r) { if (r.error) throw r.error; toast('✔ Demande d’annulation envoyée'); rechargerMesConges(); })
       .catch(function (e) { toast(/demander_annulation_conges/.test(msgErr(e)) ? 'Pas encore disponible (mise à jour de la base à faire)' : msgErr(e)); });
   }
   async function repondre(id, ok) {
@@ -2608,6 +2611,10 @@
       if (r.error) throw r.error; toast(ok ? '✔ Heure enregistrée' : 'Signalement refusé'); chargerOublis(); if (S.ptg) { S.ptg.charges = null; chargerPointages(true); }
     }).catch(function (e) { toast(msgErr(e)); chargerOublis(); });
   }
+  // Après une demande ou une annulation : la gestion recharge tout le planning (ses propres congés en font partie)
+  function rechargerMesConges() { return gestion() ? chargerPlan() : chargerMesConges(); }
+  // Référente ou responsable : sa fiche et ses congés viennent des données déjà chargées pour la gestion
+  function moiG() { if (!gestion() || !S.me) return; S.moiEq = (S.equipe || []).filter(function (p) { return p.profil_id === S.me.id; })[0] || null; S.mesConges = S.conges || null; }
   function chargerMesConges() {
     if (gestion() || !S.me) return Promise.resolve();
     return Promise.all([sb.from('equipe').select('*').eq('profil_id', S.me.id).maybeSingle(), sb.from('conges').select('*').order('du', { ascending: false }).limit(60),
@@ -2626,11 +2633,11 @@
     }, function () { S.moiEq = null; S.mesConges = []; render(); });
   }
   function vMesCongesA() {
-    var h = hdA({ back: ['data-tab="moi"', 'Moi'], t: 'Mes congés', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    var h = hdA({ back: gestion() ? ['data-tab="hub"', 'Accueil'] : ['data-tab="moi"', 'Moi'], t: 'Mes congés', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
     if (S.mesConges == null) return h + '<p class="a-vide">Chargement…</p></div>';
     if (!S.moiEq) return h + '<p class="a-note warn">Votre compte n’est pas encore relié à une fiche du planning : demandez à la référente de le faire (Réglages › L’équipe).</p></div>';
     if (typeDe(S.moiEq.type).contrat !== false && S.moiEq.type !== 'interimaire') { var so = soldeCP(S.moiEq, S.mesConges); h += '<div class="card cp-moi"><span class="mu">Il me reste</span><b class="' + (so.reste < 0 ? 'ko-t' : '') + '">' + txtJ(so.reste) + '</b><span class="mu">de congés payés acquis à ce jour' + (so.restRep ? ', dont <b>' + txtJ(so.restRep) + '</b> de N-1 (pris en premier)' : '') + ' · prévu au ' + dateCourte(so.P.au) + ' : <b>' + txtJ(so.restePrevu) + '</b>' + (so.att ? ' · ' + txtJ(so.att) + ' en attente' : '') + '<br>période jusqu’au ' + dateCourte(so.P.au) + ' ' + so.P.au.slice(0, 4) + '</span></div>'; }
-    h += '<button class="a-btn gold h-centre" data-tab="mdemande">' + ico('plus', 22, 2.2) + 'Demander des congés</button><h2 class="a-jour">En cours et à venir</h2>';
+    h += '<button class="a-btn gold h-centre" data-tab="mdemande">' + ico('plus', 22, 2.2) + 'Demander des congés</button>' + (gestion() ? (function () { var ca = congesAttente().length + congesAnnul().length; return '<button class="h-alerte cg-eq' + (ca ? ' a' : '') + '" data-tab="pconges">' + ico('agenda', 22) + '<span><b>Congés de l’équipe</b> ' + (ca ? ca + ' ' + pl(ca, 'demande') + ' à traiter' : 'valider, absences, soldes') + '</span>' + ico('suiv', 20, 2.2) + '</button>'; })() : '') + '<h2 class="a-jour">En cours et à venir</h2>';
     var l = S.mesConges.filter(function (c) { return c.statut !== 'annule' && String(c.equipe_id) === String(S.moiEq.id); });
     if (!l.length) return h + '<p class="a-vide">Aucune demande pour l’instant.</p></div>';
     var auj = dIso(new Date()), enCours = l.filter(function (c) { return c.au >= auj; }).sort(function (x, y) { return x.du < y.du ? -1 : 1; }), passes = l.filter(function (c) { return c.au < auj; }).sort(function (x, y) { return x.du < y.du ? 1 : -1; });
@@ -2668,7 +2675,7 @@
     if (au < D.du) { toast('La date de fin est avant la date de début'); return; }
     D.busy = true; render();
     sb.rpc('demander_conges', { p_du: D.du, p_au: au, p_mot: D.mot || null }).then(function (r) {
-      if (r.error) throw r.error; S.dm = null; S.tab = 'mconges'; toast('✔ Demande envoyée'); chargerMesConges();
+      if (r.error) throw r.error; S.dm = null; S.tab = 'mconges'; toast('✔ Demande envoyée'); rechargerMesConges();
     }).catch(function (e) { D.busy = false; toast(msgErr(e)); render(); });
   }
 
@@ -5910,7 +5917,7 @@
     if (d.act === 'trfimp') return trfImporter();
     if (d.act === 'trfannule') { S.trfI = null; render(); return; }
     if (d.trf && S.trfX) { var tv = d.trf.slice(1) === 'tous'; if (d.trf[0] === 'p') S.equipe.forEach(function (p) { S.trfX.p[p.id] = tv; }); else S.dentistes.forEach(function (x) { S.trfX.d[x.id] = tv; }); render(); return; }
-    if (d.cannr) { var cgR = +d.cannr; demander('Retirer la demande d’annulation ?', 'Vos congés restent posés comme prévu.', 'Retirer la demande').then(function (ok) { if (!ok) return; sb.rpc('retirer_annulation_conges', { p_id: cgR }).then(function (r) { if (r.error) throw r.error; toast('Demande d’annulation retirée'); chargerMesConges(); }).catch(function (e) { toast(msgErr(e)); }); }); return; }
+    if (d.cannr) { var cgR = +d.cannr; demander('Retirer la demande d’annulation ?', 'Vos congés restent posés comme prévu.', 'Retirer la demande').then(function (ok) { if (!ok) return; sb.rpc('retirer_annulation_conges', { p_id: cgR }).then(function (r) { if (r.error) throw r.error; toast('Demande d’annulation retirée'); rechargerMesConges(); }).catch(function (e) { toast(msgErr(e)); }); }); return; }
     if (d.crefus) return repondre(d.crefus, false);
     if ((d.act && d.act.slice(0, 3) === 'off') || d.offmod || d.offj || d.offd || d.offr || d.offn) { if (actionOff(d)) return; }
     if (d.csuppr) return supprimerConges(d.csuppr);
@@ -5918,7 +5925,7 @@
     if (d.cadd) { S.cAjout = { cle: d.cadd, type: 'CP', formation: !!d.cform }; render(); return; }
     if (d.act === 'caannule') { S.cAjout = null; render(); return; }
     if (d.act === 'caok') return ajouterConges();
-    if (d.cannule) { var cgA = +d.cannule; demander('Annuler cette demande de congés ?', '', 'Annuler la demande', true).then(function (ok) { if (!ok) return; sb.rpc('annuler_conges', { p_id: cgA }).then(function (r) { if (r.error) throw r.error; toast('Demande annulée'); chargerMesConges(); }).catch(function (e) { toast(msgErr(e)); }); }); return; }
+    if (d.cannule) { var cgA = +d.cannule; demander('Annuler cette demande de congés ?', '', 'Annuler la demande', true).then(function (ok) { if (!ok) return; sb.rpc('annuler_conges', { p_id: cgA }).then(function (r) { if (r.error) throw r.error; toast('Demande annulée'); rechargerMesConges(); }).catch(function (e) { toast(msgErr(e)); }); }); return; }
     if (d.dmun != null && S.dm) { var x1 = $('dmdu'), x2 = $('dmau'), x3 = $('dmmot'); if (x1) S.dm.du = x1.value; if (x2) S.dm.au = x2.value; if (x3) S.dm.mot = x3.value; S.dm.un = d.dmun === '1'; render(); return; }
     if (d.act === 'dmenvoi') return envoyerDemande();
     if (d.act === 'planbientot') { toast('Arrive à l’étape du planning'); return; }

@@ -2165,3 +2165,4 @@ button.stk-k{cursor:pointer}
 }
 .in.hm-err{border-color:var(--ko);background:var(--kobg)}
 input[data-hm]{font-variant-numeric:tabular-nums}
+.h-alerte.cg-eq:not(.a){background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(31,42,51,.08)}.h-alerte.cg-eq:not(.a) .ic{color:var(--navy)}
