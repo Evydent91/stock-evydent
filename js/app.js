@@ -4352,7 +4352,7 @@
     var g = gestion(), att = g ? S.attente.length : 0;
     var g1 = (g ? [['accueil', 'Tableau de bord']] : []).concat([['sortie', 'Sortie'], ['retour', 'Retour'], ['inventaire', 'Inventaire']]);
     if (g) g1.push(['demandes', 'Demandes' + (att ? '<span class="badge">' + att + '</span>' : '')]);
-    var g2 = g ? [['stock', 'Stock'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs'], ['histo', 'Historique'], ['invfin', 'Fin d’année'], ['plus', 'Plus']] : [['histo', 'Historique']];
+    var g2 = g ? [['stock', 'Stock'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs'], ['histo', 'Historique'], ['plus', 'Plus']] : [['histo', 'Historique']];
     var bt = function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; };
     var titreTel = S.tab === 'accueil' ? 'Gestion de stock' : NOMS[S.tab] || 'Stock';
     return '<header class="top t2"><div class="top-in">'
@@ -4728,6 +4728,7 @@
       + tuile(cnt.commander, 'à commander', cnt.commander ? 'warn' : 'ok', 'stock:commander', (function () { var n = A.filter(function (a) { return filtreStock(a, 'commander') && stockDe(a.id, 0) <= 0; }).length; return n ? 'dont ' + n + ' en rupture' : 'Au seuil d’alerte ou en dessous'; })())
       + tuile(eur(valR), 'valeur de la réserve', '', 'stock:', 'Cabinets : ' + eur(valC))
       + '</div>';
+    h += '<button class="if-carte" data-tab="invfin"><span class="if-ci" aria-hidden="true">' + ico('agenda', 26) + '</span><span class="grow"><b>Inventaire de fin d’année ' + invFinAnnee() + '</b><span>Préparer, clôturer et exporter le stock de la réserve pour le comptable</span></span>' + ico('suiv', 20, 2.4) + '</button>';
     // inventaires
     var emps = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (e) { var s = etatInventaire(e); s.emp = e; return s; });
     var aFaire = emps.filter(function (s) { return s.cls !== 'ok'; }).sort(function (a, b) { return a.ordre - b.ordre || a.emp - b.emp; });
@@ -5528,7 +5529,7 @@
   }
 
   function vPlus() {
-    var j = joursDepuis(S.sauv && S.sauv.date), h = '<h2>Plus</h2>';
+    var j = joursDepuis(S.sauv && S.sauv.date), h = '<h2>Plus</h2>' + '<button class="if-carte" data-tab="invfin"><span class="if-ci" aria-hidden="true">' + ico('agenda', 26) + '</span><span class="grow"><b>Inventaire de fin d’année ' + invFinAnnee() + '</b><span>Préparer, clôturer et exporter le stock de la réserve pour le comptable</span></span>' + ico('suiv', 20, 2.4) + '</button>';
     h += '<div class="card"><div class="row wrap sauvrow"><div class="grow"><b>💾 Sauvegarde</b><br><span class="mu">'
       + (S.sauv && S.sauv.date ? 'Dernière : ' + new Date(S.sauv.date).toLocaleDateString('fr-FR') + ' par ' + esc(S.sauv.par || '?') + (j ? ' (il y a ' + j + ' jour' + (j > 1 ? 's' : '') + ')' : ' (aujourd’hui)') : 'Aucune sauvegarde téléchargée pour l’instant')
       + '</span></div><button class="btn' + (sauvegardeEnRetard() ? ' gold' : '') + '" data-act="sauver"' + (S.sauvBusy ? ' disabled' : '') + '>' + (S.sauvBusy ? 'Préparation…' : 'Télécharger la sauvegarde') + '</button></div>'

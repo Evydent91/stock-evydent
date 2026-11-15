@@ -2252,3 +2252,12 @@ button.pl-seul.pl-fb:hover{box-shadow:0 0 0 2px var(--gold)}
 .if-n1{height:38px;text-align:right}
 .if-ok{display:flex;align-items:center;gap:8px;margin:0;font-weight:700;color:var(--ok)}
 .if-s .a-btn{display:flex;align-items:center;justify-content:center;gap:10px}
+/* Barre de la gestion de stock sur une seule ligne ; Fin d'année en carte sur le tableau de bord et dans Plus */
+.tabs.t2-nav{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.tabs.t2-nav::-webkit-scrollbar{display:none}
+.t2-nav button{white-space:nowrap}
+@media (max-width:1700px){.t2-lab{display:none}.tabs.t2-nav{gap:4px 12px}}
+.if-carte{display:flex;align-items:center;gap:14px;width:100%;margin:0 0 14px;padding:14px 16px;border:none;border-radius:16px;background:#fff;box-shadow:0 1px 3px rgba(31,42,51,.08);font:inherit;color:var(--ink);text-align:left;cursor:pointer}
+.if-carte .grow{display:flex;flex-direction:column;gap:2px}.if-carte b{font-size:16.5px}.if-carte .grow span{font-size:14px;color:var(--mute)}
+.if-ci{width:46px;height:46px;border-radius:12px;background:var(--soft);color:var(--navy);display:flex;align-items:center;justify-content:center;flex:none}
+.if-carte:hover{box-shadow:0 0 0 2px var(--gold)}
