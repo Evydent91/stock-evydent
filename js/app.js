@@ -548,7 +548,7 @@
   function ongletPermis(t) {
     if (['sortie', 'retour', 'inventaire', 'histo', 'mstock'].indexOf(t) >= 0) return droit('stock');
     if (t === 'mplanning') return droit('planning');
-    if (t === 'mconges' || t === 'mdemande') return droit('conges');
+    if (t === 'mconges' || t === 'mdemande') return droit('conges') || !!refDe();   // la référente d'un profil pose toujours ses propres congés
     if (t === 'moubli') return droit('pointage');
     if (t === 'rplanning') return !!refDe() && refDroit('planning_voir');
     if (t === 'rconges') return !!refDe() && refDroit('conges_voir');
@@ -569,7 +569,7 @@
     if (pt && !hl) { var obA = (S.mesOublis || []).filter(function (o) { return o.statut === 'attente'; }).length; pt += '<button class="ob-lien" data-tab="moubli">' + ico('attente', 18, 2.2) + 'J’ai oublié de pointer' + (obA ? ' <span>' + obA + ' en attente</span>' : '') + '</button>'; }
     if (!hl && droit('stock')) t.push(tuileA('mstock', 'ts', 'boite', 'Stock', 'Sortie, inventaire, retour', inventaireAFaire() ? 'Inventaire à faire ce mois-ci' : ''));
     if (!hl && droit('planning') && S.visible && S.visible.planning && S.moiEq) t.push(tuileA('mplanning', 'tp', 'histo', 'Mon planning', 'Mes jours, mon dentiste, mes horaires'));
-    if (!hl && droit('conges')) { var att = (S.mesConges || []).filter(function (c) { return c.statut === 'attente'; }).length; t.push(tuileA('mconges', 'tc2', 'agenda', 'Mes congés', att ? att + ' demande' + (att > 1 ? 's' : '') + ' en attente' : 'Demander, suivre la réponse')); }
+    if (!hl && (droit('conges') || refDe())) { var att = (S.mesConges || []).filter(function (c) { return c.statut === 'attente'; }).length; t.push(tuileA('mconges', 'tc2', 'agenda', 'Mes congés', att ? att + ' demande' + (att > 1 ? 's' : '') + ' en attente' : 'Demander, suivre la réponse')); }
     if (!hl && refDe()) {
       var rn = refNom(), ratt = (S.conges || []).filter(function (c) { return c.statut === 'attente'; }).length;
       if (refDroit('planning_voir')) t.push(tuileA('rplanning', 'tp', 'agenda', 'Planning ' + esc(rn), 'Postes, horaires, qui ferme le soir'));
@@ -707,6 +707,17 @@
     h += '<div class="rf-bar"><button class="h-rond clair2" data-refsem="-1" aria-label="Semaine précédente">' + ico('prec', 20, 2.4) + '</button><b>Semaine du ' + dateCourte(js[0]) + ' au ' + dateCourte(js[4]) + '</b><button class="h-rond clair2" data-refsem="1" aria-label="Semaine suivante">' + ico('suiv', 20, 2.4) + '</button>'
       + (modif ? '<span class="mu">Touchez une case pour changer le poste ou les horaires</span>' : '<span class="mu">Lecture seule</span>') + '</div>';
     if (!ps.length) return h + '<div class="card"><b>Personne dans ce profil pour l’instant.</b><p class="mu" style="margin:6px 0 0">La référente ou la responsable doit créer les fiches au profil « ' + esc(nom) + ' ».</p></div></div>';
+    if (!telephone()) {
+      // Sur ordinateur : la grille de la page Planning de la gestion, selon ses droits (modifier, voir le pointage)
+      h = h.replace('class="a-corps rf"', 'class="a-corps rf rf-pc"');
+      S.pl = S.pl || {}; S.pl.rows = S.ref.rows; S.pl.lundi = js[0];
+      if (refDroit('pointage')) { var G = S.ptg = S.ptg || { mode: 'semaine', jour: dIso(new Date()) }; G.rows = {}; (S.ref.pts || []).forEach(function (x) { G.rows[x.equipe_id + '|' + String(x.jour).slice(0, 10)] = x; }); } else S.plVoirPt = false;
+      h += '<div class="rf-outils">' + (refDroit('pointage') ? '<div class="hr-seg" role="group" aria-label="Heures affichées"><button data-plpt="0" aria-pressed="' + !S.plVoirPt + '"' + (!S.plVoirPt ? ' class="on"' : '') + '>Planning seul</button><button data-plpt="1" aria-pressed="' + !!S.plVoirPt + '"' + (S.plVoirPt ? ' class="on"' : '') + '>Planning + pointé</button></div>' : '')
+        + '<span class="grow"></span><button class="pl-imp clair" data-act="plexpadm">' + ico('sortie', 18) + 'Exporter</button></div>';
+      h += grilleAdm(js[0], modif);
+      return h + '<p class="a-aide">Seules les personnes au profil « ' + esc(nom) + ' » apparaissent ici. ' + (modif ? 'Touchez une case pour changer le poste, les horaires ou poser une absence ; touchez la ligne « Fermeture » pour choisir qui ferme.' : 'Lecture seule.') + '</p></div>'
+        + (S.pl.cas ? vCasePlanning() : '') + (S.plExp ? vExportPlanning() : '');
+    }
     h += refGrille(js, ps, modif, nom);
     return h + '<p class="a-aide">Seules les personnes au profil « ' + esc(nom) + ' » apparaissent ici. La ligne « Fermeture » propose la personne sur une plage « Fermeture », sinon la seule qui finit la dernière ; à égalité, la case reste « À désigner ». En touchant la case et en choisissant une personne, elle passe directement sur la plage de fermeture de son poste. Touchez la case pour désigner quelqu’un d’autre. Une case orange signale un soir sans personne désignée.</p></div>';
   }
@@ -3863,7 +3874,7 @@
     assurerPointages(lundiDe(regles().depuis || L), addJ(L, 6));
     var fin = addJ(L, 4), titre = 'Semaine du ' + periode(L, fin).replace(/^du /, '');
     var h = '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" data-tab="hub">' + ico('prec', 22, 2.4) + 'Accueil</button><h1>Planning</h1>'
-      + '<span class="pl-hbtns"><button class="pl-imp" data-tab="heures">' + ico('graph', 18, 2.2) + '<span class="m-hide">Heures</span></button><button class="pl-imp" data-act="plexp">' + ico('sortie', 18) + '<span class="m-hide">Exporter</span></button><label class="pl-imp">' + ico('boite', 18) + '<span class="m-hide">Importer l’Excel</span><input type="file" id="plimpf" accept=".xlsm,.xlsx" hidden></label></span></div>'
+      + '<span class="pl-hbtns"><button class="pl-imp" data-tab="heures">' + ico('graph', 18, 2.2) + '<span class="m-hide">Heures</span></button><button class="pl-imp" data-act="plexp">' + ico('sortie', 18) + '<span class="m-hide">Exporter</span></button>' + (admCode() && refPers().length ? '<button class="pl-imp" data-act="plexpadm">' + ico('sortie', 18) + '<span class="m-hide">Exporter ' + esc(refNom().toLowerCase()) + '</span></button>' : '') + '<label class="pl-imp">' + ico('boite', 18) + '<span class="m-hide">Importer l’Excel</span><input type="file" id="plimpf" accept=".xlsm,.xlsx" hidden></label></span></div>'
       + '<div class="pl-nav"><span class="pl-g"></span><button class="h-rond" data-plsem="-7" aria-label="Semaine précédente">' + ico('prec', 20, 2.4) + '</button>' + titreCal(titre, L) + '<button class="h-rond" data-plsem="7" aria-label="Semaine suivante">' + ico('suiv', 20, 2.4) + '</button>'
       + '<span class="pl-g d">' + (lundiDe(auj) !== L ? '<button class="pl-auj" data-plsem="0">Cette semaine</button>' : '') + '</span></div>'
       + '<div class="pl-outils"><div class="hr-seg" role="group" aria-label="Heures affichées"><button data-plpt="0" aria-pressed="' + !S.plVoirPt + '"' + (!S.plVoirPt ? ' class="on"' : '') + '>Planning seul</button><button data-plpt="1" aria-pressed="' + !!S.plVoirPt + '"' + (S.plVoirPt ? ' class="on"' : '') + '>Planning + pointé</button></div>'
@@ -3876,7 +3887,7 @@
     var sc = semClose(L);
     if (sc) h += '<div class="clo-ban">' + ico('cadenas', 20, 2.2) + '<span><b>Semaine clôturée le ' + dateCourte(String(sc.cloture_le).slice(0, 10)) + (sc.cloture_par ? ' par ' + esc(nomProfil(sc.cloture_par) || '?') : '') + '</b><span>Heures figées : les cases et les pointages de cette semaine ne se modifient plus.</span></span><button class="btn l" data-clorouv="' + L + '">Rouvrir…</button></div>';
     if (P.charge) h += '<p class="mu">Chargement…</p>';
-    var tetes = function (nom) { var t = '<div class="pl-tete pl-nom">' + nom + '</div>'; for (var k = 0; k < 5; k++) { var iso = addJ(L, k), fe = ferie(iso); t += '<div class="pl-tete' + (iso === auj ? ' auj' : '') + '"><b>' + JOURS[k + 1] + '</b><span>' + dateCourte(iso) + (fe ? ' · <em>' + fe + '</em>' : '') + '</span></div>'; } return t + '<div class="pl-tete pl-h"><b>Heures</b><span>semaine · reliquat</span></div>'; };
+    var tetes = function (nom) { return tetesPlanning(L, nom); };
     h += '<div class="pl-scroll"><div class="pl-grille">' + tetes('Assistantes');
     ps.filter(function (p) { return p.type !== 'interimaire' || interimVisible(p, L); }).forEach(function (p) { h += lignePlanning(p, L); });
     h += '<div class="pl-nom pl-seul-t"><span class="a-av d">' + ico('dent', 16) + '</span><span><b>Dentistes seuls</b><small>sans assistante</small></span></div>';
@@ -3893,13 +3904,23 @@
     if (plAdmOn() && admCode() && refPers().length) {
       var jsA = []; for (var kA = 0; kA < 5; kA++) jsA.push(addJ(L, kA));
       if (!S.ref || !S.ref.fermOk) chargerFermG();
-      h += '<div class="pl-adm"><h2>Planning ' + esc(refNom()) + '</h2><div class="pl-scroll"><div class="pl-grille">' + tetes(esc(refNom())) + refPers().map(function (p) { return lignePlanning(p, L); }).join('')
-        + '<div class="pl-nom pl-seul-t"><span class="a-av d">' + ico('cadenas', 16) + '</span><span><b>Fermeture</b><small>qui ferme le centre le soir</small></span></div>'
-        + jsA.map(function (iso) { return celluleFerme(iso, !semClose(L)); }).join('') + '<div class="pl-h"></div></div></div></div>';
+      h += '<div class="pl-adm"><h2>Planning ' + esc(refNom()) + '</h2>' + grilleAdm(L, !semClose(L)) + '</div>';
     }
     return h + '</div>' + (P.cas ? vCasePlanning() : '') + (S.plExp ? vExportPlanning() : '') + (S.plClo ? vCloture() : '');
   }
 
+  function tetesPlanning(L, nom) {
+    var auj = dIso(new Date()), t = '<div class="pl-tete pl-nom">' + nom + '</div>';
+    for (var k = 0; k < 5; k++) { var iso = addJ(L, k), fe = ferie(iso); t += '<div class="pl-tete' + (iso === auj ? ' auj' : '') + '"><b>' + JOURS[k + 1] + '</b><span>' + dateCourte(iso) + (fe ? ' · <em>' + fe + '</em>' : '') + '</span></div>'; }
+    return t + '<div class="pl-tete pl-h"><b>Heures</b><span>semaine · reliquat</span></div>';
+  }
+  // Grille du planning administratif : la même que celle des assistantes, avec la ligne « Fermeture »
+  function grilleAdm(L, modif) {
+    var js = []; for (var k = 0; k < 5; k++) js.push(addJ(L, k));
+    return '<div class="pl-scroll"><div class="pl-grille' + (modif ? '' : ' pl-ro') + '">' + tetesPlanning(L, esc(refNom())) + refPers().map(function (p) { return lignePlanning(p, L); }).join('')
+      + '<div class="pl-nom pl-seul-t"><span class="a-av d">' + ico('cadenas', 16) + '</span><span><b>Fermeture</b><small>qui ferme le centre le soir</small></span></div>'
+      + js.map(function (iso) { return celluleFerme(iso, modif); }).join('') + '<div class="pl-h"></div></div></div>';
+  }
   // Une ligne du planning (une personne) : nom, 5 jours, colonne des heures ; la même pour les assistantes et les administratifs
   function lignePlanning(p, L) {
     var h = '';
@@ -4044,7 +4065,7 @@
   function vExportPlanning() {
     var E = S.plExp, ms = moisPropose();
     return '<div class="pl-modal" role="dialog" aria-modal="true" aria-label="Exporter le planning"><button class="pl-fond" data-act="plexpfermer" aria-label="Fermer"></button><div class="pl-fen">'
-      + '<div class="pl-ft"><span class="a-av p">' + ico('sortie', 20) + '</span><div><b>Exporter le planning</b><span class="mu">Fichier Excel sur la matrice du centre</span></div><button class="h-rond gris" data-act="plexpfermer" aria-label="Fermer">' + ico('croix', 20, 2.4) + '</button></div>'
+      + '<div class="pl-ft"><span class="a-av p">' + ico('sortie', 20) + '</span><div><b>Exporter le planning' + (E.adm ? ' ' + esc(refNom()) : '') + '</b><span class="mu">Fichier Excel sur la matrice du centre</span></div><button class="h-rond gris" data-act="plexpfermer" aria-label="Fermer">' + ico('croix', 20, 2.4) + '</button></div>'
       + '<p class="mu" style="margin:0">Choisissez un ou plusieurs mois. Chaque mois est une feuille, avec une semaine par bloc (matin et après-midi, horaires, heures de la semaine).</p>'
       + '<div class="pl-mois">' + ms.map(function (m) { var on = E.mois.indexOf(m) >= 0; return '<button type="button" class="h-ex-j pl-mo' + (on ? ' on' : '') + '" data-plmois="' + m + '" aria-pressed="' + on + '">' + nomMois(m).replace(/^./, function (c) { return c.toUpperCase(); }) + '</button>'; }).join('') + '</div>'
       + '<div class="pl-btns"><button class="a-btn blanc" data-act="plexpfermer">Annuler</button><button class="a-btn navy" data-act="plexpok"' + (E.busy || !E.mois.length ? ' disabled' : '') + '>' + (E.busy ? 'Préparation…' : 'Exporter' + (E.mois.length > 1 ? ' (' + E.mois.length + ' mois)' : '')) + '</button></div>'
@@ -4058,18 +4079,18 @@
     toutLire('planning', '*', function (q) { return q.gte('jour', de).lte('jour', a).order('jour'); }).then(function (rows) {
       var P = S.pl; rows.forEach(function (r) { P.rows[cleCase(r.equipe_id, String(r.jour).slice(0, 10), r.demi)] = r; });
       JOUR_CACHE = {};
-      return XLSX_EVY.creerMiseEnForme(mois.map(feuilleMois));
+      return XLSX_EVY.creerMiseEnForme(mois.map(function (m) { return feuilleMois(m, E.adm); }));
     }).then(function (blob) {
-      telecharger(blob, nomFichier(norm('planning-' + nomMois(mois[0]) + (mois.length > 1 ? '-a-' + nomMois(mois[mois.length - 1]) : '')).replace(/ /g, '-')));
+      telecharger(blob, nomFichier(norm('planning-' + (E.adm ? norm(refNom()) + '-' : '') + nomMois(mois[0]) + (mois.length > 1 ? '-a-' + nomMois(mois[mois.length - 1]) : '')).replace(/ /g, '-')));
       S.plExp = null; toast('✔ Planning exporté'); render();
     }).catch(function (e) { E.busy = false; toast(msgErr(e)); render(); });
   }
-  function feuilleMois(m) {
-    var cases = [], fus = [], haut = {}, r = 0, ps = persPlanning(), x = m.split('-');
+  function feuilleMois(m, adm) {
+    var cases = [], fus = [], haut = {}, r = 0, ps = adm ? refPers() : persPlanning(), x = m.split('-');
     var B = { bord: 'fin' }, put = function (rr, c, v, st) { cases.push({ r: rr, c: c, v: v, st: st }); };
     var colL = function (c) { var s2 = ''; c++; while (c > 0) { var k = (c - 1) % 26; s2 = String.fromCharCode(65 + k) + s2; c = Math.floor((c - 1) / 26); } return s2; };
     var fz = function (r1, c1, r2, c2) { fus.push(colL(c1) + (r1 + 1) + ':' + colL(c2) + (r2 + 1)); };
-    var titre = 'PLANNING ASSISTANTES DENTAIRE ' + MOIS_XL[+x[1] - 1] + ' ' + x[0];
+    var titre = (adm ? 'PLANNING ' + majSansAccent(refNom()) + ' ' : 'PLANNING ASSISTANTES DENTAIRE ') + MOIS_XL[+x[1] - 1] + ' ' + x[0];
     put(0, 1, titre, { gras: true, taille: 18, ali: 'left' }); haut[0] = 34; r = 2;
     semainesDuMois(m).forEach(function (L) {
       // En-tête de la semaine : AD + les 5 dates (4 colonnes chacune), puis AM / PM
@@ -4099,6 +4120,15 @@
         put(r, 21, { h: hs }, { gras: true, bord: 'moyen', fmt: '[h]:mm' }); put(r + 1, 21, cth ? 'contrat ' + fh(cth) : '', { bord: 'moyen', taille: 9, coul: '595959' }); 
         haut[r] = 18; haut[r + 1] = 15; r += 2;
       });
+      if (adm) {   // qui ferme le centre le soir
+        put(r, 0, 'FERMETURE', { gras: true, taille: 9, bord: 'fin', retour: true, fond: 'E6F4EC' });
+        for (var kf = 0; kf < 5; kf++) {
+          var isoF = addJ(L, kf), ff = ferie(isoF) ? null : refFerme(isoF), tf = ferie(isoF) ? 'férié' : ff ? majSansAccent(ff.nom || '?') + (ff.heure ? ' ' + hCourt(ff.heure) : '') : 'à désigner';
+          for (var cf = 0; cf < 4; cf++) put(r, 1 + 4 * kf + cf, cf ? null : tf, { bord: 'fin', taille: 9, retour: true, fond: ff || ferie(isoF) ? 'E6F4EC' : 'FBEFE6' });
+          fz(r, 1 + 4 * kf, r, 4 + 4 * kf);
+        }
+        haut[r] = 22; r += 2; return;
+      }
       // Dentistes présents sans assistante
       put(r, 0, 'DENTISTES SEULS', { gras: true, taille: 9, bord: 'fin', retour: true, fond: 'FBEFE6' });
       for (var k2 = 0; k2 < 5; k2++) {
@@ -5840,7 +5870,7 @@
     if (d.act === 'pfdelier' && S.pf) { var pfD = S.pf.id; demander('Détacher le compte de connexion ?', 'Le compte reste actif, il n’est simplement plus relié au planning.', 'Détacher').then(function (ok) { if (ok) lierCompte(pfD, null); }); return; }
     if (d.act === 'plcal') { var ci = document.getElementById('plcal'); if (ci) { try { if (ci.showPicker) ci.showPicker(); else { ci.focus(); ci.click(); } } catch (er) { ci.focus(); ci.click(); } } return; }
     if (d.plsem != null && S.pl) { S.pl.lundi = d.plsem === '0' ? lundiDe(dIso(new Date())) : addJ(S.pl.lundi, +d.plsem); S.pl.cas = null; if (gestion()) chargerSemaine(); else S.pl.de = null; render(); return; }
-    if (d.plc) return ouvrirCase(d.plc);
+    if (d.plc) { if (!gestion() && !(refDe() && refDroit('planning_modif'))) return; return ouvrirCase(d.plc); }
     if (d.act === 'ptok') { S.ptRes = null; render(); return; }
     if (d.pfong != null && S.pf) { S.pf.onglet = d.pfong || null; render(); window.scrollTo(0, 0); return; }
     if (d.pfcel && S.pf) { S.pf.cel = d.pfcel; render(); return; }
@@ -5901,6 +5931,7 @@
     if (d.hrnav && S.hr) { var Hn = S.hr, sn = +d.hrnav; if (Hn.mode === 'semaine') Hn.lundi = addJ(Hn.lundi, 7 * sn); else { var xm = Hn.mois.split('-'), dm2 = new Date(+xm[0], +xm[1] - 1 + sn, 1); Hn.mois = dm2.getFullYear() + '-' + ('0' + (dm2.getMonth() + 1)).slice(-2); } render(); return; }
     if (d.hrsel != null && S.hr) { S.hr.sel = d.hrsel || null; render(); window.scrollTo(0, 0); return; }
     if (d.hrouvrir) { S.pl = S.pl || { rows: {} }; S.pl.lundi = d.hrouvrir; S.tab = 'planning'; render(); window.scrollTo(0, 0); return; }
+    if (d.act === 'plexpadm' && S.pl) { S.plExp = { mois: [addJ(S.pl.lundi, 2).slice(0, 7)], adm: true }; render(); return; }
     if (d.act === 'plexp' && S.pl) { var mw = addJ(S.pl.lundi, 2).slice(0, 7); S.plExp = { mois: [mw] }; render(); return; }
     if (d.act === 'plexpfermer') { S.plExp = null; render(); return; }
     if (d.act === 'plexpok' && S.plExp) return exporterPlanning();
