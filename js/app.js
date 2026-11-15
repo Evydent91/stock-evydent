@@ -1601,7 +1601,7 @@
   function ouvrirPers(id) {
     var p = id === 'new' ? nouvellePers() : S.equipe.filter(function (x) { return String(x.id) === String(id); })[0];
     if (!p) return;
-    S.pf = { id: id, d: JSON.parse(JSON.stringify(p)) }; var vf = versionsTrame(p); if (vf.length) S.pf.d.trame = JSON.parse(JSON.stringify(vf[vf.length - 1].trame || {})); S.eqNew = null; S.eqEdit = null; S.tab = 'pfiche'; if (id !== 'new') S.rgDerP = id; render(); if (S.pf) S.pf.o = JSON.stringify(S.pf.d); window.scrollTo(0, 0);
+    S.pf = { id: id, d: JSON.parse(JSON.stringify(p)) }; var vf = versionsTrame(p); if (vf.length) S.pf.d.trame = JSON.parse(JSON.stringify(vf[vf.length - 1].trame || {})); S.eqNew = null; S.eqEdit = null; S.tab = 'pfiche'; if (id !== 'new') S.rgDerP = id; S.pf.raz = true; render(); window.scrollTo(0, 0);
   }
   function optAff(cur, sansDent) {
     var ds = (S.dentistes || []).filter(function (d) { return (d.actif && !sansDent) || 'D:' + d.id === cur; }).sort(function (a, b) { return a.ordre - b.ordre; });
@@ -1897,7 +1897,7 @@
       if (r === 'stop') return;
       if (r.error) throw r.error;
       var x = r.data || Object.assign({ id: F.id }, F.d, o);
-      F.busy = false; F.id = x.id; F.d = JSON.parse(JSON.stringify(x)); F.ver = null; toast('✔ Fiche de ' + x.prenom + ' enregistrée'); chargerPlan();
+      F.busy = false; F.id = x.id; F.d = JSON.parse(JSON.stringify(x)); F.ver = null; F.raz = true; toast('✔ Fiche de ' + x.prenom + ' enregistrée'); chargerPlan();
       return synchroCompte(x);
     }).catch(function (e) { F.busy = false; toast(/type_check/.test(String(e && e.message)) ? 'Ce type de personnel demande la mise à jour 020 de la base' : msgErr(e)); chargerPlan(); render(); });
   }
@@ -1938,7 +1938,7 @@
   function ouvrirDent(id) {
     var d = id === 'new' ? { prenom: '', jours: {}, note: '', actif: true } : S.dentistes.filter(function (x) { return String(x.id) === String(id); })[0];
     if (!d) return;
-    S.df = { id: id, d: JSON.parse(JSON.stringify(d)) }; S.tab = 'dfiche'; if (id !== 'new') S.rgDerD = id; render(); if (S.df) S.df.o = JSON.stringify(S.df.d); window.scrollTo(0, 0);
+    S.df = { id: id, d: JSON.parse(JSON.stringify(d)) }; S.tab = 'dfiche'; if (id !== 'new') S.rgDerD = id; S.df.raz = true; render(); window.scrollTo(0, 0);
   }
   function vDFiche() {
     var F = S.df; if (!F) { S.tab = 'pdent'; return vPDent(); }
@@ -2007,7 +2007,7 @@
     (F.id === 'new' ? sb.from('dentistes').insert(o).select().single() : sb.from('dentistes').update(o).eq('id', F.id).select().single()).then(function (r) {
       if (r.error) throw r.error;
       var x = r.data || Object.assign({ id: F.id }, F.d, o);
-      F.busy = false; F.id = x.id; F.d = JSON.parse(JSON.stringify(x)); toast('✔ Dr ' + x.prenom + ' enregistré'); chargerPlan();
+      F.busy = false; F.id = x.id; F.d = JSON.parse(JSON.stringify(x)); F.raz = true; toast('✔ Dr ' + x.prenom + ' enregistré'); chargerPlan();
     }).catch(function (e) { F.busy = false; toast(/present_(du|au)/.test(String(e && e.message)) ? 'Les dates de présence demandent la mise à jour 026 de la base' : msgErr(e)); render(); });
   }
 
@@ -2042,6 +2042,7 @@
     if ((S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage') && telephone()) ecr = vSurPC;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
     h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr' || S.tab === 'pequipe') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || ((S.tab === 'pconges' || S.tab === 'ppostes' || S.tab === 'pregles' || S.tab === 'pprofils' || S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible') && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
+    [S.pf, S.df].forEach(function (F) { if (F && F.raz) { F.raz = false; F.o = JSON.stringify(F.d); } });
     if (S.tab === 'pfiche') h += vBarPFiche();
     if (S.tab === 'dfiche') h += vBarDFiche();
     return h;
