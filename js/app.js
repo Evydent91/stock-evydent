@@ -346,7 +346,7 @@
     document.body.classList.toggle('tdb-l', S.tab === 'tdb');
     var h = vTopStock();
     if (S.nouvelleVersion) h += '<div class="ban ok" style="max-width:1100px;margin:10px auto 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1">Une nouvelle version de l’application est disponible (' + esc(S.nouvelleVersion) + ').</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>';
-    h += '<main>' + vBienvenue() + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + (S.gq ? vRecherche() : vSousNav() + (!S.fiche ? retourBtn() : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vArticlesU, histo: vHisto, equipe: vEquipe, articles: vArticlesU, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour, plus: vPlus, aide: vAide, maison: vMaison, moi: vMoiA, invfin: vInvFin, tdb: vTdb }[S.tab] || vSortie)()) + '</main>';
+    h += '<main>' + vBienvenue() + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + (S.gq ? vRecherche() : vSousNav() + (!S.fiche ? retourBtn() : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vArticlesU, histo: vHisto, equipe: vEquipe, articles: vArticlesU, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour, plus: vPlus, aide: vAide, maison: vMaison, moi: vMoiA, invfin: vInvFin, tdb: vTdb, ecarts: vEcartsPage, journal: vJournal }[S.tab] || vSortie)()) + '</main>';
     h += '<p class="mu" style="text-align:center;font-size:12px;margin:0 0 90px">Version ' + esc(C.version || '') + '</p>';
     h += vNavMobile();
     h += S.gq ? '' : (S.tab === 'sortie' ? vBarSortie() : S.tab === 'retour' ? vBarRetour() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
@@ -517,7 +517,7 @@
     camion: '<path d="M1 6h13v10H1zM14 10h4l3 3v3h-7"/><circle cx="5.5" cy="17.5" r="1.5"/><circle cx="17.5" cy="17.5" r="1.5"/>'
   };
   // Icônes au trait de la gestion de stock (barre du bas et bouton « Plus »)
-  var ICO_G = { invfin: 'agenda', tdb: 'graph', accueil: 'maison', sortie: 'sortie', inventaire: 'invok', commandes: 'panier', demandes: 'attente', retour: 'retour', stock: 'boite', articles: 'etiquette', fournisseurs: 'camion', histo: 'histo', plus: 'telecharger', aide: 'aide', compte: 'cadenas', hub: 'maison' };
+  var ICO_G = { invfin: 'agenda', tdb: 'graph', accueil: 'maison', sortie: 'sortie', inventaire: 'invok', commandes: 'panier', demandes: 'attente', retour: 'retour', stock: 'boite', articles: 'etiquette', fournisseurs: 'camion', histo: 'histo', ecarts: 'attente', journal: 'histo', plus: 'telecharger', aide: 'aide', compte: 'cadenas', hub: 'maison' };
   function ico(n, sz, ep) { return '<svg class="ic" width="' + (sz || 24) + '" height="' + (sz || 24) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (ep || 2) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + SVGI[n] + '</svg>'; }
 
   // ---------- Accueil des assistantes : 3 grandes tuiles ----------
@@ -4395,12 +4395,12 @@
   var ICO = { accueil: '🏠', sortie: '📤', retour: '↩️', inventaire: '📋', demandes: '⏳', stock: '📦', commandes: '🛒', articles: '🏷️', fournisseurs: '🚚', histo: '🕘', equipe: '👥', hub: '🏠', plus: '⚙️', compte: '🔑', aide: '❓', maison: '🏠', moi: '👤' };
   var NOMS = { accueil: 'Accueil', sortie: 'Sortie', retour: 'Retour', inventaire: 'Inventaire', demandes: 'Demandes', stock: 'Stock', commandes: 'Commandes', articles: 'Articles', fournisseurs: 'Fournisseurs', histo: 'Historique', invfin: 'Fin d’année', tdb: 'Analyses', equipe: 'Équipe', hub: 'Menu principal', plus: 'Plus', compte: 'Mon code', aide: 'Aide', maison: 'Accueil', moi: 'Moi' };
   // Six rubriques : plusieurs écrans partagent une rubrique (sous-menu en haut de la page)
-  var GR = { mouv: ['sortie', 'retour', 'demandes', 'histo'], cmd: ['commandes', 'fournisseurs'], plus: ['tdb', 'invfin', 'plus'] };
+  var GR = { mouv: ['sortie', 'retour', 'demandes', 'histo'], cmd: ['commandes', 'fournisseurs'], plus: ['tdb', 'ecarts', 'invfin', 'plus', 'journal'] };
   function groupeDe(t) { for (var k in GR) if (GR[k].indexOf(t) >= 0) return k; return t === 'articles' ? 'stock' : t; }
-  var NOMR = { accueil: 'À faire', stock: 'Articles', articles: 'Articles', sortie: 'Sortie', retour: 'Retour', demandes: 'Demandes', histo: 'Historique', inventaire: 'Inventaires', commandes: 'Commandes', fournisseurs: 'Fournisseurs', tdb: 'Analyses', invfin: 'Fin d’année', plus: 'Sauvegarde et journal' };
+  var NOMR = { accueil: 'À faire', stock: 'Articles', articles: 'Articles', sortie: 'Sortie', retour: 'Retour', demandes: 'Demandes', histo: 'Historique', inventaire: 'Inventaires', commandes: 'Commandes', fournisseurs: 'Fournisseurs', tdb: 'Analyses', ecarts: 'Écarts de stock', invfin: 'Fin d’année', plus: 'Sauvegarde', journal: 'Journal des versions' };
   function vSousNav() {
     if (!gestion() || S.fiche) return '';
-    var att = S.attente.length, L = { mouv: [['sortie', 'Sortie'], ['retour', 'Retour'], ['demandes', 'Demandes' + (att ? '<span class="badge">' + att + '</span>' : '')], ['histo', 'Historique']], cmd: [['commandes', 'Commandes'], ['fournisseurs', 'Fournisseurs']], plus: [['tdb', 'Analyses'], ['invfin', 'Fin d’année'], ['plus', 'Sauvegarde et journal']] }[groupeDe(S.tab)];
+    var att = S.attente.length, L = { mouv: [['sortie', 'Sortie'], ['retour', 'Retour'], ['demandes', 'Demandes' + (att ? '<span class="badge">' + att + '</span>' : '')], ['histo', 'Historique']], cmd: [['commandes', 'Commandes'], ['fournisseurs', 'Fournisseurs']], plus: [['tdb', 'Analyses'], ['ecarts', 'Écarts de stock'], ['invfin', 'Fin d’année'], ['plus', 'Sauvegarde'], ['journal', 'Journal des versions']] }[groupeDe(S.tab)];
     if (!L) return '';
     return '<nav class="snav" aria-label="Dans cette rubrique">' + L.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '"' + (S.tab === t[0] ? ' aria-current="page"' : '') + '>' + t[1] + '</button>'; }).join('') + '</nav>';
   }
@@ -4460,7 +4460,7 @@
       + '<span class="t2-d"><button class="t2-ic" data-tab="aide" aria-label="Aide" title="Aide">' + ico('aide', 20, 2.2) + '</button>'
       + '<button class="t2-ic" data-tab="compte" aria-label="Changer mon ' + (g ? 'mot de passe' : 'code') + '" title="Changer mon ' + (g ? 'mot de passe' : 'code') + '">' + ico('cadenas', 19, 2.2) + '</button>'
       + '<button class="t2-moi" data-act="out" aria-label="Changer de personne (' + esc(S.me.nom) + ')" title="' + esc(nomRole(S.me) + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '')) + '"><span class="t2-av" aria-hidden="true">' + esc((S.me.nom || '?').charAt(0).toUpperCase()) + '</span><span class="m-hide">' + esc(S.me.nom) + ' · changer</span></button></span></div>'
-      + (g ? '<nav class="tabs t2-nav t2-6" aria-label="Rubriques du stock">' + [['accueil', 'À faire'], ['stock', 'Articles'], ['sortie', 'Mouvements' + (att ? '<span class="badge">' + att + '</span>' : '')], ['inventaire', 'Inventaires'], ['commandes', 'Commandes'], ['plus', 'Plus']].map(function (t) { var on = !S.gq && groupeDe(S.tab) === groupeDe(t[0]); return '<button data-tab="' + t[0] + '" class="' + (on ? 'on' : '') + '"' + (on ? ' aria-current="page"' : '') + '>' + t[1] + '</button>'; }).join('')
+      + (g ? '<nav class="tabs t2-nav t2-6" aria-label="Rubriques du stock">' + [['accueil', 'À faire'], ['stock', 'Articles'], ['sortie', 'Mouvements' + (att ? '<span class="badge">' + att + '</span>' : '')], ['inventaire', 'Inventaires'], ['commandes', 'Commandes'], ['tdb', 'Plus']].map(function (t) { var on = !S.gq && groupeDe(S.tab) === groupeDe(t[0]); return '<button data-tab="' + t[0] + '" class="' + (on ? 'on' : '') + '"' + (on ? ' aria-current="page"' : '') + '>' + t[1] + '</button>'; }).join('')
         + '<label class="t2-q">' + ico('loupe', 17, 2.2) + '<input id="gq" type="search" placeholder="Chercher partout : article, référence, fournisseur, commande" value="' + esc(S.gq) + '" aria-label="Chercher partout"></label></nav></header>' :
       '<nav class="tabs t2-nav" aria-label="Rubriques du stock"><span class="t2-gr"><span class="t2-lab">Au quotidien</span>' + g1.map(bt).join('') + '</span>'
       + '<span class="t2-sep" aria-hidden="true"></span><span class="t2-gr"><span class="t2-lab">' + (g ? 'Gestion' : 'Suivi') + '</span>' + g2.map(bt).join('') + '</span></nav></header>');
@@ -4476,9 +4476,9 @@
       }).join('') + '</nav>';
     }
     var bas = ['accueil', 'stock', 'sortie', 'inventaire'], NOMB = { accueil: 'À faire', stock: 'Articles', sortie: 'Mouvements', inventaire: 'Inventaires' };
-    var quot = ['commandes', 'fournisseurs'], cat = ['tdb', 'invfin', 'plus', 'compte', 'aide'], menu = quot.concat(cat, ['hub']);
+    var quot = ['commandes', 'fournisseurs'], cat = ['tdb', 'ecarts', 'invfin', 'plus', 'journal', 'compte', 'aide'], menu = quot.concat(cat, ['hub']);
     var att = S.attente.length, dansMenu = menu.indexOf(S.tab) >= 0;
-    var NOMS_G = { plus: 'Sauvegarde', compte: 'Mon mot de passe' };
+    var NOMS_G = { plus: 'Sauvegarde', compte: 'Mon mot de passe', ecarts: 'Écarts', journal: 'Journal' };
     var h = '<nav class="bnav g5" aria-label="Menu principal">' + bas.map(function (t) {
       return '<button data-tab="' + t + '" class="' + (groupeDe(S.tab) === groupeDe(t) && !S.menu ? 'on' : '') + '"><span class="bi">' + ico(ICO_G[t], 24) + (t === 'sortie' && att ? '<span class="badge">' + att + '</span>' : '') + '</span><span>' + NOMB[t] + '</span></button>';
     }).join('') + '<button data-act="menu" class="' + (S.menu || dansMenu ? 'on' : '') + '" aria-expanded="' + !!S.menu + '"><span class="bi">' + ico('menu', 24) + '</span><span>Plus</span></button></nav>';
@@ -6235,7 +6235,7 @@
   function vEcarts() {
     if (!S.ecarts) setTimeout(chargerEcarts, 0);
     var E = S.ecarts || { p: 'mois' };
-    var h = '<div class="card"><div class="row wrap"><b class="grow">📉 Bilan des écarts de stock</b></div><div class="chips" style="margin:8px 0 10px">'
+    var h = '<div class="card"><div class="chips" style="margin:0 0 12px">'
       + PERIODES.map(function (x) { return '<button class="chip' + (E.p === x[0] ? ' on' : '') + '" data-ecp="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
     if (E.charge || !E.l) return h + '<p class="mu">Chargement…</p></div>';
     if (E.err) return h + '<p class="ban ko">' + esc(E.err) + '</p></div>';
@@ -6275,23 +6275,40 @@
     return h + '<p class="mu" style="margin:8px 0 0;font-size:13px">Valeurs au coût moyen TTC. Détail ligne par ligne dans l’Historique.</p></div>';
   }
 
+  // Plus › Sauvegarde : une seule chose sur la page
   function vPlus() {
-    var j = joursDepuis(S.sauv && S.sauv.date), h = '';
-    h += '<div class="card"><div class="row wrap sauvrow"><div class="grow"><b>💾 Sauvegarde</b><br><span class="mu">'
-      + (S.sauv && S.sauv.date ? 'Dernière : ' + new Date(S.sauv.date).toLocaleDateString('fr-FR') + ' par ' + esc(S.sauv.par || '?') + (j ? ' (il y a ' + j + ' jour' + (j > 1 ? 's' : '') + ')' : ' (aujourd’hui)') : 'Aucune sauvegarde téléchargée pour l’instant')
-      + '</span></div><button class="btn' + (sauvegardeEnRetard() ? ' gold' : '') + '" data-act="sauver"' + (S.sauvBusy ? ' disabled' : '') + '>' + (S.sauvBusy ? 'Préparation…' : 'Télécharger la sauvegarde') + '</button></div>'
-      + '<p class="mu" style="margin:8px 0 0">Un fichier Excel avec une feuille par tableau : stock par emplacement, articles, prix par fournisseur, fournisseurs, commandes, mouvements, inventaires, équipe. À ranger dans un dossier sûr, une fois par mois. Les mots de passe des comptes fournisseurs n’y figurent pas.</p></div>';
-    h += vEcarts();
-    h += '<h2 style="margin-top:20px">Journal des versions</h2><p class="mu" style="margin-top:-6px">Version installée : <b>' + esc(C.version) + '</b>. Majeure : changement profond · Mineure : nouvelle fonction · Correctif : réparation.</p>';
+    var j = joursDepuis(S.sauv && S.sauv.date), ret = sauvegardeEnRetard();
+    return '<section class="pg"><h2>Sauvegarde</h2><div class="card pg-c"><p class="pg-l ' + (ret ? 'warn' : 'ok') + '">' + ico(ret ? 'attente' : 'ok', 22, 2.4)
+      + (S.sauv && S.sauv.date ? 'Dernière sauvegarde le <b>' + new Date(S.sauv.date).toLocaleDateString('fr-FR') + '</b>' + (j ? ', il y a ' + j + ' jour' + (j > 1 ? 's' : '') : ', aujourd’hui') + ', par ' + esc(S.sauv.par || '?') : 'Aucune sauvegarde téléchargée pour l’instant')
+      + '</p><button class="btn' + (ret ? ' gold' : '') + '" data-act="sauver"' + (S.sauvBusy ? ' disabled' : '') + '>' + (S.sauvBusy ? 'Préparation…' : 'Télécharger la sauvegarde') + '</button>'
+      + '<ul class="pg-u"><li>Un fichier Excel, avec une feuille par tableau : stock, articles, prix, fournisseurs, commandes, mouvements, inventaires, équipe.</li><li>À télécharger une fois par mois et à ranger dans un dossier sûr.</li><li>Les mots de passe des comptes fournisseurs n’y figurent pas.</li></ul></div></section>';
+  }
+  // Plus › Écarts de stock
+  function vEcartsPage() { return '<section class="pg pg-e"><h2>Écarts de stock</h2><p class="mu pg-i">Ce qui manque ou ce qui est en trop par rapport au stock enregistré : inventaires de la réserve, sorties au-delà de la réserve, régularisations.</p>' + vEcarts() + '</section>'; }
+  // Plus › Journal des versions : une version ouverte à la fois, chaque changement réduit à son titre (toucher pour lire le détail)
+  function jTitre(x) {
+    var i = x.indexOf(' : ');
+    if (i > 0 && i <= 80) {
+      var t = x.slice(0, i), r = x.slice(i + 3);
+      // « Correctif », « Site de test » ne disent rien seuls : on ajoute le début de la phrase
+      if (/^(Correctif|Site de test)/.test(t)) { var k = r.length > 80 ? r.lastIndexOf(' ', 80) : r.length; t += ' : ' + r.slice(0, k).replace(/[ ,;:.]+$/, '') + (k < r.length ? '…' : ''); }
+      return [t, r];
+    }
+    i = x.indexOf('. ');
+    if (i > 0 && i <= 110) return [x.slice(0, i + 1), x.slice(i + 2)];
+    return x.length > 110 ? [x.slice(0, x.lastIndexOf(' ', 90)) + '…', x] : [x, ''];
+  }
+  function vJournal() {
     var TC = { Majeure: 'ko', Mineure: 'ok', Correctif: 'warn' };
-    h += (window.JOURNAL || []).map(function (v, i) {
-      return '<details class="card"' + (i === 0 ? ' open' : '') + '><summary style="cursor:pointer;list-style:none"><b>Version ' + esc(v.v) + ' — ' + esc(v.n) + '</b> <span class="pill ' + (TC[v.t] || '') + '">' + esc(v.t) + '</span><br><span class="mu">' + esc(v.d) + '</span></summary>'
-        + (v.w ? '<p style="margin:10px 0 6px"><b>Pourquoi :</b> ' + esc(v.w) + '</p>' : '')
-        + (v.c && v.c.length ? '<b>Changements</b><ul style="margin:4px 0 8px;padding-left:20px">' + v.c.map(function (x) { return '<li style="margin:4px 0">' + esc(x) + '</li>'; }).join('') + '</ul>' : '')
-        + (v.x && v.x.length ? '<b>Données</b><ul style="margin:4px 0 0;padding-left:20px">' + [].concat(v.x).map(function (x) { return '<li style="margin:4px 0">' + esc(x) + '</li>'; }).join('') + '</ul>' : '')
-        + '</details>';
-    }).join('');
-    return h;
+    return '<section class="pg"><h2>Journal des versions</h2><p class="mu pg-i">Version installée : <b>' + esc(C.version) + '</b>. Touchez une ligne pour lire le détail.</p>'
+      + (window.JOURNAL || []).map(function (v, i) {
+        var cs = (v.c || []).map(jTitre);
+        return '<details class="card jv"' + (i === 0 ? ' open' : '') + '><summary><span class="jv-v">' + esc(v.v) + '</span><span class="jv-n"><b>' + esc(v.n) + '</b><span>' + esc(v.d) + ' · ' + cs.length + ' changement' + (cs.length > 1 ? 's' : '') + '</span></span><span class="pill ' + (TC[v.t] || '') + '">' + esc(v.t) + '</span></summary>'
+          + (v.w ? '<p class="jv-w"><b>Pourquoi :</b> ' + esc(v.w) + '</p>' : '')
+          + '<div class="jv-l">' + cs.map(function (c) { return c[1] ? '<details class="jv-i"><summary>' + esc(c[0]) + '</summary><p>' + esc(c[1]) + '</p></details>' : '<p class="jv-s">' + esc(c[0]) + '</p>'; }).join('') + '</div>'
+          + (v.x && v.x.length ? '<p class="jv-x"><b>Données :</b> ' + [].concat(v.x).map(esc).join(' ; ') + '</p>' : '')
+          + '</details>';
+      }).join('') + '</section>';
   }
   function telechargerSauvegarde() {
     if (S.sauvBusy) return;
@@ -6733,7 +6750,7 @@
     if (d.essai) { marquerVu(d.gid); S.aideOuverte = d.gid; S.tab = d.essai; S.tabChoisi = true; if (d.essai === 'histo') chargerHisto(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'menu') { S.menu = !S.menu; render(); return; }
     if (d.tab) { if (d.tab === 'pointage' && S.tab !== 'pointage') { S.ptg = S.ptg || { rows: {} }; S.ptg.mode = 'semaine'; S.ptg.jour = dIso(new Date()); if (S.ptg.bord) S.ptg.bord.sel = null; }   // le pointage s'ouvre toujours sur la semaine en cours
-    if (d.tab === 'ppostes') S.postesEd = null; if (d.tab === 'ptypes') S.typesEd = null; if (d.tab === 'proles') S.rolesEd = null; if (d.tab === 'pprofils' || d.tab === 'ptypes' || d.tab === 'proles' || d.tab === 'pvisible') S.profEd = null; S.menu = false; S.fiche = null; S.retours = []; S.gq = ''; if (d.tab === 'sortie') S.sortie.ok = null; S.tab = d.tab === 'articles' && gestion() ? 'stock' : d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); if (d.tab === 'plus') chargerEcarts(); render(); window.scrollTo(0, 0); return; }
+    if (d.tab === 'ppostes') S.postesEd = null; if (d.tab === 'ptypes') S.typesEd = null; if (d.tab === 'proles') S.rolesEd = null; if (d.tab === 'pprofils' || d.tab === 'ptypes' || d.tab === 'proles' || d.tab === 'pvisible') S.profEd = null; S.menu = false; S.fiche = null; S.retours = []; S.gq = ''; if (d.tab === 'sortie') S.sortie.ok = null; S.tab = d.tab === 'articles' && gestion() ? 'stock' : d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); if (d.tab === 'ecarts') chargerEcarts(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'out') { demander('Changer de personne ?', 'La personne suivante devra se connecter avec son identifiant et son code.', 'Changer de personne').then(function (ok) { if (ok) deconnexion(); }); return; }
     if (d.act === 'maj') return mettreAJour();
     if (d.ecp) { S.ecarts = S.ecarts || {}; S.ecarts.p = d.ecp; chargerEcarts(); render(); return; }
