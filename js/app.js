@@ -13,7 +13,7 @@
     articles: [], byId: {}, stocks: {}, fournisseurs: {}, profils: [], attente: [], histo: [],
     sortie: { cab: null, q: '', panier: {}, msg: null, busy: false },
     ret: { cab: null, q: '', panier: {}, msg: null, busy: false },
-    stockQ: '', stockF: '', stockCab: '', histTous: false, eqEdit: null, pwAbc: false, dernierInv: {}, recents: [], j0: null, invJ0: {}, fiche: null, artQ: '', artF: 'tous', artMax: 100, archives: [], fournListe: [], foArch: false, commandes: [], lignes: {}, afPrix: {}, cmdSub: 'sug', sugQ: {}, sugOpen: {}, alias: {}, nc: { fid: '', num: '', q: '', l: [] },
+    stockQ: '', stockF: '', stockCab: '', retours: [], gq: '', histTous: false, eqEdit: null, pwAbc: false, dernierInv: {}, recents: [], j0: null, invJ0: {}, fiche: null, artQ: '', artF: 'tous', artMax: 100, archives: [], fournListe: [], foArch: false, commandes: [], lignes: {}, afPrix: {}, cmdSub: 'sug', sugQ: {}, sugOpen: {}, alias: {}, nc: { fid: '', num: '', q: '', l: [] },
     inv: { emp: null, d: {}, q: '', tous: false, recap: false, motifs: {}, busy: false, msg: null, max: 80 }
   };
   var LABEL = { assistante: 'Assistante', referente: 'Référente', responsable: 'Responsable' };
@@ -346,10 +346,10 @@
     document.body.classList.toggle('tdb-l', S.tab === 'tdb');
     var h = vTopStock();
     if (S.nouvelleVersion) h += '<div class="ban ok" style="max-width:1100px;margin:10px auto 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1">Une nouvelle version de l’application est disponible (' + esc(S.nouvelleVersion) + ').</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>';
-    h += '<main>' + vBienvenue() + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour, plus: vPlus, aide: vAide, maison: vMaison, moi: vMoiA, invfin: vInvFin, tdb: vTdb }[S.tab] || vSortie)() + '</main>';
+    h += '<main>' + vBienvenue() + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + (S.gq ? vRecherche() : vSousNav() + (!S.fiche ? retourBtn() : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vArticlesU, histo: vHisto, equipe: vEquipe, articles: vArticlesU, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour, plus: vPlus, aide: vAide, maison: vMaison, moi: vMoiA, invfin: vInvFin, tdb: vTdb }[S.tab] || vSortie)()) + '</main>';
     h += '<p class="mu" style="text-align:center;font-size:12px;margin:0 0 90px">Version ' + esc(C.version || '') + '</p>';
     h += vNavMobile();
-    h += (S.tab === 'sortie' ? vBarSortie() : S.tab === 'retour' ? vBarRetour() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
+    h += S.gq ? '' : (S.tab === 'sortie' ? vBarSortie() : S.tab === 'retour' ? vBarRetour() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
     // On remet le curseur dans le champ de saisie en cours, mais jamais sur une liste déroulante :
     // sur iPhone, redonner le focus à une liste la rouvre une seconde fois.
     poser(app, h);
@@ -425,7 +425,7 @@
   }
   // Visite guidée : chaque étape désigne un élément de l'écran (bouton, champ…)
   function etapesTour() {
-    var mob = window.matchMedia('(max-width:700px)').matches, nav = function (t) { return mob ? '.bnav [data-tab="' + t + '"]' : '.tabs [data-tab="' + t + '"]'; };
+    var mob = window.matchMedia('(max-width:700px)').matches, nav = function (t) { return (mob ? '.bnav' : '.tabs') + ' [data-tab="' + t + '"], .snav [data-tab="' + t + '"]'; };
     var E = [
       { tab: 'sortie', sel: nav('sortie'), t: '📤 Sortie', x: 'Pour prendre des articles dans la réserve. C’est l’écran que vous utiliserez le plus.' },
       { tab: 'sortie', sel: '#scab', t: 'Votre cabinet', x: 'Il est choisi d’office (★). Changez-le seulement si vous remplacez une collègue.' },
@@ -4394,6 +4394,56 @@
   // ---------- Navigation téléphone : barre du bas + menu ----------
   var ICO = { accueil: '🏠', sortie: '📤', retour: '↩️', inventaire: '📋', demandes: '⏳', stock: '📦', commandes: '🛒', articles: '🏷️', fournisseurs: '🚚', histo: '🕘', equipe: '👥', hub: '🏠', plus: '⚙️', compte: '🔑', aide: '❓', maison: '🏠', moi: '👤' };
   var NOMS = { accueil: 'Accueil', sortie: 'Sortie', retour: 'Retour', inventaire: 'Inventaire', demandes: 'Demandes', stock: 'Stock', commandes: 'Commandes', articles: 'Articles', fournisseurs: 'Fournisseurs', histo: 'Historique', invfin: 'Fin d’année', tdb: 'Analyses', equipe: 'Équipe', hub: 'Menu principal', plus: 'Plus', compte: 'Mon code', aide: 'Aide', maison: 'Accueil', moi: 'Moi' };
+  // Six rubriques : plusieurs écrans partagent une rubrique (sous-menu en haut de la page)
+  var GR = { mouv: ['sortie', 'retour', 'demandes', 'histo'], cmd: ['commandes', 'fournisseurs'], plus: ['tdb', 'invfin', 'plus'] };
+  function groupeDe(t) { for (var k in GR) if (GR[k].indexOf(t) >= 0) return k; return t === 'articles' ? 'stock' : t; }
+  var NOMR = { accueil: 'À faire', stock: 'Articles', articles: 'Articles', sortie: 'Sortie', retour: 'Retour', demandes: 'Demandes', histo: 'Historique', inventaire: 'Inventaires', commandes: 'Commandes', fournisseurs: 'Fournisseurs', tdb: 'Analyses', invfin: 'Fin d’année', plus: 'Sauvegarde et journal' };
+  function vSousNav() {
+    if (!gestion() || S.fiche) return '';
+    var att = S.attente.length, L = { mouv: [['sortie', 'Sortie'], ['retour', 'Retour'], ['demandes', 'Demandes' + (att ? '<span class="badge">' + att + '</span>' : '')], ['histo', 'Historique']], cmd: [['commandes', 'Commandes'], ['fournisseurs', 'Fournisseurs']], plus: [['tdb', 'Analyses'], ['invfin', 'Fin d’année'], ['plus', 'Sauvegarde et journal']] }[groupeDe(S.tab)];
+    if (!L) return '';
+    return '<nav class="snav" aria-label="Dans cette rubrique">' + L.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '"' + (S.tab === t[0] ? ' aria-current="page"' : '') + '>' + t[1] + '</button>'; }).join('') + '</nav>';
+  }
+  // Liens : un nom d'article, de fournisseur ou une commande ouvre sa fiche, d'où que l'on soit
+  function lA(id, nom) { return gestion() && S.byId[id] ? '<button class="lk2" data-voir="a:' + id + '">' + esc(nom != null ? nom : S.byId[id].nom) + '</button>' : esc(nom != null ? nom : ''); }
+  function lF(fid, vide) { var n = S.fournisseurs[fid]; return fid && n ? (gestion() ? '<button class="lk2" data-voir="f:' + fid + '">' + esc(n) + '</button>' : esc(n)) : (vide || ''); }
+  function cmdDe(id) { return S.commandes.filter(function (c) { return c.id === id; })[0]; }
+  function etatArt(a) {
+    var r = stockDe(a.id, 0), s = +a.seuil || 0, enc = enCoursPour(a.id);
+    return a.archive ? ['neu', 'Archivé'] : a.sans_seuil ? ['neu', 'Sans seuil'] : !(s > 0) ? ['neu', 'Seuil ?'] : r > s ? ['ok', 'OK'] : r + enc > s ? ['enc', 'Commandé · ' + fr(enc)] : r <= 0 ? ['rup', 'En rupture'] : ['cmd', 'À commander'];
+  }
+  function ici() {
+    var F = S.fiche, o = { tab: S.tab, y: window.scrollY || 0, cab: S.stockCab, sub: S.cmdSub, gq: S.gq };
+    if (F && F.id !== 'new') o.f = [F.type, F.id];
+    if (S.gq) o.lab = 'recherche « ' + S.gq + ' »';
+    else if (o.f) o.lab = F.type === 'article' ? (S.byId[F.id] || {}).nom || 'l’article' : F.type === 'fournisseur' ? S.fournisseurs[F.id] || 'le fournisseur' : 'commande ' + (S.fournisseurs[(cmdDe(F.id) || {}).fournisseur_id] || '');
+    else o.lab = (S.tab === 'stock' || S.tab === 'articles') && S.stockCab !== '' && S.stockCab != null ? nomEmp(+S.stockCab) : NOMR[S.tab] || 'la page précédente';
+    return o;
+  }
+  function aller(t, id) {
+    if (t === 'a') { S.tab = 'stock'; ouvrirArticle(+id); }
+    else if (t === 'f') { S.tab = 'fournisseurs'; ouvrirFo(+id); }
+    else if (t === 'c') ouvrirCommande(+id);
+    else if (t === 'cab') { S.fiche = null; S.tab = 'stock'; S.stockCab = +id; S.stockF = ''; S.stockQ = ''; render(); }
+  }
+  function voir(t, id) {
+    if (!gestion()) return;
+    var F = S.fiche, TY = { a: 'article', f: 'fournisseur', c: 'commande' };
+    if (F && F.edit) { toast('Enregistrez ou annulez d’abord la modification en cours.'); return; }
+    if (F && !S.gq && F.type === TY[t] && String(F.id) === String(id)) return;
+    S.retours.push(ici()); if (S.retours.length > 15) S.retours.shift();
+    S.gq = ''; S.menu = false;
+    aller(t, id); window.scrollTo(0, 0);
+  }
+  function revenir() {
+    var o = S.retours.pop();
+    if (!o) { S.fiche = null; render(); return; }
+    S.tab = o.tab; S.stockCab = o.cab; S.gq = o.gq || '';
+    if (o.f) { aller({ article: 'a', fournisseur: 'f', commande: 'c' }[o.f[0]], o.f[1]); if (o.f[0] !== 'commande') S.cmdSub = o.sub; }
+    else { S.fiche = null; S.cmdSub = o.sub; if (o.tab === 'histo') chargerHisto(); render(); }
+    setTimeout(function () { window.scrollTo(0, o.y || 0); }, 0);
+  }
+  function retourBtn(defaut) { var o = S.retours[S.retours.length - 1]; return o || defaut ? '<button class="fx-back" data-act="fclose">' + ico('prec', 18, 2.4) + (o ? 'Retour : ' + esc(o.lab) : defaut) + '</button>' : ''; }
   function retourAcc(titre) { return '<div class="tache-hd">' + (!gestion() ? '<button class="retour-acc" data-act="accueil">' + ico('prec', 18, 2.6) + 'Accueil</button>' : '') + '<h2>' + titre + '</h2></div>'; }
   function enTache() { return !gestion() && ['sortie', 'retour', 'inventaire', 'mdemande'].indexOf(S.tab) >= 0; }
   // En-tête de la gestion de stock : retour au menu, titre, onglets en deux groupes
@@ -4403,15 +4453,17 @@
     if (g) g1.push(['demandes', 'Demandes' + (att ? '<span class="badge">' + att + '</span>' : '')]);
     var g2 = g ? [['stock', 'Stock'], ['tdb', 'Analyses'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs'], ['histo', 'Historique'], ['plus', 'Plus']] : [['histo', 'Historique']];
     var bt = function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; };
-    var titreTel = S.tab === 'accueil' ? 'Gestion de stock' : NOMS[S.tab] || 'Stock';
+    var titreTel = S.tab === 'accueil' ? 'Gestion de stock' : S.gq ? 'Recherche' : (g && NOMR[S.tab]) || NOMS[S.tab] || 'Stock';
     return '<header class="top t2"><div class="top-in">'
       + '<span class="t2-g">' + (g ? '<button class="t2-back" data-tab="hub" aria-label="Accueil">' + ico('prec', 20, 2.4) + '<span>Accueil</span></button>' : '<button class="t2-back" data-tab="maison">' + ico('prec', 20, 2.4) + '<span>Accueil</span></button>') + '</span>'
       + '<h1 class="t2-t"><span class="m-hide">Gestion de stock</span><span class="m-only">' + esc(titreTel) + '</span></h1>'
       + '<span class="t2-d"><button class="t2-ic" data-tab="aide" aria-label="Aide" title="Aide">' + ico('aide', 20, 2.2) + '</button>'
       + '<button class="t2-ic" data-tab="compte" aria-label="Changer mon ' + (g ? 'mot de passe' : 'code') + '" title="Changer mon ' + (g ? 'mot de passe' : 'code') + '">' + ico('cadenas', 19, 2.2) + '</button>'
       + '<button class="t2-moi" data-act="out" aria-label="Changer de personne (' + esc(S.me.nom) + ')" title="' + esc(nomRole(S.me) + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '')) + '"><span class="t2-av" aria-hidden="true">' + esc((S.me.nom || '?').charAt(0).toUpperCase()) + '</span><span class="m-hide">' + esc(S.me.nom) + ' · changer</span></button></span></div>'
-      + '<nav class="tabs t2-nav" aria-label="Rubriques du stock"><span class="t2-gr"><span class="t2-lab">Au quotidien</span>' + g1.map(bt).join('') + '</span>'
-      + '<span class="t2-sep" aria-hidden="true"></span><span class="t2-gr"><span class="t2-lab">' + (g ? 'Gestion' : 'Suivi') + '</span>' + g2.map(bt).join('') + '</span></nav></header>';
+      + (g ? '<nav class="tabs t2-nav t2-6" aria-label="Rubriques du stock">' + [['accueil', 'À faire'], ['stock', 'Articles'], ['sortie', 'Mouvements' + (att ? '<span class="badge">' + att + '</span>' : '')], ['inventaire', 'Inventaires'], ['commandes', 'Commandes'], ['plus', 'Plus']].map(function (t) { var on = !S.gq && groupeDe(S.tab) === groupeDe(t[0]); return '<button data-tab="' + t[0] + '" class="' + (on ? 'on' : '') + '"' + (on ? ' aria-current="page"' : '') + '>' + t[1] + '</button>'; }).join('')
+        + '<label class="t2-q">' + ico('loupe', 17, 2.2) + '<input id="gq" type="search" placeholder="Chercher partout : article, référence, fournisseur, commande" value="' + esc(S.gq) + '" aria-label="Chercher partout"></label></nav></header>' :
+      '<nav class="tabs t2-nav" aria-label="Rubriques du stock"><span class="t2-gr"><span class="t2-lab">Au quotidien</span>' + g1.map(bt).join('') + '</span>'
+      + '<span class="t2-sep" aria-hidden="true"></span><span class="t2-gr"><span class="t2-lab">' + (g ? 'Gestion' : 'Suivi') + '</span>' + g2.map(bt).join('') + '</span></nav></header>');
   }
   function vNavMobile() {
     if (!gestion()) {
@@ -4423,17 +4475,17 @@
         return '<button data-tab="' + t + '" class="' + (cur === t ? 'on' : '') + '"><span class="bi">' + ico(t, 24) + '</span><span>' + NOMS[t] + '</span></button>';
       }).join('') + '</nav>';
     }
-    var bas = ['accueil', 'sortie', 'inventaire', 'commandes'];
-    var quot = ['demandes', 'retour', 'histo'], cat = ['stock', 'tdb', 'articles', 'fournisseurs', 'invfin', 'plus', 'compte', 'aide'], menu = quot.concat(cat, ['hub']);
+    var bas = ['accueil', 'stock', 'sortie', 'inventaire'], NOMB = { accueil: 'À faire', stock: 'Articles', sortie: 'Mouvements', inventaire: 'Inventaires' };
+    var quot = ['commandes', 'fournisseurs'], cat = ['tdb', 'invfin', 'plus', 'compte', 'aide'], menu = quot.concat(cat, ['hub']);
     var att = S.attente.length, dansMenu = menu.indexOf(S.tab) >= 0;
     var NOMS_G = { plus: 'Sauvegarde', compte: 'Mon mot de passe' };
     var h = '<nav class="bnav g5" aria-label="Menu principal">' + bas.map(function (t) {
-      return '<button data-tab="' + t + '" class="' + (S.tab === t && !S.menu ? 'on' : '') + '"><span class="bi">' + ico(ICO_G[t], 24) + '</span><span>' + NOMS[t] + '</span></button>';
-    }).join('') + '<button data-act="menu" class="' + (S.menu || dansMenu ? 'on' : '') + '" aria-expanded="' + !!S.menu + '"><span class="bi">' + ico('menu', 24) + (att ? '<span class="badge">' + att + '</span>' : '') + '</span><span>Plus</span></button></nav>';
-    var carte = function (t) { return '<button data-tab="' + t + '" class="' + (S.tab === t ? 'on' : '') + '"><span class="bi">' + ico(ICO_G[t], 24) + (t === 'demandes' && att ? '<span class="badge">' + att + '</span>' : '') + '</span><span>' + (NOMS_G[t] || NOMS[t]) + '</span></button>'; };
+      return '<button data-tab="' + t + '" class="' + (groupeDe(S.tab) === groupeDe(t) && !S.menu ? 'on' : '') + '"><span class="bi">' + ico(ICO_G[t], 24) + (t === 'sortie' && att ? '<span class="badge">' + att + '</span>' : '') + '</span><span>' + NOMB[t] + '</span></button>';
+    }).join('') + '<button data-act="menu" class="' + (S.menu || dansMenu ? 'on' : '') + '" aria-expanded="' + !!S.menu + '"><span class="bi">' + ico('menu', 24) + '</span><span>Plus</span></button></nav>';
+    var carte = function (t) { return '<button data-tab="' + t + '" class="' + (S.tab === t ? 'on' : '') + '"><span class="bi">' + ico(ICO_G[t], 24) + '</span><span>' + (NOMS_G[t] || NOMS[t]) + '</span></button>'; };
     if (S.menu) h += '<button class="sheet-bg" data-act="menu" aria-label="Fermer le menu"></button><div class="sheet g5" role="dialog" aria-label="Plus"><div class="sheet-grip"></div><h2 class="sheet-t">Plus</h2>'
-      + '<span class="sheet-lab">Au quotidien</span><div class="sheet-grid">' + quot.map(carte).join('') + '</div>'
-      + '<span class="sheet-lab">Catalogue et réglages</span><div class="sheet-grid">' + cat.map(carte).join('') + '</div>'
+      + '<span class="sheet-lab">Commandes</span><div class="sheet-grid">' + quot.map(carte).join('') + '</div>'
+      + '<span class="sheet-lab">Suivi et réglages</span><div class="sheet-grid">' + cat.map(carte).join('') + '</div>'
       + '<div class="sheet-bas"><button class="sheet-acc" data-tab="hub">' + ico('prec', 20, 2.4) + 'Retour à l’accueil (planning, congés)</button><button class="sheet-out" data-act="out">' + ico('moi', 20) + 'Changer de personne</button></div></div>';
     return h;
   }
@@ -4579,7 +4631,7 @@
     if (!S.attente.length) return '<div class="dm-vide">' + ico('ok', 28, 2.2) + '<b>Aucune demande en attente</b><span class="mu">Les sorties qui dépassent la réserve arrivent ici pour être confirmées.</span></div>';
     return '<p class="mu dm-int">Sorties au-delà de la réserve : confirmez si l’article a bien été pris (l’écart de réserve est enregistré), refusez sinon (le stock ne bouge pas).</p><section class="dm-l">' + S.attente.map(function (m) {
       var a = S.byId[m.article_id] || { nom: '?' }, d = dispoUnites(a), ec = Math.max(0, m.quantite - d);
-      return '<div class="dm-c"><span class="dm-q">× ' + fr(m.quantite) + '</span><span class="dm-n"><b>' + esc(a.nom) + '</b><span>' + esc(m.auteur_nom || '?') + ' · ' + cabTxt(m.emplacement_vers) + ' · ' + quand(m.cree_le) + (m.hors_cabinet ? ' <span class="pill warn">hors cabinet</span>' : '') + '</span>'
+      return '<div class="dm-c"><span class="dm-q">× ' + fr(m.quantite) + '</span><span class="dm-n"><b>' + lA(m.article_id, a.nom) + '</b><span>' + esc(m.auteur_nom || '?') + ' · ' + cabTxt(m.emplacement_vers) + ' · ' + quand(m.cree_le) + (m.hors_cabinet ? ' <span class="pill warn">hors cabinet</span>' : '') + '</span>'
         + '<span>Réserve actuelle : <b>' + fr(d) + ' u.</b>' + (ec ? ' · écart si confirmé : <b class="dm-ec">' + fr(ec) + ' u.</b>' : '') + '</span></span>'
         + '<span class="dm-b"><button class="btn l" data-refuser="' + m.id + '">Refuser</button><button class="btn" data-confirmer="' + m.id + '">Confirmer</button></span></div>';
     }).join('') + '</section>';
@@ -4744,7 +4796,7 @@
     var valR = 0, valC = 0; A.forEach(function (a) { var cm = +a.cout_moyen || 0, f = facteur(a); valR += stockDe(a.id, 0) * cm; for (var c = 1; c <= 9; c++) valC += stockDe(a.id, c) / f * cm; });
     var emps = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (e) { var x = etatInventaire(e); x.emp = e; return x; }), aF = emps.filter(function (x) { return x.cls !== 'ok'; }).length;
     var T = function (tab, fonce, ic, titre, sous, em) { return '<button class="ga-t' + (fonce ? ' fonce' : '') + '" data-tab="' + tab + '"><span class="ga-ic" aria-hidden="true">' + ico(ic, 30) + '</span><span class="ga-tx"><b>' + titre + '</b><span>' + sous + '</span>' + (em ? '<em>' + em + '</em>' : '') + '</span>' + ico('suiv', 22, 2.4) + '</button>'; };
-    var h = '<div class="ga">';
+    var h = '<div class="ga">' + champGq();
     if (sauvegardeEnRetard()) h += '<button class="ga-al" data-tab="plus">' + ico('telecharger', 22) + '<span><b>Sauvegarde du mois</b> à télécharger</span>' + ico('suiv', 20, 2.4) + '</button>';
     if (att) h += '<button class="ga-al" data-tab="demandes">' + ico('attente', 22) + '<span><b>' + att + ' ' + pl(att, 'demande') + ' à confirmer</b> · sorties au-delà de la réserve</span>' + ico('suiv', 20, 2.4) + '</button>';
     h += T('sortie', true, 'sortie', 'Sortie', 'Prendre dans la réserve')
@@ -4760,49 +4812,81 @@
     if (fc.length) h += '<section class="ga-s"><b>Fiches à compléter</b><div class="ga-ch">' + fc.map(function (f) { return '<button data-go="stock:' + f + '">' + STF[f] + ' · ' + n(f) + '</button>'; }).join('') + '</div></section>';
     return h + '</div>';
   }
+  function champGq() { return '<label class="stk-q gq-m">' + ico('loupe', 18, 2.2) + '<input id="gq2" type="search" placeholder="Chercher partout" value="' + esc(S.gq) + '" aria-label="Chercher partout"></label>'; }
+  // Recherche unique : articles, fournisseurs, commandes
+  function vRecherche() {
+    var q = norm(S.gq).trim(), h = champGq() + '<div class="gq-hd"><h2>Recherche « ' + esc(S.gq.trim()) + ' »</h2><button class="btn l sm" data-act="gqx">Fermer la recherche</button></div>';
+    if (q.length < 2) return h + '<p class="mu">Tapez au moins 2 lettres ou chiffres.</p>';
+    var ok = function (t) { return norm(t).indexOf(q) >= 0; };
+    var A = S.articles.concat(S.archives).filter(function (a) { return ok(a.nom + ' ' + (a.reference || '') + ' ' + (S.afPrix[a.id] || []).map(function (x) { return x.reference || ''; }).join(' ') + ' ' + (S.fournisseurs[a.fournisseur_id] || '') + ' ' + (a.type_soins || '')); });
+    A.sort(function (x, y) { return (ok(y.nom) ? 1 : 0) - (ok(x.nom) ? 1 : 0) || x.nom.localeCompare(y.nom, 'fr'); });
+    var Fo = S.fournListe.filter(function (f) { return ok(f.nom); });
+    var Co = S.commandes.filter(function (c) { return ok((c.numero || '') + ' ' + (S.fournisseurs[c.fournisseur_id] || '')); }).slice(0, 8);
+    if (!A.length && !Fo.length && !Co.length) return h + '<p class="mu">Rien trouvé. Essayez un autre mot, une référence ou le nom d’un fournisseur.</p>';
+    if (A.length) h += '<div class="sect st-sect">Articles · ' + A.length + '</div><div class="card liste st-l">' + A.slice(0, 30).map(function (a) {
+      var e = etatArt(a), cabs = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(function (c) { return Math.abs(stockDe(a.id, c)) > 1e-9; });
+      return '<button class="it lrow" data-voir="a:' + a.id + '"><span class="it-n"><b>' + esc(a.nom) + (a.reference && !estSR(a) ? '<span class="ref">' + esc(a.reference) + '</span>' : '') + '</b><span>' + esc(S.fournisseurs[a.fournisseur_id] || 'Sans fournisseur') + ' · réserve ' + fr(stockDe(a.id, 0)) + ' ' + uRes(a) + (cabs.length ? ' · aussi : ' + cabs.map(function (c) { return c === 9 ? 'Sté' : 'cab. ' + c; }).join(', ') : '') + '</span></span><span class="stk-p ' + e[0] + '">' + e[1] + '</span><span aria-hidden="true">›</span></button>';
+    }).join('') + '</div>' + (A.length > 30 ? '<p class="mu">30 premiers articles affichés : précisez la recherche.</p>' : '');
+    if (Fo.length) h += '<div class="sect st-sect">Fournisseurs · ' + Fo.length + '</div><div class="card liste st-l">' + Fo.map(function (f) {
+      var na = S.articles.filter(function (a) { return a.fournisseur_id === f.id; }).length;
+      return '<button class="it lrow" data-voir="f:' + f.id + '"><span class="it-n"><b>' + esc(f.nom) + '</b><span>' + na + ' article' + (na > 1 ? 's' : '') + ' en principal' + (f.telephone ? ' · ' + esc(f.telephone) : '') + (f.archive ? ' · archivé' : '') + '</span></span><span aria-hidden="true">›</span></button>';
+    }).join('') + '</div>';
+    if (Co.length) h += '<div class="sect st-sect">Commandes · ' + Co.length + '</div><div class="card liste st-l">' + Co.map(function (c) {
+      var li = S.lignes[c.id] || [], st = CST[c.statut] || ['', c.statut];
+      return '<button class="it lrow" data-voir="c:' + c.id + '"><span class="it-n"><b>' + esc(S.fournisseurs[c.fournisseur_id] || 'Fournisseur supprimé') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</b><span>Commandée le ' + c.date_commande.split('-').reverse().join('/') + ' · ' + li.length + ' ligne' + (li.length > 1 ? 's' : '') + '</span></span><span class="pill ' + st[0] + '">' + st[1] + '</span><span aria-hidden="true">›</span></button>';
+    }).join('') + '</div>';
+    return h;
+  }
+  // Accueil « À faire » : seulement ce qui demande une action, puis les derniers mouvements
   function vAccueil() {
     if (telephone()) return vAccueilTel();
-    var A = S.articles, cnt = {};
-    Object.keys(STF).forEach(function (f) { cnt[f] = A.filter(function (a) { return filtreStock(a, f); }).length; });
+    var A = S.articles, F = function (f) { return A.filter(function (a) { return filtreStock(a, f); }); };
     var valR = 0, valC = 0;
     A.forEach(function (a) { var cm = +a.cout_moyen || 0, f = facteur(a); valR += stockDe(a.id, 0) * cm; for (var c = 1; c <= 9; c++) valC += stockDe(a.id, c) / f * cm; });
-    var heure = new Date().getHours(), bj = heure < 18 ? 'Bonjour' : 'Bonsoir';
-    var h = '<h2>' + bj + ' ' + esc(S.me.nom) + '</h2>';
-    if (sauvegardeEnRetard()) h += '<div class="ban warn row wrap"><span class="grow">💾 ' + (S.sauv && S.sauv.date ? 'Dernière sauvegarde il y a ' + joursDepuis(S.sauv.date) + ' jours : pensez à la sauvegarde du mois.' : 'Aucune sauvegarde téléchargée pour l’instant.') + '</span><button class="btn sm" data-act="sauver"' + (S.sauvBusy ? ' disabled' : '') + '>' + (S.sauvBusy ? 'Préparation…' : 'Télécharger la sauvegarde') + '</button></div>';
-    // à traiter
-    var att = S.attente.length, cmd = cnt.commander;
-    h += '<div class="tiles">'
-      + tuile(att, 'demande' + (att > 1 ? 's' : '') + ' à confirmer', att ? 'warn' : 'ok', 'demandes', att ? 'Sorties au-delà de la réserve' : 'Rien en attente')
-      + tuile(cnt.rupture, 'en rupture', cnt.rupture ? 'ko' : 'ok', 'stock:rupture', 'Réserve à zéro')
-      + tuile(cnt.commander, 'à commander', cnt.commander ? 'warn' : 'ok', 'stock:commander', (function () { var n = A.filter(function (a) { return filtreStock(a, 'commander') && stockDe(a.id, 0) <= 0; }).length; return n ? 'dont ' + n + ' en rupture' : 'Au seuil d’alerte ou en dessous'; })())
-      + tuile(eur(valR), 'valeur de la réserve', '', 'stock:', 'Cabinets : ' + eur(valC))
-      + '</div>';
-    h += '<div class="if-row"><button class="if-carte" data-tab="tdb"><span class="if-ci" aria-hidden="true">' + ico('graph', 26) + '</span><span class="grow"><b>Analyses du stock</b><span>Consommation, ruptures à venir, articles dormants, seuils suggérés, fournisseurs</span></span>' + ico('suiv', 20, 2.4) + '</button>'
-      + '<button class="if-carte" data-tab="invfin"><span class="if-ci" aria-hidden="true">' + ico('agenda', 26) + '</span><span class="grow"><b>Inventaire de fin d’année ' + invFinAnnee() + '</b><span>Préparer, clôturer et exporter le stock de la réserve pour le comptable</span></span>' + ico('suiv', 20, 2.4) + '</button></div>';
-    // inventaires
-    var emps = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (e) { var s = etatInventaire(e); s.emp = e; return s; });
-    var aFaire = emps.filter(function (s) { return s.cls !== 'ok'; }).sort(function (a, b) { return a.ordre - b.ordre || a.emp - b.emp; });
-    h += '<div class="card"><div class="row wrap" style="margin-bottom:6px"><b class="grow">🗓️ Inventaires mensuels</b><span class="mu">' + (aFaire.length ? aFaire.length + ' à faire' : 'tout est à jour') + '</span></div><div class="invs">'
-      + emps.map(function (s) { return '<button class="inv ' + s.cls + '" data-go="inventaire:' + s.emp + '" title="' + (s.der ? 'Dernier : ' + new Date(s.der).toLocaleDateString('fr-FR') : 'Jamais compté') + '"><b>' + cabTxt(s.emp) + '</b>' + s.txt + '</button>'; }).join('') + '</div></div>';
-    // commandes par fournisseur
-    if (cmd) {
-      var parF = {};
-      A.filter(function (a) { return filtreStock(a, 'commander'); }).forEach(function (a) { var f = S.fournisseurs[a.fournisseur_id] || 'Fournisseur à renseigner'; (parF[f] = parF[f] || []).push(a); });
-      h += '<div class="card"><b>🛒 À commander par fournisseur</b>' + Object.keys(parF).sort().map(function (f) {
-        return '<div class="it"><div class="it-n"><b>' + esc(f) + ' · ' + parF[f].length + ' article' + (parF[f].length > 1 ? 's' : '') + '</b><span>' + parF[f].slice(0, 6).map(function (a) { return esc(a.nom) + (stockDe(a.id, 0) <= 0 ? ' (rupture)' : ''); }).join(', ') + (parF[f].length > 6 ? '…' : '') + '</span></div></div>';
-      }).join('') + '</div>';
+    var heure = new Date().getHours(), n = 0;
+    var bloc = function (cls, titre, sous, act, corps) { n++; return '<section class="card af-c ' + cls + '"><div class="af-t"><span class="grow"><b>' + titre + '</b>' + (sous ? '<span class="mu">' + sous + '</span>' : '') + '</span>' + (act || '') + '</div>' + (corps ? '<div class="af-l">' + corps + '</div>' : '') + '</section>'; };
+    var plus = function (l, max, go) { return l.length > max ? '<button class="lnk af-p" ' + go + '>et ' + (l.length - max) + ' autre' + (l.length - max > 1 ? 's' : '') + '</button>' : ''; };
+    var corps = '';
+    // 1. demandes
+    var att = S.attente;
+    if (att.length) corps += bloc('warn', att.length + ' demande' + (att.length > 1 ? 's' : '') + ' à confirmer', 'Sorties au-delà de la réserve', '<button class="btn sm" data-tab="demandes">Traiter</button>', att.slice(0, 4).map(function (m) { var a = S.byId[m.article_id] || { nom: '?' }; return '<span class="af-i">' + lA(m.article_id, a.nom) + ' × ' + fr(m.quantite) + ' <span class="mu">· ' + cabTxt(m.emplacement_vers) + ' · ' + esc(m.auteur_nom || '?') + '</span></span>'; }).join('') + plus(att, 4, 'data-tab="demandes"'));
+    // 2. ruptures
+    var rup = F('rupture');
+    if (rup.length) corps += bloc('ko', rup.length + ' article' + (rup.length > 1 ? 's' : '') + ' en rupture', 'Réserve à zéro', '<button class="btn l sm" data-go="stock:rupture">Voir la liste</button>', rup.slice(0, 8).map(function (a) { var enc = enCoursPour(a.id), nc = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(function (c) { return stockDe(a.id, c) > 0; }).length; return '<span class="af-i">' + lA(a.id, a.nom) + (enc ? ' <span class="stk-p enc">Commandé · ' + fr(enc) + '</span>' : '') + (nc ? ' <span class="mu">· encore dans ' + nc + ' lieu' + (nc > 1 ? 'x' : '') + '</span>' : '') + '</span>'; }).join('') + plus(rup, 8, 'data-go="stock:rupture"'));
+    // 3. à commander, par fournisseur
+    var cmd = F('commander');
+    if (cmd.length) {
+      var parF = {}; cmd.forEach(function (a) { var k = a.fournisseur_id || 0; (parF[k] = parF[k] || []).push(a); });
+      corps += bloc('warn', cmd.length + ' article' + (cmd.length > 1 ? 's' : '') + ' à commander', 'Au seuil ou en dessous, pas encore commandés', '<button class="btn sm" data-go="commandes:sug">Préparer les commandes</button>', Object.keys(parF).sort(function (x, y) { return (S.fournisseurs[x] || 'zz').localeCompare(S.fournisseurs[y] || 'zz'); }).map(function (k) {
+        var l = parF[k], nr = l.filter(function (a) { return stockDe(a.id, 0) <= 0; }).length;
+        return '<span class="af-i"><b>' + (+k ? lF(+k, '?') : 'Fournisseur à renseigner') + '</b> <span class="mu">· ' + l.length + ' article' + (l.length > 1 ? 's' : '') + (nr ? ', dont ' + nr + ' en rupture' : '') + ' :</span> ' + l.slice(0, 4).map(function (a) { return lA(a.id, a.nom); }).join(', ') + (l.length > 4 ? '…' : '') + '</span>';
+      }).join(''));
     }
-    // à compléter
-    h += '<div class="card"><div class="row wrap"><b class="grow">🧩 Fiches à compléter</b></div><div class="chips">'
-      + ['sr', 'sf', 'seuil'].map(function (f) { return '<button class="chip' + (cnt[f] ? ' warn' : '') + '" data-go="stock:' + f + '">' + STF[f] + ' · ' + cnt[f] + '</button>'; }).join('') + '</div></div>';
+    // 4. livraisons attendues
+    var ouv = S.commandes.filter(function (c) { return c.statut === 'attente' || c.statut === 'partielle'; });
+    if (ouv.length) corps += bloc('info', ouv.length + ' livraison' + (ouv.length > 1 ? 's' : '') + ' attendue' + (ouv.length > 1 ? 's' : ''), 'Commandes en cours à réceptionner', '<button class="btn l sm" data-go="commandes:enc">Voir les commandes</button>', ouv.slice(0, 6).map(function (c) {
+      var li = S.lignes[c.id] || [], reste = li.filter(function (l) { return !l.reliquat_abandonne && l.quantite - l.recu > 0; }).length, j = joursDepuis(c.date_commande);
+      return '<span class="af-i"><button class="lk2" data-voir="c:' + c.id + '">' + esc(S.fournisseurs[c.fournisseur_id] || 'Fournisseur supprimé') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</button> <span class="mu">· commandée ' + (j > 0 ? 'il y a ' + j + ' j' : 'aujourd’hui') + ' · ' + reste + ' ligne' + (reste > 1 ? 's' : '') + ' à recevoir' + (c.statut === 'partielle' ? ' (reliquat)' : '') + '</span></span>';
+    }).join('') + plus(ouv, 6, 'data-go="commandes:enc"'));
+    // 5. inventaires
+    var emps = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (e) { var x = etatInventaire(e); x.emp = e; return x; }), aFaire = emps.filter(function (x) { return x.cls !== 'ok'; }).sort(function (a, b) { return a.ordre - b.ordre || a.emp - b.emp; });
+    if (aFaire.length) corps += bloc(aFaire.some(function (x) { return x.cls === 'ko'; }) ? 'ko' : 'warn', aFaire.length + ' inventaire' + (aFaire.length > 1 ? 's' : '') + ' à faire', 'Chaque emplacement est compté une fois par mois', '', '<div class="invs">' + aFaire.map(function (x) { return '<button class="inv ' + x.cls + '" data-go="inventaire:' + x.emp + '"><b>' + cabTxt(x.emp) + '</b>' + x.txt + '</button>'; }).join('') + '</div>');
+    // 6. fiches à compléter
+    var fc = ['sr', 'sf', 'seuil'].filter(function (f) { return F(f).length; });
+    if (fc.length) corps += bloc('', 'Fiches à compléter', 'Sans référence, sans fournisseur ou sans seuil d’alerte', '', '<div class="chips" style="margin:0">' + fc.map(function (f) { return '<button class="chip warn" data-go="stock:' + f + '">' + STF[f] + ' · ' + F(f).length + '</button>'; }).join('') + '</div>');
+    // 7. sauvegarde
+    if (sauvegardeEnRetard()) corps += bloc('', 'Sauvegarde du mois', S.sauv && S.sauv.date ? 'Dernière sauvegarde il y a ' + joursDepuis(S.sauv.date) + ' jours' : 'Aucune sauvegarde téléchargée pour l’instant', '<button class="btn l sm" data-act="sauver"' + (S.sauvBusy ? ' disabled' : '') + '>' + (S.sauvBusy ? 'Préparation…' : 'Télécharger') + '</button>', '');
+    var h = '<div class="af-hd"><h2>' + (heure < 18 ? 'Bonjour' : 'Bonsoir') + ' ' + esc(S.me.nom) + '</h2><span class="mu">' + (n ? n + ' point' + (n > 1 ? 's' : '') + ' à traiter' : '') + '</span></div>';
+    h += n ? corps : '<div class="ban ok af-ok">' + ico('ok', 22, 2.4) + '<span><b>Tout est à jour.</b> Aucune demande, aucune rupture, rien à commander, inventaires faits.</span></div>';
+    h += '<p class="af-v">Réserve : <b>' + eur(valR) + '</b> · cabinets et Sté : ≈ ' + eur(valC) + ' · ' + A.length + ' articles <button class="lnk" data-tab="tdb">Voir les analyses</button></p>';
     // derniers mouvements
     var hors = S.recents.filter(function (m) { return m.hors_cabinet && new Date(m.cree_le) > new Date(Date.now() - 7 * 864e5); }).length;
-    h += '<div class="card"><div class="row wrap" style="margin-bottom:4px"><b class="grow">🕘 Derniers mouvements de l’équipe</b>' + (hors ? '<span class="pill warn">' + hors + ' hors cabinet (7 j)</span>' : '') + '</div>';
+    h += '<div class="card"><div class="row wrap" style="margin-bottom:4px"><b class="grow">Derniers mouvements de l’équipe</b>' + (hors ? '<span class="pill warn">' + hors + ' hors cabinet (7 j)</span>' : '') + '</div>';
     if (!S.recents.length) h += '<p class="mu" style="margin:6px 0 0">Aucun mouvement pour l’instant.</p>';
-    else h += S.recents.slice(0, 12).map(function (m) {
+    else h += S.recents.slice(0, 10).map(function (m) {
       var a = S.byId[m.article_id] || { nom: m.article_nom ? m.article_nom + ' (supprimé)' : '(article)' }, st = STAT[m.statut] || ['', m.statut];
       var lieu = m.type === 'retour' ? ' ' + cabTxt(m.emplacement_de) + ' → réserve' : m.type === 'sortie' || m.type === 'demande' ? ' → ' + cabTxt(m.emplacement_vers) : m.emplacement_de != null ? ' · ' + cabTxt(m.emplacement_de) : '';
-      return '<div class="it"><div class="it-n"><b>' + (TYP[m.type] || m.type) + lieu + ' · ' + esc(a.nom) + ' × ' + fr(m.quantite) + '</b><span>' + quand(m.cree_le) + ' · ' + esc(m.auteur_nom || '') + '</span></div>'
+      return '<div class="it"><div class="it-n"><b>' + (TYP[m.type] || m.type) + lieu + ' · ' + lA(m.article_id, a.nom) + ' × ' + fr(m.quantite) + '</b><span>' + quand(m.cree_le) + ' · ' + esc(m.auteur_nom || '') + '</span></div>'
         + (m.statut !== 'ok' ? '<span class="pill ' + st[0] + '">' + st[1] + '</span>' : '') + (m.hors_cabinet ? '<span class="pill warn">hors cabinet</span>' : '') + '</div>';
     }).join('') + '<div style="margin-top:8px"><button class="lnk" data-go="histo">Tout l’historique</button></div>';
     return h + '</div>';
@@ -4835,7 +4919,7 @@
       + '<div class="stk-h stk-hc" aria-hidden="true"><span>Article</span><span>' + (c === 9 ? 'À la Sté' : 'Au cabinet ' + c) + ' (≈)</span><span>Réserve</span><span>État</span></div>';
     h += l.map(function (a) {
       var r = stockDe(a.id, 0), s = +a.seuil || 0, enc = enCoursPour(a.id);
-      var k2 = a.sans_seuil ? ['neu', 'Sans seuil'] : !(s > 0) ? ['neu', 'Seuil ?'] : r > s ? ['ok', 'OK'] : r + enc > s ? ['enc', 'Commandé · ' + fr(enc)] : r <= 0 ? ['rup', 'En rupture'] : ['cmd', 'À commander'];
+      var k2 = etatArt(a);
       return '<button class="stk-r stk-rc" data-aopen="' + a.id + '"><span class="stk-a"><b>' + esc(a.nom) + '</b><span>' + esc(a.reference || 'sans réf.') + ' · ' + esc(S.fournisseurs[a.fournisseur_id] || 'Sans fournisseur') + '</span></span>'
         + '<span class="stk-cq"><b>≈ ' + qteCab(a, c) + '</b></span>'
         + '<span class="stk-c">Réserve : ' + fr(r) + ' ' + uRes(a) + '</span>'
@@ -4843,6 +4927,8 @@
     }).join('') + (l.length ? '' : '<p class="mu stk-vide">' + (q ? 'Aucun article trouvé dans cet emplacement.' : 'Rien d’enregistré dans cet emplacement.') + '</p>') + '</section>';
     return h;
   }
+  function vArticlesU() { return S.fiche && S.fiche.type === 'article' ? vFicheArticle() : vStock(); }
+  var STFX = { nolieu: 'Sans lieu', archive: 'Archivés' };
   function vStock() {
     var cab = S.stockCab === '' || S.stockCab == null ? '' : +S.stockCab;
     if (cab !== '') return vStockTete() + tuilesStockCab(cab) + vStockCab(cab);
@@ -4857,25 +4943,27 @@
     return h;
   }
   function vStockTous() {
-    var q = norm(S.stockQ), F = S.stockF || '', l = S.articles.filter(function (a) { return filtreStock(a, F) && (!q || norm(a.nom + ' ' + (a.reference || '') + ' ' + (S.fournisseurs[a.fournisseur_id] || '')).indexOf(q) >= 0); });
+    var q = norm(S.stockQ), F = S.stockF || '', fx = function (a, f) { return f === 'archive' ? true : f === 'nolieu' ? a.lieu_cabinets === false && a.lieu_ste !== true : filtreStock(a, f); };
+    var l = (F === 'archive' ? S.archives : S.articles).filter(function (a) { return fx(a, F) && (!q || norm(a.nom + ' ' + (a.reference || '') + ' ' + (S.fournisseurs[a.fournisseur_id] || '') + ' ' + (a.type_soins || '')).indexOf(q) >= 0); });
     var val = S.articles.reduce(function (t, a) { return t + stockDe(a.id, 0) * (+a.cout_moyen || 0); }, 0);
-    var nb = function (f) { return S.articles.filter(function (a) { return filtreStock(a, f); }).length; };
-    var h = '';
+    var nb = function (f) { return f === 'archive' ? S.archives.length : S.articles.filter(function (a) { return fx(a, f); }).length; };
+    var h = S.artImp ? vImportArticles() : '';
     var k = function (f, v, lab, sous, cls) { return '<button class="stk-k ' + cls + (F === f ? ' on' : '') + '" data-go="stock:' + f + '" aria-pressed="' + (F === f) + '"><b>' + v + '</b><span>' + lab + '</span><small>' + sous + '</small></button>'; };
     h += '<div class="stk-ks">' + k('', S.articles.length, 'articles', 'tous, sauf archivés', 'tous')
       + '<div class="stk-k val"><b>' + eur(val) + '</b><span>valeur de la réserve</span><small>au coût moyen TTC</small></div>'
       + k('commander', nb('commander'), 'à commander', 'au seuil ou en dessous', 'cmd') + k('rupture', nb('rupture'), 'en rupture', 'réserve à 0', 'rup') + '</div>';
     h += '<section class="stk-l"><div class="stk-f"><label class="stk-q">' + ico('loupe', 18, 2.2) + '<input id="stq" type="search" placeholder="Article, référence, fournisseur" value="' + esc(S.stockQ) + '" aria-label="Rechercher"></label>'
-      + '<span class="stk-fl"><span class="mu">À compléter :</span>' + ['sr', 'sf', 'seuil'].map(function (f) { return '<button class="chip' + (F === f ? ' on' : '') + '" data-go="stock:' + (F === f ? '' : f) + '" aria-pressed="' + (F === f) + '">' + STF[f] + ' · ' + nb(f) + '</button>'; }).join('') + '</span></div>'
-      + (F || q ? '<p class="stk-n">' + l.length + ' article' + (l.length > 1 ? 's' : '') + (F ? ' · ' + STF[F] : '') + (F ? ' <button class="lien" data-go="stock:">tout afficher</button>' : '') + '</p>' : '')
+      + '<span class="stk-fl"><span class="mu">À compléter :</span>' + ['sr', 'sf', 'seuil', 'nolieu', 'archive'].map(function (f) { return (f === 'archive' ? '<span class="stk-fs" aria-hidden="true"></span>' : '') + '<button class="chip' + (F === f ? ' on' : '') + '" data-stf="' + (F === f ? '' : f) + '" aria-pressed="' + (F === f) + '">' + (STF[f] || STFX[f]) + ' · ' + nb(f) + '</button>'; }).join('') + '</span></div>'
+      + '<div class="stk-x"><button class="btn ar-new" data-act="anew">+ Nouvel article</button><span class="grow"></span><span class="ar-x"><span class="mu">Modifier en masse :</span><button class="iv-b" data-act="aexp">' + ico('telecharger', 17, 2.2) + 'Exporter Excel</button><label class="iv-b">' + ico('haut', 17, 2.2) + 'Importer Excel<input type="file" id="aimpf" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label></span></div>'
+      + (F || q ? '<p class="stk-n">' + l.length + ' article' + (l.length > 1 ? 's' : '') + (F ? ' · ' + (STF[F] || STFX[F]) : '') + (F ? ' <button class="lien" data-stf="">tout afficher</button>' : '') + '</p>' : '')
       + '<div class="stk-h" aria-hidden="true"><span>Article</span><span>Réserve / seuil</span><span>Dans les cabinets</span><span>État</span></div>';
     h += l.slice(0, 300).map(function (a) {
       var r = stockDe(a.id, 0), s = +a.seuil || 0, det = [], enc = enCoursPour(a.id);
       for (var c = 1; c <= 9; c++) { var v = stockDe(a.id, c); if (v) det.push({ c: c, t: (c === 9 ? 'Sté' : 'cab. ' + c) + ' : ' + fr(v) }); }
-      var k2 = a.sans_seuil ? ['neu', 'Sans seuil'] : !(s > 0) ? ['neu', 'Seuil ?'] : r > s ? ['ok', 'OK'] : r + enc > s ? ['enc', 'Commandé · ' + fr(enc)] : r <= 0 ? ['rup', 'En rupture'] : ['cmd', 'À commander'];
+      var k2 = etatArt(a);
       var pct = s > 0 ? Math.max(0, Math.min(100, r / (2 * s) * 100)) : r > 0 ? 100 : 0;
       var cabT = !det.length ? '—' : det.map(function (x) { return (x.c === 9 ? 'Sté' : x.c) + ' : ' + fr(stockDe(a.id, x.c)); }).join(' · ');
-      return '<button class="stk-r" data-aopen="' + a.id + '"><span class="stk-a"><b>' + esc(a.nom) + '</b><span>' + esc(a.reference || 'sans réf.') + ' · ' + esc(S.fournisseurs[a.fournisseur_id] || 'Sans fournisseur') + '</span></span>'
+      return '<button class="stk-r" data-aopen="' + a.id + '"><span class="stk-a"><b>' + esc(a.nom) + '</b><span>' + esc(a.reference || 'sans réf.') + ' · ' + esc(S.fournisseurs[a.fournisseur_id] || 'Sans fournisseur') + (a.type_soins ? ' · ' + esc(a.type_soins) : '') + (a.lieu_ste === true ? ' · ' + (a.lieu_cabinets !== false ? 'cabinets + Sté' : 'Sté') : a.lieu_cabinets === false ? ' · sans lieu' : '') + '</span></span>'
         + '<span class="stk-q2"><span><b>' + fr(r) + ' ' + uRes(a) + '</b>' + (s > 0 ? ' <span class="mu">/ seuil ' + fr(s) + '</span>' : '') + '</span><span class="stk-bar"><i class="' + k2[0] + '" style="width:' + pct.toFixed(0) + '%"></i></span></span>'
         + '<span class="stk-c" title="' + esc(det.map(function (x) { return x.t; }).join(' · ')) + '">' + cabT + '</span>'
         + '<span class="stk-e"><span class="stk-p ' + k2[0] + '">' + k2[1] + '</span></span></button>';
@@ -4894,41 +4982,26 @@
     return h + '<section class="hi-l"><div class="hi-r hi-h" aria-hidden="true"><span>Date</span><span>Mouvement</span><span>Quantité</span><span>Par</span></div>' + S.histo.map(function (m) {
       var a = S.byId[m.article_id] || { nom: m.article_nom ? m.article_nom + ' (supprimé)' : '(article)' }, st = STAT[m.statut] || ['', m.statut];
       var lieu = m.type === 'retour' ? cabTxt(m.emplacement_de) + ' → réserve' : m.type === 'sortie' || m.type === 'demande' ? '→ ' + cabTxt(m.emplacement_vers) : m.emplacement_de != null ? cabTxt(m.emplacement_de) : '';
-      return '<div class="hi-r"><span class="hi-d">' + quand(m.cree_le) + '</span><span class="hi-m"><span><span class="hi-t ' + (CL[m.type] || '') + '">' + (TYP[m.type] || m.type) + '</span> <b>' + esc(a.nom) + '</b></span><span class="mu">' + lieu + (m.statut !== 'ok' ? ' <span class="pill ' + st[0] + '">' + st[1] + '</span>' : '') + (m.hors_cabinet ? ' <span class="pill warn">hors cabinet</span>' : '') + (m.ecart ? ' · écart ' + fr(m.ecart) + (m.valeur ? ' · ' + eur(m.valeur) : '') : '') + '</span></span>'
+      return '<div class="hi-r"><span class="hi-d">' + quand(m.cree_le) + '</span><span class="hi-m"><span><span class="hi-t ' + (CL[m.type] || '') + '">' + (TYP[m.type] || m.type) + '</span> <b>' + lA(m.article_id, a.nom) + '</b></span><span class="mu">' + lieu + (m.statut !== 'ok' ? ' <span class="pill ' + st[0] + '">' + st[1] + '</span>' : '') + (m.hors_cabinet ? ' <span class="pill warn">hors cabinet</span>' : '') + (m.ecart ? ' · écart ' + fr(m.ecart) + (m.valeur ? ' · ' + eur(m.valeur) : '') : '') + '</span></span>'
         + '<span class="hi-q">' + (m.type === 'retour' && m.quantite_reserve != null && +m.quantite_reserve !== +m.quantite ? fr(m.quantite_reserve) + ' boîte(s) <small class="mu">' + fr(m.quantite) + ' u.</small>' : fr(m.quantite)) + '</span><span class="hi-p">' + esc(m.auteur_nom || '') + '</span></div>';
     }).join('') + '</section>';
   }
 
   // ---------- Articles (gestion) ----------
-  var AF = { tous: 'Tous', sr: 'Sans référence', sf: 'Sans fournisseur', seuil: 'Sans seuil', ste: 'La Sté', nolieu: 'Sans lieu', archive: 'Archivés' };
-  function vArticles() {
-    if (S.fiche && S.fiche.type === 'article') return vFicheArticle();
-    var q = norm(S.artQ), f = S.artF || 'tous';
-    var base = f === 'archive' ? S.archives : S.articles;
-    var l = base.filter(function (a) { return (f === 'tous' || f === 'archive' || (f === 'ste' ? a.lieu_ste === true : f === 'nolieu' ? a.lieu_cabinets === false && a.lieu_ste !== true : filtreStock(a, f))) && (!q || norm(a.nom + ' ' + (a.reference || '') + ' ' + (S.fournisseurs[a.fournisseur_id] || '')).indexOf(q) >= 0); });
-    var h = '<div class="ar-top"><label class="stk-q st-q">' + ico('loupe', 18, 2.2) + '<input id="aq" type="search" placeholder="Article, référence, fournisseur" value="' + esc(S.artQ) + '" aria-label="Rechercher un article"></label><button class="btn ar-new" data-act="anew">+ Nouvel article</button></div>'
-      + '<div class="ar-f"><span class="chips">' + Object.keys(AF).map(function (k) { return '<button class="chip' + (f === k ? ' on' : '') + '" data-af="' + k + '" aria-pressed="' + (f === k) + '">' + AF[k] + '</button>'; }).join('') + '</span>'
-      + '<span class="ar-x"><span class="mu">Modifier en masse :</span><button class="iv-b" data-act="aexp">' + ico('telecharger', 17, 2.2) + 'Exporter Excel</button><label class="iv-b">' + ico('haut', 17, 2.2) + 'Importer Excel<input type="file" id="aimpf" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label></span></div>'
-      + (S.artImp ? vImportArticles() : '')
-      + '<div class="sect st-sect">' + l.length + ' article' + (l.length > 1 ? 's' : '') + (f !== 'tous' ? ' · ' + AF[f] : '') + '</div>';
-    h += '<div class="card liste st-l">' + l.slice(0, S.artMax || 100).map(function (a) {
-      return '<button class="it lrow" data-aopen="' + a.id + '"><span class="it-n"><b>' + esc(a.nom) + (a.reference && !estSR(a) ? '<span class="ref">' + esc(a.reference) + '</span>' : ' <span class="pill warn">SR</span>') + '</b><span>' + esc(S.fournisseurs[a.fournisseur_id] || 'SF') + ' · ' + condTxt(a) + ' · réserve ' + fr(stockDe(a.id, 0)) + ' ' + uRes(a) + (a.lieu_ste === true ? ' · ' + (a.lieu_cabinets !== false ? 'cabinets + Sté' : 'Sté') : a.lieu_cabinets === false ? ' · <span class="pill warn">sans lieu</span>' : '') + (a.type_soins ? ' · ' + esc(a.type_soins) : '') + '</span></span><span aria-hidden="true">›</span></button>';
-    }).join('') + '</div>';
-    if (l.length > (S.artMax || 100)) h += '<button class="btn l" style="width:100%" data-act="amore">Afficher plus</button>';
-    return h;
-  }
   function lieuxTxt(a) { var l = []; if (a.lieu_cabinets !== false) l.push('Cabinets'); if (a.lieu_ste === true) l.push('La Sté'); return l.length ? l.join(' + ') : '<span class="pill warn">aucun : l’article n’apparaît dans aucune liste</span>'; }
   function condTxt(a) { return a.conditionnement === 'BOITE' ? 'boîte de ' + fr(a.qte_par_boite) + (a.consommation === 'Unité' && +a.qte_par_boite > 1 ? ', sortie à l’unité' : ', sortie à la boîte') : 'à l’unité'; }
   function ouvrirArticle(id) {
-    S.fiche = { type: 'article', id: id, edit: id === 'new', d: null, fo: [], hist: [], cor: null };
+    S.fiche = { type: 'article', id: id, edit: id === 'new', d: null, fo: [], hist: [], cor: null, mv: null };
     if (id === 'new') { S.fiche.d = { nom: '', reference: 'SR', conditionnement: 'Unité', qte_par_boite: 1, consommation: 'Unité', conso_verifiee: false, seuil: 0, sans_seuil: false, cout_moyen: 0, prix: 0, lieu_cabinets: true, lieu_ste: false, type_soins: '' }; render(); return; }
     render();
     Promise.all([
       sb.from('articles').select('*').eq('id', id).maybeSingle(),
       sb.from('article_fournisseurs').select('*').eq('article_id', id).order('rang'),
-      sb.from('prix_historique').select('*').eq('article_id', id).order('date_prix', { ascending: false }).limit(20)
+      sb.from('prix_historique').select('*').eq('article_id', id).order('date_prix', { ascending: false }).limit(20),
+      sb.from('mouvements').select('*').eq('article_id', id).order('cree_le', { ascending: false }).limit(60)
     ]).then(function (r) {
-      if (!S.fiche || S.fiche.id !== id) return;
+      if (!S.fiche || S.fiche.id !== id || S.fiche.type !== 'article') return;
+      S.fiche.mv = r[3].data || [];
       if (r[0].error) { toast(msgErr(r[0].error)); return; }
       S.fiche.d = r[0].data; S.fiche.fo = r[1].data || []; S.fiche.hist = r[2].data || []; render();
     });
@@ -4945,21 +5018,32 @@
   }
   function vFicheArticle() {
     var F = S.fiche, a = F.d;
-    var h = '<button class="fx-back" data-act="fclose">' + ico('prec', 18, 2.4) + 'Tous les articles</button>';
+    var h = retourBtn('Tous les articles');
     if (!a) return h + '<p class="mu">Chargement…</p>';
     if (F.edit) return h + synthStock(a) + vEditArticle();
     var f = facteur(a), cabs = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(function (c) { return stockDe(a.id, c); });
-    h += '<div class="fx-w"><aside class="fx-a"><div class="card fx-top"><div class="row wrap"><div class="grow"><h2>' + esc(a.nom) + '</h2><span class="mu">Réf. ' + (a.reference && !estSR(a) ? esc(a.reference) : '<span class="pill warn">SR</span>') + ' · ' + esc(S.fournisseurs[a.fournisseur_id] || 'SF') + (a.archive ? ' · <span class="pill ko">archivé</span>' : '') + '</span></div><button class="btn" data-act="aedit">Modifier</button></div></div>' + synthStock(a) + '</aside><div class="fx-m">';
+    h += '<div class="fx-w"><aside class="fx-a"><div class="card fx-top"><div class="row wrap"><div class="grow"><h2>' + esc(a.nom) + '</h2><span class="mu">Réf. ' + (a.reference && !estSR(a) ? esc(a.reference) : '<span class="pill warn">SR</span>') + ' · ' + lF(a.fournisseur_id, 'SF') + (a.type_soins ? ' · ' + esc(a.type_soins) : '') + '</span><div style="margin-top:8px"><span class="stk-p ' + etatArt(a)[0] + '">' + etatArt(a)[1] + '</span></div></div><button class="btn" data-act="aedit">Modifier</button></div></div>' + synthStock(a) + '</aside><div class="fx-m">';
     h += '<div class="card fx-c"><h3 class="fx-h">Conditionnement et stock</h3><dl class="dl">'
       + '<dt>Conditionnement</dt><dd>' + condTxt(a) + (a.conditionnement === 'BOITE' && +a.qte_par_boite > 1 && !a.conso_verifiee ? ' <span class="pill warn">consommation à vérifier</span>' : '') + '</dd>'
       + '<dt>Réserve</dt><dd>' + fr(stockDe(a.id, 0)) + ' ' + uRes(a) + (f > 1 ? ' (' + fr(stockDe(a.id, 0) * f) + ' u.)' : '') + '</dd>'
-      + '<dt>Cabinets</dt><dd>' + (cabs.length ? cabs.map(function (c) { return (c === 9 ? 'Sté' : 'cab. ' + c) + ' : ' + fr(stockDe(a.id, c)) + ' u.'; }).join(' · ') : 'aucun') + '</dd>'
+      + '<dt>Cabinets et Sté (≈)</dt><dd>' + (cabs.length ? cabs.map(function (c) { return '<button class="lk2" data-voir="cab:' + c + '">' + (c === 9 ? 'la Sté' : 'cabinet ' + c) + '</button> : ' + fr(stockDe(a.id, c)) + ' u.'; }).join(' · ') : 'aucun') + '</dd>'
       + '<dt>Lieux d’utilisation</dt><dd>' + lieuxTxt(a) + '</dd>'
       + '<dt>Type de soins</dt><dd>' + (a.type_soins ? esc(a.type_soins) : '<span class="mu">—</span>') + '</dd>'
       + '<dt>Seuil d’alerte</dt><dd>' + (a.sans_seuil ? 'aucun (voulu)' : +a.seuil > 0 ? fr(a.seuil) + ' ' + uRes(a) : '<span class="pill warn">à renseigner</span>') + '</dd>'
       + '<dt>Coût moyen</dt><dd>' + eur(a.cout_moyen) + ' / ' + (a.conditionnement === 'BOITE' ? 'boîte' : 'unité') + '</dd></dl>'
       + (F.cor ? vCorrection() : '<button class="btn l sm" data-act="cor">Corriger les quantités sans impact financier</button>') + '</div>';
-    h += '<div class="card fx-c"><h3 class="fx-h">Fournisseurs et prix</h3>' + (F.fo.length ? F.fo.map(function (x) { return '<div class="it"><div class="it-n"><b>' + (x.rang === 0 ? '★ ' : '') + esc(S.fournisseurs[x.fournisseur_id] || '?') + '</b><span>' + (x.reference ? 'réf. ' + esc(x.reference) + ' · ' : '') + eur(x.prix) + '</span></div></div>'; }).join('') : '<p class="mu">Aucun fournisseur (SF).</p>') + '</div>';
+    // commandes qui contiennent cet article
+    var cms = S.commandes.filter(function (c) { return (S.lignes[c.id] || []).some(function (l) { return l.article_id === a.id; }); }), cEnc = cms.filter(function (c) { return c.statut === 'attente' || c.statut === 'partielle'; }), cAut = cms.filter(function (c) { return cEnc.indexOf(c) < 0; }).slice(0, 3);
+    var lc = function (c) { var l = (S.lignes[c.id] || []).filter(function (x) { return x.article_id === a.id; }), q = l.reduce(function (t, x) { return t + +x.quantite; }, 0), rc = l.reduce(function (t, x) { return t + +x.recu; }, 0), st = CST[c.statut] || ['', c.statut], ouv = c.statut === 'attente' || c.statut === 'partielle';
+      return '<div class="it"><div class="it-n"><b><button class="lk2" data-voir="c:' + c.id + '">' + esc(S.fournisseurs[c.fournisseur_id] || 'Fournisseur supprimé') + ' · ' + c.date_commande.split('-').reverse().join('/') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</button></b><span>' + (ouv ? 'commandé ' + fr(q) + ' · reçu ' + fr(rc) + ' · <span style="font-weight:700;color:var(--ink2)">attendu ' + fr(Math.max(0, q - rc)) + '</span>' : 'commandé ' + fr(q) + ' · reçu ' + fr(rc)) + '</span></div><span class="pill ' + st[0] + '">' + st[1] + '</span></div>'; };
+    h += '<div class="card fx-c"><h3 class="fx-h">Commandes' + (cEnc.length ? ' <span class="mu">· ' + cEnc.length + ' en cours</span>' : '') + '</h3>' + (cms.length ? cEnc.map(lc).join('') + cAut.map(lc).join('') : '<p class="mu">Cet article n’apparaît dans aucune commande.</p>') + '</div>';
+    // derniers mouvements de cet article
+    var mv = F.mv, mvL = mv ? (F.mvTout ? mv : mv.slice(0, 8)) : [];
+    h += '<div class="card fx-c"><h3 class="fx-h">Derniers mouvements</h3>' + (!mv ? '<p class="mu">Chargement…</p>' : !mv.length ? '<p class="mu">Aucun mouvement enregistré pour cet article.</p>' : mvL.map(function (m) {
+      var st = STAT[m.statut] || ['', m.statut], lieu = m.type === 'retour' ? cabTxt(m.emplacement_de) + ' → réserve' : m.type === 'sortie' || m.type === 'demande' ? '→ ' + cabTxt(m.emplacement_vers) : m.emplacement_de != null ? cabTxt(m.emplacement_de) : '';
+      return '<div class="it"><div class="it-n"><b>' + (TYP[m.type] || m.type) + (lieu ? ' ' + lieu : '') + ' × ' + fr(m.quantite) + '</b><span>' + quand(m.cree_le) + ' · ' + esc(m.auteur_nom || '') + (m.commande_id && cmdDe(m.commande_id) ? ' · <button class="lk2" data-voir="c:' + m.commande_id + '">voir la commande</button>' : '') + '</span></div>' + (m.statut !== 'ok' ? '<span class="pill ' + st[0] + '">' + st[1] + '</span>' : '') + (m.hors_cabinet ? '<span class="pill warn">hors cabinet</span>' : '') + '</div>';
+    }).join('') + (!F.mvTout && mv.length > 8 ? '<div style="margin-top:8px"><button class="lnk" data-act="mvplus">Afficher les ' + mv.length + ' derniers</button></div>' : '')) + '</div>';
+    h += '<div class="card fx-c"><h3 class="fx-h">Fournisseurs et prix</h3>' + (F.fo.length ? F.fo.map(function (x) { return '<div class="it"><div class="it-n"><b>' + (x.rang === 0 ? '★ ' : '') + lF(x.fournisseur_id, '?') + '</b><span>' + (x.reference ? 'réf. ' + esc(x.reference) + ' · ' : '') + eur(x.prix) + '</span></div></div>'; }).join('') : '<p class="mu">Aucun fournisseur (SF).</p>') + '</div>';
     h += '<div class="card fx-c"><h3 class="fx-h">Historique des prix</h3>' + (F.hist.length ? '<div class="scroll"><table class="tbl tbl-p"><tbody>' + F.hist.map(function (p) { return '<tr><td>' + p.date_prix.split('-').reverse().join('/') + '</td><td>' + esc(S.fournisseurs[p.fournisseur_id] || '') + '</td><td class="n">' + eur(p.prix) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="mu">Aucun prix enregistré.</p>') + '</div></div></div>';
     return h;
   }
@@ -5085,7 +5169,7 @@
     return esc(v).replace(/\n/g, '<br>');
   }
   function vFicheFo() {
-    var F = S.fiche, f = F.d, h = '<button class="fx-back" data-act="fclose">' + ico('prec', 18, 2.4) + 'Tous les fournisseurs</button>';
+    var F = S.fiche, f = F.d, h = retourBtn('Tous les fournisseurs');
     if (F.edit) {
       h += '<div class="ban j0"><b>' + (F.id === 'new' ? 'Nouveau fournisseur' : 'Modification') + '</b> : rien n’est enregistré tant que vous ne touchez pas « Enregistrer ».</div>';
       h += '<div class="card"><label class="mu">Nom du fournisseur<input class="in" data-fo-f="nom" value="' + esc(f.nom) + '"></label></div>';
@@ -5097,6 +5181,16 @@
     FOC.forEach(function (g) { h += '<div class="card fx-c"><h3 class="fx-h">' + g[0] + '</h3><dl class="dl">' + g[1].map(function (x) { return '<dt>' + x[1] + '</dt><dd>' + lienFo(x[2], f[x[0]]) + '</dd>'; }).join('') + '</dl></div>'; });
     var c = F.cpt;
     h += '<div class="card fx-c"><h3 class="fx-h">Compte sur le site du fournisseur</h3>' + (c == null ? '<p class="mu">Chargement…</p>' : '<dl class="dl"><dt>Identifiant</dt><dd>' + (c.identifiant ? esc(c.identifiant) + ' <button class="btn l sm" data-copie="' + esc(c.identifiant) + '">Copier</button>' : '<span class="mu">—</span>') + '</dd><dt>Mot de passe</dt><dd>' + (c.mot_de_passe ? esc(c.mot_de_passe) + ' <button class="btn l sm" data-copie="' + esc(c.mot_de_passe) + '">Copier</button>' : '<span class="mu">—</span>') + '</dd></dl>') + '</div></div>';
+    var fid = F.id, arts = S.articles.filter(function (a) { return a.fournisseur_id === fid || (S.afPrix[a.id] || []).some(function (x) { return x.fournisseur_id === fid; }); }), aMax = F.artTout ? arts.length : 12;
+    h += '<div class="card fx-c"><h3 class="fx-h">Articles chez ce fournisseur <span class="mu">· ' + arts.length + '</span></h3>' + (arts.length ? arts.slice(0, aMax).map(function (a) {
+      var pr = a.fournisseur_id === fid, e = etatArt(a), px = prixChez(a, fid), rf = refChez(a, fid);
+      return '<div class="it"><div class="it-n"><b>' + (pr ? '★ ' : '') + lA(a.id, a.nom) + '</b><span>' + (rf ? 'réf. ' + esc(rf) + ' · ' : '') + (px ? eur(px) + ' · ' : '') + 'réserve ' + fr(stockDe(a.id, 0)) + ' ' + uRes(a) + (pr ? '' : ' · fournisseur secondaire') + '</span></div><span class="stk-p ' + e[0] + '">' + e[1] + '</span></div>';
+    }).join('') + (arts.length > aMax ? '<div style="margin-top:8px"><button class="lnk" data-act="foartplus">Afficher les ' + arts.length + ' articles</button></div>' : '') : '<p class="mu">Aucun article rattaché à ce fournisseur.</p>') + '</div>';
+    var cms = S.commandes.filter(function (c) { return c.fournisseur_id === fid; });
+    h += '<div class="card fx-c"><h3 class="fx-h">Commandes <span class="mu">· ' + cms.length + '</span></h3>' + (cms.length ? cms.slice(0, 8).map(function (c) {
+      var li = S.lignes[c.id] || [], tot = li.reduce(function (t, x) { return t + x.quantite * x.prix; }, 0), st = CST[c.statut] || ['', c.statut];
+      return '<div class="it"><div class="it-n"><b><button class="lk2" data-voir="c:' + c.id + '">Commande du ' + c.date_commande.split('-').reverse().join('/') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</button></b><span>' + li.length + ' ligne' + (li.length > 1 ? 's' : '') + ' · ' + eur(tot) + '</span></div><span class="pill ' + st[0] + '">' + st[1] + '</span></div>';
+    }).join('') + (cms.length > 8 ? '<p class="mu" style="margin:8px 0 0">Les 8 dernières sont affichées.</p>' : '') : '<p class="mu">Aucune commande passée à ce fournisseur.</p>') + '</div>';
     return h;
   }
   function sauverFo() {
@@ -5172,11 +5266,11 @@
       return '<button class="cm-fo' + (k === sel ? ' on' : '') + '" data-sugsel="' + k + '" aria-pressed="' + (k === sel) + '"><span class="cm-fo1"><b>' + esc(+k ? S.fournisseurs[k] || '?' : 'Fournisseur à renseigner') + '</b><b>' + eur(totDe(k)) + '</b></span><span class="cm-fo2">' + arts.length + ' article' + (arts.length > 1 ? 's' : '') + (nR ? '<span class="pill ko">' + nR + ' en rupture</span>' : '') + '</span></button>';
     }).join('') + '</aside>';
     var fid = +sel, arts = parF[sel], tot = totDe(sel);
-    h += '<section class="cm-d"><div class="cm-dh"><h3>' + esc(fid ? S.fournisseurs[fid] || '?' : 'Fournisseur à renseigner') + '</h3><span class="mu">Quantité proposée : de quoi remonter à deux fois le seuil. 0 retire l’article.</span></div>'
+    h += '<section class="cm-d"><div class="cm-dh"><h3>' + (fid ? lF(fid, '?') : 'Fournisseur à renseigner') + '</h3><span class="mu">Quantité proposée : de quoi remonter à deux fois le seuil. 0 retire l’article.</span></div>'
       + '<div class="cm-g cm-gh" aria-hidden="true"><span>Article</span><span>Réserve / seuil</span><span>À commander</span><span>Total TTC</span></div>';
     h += arts.map(function (a) {
       var key = fid + ':' + a.id, q = qDe(fid, a), p = prixChez(a, fid), enc = enCoursPour(a.id), rf = refChez(a, fid), r = stockDe(a.id, 0), qn = nb(String(q).replace(',', '.')) || 0;
-      return '<div class="cm-g' + (qn ? '' : ' zero') + '"><span class="cm-a"><b>' + esc(a.nom) + '</b><span>' + (rf ? esc(rf) + ' · ' : '') + eur(p) + ' l’unité' + (enc ? ' · <span class="pill warn">' + fr(enc) + ' déjà en commande</span>' : '') + '</span></span>'
+      return '<div class="cm-g' + (qn ? '' : ' zero') + '"><span class="cm-a"><b>' + lA(a.id, a.nom) + '</b><span>' + (rf ? esc(rf) + ' · ' : '') + eur(p) + ' l’unité' + (enc ? ' · <span class="pill warn">' + fr(enc) + ' déjà en commande</span>' : '') + '</span></span>'
         + '<span class="cm-r"><b class="' + (r <= 0 ? 'ko' : 'warn') + '">' + fr(r) + ' ' + uRes(a) + '</b> <span class="mu">/ ' + fr(a.seuil) + '</span></span>'
         + '<span class="cm-st"><button class="cm-pm" data-sugstep="' + key + '|-1" aria-label="Un de moins">−</button><input inputmode="decimal" data-sugq="' + key + '" value="' + esc(q) + '" aria-label="Quantité à commander : ' + esc(a.nom) + '"><button class="cm-pm" data-sugstep="' + key + '|1" aria-label="Un de plus">+</button></span>'
         + '<b class="cm-t">' + (qn ? eur(qn * p) : '—') + '</b></div>';
@@ -5227,10 +5321,10 @@
   }
   function vCommande() {
     var F = S.fiche, c = S.commandes.filter(function (x) { return x.id === F.id; })[0];
-    var h = '<button class="fx-back" data-act="fclose">' + ico('prec', 18, 2.4) + 'Toutes les commandes</button>';
+    var h = retourBtn('Toutes les commandes');
     if (!c) return h + '<p class="mu">Chargement…</p>';
     var li = S.lignes[c.id] || [], st = CST[c.statut] || ['', c.statut], ouverte = c.statut === 'attente' || c.statut === 'partielle';
-    h += '<div class="card fx-top row wrap"><div class="grow"><h2>' + esc(S.fournisseurs[c.fournisseur_id] || 'Fournisseur supprimé') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</h2>' + (c.numero && !F.editNum ? '<div style="margin:8px 0"><button class="btn l sm" data-act="cnumedit">Modifier la référence</button></div>' : '<div class="row" style="margin:8px 0;max-width:460px"><input class="in" id="cnum" placeholder="Référence de la commande passée" value="' + esc(F.num != null ? F.num : c.numero || '') + '" aria-label="Référence de la commande"><button class="btn sm" data-act="cnumok">Enregistrer</button>' + (c.numero ? '<button class="btn l sm" data-act="cnumno">Annuler</button>' : '') + '</div>') + '<span class="mu">Commande du ' + c.date_commande.split('-').reverse().join('/') + '</span> <span class="pill ' + st[0] + '">' + st[1] + '</span></div>' + (ouverte ? '<button class="btn l sm" data-act="cclose">Clôturer</button>' : '') + '</div>';
+    h += '<div class="card fx-top row wrap"><div class="grow"><h2>' + lF(c.fournisseur_id, 'Fournisseur supprimé') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</h2>' + (c.numero && !F.editNum ? '<div style="margin:8px 0"><button class="btn l sm" data-act="cnumedit">Modifier la référence</button></div>' : '<div class="row" style="margin:8px 0;max-width:460px"><input class="in" id="cnum" placeholder="Référence de la commande passée" value="' + esc(F.num != null ? F.num : c.numero || '') + '" aria-label="Référence de la commande"><button class="btn sm" data-act="cnumok">Enregistrer</button>' + (c.numero ? '<button class="btn l sm" data-act="cnumno">Annuler</button>' : '') + '</div>') + '<span class="mu">Commande du ' + c.date_commande.split('-').reverse().join('/') + '</span> <span class="pill ' + st[0] + '">' + st[1] + '</span></div>' + (ouverte ? '<button class="btn l sm" data-act="cclose">Clôturer</button>' : '') + '</div>';
     if (ouverte) {
       h += '<div class="fx-act"><label class="btn gold" style="display:inline-flex;align-items:center;gap:8px">' + ico('haut', 18, 2.2) + 'Importer la facture PDF<input type="file" accept="application/pdf,.pdf" id="impf" hidden></label><button class="btn l" data-act="caouvre">+ Ajouter un article</button></div>';
       if (F.imp) h += vImport(c);
@@ -5238,7 +5332,7 @@
     }
     h += '<div class="card fx-c fx-lignes"><h3 class="fx-h">Lignes' + (ouverte ? ' <span class="mu">· saisir ce qui est arrivé</span>' : '') + '</h3>' + li.map(function (l) {
       var a = S.byId[l.article_id] || { nom: (l.article_nom || 'article') + ' (supprimé)' }, reste = Math.max(0, l.quantite - l.recu), r = F.rx[l.id] || {}, rf = a.id ? refChez(a, c.fournisseur_id) : '';
-      return '<div class="it" style="flex-wrap:wrap"><div class="it-n"><b>' + esc(a.nom) + '</b><span style="display:block;font-weight:700;color:var(--ink2)">Réf. ' + (rf ? esc(rf) : '<span class="pill warn">SR</span>') + '</span><span>Commandé ' + fr(l.quantite) + ' · reçu ' + fr(l.recu) + (l.gratuit ? ' + ' + fr(l.gratuit) + ' offert(s)' : '') + ' · ' + eur(l.prix) + (l.reliquat_abandonne ? ' · <span class="pill">reliquat abandonné</span>' : reste && c.statut !== 'attente' ? ' · <span class="pill warn">reste ' + fr(reste) + '</span>' : '') + '</span></div>'
+      return '<div class="it" style="flex-wrap:wrap"><div class="it-n"><b>' + (a.id ? lA(a.id, a.nom) : esc(a.nom)) + '</b><span style="display:block;font-weight:700;color:var(--ink2)">Réf. ' + (rf ? esc(rf) : '<span class="pill warn">SR</span>') + '</span><span>Commandé ' + fr(l.quantite) + ' · reçu ' + fr(l.recu) + (l.gratuit ? ' + ' + fr(l.gratuit) + ' offert(s)' : '') + ' · ' + eur(l.prix) + (l.reliquat_abandonne ? ' · <span class="pill">reliquat abandonné</span>' : reste && c.statut !== 'attente' ? ' · <span class="pill warn">reste ' + fr(reste) + '</span>' : '') + '</span></div>'
         + (ouverte && !l.reliquat_abandonne && a.id ? '<div class="row" style="gap:6px"><label class="mu" style="font-size:13px">Reçu<input class="in" style="width:80px;height:42px" inputmode="decimal" data-rxq="' + l.id + '" value="' + esc(r.q != null ? r.q : reste) + '"></label><label class="mu" style="font-size:13px">Offert<input class="in" style="width:70px;height:42px" inputmode="decimal" data-rxg="' + l.id + '" value="' + esc(r.g || '') + '" placeholder="0"></label>' + (reste ? '<button class="btn l sm" title="Ne plus attendre le reste" data-rxab="' + l.id + '">Abandonner le reste</button>' : '') + '</div>' : '') + '</div>';
     }).join('') + (ouverte ? '<div class="row" style="margin-top:12px"><span class="grow mu">Les quantités offertes entrent en stock sans valeur.</span><button class="btn" data-act="rxgo"' + (F.busy ? ' disabled' : '') + '>Réceptionner</button></div>' : '') + '</div>';
     var lots = {}; F.recs.forEach(function (m) { if (m.type === 'reception') (lots[m.lot] = lots[m.lot] || []).push(m); });
@@ -6207,7 +6301,7 @@
   }
 
   function vPlus() {
-    var j = joursDepuis(S.sauv && S.sauv.date), h = '<h2>Plus</h2>' + '<button class="if-carte" data-tab="invfin"><span class="if-ci" aria-hidden="true">' + ico('agenda', 26) + '</span><span class="grow"><b>Inventaire de fin d’année ' + invFinAnnee() + '</b><span>Préparer, clôturer et exporter le stock de la réserve pour le comptable</span></span>' + ico('suiv', 20, 2.4) + '</button>';
+    var j = joursDepuis(S.sauv && S.sauv.date), h = '';
     h += '<div class="card"><div class="row wrap sauvrow"><div class="grow"><b>💾 Sauvegarde</b><br><span class="mu">'
       + (S.sauv && S.sauv.date ? 'Dernière : ' + new Date(S.sauv.date).toLocaleDateString('fr-FR') + ' par ' + esc(S.sauv.par || '?') + (j ? ' (il y a ' + j + ' jour' + (j > 1 ? 's' : '') + ')' : ' (aujourd’hui)') : 'Aucune sauvegarde téléchargée pour l’instant')
       + '</span></div><button class="btn' + (sauvegardeEnRetard() ? ' gold' : '') + '" data-act="sauver"' + (S.sauvBusy ? ' disabled' : '') + '>' + (S.sauvBusy ? 'Préparation…' : 'Télécharger la sauvegarde') + '</button></div>'
@@ -6217,9 +6311,9 @@
     var TC = { Majeure: 'ko', Mineure: 'ok', Correctif: 'warn' };
     h += (window.JOURNAL || []).map(function (v, i) {
       return '<details class="card"' + (i === 0 ? ' open' : '') + '><summary style="cursor:pointer;list-style:none"><b>Version ' + esc(v.v) + ' — ' + esc(v.n) + '</b> <span class="pill ' + (TC[v.t] || '') + '">' + esc(v.t) + '</span><br><span class="mu">' + esc(v.d) + '</span></summary>'
-        + '<p style="margin:10px 0 6px"><b>Pourquoi :</b> ' + esc(v.w) + '</p>'
+        + (v.w ? '<p style="margin:10px 0 6px"><b>Pourquoi :</b> ' + esc(v.w) + '</p>' : '')
         + (v.c && v.c.length ? '<b>Changements</b><ul style="margin:4px 0 8px;padding-left:20px">' + v.c.map(function (x) { return '<li style="margin:4px 0">' + esc(x) + '</li>'; }).join('') + '</ul>' : '')
-        + (v.x && v.x.length ? '<b>Données</b><ul style="margin:4px 0 0;padding-left:20px">' + v.x.map(function (x) { return '<li style="margin:4px 0">' + esc(x) + '</li>'; }).join('') + '</ul>' : '')
+        + (v.x && v.x.length ? '<b>Données</b><ul style="margin:4px 0 0;padding-left:20px">' + [].concat(v.x).map(function (x) { return '<li style="margin:4px 0">' + esc(x) + '</li>'; }).join('') + '</ul>' : '')
         + '</details>';
     }).join('');
     return h;
@@ -6290,7 +6384,7 @@
       return [a.id, a.nom, a.reference || 'SR', S.fournisseurs[a.fournisseur_id] || 'SF', p ? +p.prix : +a.prix || 0, p && p.reference || '', a.conditionnement === 'BOITE' ? 'Boîte' : 'Unité', +a.qte_par_boite,
         a.consommation === 'BOITE' ? 'Boîte' : 'Unité', +a.seuil, a.sans_seuil ? 'oui' : 'non', a.conso_verifiee ? 'oui' : 'non', a.lieu_cabinets !== false ? 'oui' : 'non', a.lieu_ste === true ? 'oui' : 'non', a.type_soins || '', a.archive ? 'oui' : 'non', null, fr(stockDe(a.id, 0)) + ' ' + uRes(a), +a.cout_moyen];
     });
-    var aide = [['Modifiez les cases à changer, puis importez le fichier avec « Importer Excel » dans l’onglet Articles.'], ['Une case laissée VIDE garde la valeur actuelle de la fiche.'], ['Ne modifiez pas la colonne N° : elle relie la ligne à la fiche.'],
+    var aide = [['Modifiez les cases à changer, puis importez le fichier avec « Importer Excel » dans la rubrique Articles.'], ['Une case laissée VIDE garde la valeur actuelle de la fiche.'], ['Ne modifiez pas la colonne N° : elle relie la ligne à la fiche.'],
       ['Nouvel article : ajoutez une ligne en bas SANS N°, avec au moins le Nom.'], ['Fournisseur principal : nom exact d’un fournisseur de la feuille Fournisseurs, ou SF pour « sans fournisseur ».'], ['Référence : SR pour « sans référence ».'],
       ['Livré / Sortie au cabinet : Boîte ou Unité.  Sans seuil, Conso. vérifiée, Archivé : oui ou non.'],
       ['Lieu 1 : Cabinets / Lieu 2 : La Sté : oui ou non. Un article peut avoir les deux. Il n’apparaît dans les listes de Sortie et d’Inventaire que pour ses lieux (la recherche trouve tout).'], ['Type de soins : texte libre pour l’instant (une liste fixe sera créée à partir de ce que vous écrivez). Écrivez un tiret « - » pour vider la case.'], ['Prix TTC : prix chez le fournisseur principal (le dernier prix connu).'], ['Les colonnes « (info) » ne sont pas importées : la réserve se met à jour par l’inventaire.'], ['Supprimer une fiche : écrivez oui dans la colonne « Supprimer ». Effacer une ligne du fichier ne supprime rien. Une fiche qui a encore du stock (réserve ou cabinets) ou qui est attendue dans une commande en cours ne peut pas être supprimée.']];
@@ -6305,7 +6399,7 @@
     S.artImp = { lecture: true }; render();
     file.arrayBuffer().then(XLSX_EVY.lire).then(function (cl) {
       var rows = feuilleDe(cl, 'Articles'), idx = colonnes(rows[0], COLS_A), R = { modifs: [], nouveaux: [], suppr: [], erreurs: [], nb: 0 };
-      if (idx.nom == null && idx.id == null) throw new Error('Colonnes « N° » et « Nom » introuvables : utilisez le fichier exporté depuis l’onglet Articles');
+      if (idx.nom == null && idx.id == null) throw new Error('Colonnes « N° » et « Nom » introuvables : utilisez le fichier exporté depuis la rubrique Articles');
       var parFo = {}; S.fournListe.forEach(function (f) { parFo[norm(f.nom).trim()] = f; });
       var CH = { nom: 'Nom', reference: 'Référence', fournisseur_id: 'Fournisseur', prix: 'Prix TTC', ref_fo: 'Réf. fournisseur', conditionnement: 'Livré', qte_par_boite: 'Unités par boîte', consommation: 'Sortie au cabinet', seuil: 'Seuil', sans_seuil: 'Sans seuil', conso_verifiee: 'Conso. vérifiée', archive: 'Archivé', lieu_cabinets: 'Lieu 1 : Cabinets', lieu_ste: 'Lieu 2 : La Sté', type_soins: 'Type de soins' };
       rows.slice(1).forEach(function (r, i) {
@@ -6645,7 +6739,9 @@
   document.addEventListener('click', function (e) {
     var t = e.target.closest('button'); if (!t || !S.me) return;
     var d = t.dataset;
-    if (d.go) { var g = d.go.split(':'); S.tab = g[0]; S.tabChoisi = true; if (g[0] === 'stock') { S.stockF = g[1] || ''; S.stockCab = ''; } if (g[0] === 'inventaire' && g[1] !== undefined) choisirEmp(+g[1]); if (g[0] === 'histo') { S.histTous = true; chargerHisto(); } render(); window.scrollTo(0, 0); return; }
+    if (d.voir) { var vv = d.voir.split(':'); voir(vv[0], vv[1]); return; }
+    if (d.act === 'gqx') { S.gq = ''; render(); return; }
+    if (d.go) { var g = d.go.split(':'); S.tab = g[0]; S.tabChoisi = true; S.retours = []; S.gq = ''; S.fiche = null; S.menu = false; if (g[0] === 'commandes' && g[1]) S.cmdSub = g[1]; if (g[0] === 'stock') { S.stockF = g[1] || ''; S.stockCab = ''; S.stockQ = ''; } if (g[0] === 'inventaire' && g[1] !== undefined) choisirEmp(+g[1]); if (g[0] === 'histo') { S.histTous = true; chargerHisto(); } render(); window.scrollTo(0, 0); return; }
     if (d.act === 'ireste') { S.inv.reste = true; S.inv.cherche = false; S.inv.q = ''; render(); return; }
     if (d.act === 'itout') { S.inv.reste = false; S.inv.cherche = false; S.inv.q = ''; render(); return; }
     if (d.act === 'icherche') { S.inv.cherche = !S.inv.cherche; S.inv.q = ''; render(); var iq = $('iq'); if (iq) iq.focus(); return; }
@@ -6661,7 +6757,7 @@
     if (d.essai) { marquerVu(d.gid); S.aideOuverte = d.gid; S.tab = d.essai; S.tabChoisi = true; if (d.essai === 'histo') chargerHisto(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'menu') { S.menu = !S.menu; render(); return; }
     if (d.tab) { if (d.tab === 'pointage' && S.tab !== 'pointage') { S.ptg = S.ptg || { rows: {} }; S.ptg.mode = 'semaine'; S.ptg.jour = dIso(new Date()); if (S.ptg.bord) S.ptg.bord.sel = null; }   // le pointage s'ouvre toujours sur la semaine en cours
-    if (d.tab === 'ppostes') S.postesEd = null; if (d.tab === 'ptypes') S.typesEd = null; if (d.tab === 'proles') S.rolesEd = null; if (d.tab === 'pprofils' || d.tab === 'ptypes' || d.tab === 'proles' || d.tab === 'pvisible') S.profEd = null; S.menu = false; S.fiche = null; if (d.tab === 'sortie') S.sortie.ok = null; S.tab = d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); if (d.tab === 'plus') chargerEcarts(); render(); window.scrollTo(0, 0); return; }
+    if (d.tab === 'ppostes') S.postesEd = null; if (d.tab === 'ptypes') S.typesEd = null; if (d.tab === 'proles') S.rolesEd = null; if (d.tab === 'pprofils' || d.tab === 'ptypes' || d.tab === 'proles' || d.tab === 'pvisible') S.profEd = null; S.menu = false; S.fiche = null; S.retours = []; S.gq = ''; if (d.tab === 'sortie') S.sortie.ok = null; S.tab = d.tab === 'articles' && gestion() ? 'stock' : d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); if (d.tab === 'plus') chargerEcarts(); render(); window.scrollTo(0, 0); return; }
     if (d.act === 'out') { demander('Changer de personne ?', 'La personne suivante devra se connecter avec son identifiant et son code.', 'Changer de personne').then(function (ok) { if (ok) deconnexion(); }); return; }
     if (d.act === 'maj') return mettreAJour();
     if (d.ecp) { S.ecarts = S.ecarts || {}; S.ecarts.p = d.ecp; chargerEcarts(); render(); return; }
@@ -6681,7 +6777,7 @@
       if (d.act === 'pttcopie') { var tx = pttRapport(); (navigator.clipboard ? navigator.clipboard.writeText(tx) : Promise.reject()).then(function () { toast('✔ Rapport copié'); }, function () { fenetre({ titre: 'Rapport', html: '<textarea class="in" style="width:100%;min-height:240px" readonly>' + esc(tx) + '</textarea>', ok: 'Fermer' }); }); return; }
     }
     if (d.tdbo && S.tdb) { S.tdb.onglet = d.tdbo; render(); window.scrollTo(0, 0); return; }
-    if (d.tdba) { S.tab = 'articles'; S.menu = false; ouvrirArticle(+d.tdba); window.scrollTo(0, 0); return; }
+    if (d.tdba) { voir('a', d.tdba); return; }
     if (d.tdbtout && S.tdb) { S.tdb.tout[d.tdbtout] = !S.tdb.tout[d.tdbtout]; render(); return; }
     if (d.tdbseuil) { var tsl = d.tdbseuil.split('|'); return tdbAppliquerSeuil(+tsl[0], +tsl[1]); }
     if (d.act === 'tdbexp') return tdbExporter();
@@ -6707,6 +6803,7 @@
     if (d.act === 'plinterim') { if (S.pl) basculerInterim(S.pl.lundi); return; }
     if (d.act === 'pladm') { S.plAdm = !plAdmOn(); lsSet('evy-pl-adm', S.plAdm ? '1' : '0'); render(); return; }
     if (d.stcab != null) { S.stockCab = d.stcab === '' ? '' : +d.stcab; render(); return; }
+    if (d.stf != null) { S.stockF = d.stf; render(); return; }
     if (d.scab) { S.sortie.cab = +d.scab; render(); return; }
     if (d.htous != null) { var ht = d.htous === '1'; if (ht !== !!S.histTous) { S.histTous = ht; render(); chargerHisto(); } return; }
     if (d.rcab) { S.ret.cab = +d.rcab; render(); return; }
@@ -6731,7 +6828,7 @@
     if (d.sugsel != null) { S.sugSel = d.sugsel; render(); return; }
     if (d.sugstep) { var sp = d.sugstep.split('|'), sk = sp[0], sf = +sk.split(':')[0], sa = S.byId[+sk.split(':')[1]], cur = S.sugQ[sk] != null ? nb(String(S.sugQ[sk]).replace(',', '.')) || 0 : (sa ? qteSuggeree(sa) : 0); S.sugQ[sk] = Math.max(0, Math.round((cur + +sp[1]) * 100) / 100); render(); return; }
     if (d.cfrom) return depuisSuggestion(+d.cfrom);
-    if (d.copen) { ouvrirCommande(+d.copen); window.scrollTo(0, 0); return; }
+    if (d.copen) { voir('c', d.copen); return; }
     if (d.ncadd) { if (!S.nc.l.some(function (l) { return l.article_id === +d.ncadd; })) { var aa = S.byId[d.ncadd]; S.nc.l.push({ article_id: +d.ncadd, quantite: 1, prix: prixChez(aa, +S.nc.fid) }); } S.nc.q = ''; render(); return; }
     if (d.ncdel) { S.nc.l.splice(+d.ncdel, 1); render(); return; }
     if (d.act === 'ncgo') { var N = S.nc; return creerCommande(+N.fid, N.l.map(function (l) { return { article_id: l.article_id, quantite: nb(String(l.quantite).replace(',', '.')), prix: nb(String(l.prix).replace(',', '.')) }; }), N.num.trim()).then(function () { S.nc = { fid: '', num: '', q: '', l: [] }; }); }
@@ -6747,11 +6844,10 @@
     if (d.act === 'cnumedit') { S.fiche.editNum = true; render(); var ci = document.getElementById('cnum'); if (ci) ci.focus(); return; }
     if (d.act === 'cnumno') { S.fiche.editNum = false; S.fiche.num = null; render(); return; }
     if (d.act === 'cnumok') { var cid = S.fiche.id, nv = (S.fiche.num != null ? S.fiche.num : (document.getElementById('cnum') || {}).value || '').trim(); return sb.from('commandes').update({ numero: nv || null }).eq('id', cid).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } toast('✔ Référence de commande enregistrée'); S.fiche.num = null; S.fiche.editNum = false; chargerCommandes().then(render); }); }
-    if (d.af) { S.artF = d.af; S.artMax = 100; render(); return; }
-    if (d.aopen) { ouvrirArticle(+d.aopen); window.scrollTo(0, 0); return; }
-    if (d.act === 'anew') { ouvrirArticle('new'); return; }
-    if (d.act === 'amore') { S.artMax += 100; render(); return; }
-    if (d.act === 'fclose') { S.fiche = null; render(); return; }
+    if (d.aopen) { voir('a', d.aopen); return; }
+    if (d.act === 'anew') { S.retours = []; S.tab = 'stock'; ouvrirArticle('new'); window.scrollTo(0, 0); return; }
+    if (d.act === 'mvplus') { S.fiche.mvTout = true; render(); return; }
+    if (d.act === 'fclose') { revenir(); return; }
     if (d.act === 'aedit') { S.fiche.edit = true; S.fiche.d = JSON.parse(JSON.stringify(S.fiche.d)); S.fiche.foEdit = null; render(); return; }
     if (d.act === 'aannule') { if (S.fiche.id === 'new') S.fiche = null; else { var id0 = S.fiche.id; ouvrirArticle(id0); } render(); return; }
     if (d.act === 'asave') return sauverArticle();
@@ -6764,8 +6860,9 @@
     if (d.act === 'cor2') { if (!corChanges().length) { toast('Aucune quantité modifiée'); return; } S.fiche.cor.etape = 2; render(); return; }
     if (d.act === 'cor1') { S.fiche.cor.etape = 1; render(); return; }
     if (d.act === 'corgo') return corGo();
-    if (d.foopen) { ouvrirFo(+d.foopen); window.scrollTo(0, 0); return; }
-    if (d.act === 'fonew') { ouvrirFo('new'); return; }
+    if (d.foopen) { voir('f', d.foopen); return; }
+    if (d.act === 'foartplus') { S.fiche.artTout = true; render(); return; }
+    if (d.act === 'fonew') { S.retours = []; ouvrirFo('new'); return; }
     if (d.act === 'foedit') { S.fiche.edit = true; S.fiche.d = JSON.parse(JSON.stringify(S.fiche.d)); S.fiche.cpt = JSON.parse(JSON.stringify(S.fiche.cpt || {})); render(); return; }
     if (d.act === 'foannule') { if (S.fiche.id === 'new') S.fiche = null; else ouvrirFo(S.fiche.id); render(); return; }
     if (d.act === 'fosave') return sauverFo();
@@ -6940,6 +7037,7 @@
     else if (t.id === 'rq') { S.ret.q = t.value; S.ret.msg = null; render(); }
     else if (t.dataset && t.dataset.rqte) { setRet(t.dataset.rqte, t.value); var rb = document.querySelector('.bar'); if (rb) rb.outerHTML = vBarRetour(); }
     else if (t.id === 'stq') { S.stockQ = t.value; render(); }
+    else if (t.id === 'gq' || t.id === 'gq2') { S.gq = t.value; render(); }
     else if (t.dataset && t.dataset.sugq) { S.sugQ[t.dataset.sugq] = t.value; }
     else if (t.id === 'ncnum') { S.nc.num = t.value; }
     else if (t.id === 'cnum') { S.fiche.num = t.value; }
@@ -6948,7 +7046,6 @@
     else if (t.dataset && t.dataset.ncl != null) { S.nc.l[+t.dataset.ncl][t.dataset.nck] = t.value; }
     else if (t.dataset && t.dataset.rxq) { (S.fiche.rx[t.dataset.rxq] = S.fiche.rx[t.dataset.rxq] || {}).q = t.value; }
     else if (t.dataset && t.dataset.rxg) { (S.fiche.rx[t.dataset.rxg] = S.fiche.rx[t.dataset.rxg] || {}).g = t.value; }
-    else if (t.id === 'aq') { S.artQ = t.value; S.artMax = 100; render(); }
     else if (t.dataset && t.dataset.afF && S.fiche) { S.fiche.d[t.dataset.afF] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox') render(); }
     else if (t.dataset && t.dataset.foI != null && S.fiche) { S.fiche.foEdit[+t.dataset.foI][t.dataset.foK] = t.value; }
     else if (t.dataset && t.dataset.foF && S.fiche) { S.fiche.d[t.dataset.foF] = t.value; }
