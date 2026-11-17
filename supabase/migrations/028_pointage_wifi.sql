@@ -7,7 +7,7 @@
 --  1. Réglage parametres « pointage_wifi » = {mode: off | souple | strict, reseaux: [{cle, nom, le, par}]}.
 --  2. pointages : arrivee_hc / sortie_hc (pointé hors du centre, à vérifier) et arrivee_res / sortie_res
 --     (réseau vu, gardé seulement jusqu'à la vérification).
---  3. ip_client(), reseau_de() ; wifi_etat(), wifi_ajouter(), wifi_retirer(), wifi_mode(), wifi_reinitialiser()
+--  3. ip_client(), reseau_de() ; wifi_etat(), wifi_ajouter(), wifi_modifier() (nom, opérateur), wifi_retirer(), wifi_mode(), wifi_reinitialiser()
 --     (référente / responsable seulement, chaque changement noté dans le journal du pointage).
 --  4. pointer() : strict = refus hors du centre ; souple = pointage gardé et marqué « hors centre ».
 -- Rejouable : oui. Non destructive. Sans réglage, rien ne change (mode « off »).
@@ -94,6 +94,18 @@ begin
   if p_mode = 'strict' and jsonb_array_length(coalesce(w->'reseaux', '[]'::jsonb)) = 0 then raise exception 'Enregistrez d''abord le Wi-Fi du centre'; end if;
   w := jsonb_set(w, '{mode}', to_jsonb(p_mode));
   return public.wifi_ecrire(w, 'WIFI_MODE', case p_mode when 'off' then 'désactivé' else p_mode end);
+end $$;
+
+-- Renommer un Wi-Fi enregistré et noter son opérateur (Free, Orange…)
+create or replace function public.wifi_modifier(p_cle text, p_nom text, p_op text) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare w jsonb := public.wifi_lire();
+begin
+  if not public.est_gestion() then raise exception 'Réservé à la référente ou à la responsable'; end if;
+  w := jsonb_set(w, '{reseaux}', coalesce((select jsonb_agg(case when x->>'cle' = p_cle
+         then x || jsonb_build_object('nom', coalesce(nullif(trim(p_nom), ''), x->>'nom'), 'op', nullif(trim(coalesce(p_op, '')), ''))
+         else x end) from jsonb_array_elements(coalesce(w->'reseaux', '[]'::jsonb)) x), '[]'::jsonb));
+  return public.wifi_ecrire(w, 'WIFI_MODIFIE', coalesce(nullif(trim(p_nom), ''), '?') || coalesce(' · ' || nullif(trim(coalesce(p_op, '')), ''), ''));
 end $$;
 
 -- Changement de box : on efface les réseaux et on repasse en souple (sinon, en strict, plus personne ne pourrait pointer)
@@ -201,7 +213,7 @@ revoke all on function public.ip_client() from public, anon, authenticated;
 revoke all on function public.wifi_lire() from public, anon, authenticated;
 revoke all on function public.wifi_ecrire(jsonb, text, text) from public, anon, authenticated;
 do $$ declare f text; begin
-  foreach f in array array['wifi_etat()', 'wifi_ajouter(text, text)', 'wifi_retirer(text)', 'wifi_mode(text)', 'wifi_reinitialiser()'] loop
+  foreach f in array array['wifi_etat()', 'wifi_ajouter(text, text)', 'wifi_modifier(text, text, text)', 'wifi_retirer(text)', 'wifi_mode(text)', 'wifi_reinitialiser()'] loop
     execute 'revoke all on function public.' || f || ' from public, anon';
     execute 'grant execute on function public.' || f || ' to authenticated';
   end loop;
