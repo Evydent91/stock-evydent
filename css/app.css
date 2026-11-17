@@ -2448,3 +2448,4 @@ button.tdb-el.lk{border:none;background:none;padding:0;text-align:left;font-size
 .ia-bas .mu{font-size:13.5px}
 @media (max-width:700px){.ia-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.ia-r{grid-template-columns:minmax(0,1fr)}.ia-d{white-space:normal}}
 .ia-aide{font-size:13px;color:#5a2b06}
+.ia-fic{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:13.5px;color:var(--ink)}.ia-fic b{font-size:14px!important;font-weight:700}.ia-fic span{color:var(--mute)}.ia-fic span::before{content:"·";margin-right:8px}

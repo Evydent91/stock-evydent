@@ -6302,7 +6302,7 @@
       R.nouveaux.forEach(function (x, i) { refs['n' + i] = x.v.reference || 'SR'; });
       var vu = {}; Object.keys(refs).forEach(function (k) { var r = String(refs[k] || '').toUpperCase(); if (!r || r === 'SR') return; (vu[r] = vu[r] || []).push(k); });
       Object.keys(vu).forEach(function (r) { if (vu[r].length > 1 && vu[r].some(function (k) { return k[0] === 'n' || R.modifs.some(function (m) { return String(m.a.id) === k && m.v.reference; }); })) R.erreurs.push('Référence ' + r + ' utilisée par plusieurs articles'); });
-      R.CH = CH; S.artImp = R; render(); window.scrollTo(0, 0);
+      R.CH = CH; R.fichier = file.name; R.fModif = file.lastModified ? new Date(file.lastModified) : null; R.lu = new Date(); S.artImp = R; render(); window.scrollTo(0, 0);
     }).catch(function (e) { S.artImp = null; toast('Lecture du fichier impossible : ' + (e && e.message || e)); render(); });
   }
   function valTxt(k, x) {
@@ -6334,7 +6334,7 @@
     var vues = [['modifs', 'Fiches modifiées', R.modifs.length, ''], ['nouveaux', 'Nouvelles fiches', R.nouveaux.length, 'ok'], ['suppr', 'À supprimer', R.suppr.length, 'ko'], ['erreurs', 'Lignes en erreur', nErr, 'warn']];
     if (!R.vue) R.vue = (vues.filter(function (v) { return v[2]; })[0] || vues[0])[0];
     var bloque = EG.some(function (g) { return g.bloque; }) || !(R.modifs.length + R.nouveaux.length + R.suppr.length);
-    var h = '<section class="card ia"><div class="ia-hd"><span class="ia-ic" aria-hidden="true">' + ico('telecharger', 22, 2.2) + '</span><div class="grow"><b>Import Excel des articles</b><span class="mu">' + R.nb + ' ligne' + (R.nb > 1 ? 's' : '') + ' lue' + (R.nb > 1 ? 's' : '') + (inch ? ' · ' + inch + ' sans changement' : '') + ' · rien n’est enregistré avant « Appliquer »</span></div></div>';
+    var h = '<section class="card ia"><div class="ia-hd"><span class="ia-ic" aria-hidden="true">' + ico('telecharger', 22, 2.2) + '</span><div class="grow"><b>Import Excel des articles</b>' + (R.fichier ? '<span class="ia-fic">' + ico('etiquette', 15, 2.2) + '<b>' + esc(R.fichier) + '</b>' + (R.fModif ? '<span>enregistré le ' + R.fModif.toLocaleDateString('fr-FR') + ' à ' + R.fModif.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', ' h ') + '</span>' : '') + '<span>importé le ' + R.lu.toLocaleDateString('fr-FR') + ' à ' + R.lu.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', ' h ') + '</span></span>' : '') + '<span class="mu">' + R.nb + ' ligne' + (R.nb > 1 ? 's' : '') + ' lue' + (R.nb > 1 ? 's' : '') + (inch ? ' · ' + inch + ' sans changement' : '') + ' · rien n’est enregistré avant « Appliquer »</span></div></div>';
     h += '<div class="ia-tabs" role="tablist">' + vues.map(function (v) { return '<button role="tab" class="ia-tab ' + v[3] + (R.vue === v[0] ? ' on' : '') + '" aria-selected="' + (R.vue === v[0]) + '" data-iav="' + v[0] + '"' + (v[2] ? '' : ' disabled') + '><b>' + v[2] + '</b><span>' + v[1] + '</span></button>'; }).join('') + '</div>';
     if (EG.length && R.vue !== 'erreurs') h += '<button class="ia-alerte" data-iav="erreurs">' + ico('attente', 18, 2.4) + '<span>' + (EG.some(function (g) { return g.bloque; }) ? '<b>Import bloqué :</b> une référence est utilisée par plusieurs articles. ' : '<b>' + nErr + ' ligne' + (nErr > 1 ? 's' : '') + ' en erreur</b> seront ignorée' + (nErr > 1 ? 's' : '') + ' : ') + EG.slice(0, 2).map(function (g) { return esc(g.t); }).join(' ; ') + (EG.length > 2 ? '…' : '') + '</span><u>Voir</u></button>';
     var corps = '';
@@ -6400,7 +6400,7 @@
     }
     suite().then(function () {
       S.artImp = null;
-      toast(ko.length ? '⚠️ ' + (taches.length - ko.length) + ' fiche(s) enregistrée(s), ' + ko.length + ' en erreur : ' + ko.slice(0, 3).join(' ; ') : '✔ Import terminé : ' + R.modifs.length + ' fiche(s) modifiée(s), ' + R.nouveaux.length + ' créée(s)' + (R.suppr.length ? ', ' + R.suppr.length + ' supprimée(s)' : ''));
+      toast(ko.length ? '⚠️ ' + (taches.length - ko.length) + ' fiche(s) enregistrée(s), ' + ko.length + ' en erreur : ' + ko.slice(0, 3).join(' ; ') : '✔ Import de « ' + (R.fichier || 'fichier') + ' » terminé : ' + R.modifs.length + ' fiche(s) modifiée(s), ' + R.nouveaux.length + ' créée(s)' + (R.suppr.length ? ', ' + R.suppr.length + ' supprimée(s)' : ''));
       charger();
     });
   }
