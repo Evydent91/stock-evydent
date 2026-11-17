@@ -2144,13 +2144,16 @@
   function occJour(iso) {
     var j = jourSem(iso), fer = ferie(iso), ferme = j < 1 || j > 5 || !!fer, ps = persPlanning(), cab = {}, sans = [];
     for (var c = 1; c <= 8; c++) cab[c] = { AM: [], PM: [] };
-    if (!ferme) (S.dentistes || []).filter(function (d) { return dentPresent(d, iso); }).sort(function (a, b) { return (a.ordre - b.ordre) || (a.id - b.id); }).forEach(function (d) {
+    // Un dentiste compte s'il est présent d'après sa fiche (jours habituels, jours en plus, absences)
+    // ou si le planning place une assistante avec lui ce jour-là : le planning fait foi.
+    if (!ferme) (S.dentistes || []).slice().sort(function (a, b) { return (a.ordre - b.ordre) || (a.id - b.id); }).forEach(function (d) {
       var cle = 'D:' + d.id, as = {}; ['AM', 'PM'].forEach(function (k) { as[k] = ps.filter(function (p) { return caseEff(p, iso, k).a === cle; }); });
+      var pres = dentPresent(d, iso); if (!pres && !as.AM.length && !as.PM.length) return;
       var cj = d.cab_jours && +d.cab_jours[iso], n = cj || +d.cabinet || occCabAssist(as.AM[0]) || occCabAssist(as.PM[0]) || null, src = cj ? 'jour' : +d.cabinet ? 'fiche' : 'assistante';
       var hd = d.jours && d.jours[j]; hd = typeof hd === 'string' && hd ? hm(hd) : null;
-      var demis = hd && hd <= '14:00' ? ['AM'] : ['AM', 'PM'];
+      var demis = !pres ? ['AM', 'PM'].filter(function (k) { return as[k].length; }) : hd && hd <= '14:00' ? ['AM'] : ['AM', 'PM'];
       if (!n) { sans.push({ d: d, as: as.AM.concat(as.PM.filter(function (p) { return as.AM.indexOf(p) < 0; })) }); return; }
-      demis.forEach(function (k) { cab[n][k].push({ d: d, as: as[k], src: src, dep: k === 'PM' ? hd : hd && hd <= '14:00' ? hd : null }); });
+      demis.forEach(function (k) { cab[n][k].push({ d: d, as: as[k], src: src, hors: !pres, dep: !pres ? null : k === 'PM' ? hd : hd && hd <= '14:00' ? hd : null }); });
     });
     var nb = function (k) { var x = 0; for (var c2 = 1; c2 <= 8; c2++) if (cab[c2][k].length) x++; return x; };
     return { ferme: ferme, raison: fer ? 'Jour férié' + (typeof fer === 'string' ? ' : ' + fer : '') : 'Le centre est fermé le week-end', cab: cab, sans: sans, am: nb('AM'), pm: nb('PM') };
@@ -2183,7 +2186,7 @@
       : '<button class="oc-c ko' + (String(S.occ.ed) === String(l[l.length - 1].d.id) ? ' on' : '') + '" data-oced="' + l[l.length - 1].d.id + '"><b>' + l.map(function (x) { return 'Dr ' + esc(x.d.prenom); }).join(' + ') + '</b><span>même cabinet</span><small>toucher pour déplacer Dr ' + esc(l[l.length - 1].d.prenom) + '</small></button>';
     var x = l[0], seul = !x.as.length;
     if (court) return '<div class="oc-c ' + (seul ? 'av' : 'occ') + '" title="Dr ' + esc(x.d.prenom) + (seul ? ' · sans assistante' : ' · ' + esc(x.as.map(function (p) { return p.prenom; }).join(', '))) + '"><b>' + esc(x.d.prenom) + '</b></div>';
-    return '<button class="oc-c ' + (seul ? 'av' : 'occ') + (String(S.occ.ed) === String(x.d.id) ? ' on' : '') + '" data-oced="' + x.d.id + '"><b>Dr ' + esc(x.d.prenom) + '</b><span>' + (seul ? 'sans assistante' : esc(x.as.map(function (p) { return p.prenom; }).join(', '))) + '</span>' + (x.dep ? '<small>part à ' + esc(x.dep.replace(':', 'h').replace(/h00$/, 'h')) + '</small>' : x.src === 'jour' ? '<small>ce jour seulement</small>' : x.src === 'assistante' ? '<small>d’après l’assistante</small>' : '') + '</button>';
+    return '<button class="oc-c ' + (seul ? 'av' : 'occ') + (String(S.occ.ed) === String(x.d.id) ? ' on' : '') + '" data-oced="' + x.d.id + '"><b>Dr ' + esc(x.d.prenom) + '</b><span>' + (seul ? 'sans assistante' : esc(x.as.map(function (p) { return p.prenom; }).join(', '))) + '</span>' + (x.dep ? '<small>part à ' + esc(x.dep.replace(':', 'h').replace(/h00$/, 'h')) + '</small>' : x.hors ? '<small>d’après le planning</small>' : x.src === 'jour' ? '<small>ce jour seulement</small>' : x.src === 'assistante' ? '<small>d’après l’assistante</small>' : '') + '</button>';
   }
   function vOccup() {
     var O = occInit(), lundi = lundiDe(O.jour), sem = O.mode === 'semaine', dJ = dDe(O.jour);
