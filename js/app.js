@@ -1056,7 +1056,7 @@
 
   // ---------- Accueil de la référente et de la responsable (2 tuiles), Réglages, Équipe, Dentistes ----------
   // Écrans de la maquette « Accueil référente et responsable ». Chaque écran a son en-tête bleu.
-  var HUB = ['mconges', 'mdemande', 'ptransfert', 'hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
+  var HUB = ['pwifi', 'mconges', 'mdemande', 'ptransfert', 'hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
   var JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'], JC = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
   // Affectations possibles d'une demi-journée (en plus des dentistes)
   // Postes (modifiables dans Réglages › Postes) ; École et « Ne travaille pas » sont fixes
@@ -1314,7 +1314,7 @@
 
   // Réglages : tous les réglages de l'application, regroupés par outil
   // Réglages sur ordinateur : menu fixe à gauche, toujours visible, pour passer d'un réglage à l'autre en un clic
-  var RG_TABS = ['reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pregles', 'ppostes', 'pqui', 'pqr', 'pprofils', 'ptypes', 'proles', 'pvisible', 'ptransfert'];
+  var RG_TABS = ['reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pregles', 'ppostes', 'pqui', 'pqr', 'pwifi', 'pprofils', 'ptypes', 'proles', 'pvisible', 'ptransfert'];
   function navReglages() {
     var cur = S.tab === 'pfiche' ? 'pequipe' : S.tab === 'dfiche' ? 'pdent' : S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible' ? 'pprofils' : S.tab;
     var L = function (t, attr, tab) { return '<button class="rgn-l' + (tab && tab === cur ? ' on' : '') + '" ' + attr + (tab && tab === cur ? ' aria-current="page"' : '') + '>' + t + '</button>'; };
@@ -1329,7 +1329,7 @@
       + L('Tous les réglages', 'data-tab="reglages"', 'reglages')
       + G('eq', 'Équipe', [['L’équipe', 'data-act="rgeq"', 'pequipe'], ['Les dentistes', 'data-act="rgde"', 'pdent'], ['Profils', 'data-tab="pprofils"', 'pprofils']])
       + G('pl', 'Planning', [['Postes', 'data-tab="ppostes"', 'ppostes'], ['Règles des heures', 'data-tab="pregles"', 'pregles']])
-      + G('pt', 'Pointage', [['QR code', 'data-act="rgqr"', 'pqr'], ['Qui pointe', 'data-tab="pqui"', 'pqui']])
+      + G('pt', 'Pointage', [['QR code', 'data-act="rgqr"', 'pqr'], ['Wi-Fi du centre', 'data-tab="pwifi"', 'pwifi'], ['Qui pointe', 'data-tab="pqui"', 'pqui']])
       + G('cg', 'Congés', [['Demandes et planning', 'data-tab="pconges"']])
       + G('ap', 'Application', [['Transfert vers la prod', 'data-tab="ptransfert"', 'ptransfert']])
       + G('st', 'Gestion de stock', [['Comptes de connexion', 'data-tab="equipe"'], ['Articles', 'data-tab="articles"'], ['Fournisseurs', 'data-tab="fournisseurs"'], ['Sauvegarde et journal', 'data-tab="plus"'], ['Mon mot de passe', 'data-tab="compte"']], 'stk')
@@ -1406,7 +1406,7 @@
       h += '<div class="rg-grille rgc-g">'
         + bc('Équipe', [li('L’équipe', planPret() ? n + ' ' + pl(n, 'personne') : '', 'data-act="rgeq"', 'fiches semaine type absences contrat'), li('Les dentistes', planPret() ? nd + ' ' + pl(nd, 'dentiste') : '', 'data-act="rgde"', 'jours de présence départs anticipés'), li('Profils', profilsListe().filter(function (x) { return !x.retire; }).length + ' profils', 'data-tab="pprofils"', 'planning contrat ce que chacun voit référente')])
         + bc('Planning', [li('Postes', postes().filter(function (x) { return !x.retire; }).length + ' postes', 'data-tab="ppostes"', 'sté admin accueil plages horaires fixe variable couleur'), li('Règles des heures', 'congés, férié, reliquat', 'data-tab="pregles"', 'maladie école formation cp samedi')])
-        + bc('Pointage', [li('QR code', 'afficher, imprimer', 'data-act="rgqr"', 'régénérer'), li('Calcul et alertes', 'retard ' + R.pt_tol + ' min', 'data-tab="pregles"', 'reliquat temps pointé départ'), li('Qui pointe', np + ' ' + pl(np, 'personne'), 'data-tab="pqui"', 'soumise compte')])
+        + bc('Pointage', [li('QR code', 'afficher, imprimer', 'data-act="rgqr"', 'régénérer'), li('Wi-Fi du centre', S.wifi ? ({ off: 'désactivé', souple: 'souple', strict: 'strict' })[S.wifi.mode || 'off'] : 'contrôle du pointage', 'data-tab="pwifi"', 'wifi réseau box souple strict'), li('Calcul et alertes', 'retard ' + R.pt_tol + ' min', 'data-tab="pregles"', 'reliquat temps pointé départ'), li('Qui pointe', np + ' ' + pl(np, 'personne'), 'data-tab="pqui"', 'soumise compte')])
         + bc('Congés', [li('Demandes et planning', ca ? ca + ' à traiter' : 'congés du mois', 'data-tab="pconges"', 'valider soldes absences')])
         + bc('Application', [li('Transfert vers la prod', 'test → site réel', 'data-tab="ptransfert"', 'exporter importer équipe dentistes réglages congés')])
         + bc('Gestion de stock', [li('Comptes de connexion', 'identifiants, codes', 'data-tab="equipe"', 'rôles cabinet par défaut'), li('Articles', 'seuils, lieux', 'data-tab="articles"', 'types de soins'), li('Fournisseurs', 'coordonnées', 'data-tab="fournisseurs"', 'comptes'), li('Sauvegarde et journal', sv ? 'à télécharger' : 'à jour', 'data-tab="plus"', 'versions données'), li('Mon mot de passe', 'changer', 'data-tab="compte"', '')], 'stk')
@@ -1425,6 +1425,7 @@
         it('Règles des heures', 'Congés, maladie, école, formation, férié, reliquat', 'data-tab="pregles"')])
       + bloc('Q', 'b3', 'Pointage', 'Arrivées, sorties, temps effectif', [
         it('QR code', 'Afficher, imprimer, régénérer', 'data-act="rgqr"'),
+        it('Wi-Fi du centre', 'Pointage accepté seulement depuis le Wi-Fi du centre', 'data-tab="pwifi"'),
         it('Calcul et alertes', (R.pt_reliquat !== false ? 'Reliquat sur le temps pointé' : 'Reliquat sur le planning') + ' · retard ' + R.pt_tol + ' min · départ ' + R.pt_tol_dep + ' min', 'data-tab="pregles"'),
         it('Qui pointe', np + ' ' + pl(np, 'personne') + ' soumise' + (np > 1 ? 's' : '') + ', avec ou sans compte', 'data-tab="pqui"')])
       + bloc('C', 'b4', 'Congés', 'Demandes et absences', [
@@ -2118,7 +2119,7 @@
   }
   function renderH() {
     S.coulCat = null;
-    var ecr = { mconges: function () { moiG(); return vMesCongesA(); }, mdemande: function () { moiG(); return vDemandeA(); }, hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pprofils: vPProfils, ptransfert: vPTransfert }[S.tab] || vHub;
+    var ecr = { mconges: function () { moiG(); return vMesCongesA(); }, mdemande: function () { moiG(); return vDemandeA(); }, hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pwifi: vPWifi, pprofils: vPProfils, ptransfert: vPTransfert }[S.tab] || vHub;
     if ((S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage') && telephone()) ecr = vSurPC;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
     h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr' || S.tab === 'pequipe') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || ((S.tab === 'pconges' || S.tab === 'ppostes' || S.tab === 'pregles' || S.tab === 'pprofils' || S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible') && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
@@ -2839,10 +2840,11 @@
   // Reliquat : une journée pointée en entier compte le temps réel (Réglages › Heures), sauf si le pointage est mis de côté
   function heuresJ(p, iso) {
     var r = p.pointage && regles().pt_reliquat !== false ? ptRow(p.id, iso) : null;
-    if (r && r.arrivee && r.sortie && !r.ignorer) { var c = calculJour(p, iso, r); if (c.effMin != null) return c.effMin / 60; }
+    if (r && r.arrivee && r.sortie && !r.ignorer && !ptHc(r)) { var c = calculJour(p, iso, r); if (c.effMin != null) return c.effMin / 60; }
     return heuresJPrevu(p, iso);
   }
   function heuresSemPrevu(p, lundi) { var s0 = 0; for (var k = 0; k < 5; k++) s0 += heuresJPrevu(p, addJ(lundi, k)); return s0; }
+  function ptHc(r) { return !!(r && (r.arrivee_hc || r.sortie_hc)); }   // pointé hors du Wi-Fi du centre, pas encore vérifié
   function ptRow(eid, iso) { return S.ptg && S.ptg.rows ? S.ptg.rows[eid + '|' + iso] : null; }
   function heuresSem(p, lundi) { var fg = typeof figeDe === 'function' ? figeDe(lundi, p) : null; if (fg && fg.ret != null) return +fg.ret; var s = 0; for (var k = 0; k < 5; k++) s += heuresJ(p, addJ(lundi, k)); return s; }
   // Reliquat avant la semaine affichée : somme des (heures faites − contrat) depuis la date de départ
@@ -3072,10 +3074,12 @@
       + '<button class="a-btn navy" data-ptsens="arrivee">J’arrive</button><button class="a-btn blanc" data-ptsens="sortie">Je pars (j’ai oublié de pointer mon arrivée)</button><button class="pt-ann" data-act="ptok">Annuler</button></div></div>';
     if (R.busy) { t = 'Pointage…'; g = ''; }
     else if (R.etat === 'arrivee') { t = 'Arrivée enregistrée'; g = hTs(R.heure); sous = 'Bonne journée' + (R.prenom ? ', ' + esc(R.prenom) : '') + ' ! Scannez le même QR code en partant.'; }
+    if (R.hors_centre && (R.etat === 'arrivee' || R.etat === 'sortie')) sous = 'Pointage fait hors du Wi-Fi du centre : la référente va le vérifier. Pensez à vous connecter au Wi-Fi du centre la prochaine fois.';
     else if (R.etat === 'sortie') { t = 'Sortie enregistrée'; g = hTs(R.heure); sous = (R.sans_arrivee ? 'Votre arrivée n’a pas été pointée : la référente la complètera.' : 'Arrivée à ' + hTs(R.arrivee) + '.') + ' Bonne soirée' + (R.prenom ? ', ' + esc(R.prenom) : '') + ' !'; }
     else if (R.etat === 'simulation_coupee') { t = 'Simulation coupée'; g = ''; sous = 'L’heure simulée n’est pas autorisée. La référente peut l’activer dans Pointage (site de test).'; }
     else if (R.etat === 'doublon') { t = 'Déjà enregistré'; g = ''; sous = 'Votre pointage vient d’être pris en compte, inutile de scanner deux fois.' + (R.arrivee ? ' Arrivée : ' + hTs(R.arrivee) + (R.sortie ? ', sortie : ' + hTs(R.sortie) : '') + '.' : ''); }
     else if (R.etat === 'hors_ligne') { t = 'Pas de réseau'; g = ''; sous = 'Votre ' + (R.g.sens === 'arrivee' ? 'arrivée' : 'sortie') + ' de ' + R.g.heure.replace(':', ' h ') + ' est gardée sur ce téléphone. Elle sera transmise à la référente dès que le réseau revient (vous n’avez rien à faire).'; }
+    else if (R.etat === 'hors_centre') { t = 'Pas sur le Wi-Fi du centre'; g = ''; sous = 'Le pointage n’est possible que depuis le Wi-Fi du centre. Connectez votre téléphone au Wi-Fi du centre, puis scannez de nouveau.'; }
     else if (R.etat === 'qr_perime') { t = 'QR code périmé'; g = ''; sous = 'Ce QR code n’est plus valable. Scannez celui affiché au centre.'; }
     else if (R.etat === 'non_soumis') { t = 'Pas de pointage pour vous'; g = ''; sous = 'Votre fiche n’est pas soumise au pointage journalier.'; }
     else if (R.etat === 'sans_fiche') { t = 'Compte non relié'; g = ''; sous = 'Votre compte n’est pas encore relié à votre fiche. Prévenez la référente.'; }
@@ -3193,7 +3197,7 @@
     var hor = [trav(am) && am.de ? ft(am.de) + '–' + ft(am.fi) : compte(am) ? ABS_TXT[am.a] + (am.a === pm.a ? '' : ' le matin') : '', trav(pm) && pm.de ? ft(pm.de) + '–' + ft(pm.fi) : compte(pm) && pm.a !== am.a ? ABS_TXT[pm.a] + ' l’après-midi' : ''].filter(Boolean).join(' · ');
     var o = { prevu: prevu, hEF: hEF, hor: hor || (absTxt || (am.off || pm.off ? 'Jour off' : sansHoraires(p) ? 'Horaires non renseignés' : 'Ne travaille pas')), absTxt: absTxt, travaille: travH > 0, pauseMin: 0, effMin: !travH && hEF ? Math.round(hEF * 60) : null };
     var p1 = trav(am) ? enMin(am.fi) : null, p2 = trav(pm) ? enMin(pm.de) : null;
-    if (r && r.arrivee && r.sortie) {
+    if (r && r.arrivee && r.sortie && !ptHc(r)) {
       var a = minLoc(r.arrivee), b = minLoc(r.sortie); if (b < a) b = a;
       if (p1 != null && p2 != null && p2 > p1) o.pauseMin = Math.max(0, Math.min(b, p2) - Math.max(a, p1));
       o.effMin = b - a - o.pauseMin + Math.round(hEF * 60);
@@ -3202,6 +3206,7 @@
   }
   function etatPointage(p, iso, r, c) {
     var auj = dIso(new Date()), maintenant = new Date().getHours() * 60 + new Date().getMinutes();
+    if (ptHc(r)) return { t: 'Hors centre · à vérifier', k: 'at' };
     if (r && r.arrivee && r.sortie) return null;
     if (r && r.sortie && !r.arrivee) return { t: 'Arrivée manquante', k: 'ko' };
     if (r && r.arrivee) return iso < auj ? { t: 'Sortie manquante', k: 'ko' } : iso === auj ? { t: 'Sur place', k: 'on' } : null;
@@ -3478,11 +3483,26 @@
     return '<div class="pl-modal" role="dialog" aria-modal="true" aria-label="Corriger le pointage"><button class="pl-fond" data-act="ptedfermer" aria-label="Fermer"></button><div class="pl-fen">'
       + '<div class="pl-ft"><span class="a-av">' + esc((p.prenom || '?')[0]) + '</span><div><b>' + esc(p.prenom || '') + '</b><span class="mu">' + JOURS[jourSem(E.jour)] + ' ' + dateCourte(E.jour) + '</span></div><button class="h-rond gris" data-act="ptedfermer" aria-label="Fermer">' + ico('croix', 20, 2.4) + '</button></div>'
       + '<div class="h-g2"><label class="mu">Arrivée<input class="in" ' + HM + ' id="ptarr" value="' + t(r && r.arrivee) + '"></label><label class="mu">Sortie<input class="in" ' + HM + ' id="ptsor" value="' + t(r && r.sortie) + '"></label></div>'
+      + (ptHc(r) ? '<div class="pt-hc"><b>' + ico('attente', 18, 2.4) + 'Pointé hors du Wi-Fi du centre</b><span class="mu">' + [r.arrivee_hc ? 'arrivée de ' + hTs(r.arrivee) : '', r.sortie_hc ? 'sortie de ' + hTs(r.sortie) : ''].filter(Boolean).join(' et ') + '. Acceptez si la personne était bien au centre (Wi-Fi coupé, téléphone en 4G…).</span><span class="row"><button class="btn" data-act="pthcok">Accepter</button><button class="btn l" data-act="pthcko">Refuser (effacer ' + (r.arrivee_hc && r.sortie_hc ? 'ces heures' : 'cette heure') + ')</button></span>'
+        + ((r.arrivee_res || r.sortie_res) ? '<button class="pt-hc-add" data-act="pthcres">C’était bien le Wi-Fi du centre : le reconnaître à l’avenir</button>' : '') + '</div>' : '')
       + '<label class="mu">Note (facultatif)<input class="in" id="ptnote" value="' + esc(r && r.note || '') + '" placeholder="Ex. : oubli de pointage, badge à 17 h 05"></label>'
       + '<label class="pt-ign"><input type="checkbox" id="ptign"' + (r && r.ignorer ? ' checked' : '') + '><span><b>Ne pas compter ce pointage</b><span class="mu">Le reliquat garde les heures prévues au planning pour cette journée. Le pointage reste visible et dans le journal.</span></span></label>'
       + (r && r.corrige_par ? '<p class="mu" style="margin:0">Corrigé par ' + esc(nomProfil(r.corrige_par)) + ' le ' + dateCourte(r.corrige_le) + ' à ' + hTs(r.corrige_le) + '.</p>' : '')
       + '<div class="h-cpied">' + (r ? '<button class="h-csup" data-act="ptsuppr">' + ico('poubelle', 18, 2) + 'Effacer le pointage</button>' : '<span></span>')
       + '<span class="row"><button class="btn l" data-act="ptedfermer">Annuler</button><button class="btn" data-act="ptsave">Enregistrer</button></span></div></div></div>';
+  }
+  // Pointage hors du Wi-Fi du centre : accepter, refuser (l'heure est effacée) ou reconnaître ce réseau
+  async function verifierHorsCentre(ok, retenir) {
+    var E = S.ptEd, r = S.ptg.rows[E.eid + '|' + E.jour]; if (!r) return;
+    if (retenir) {
+      var cle0 = r.arrivee_res || r.sortie_res, nom = await fenetre({ titre: 'Reconnaître ce Wi-Fi ?', texte: 'Les prochains pointages faits depuis ce réseau seront acceptés comme « au centre ». Ne le faites que si la personne était bien au centre.', ok: 'Reconnaître', non: 'Annuler' });
+      if (!nom) return;
+      var w = await sb.rpc('wifi_ajouter', { p_nom: 'Wi-Fi du centre (reconnu le ' + dateCourte(dIso(new Date())) + ')', p_cle: cle0 }); if (w.error) { toast(msgErr(w.error)); return; }
+      S.wifi = w.data; ok = true;
+    }
+    var m = { arrivee_hc: false, sortie_hc: false, arrivee_res: null, sortie_res: null, corrige_par: S.me.id, corrige_le: new Date().toISOString() };
+    if (!ok) { if (r.arrivee_hc) m.arrivee = null; if (r.sortie_hc) m.sortie = null; }
+    sb.from('pointages').update(m).eq('equipe_id', +E.eid).eq('jour', E.jour).then(function (x) { if (x.error) throw x.error; S.ptEd = null; toast(ok ? '✔ Pointage accepté' : 'Pointage refusé : heure effacée'); assurerPointages(S.ptg.de || E.jour, S.ptg.a || E.jour, true); }).catch(function (e) { toast(msgErr(e)); });
   }
   async function sauverPointage(supprimer) {
     var E = S.ptEd, cle = E.eid + '|' + E.jour, r = S.ptg.rows[cle];
@@ -3494,6 +3514,7 @@
       if (b && !a) { toast('Indiquez l’heure d’arrivée'); return; }
       if (a && b && b <= a) { toast('La sortie doit être après l’arrivée'); return; }
       var ligne = { equipe_id: +E.eid, jour: E.jour, arrivee: ts(a), sortie: ts(b), note: $('ptnote').value.trim() || null, corrige_par: S.me.id, corrige_le: new Date().toISOString() };
+      if (r && 'arrivee_hc' in r) { ligne.arrivee_hc = false; ligne.sortie_hc = false; ligne.arrivee_res = null; ligne.sortie_res = null; }   // une correction vaut vérification
       if ($('ptign').checked || (r && 'ignorer' in r)) ligne.ignorer = $('ptign').checked;
       q = sb.from('pointages').upsert(ligne, { onConflict: 'equipe_id,jour' });
     }
@@ -3780,6 +3801,7 @@
   function badgePt(p, iso) {   // étiquette sous une case du planning : pointé et écart
     if (!p.pointage) return '';
     var auj = dIso(new Date()), r = ptRow(p.id, iso), c = calculJour(p, iso, r);
+    if (ptHc(r)) return '<small class="pl-pt at">hors centre · à vérifier</small>';
     if (r && r.arrivee && r.sortie) {
       var ec = c.effMin / 60 - c.prevu, k = Math.abs(ec) < 0.09 ? 'ok' : ec < 0 ? 'moins' : 'plus';
       return '<small class="pl-pt ' + k + '">pointé ' + fh(c.effMin / 60) + (k === 'ok' ? '' : ' · ' + (Math.abs(ec) < 1 ? (ec > 0 ? '+' : '−') + Math.round(Math.abs(ec) * 60) + ' min' : relTxt(ec))) + '</small>';
@@ -5217,6 +5239,34 @@
   }
 
 
+
+  // ---------- Réglages › Pointage › Wi-Fi du centre ----------
+  // Le serveur compare l'adresse internet d'où vient le pointage à celle(s) de la box du centre. Aucune position n'est demandée.
+  function chargerWifi() {
+    S.wifiCh = true;
+    sb.rpc('wifi_etat').then(function (r) { S.wifiCh = false; if (r.error) { S.wifiErr = /wifi_etat|function/.test(String(r.error.message)) ? 'La mise à jour 028 de la base n’est pas encore faite.' : msgErr(r.error); } else { S.wifi = r.data; S.wifiErr = null; } render(); });
+  }
+  function vPWifi() {
+    var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'Wi-Fi du centre', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps wf">';
+    if (!S.wifi && !S.wifiCh && !S.wifiErr) chargerWifi();
+    if (S.wifiErr) return h + '<div class="ban warn">' + esc(S.wifiErr) + '</div></div>';
+    if (!S.wifi) return h + '<p class="a-vide">Chargement…</p></div>';
+    var W = S.wifi, rs = W.reseaux || [], m = W.mode || 'off', ici = rs.filter(function (x) { return x.cle === W.actuel; })[0];
+    var M = [['off', 'Désactivé', 'Le pointage marche partout, comme avant.'], ['souple', 'Souple', 'Hors du Wi-Fi du centre, le pointage est gardé avec la mention « hors centre, à vérifier ».'], ['strict', 'Strict', 'Hors du Wi-Fi du centre, pas de pointage.']];
+    h += '<p class="a-aide">Le pointage n’est accepté que s’il arrive par la box du centre. L’appli ne lit aucune position : seule l’adresse internet de la box est comparée. Les journées en formation ou à l’école, posées dans le planning, comptent sans pointage.</p>';
+    h += '<section class="card wf-s"><h2 class="a-jour">Contrôle</h2><div class="wf-m" role="radiogroup" aria-label="Contrôle du Wi-Fi">' + M.map(function (x) { var on = x[0] === m, dis = x[0] === 'strict' && !rs.length; return '<button role="radio" aria-checked="' + on + '" class="wf-o' + (on ? ' on' : '') + '" data-wifim="' + x[0] + '"' + (dis ? ' disabled' : '') + '><b>' + x[1] + '</b><span>' + x[2] + (dis ? ' Enregistrez d’abord le Wi-Fi du centre.' : '') + '</span></button>'; }).join('') + '</div></section>';
+    h += '<section class="card wf-s"><h2 class="a-jour">Ce téléphone ou cet ordinateur</h2>'
+      + (W.actuel ? (ici ? '<p class="wf-ok">' + ico('ok', 18, 2.6) + 'Connecté au <b>' + esc(ici.nom) + '</b> : un pointage d’ici serait accepté.</p>' : '<p class="wf-ko">' + ico('attente', 18, 2.4) + 'Ce réseau n’est pas enregistré : un pointage d’ici serait « hors centre ».</p><button class="a-btn navy" data-act="wifiadd">' + ico('plus', 20, 2.2) + 'Enregistrer ce Wi-Fi comme Wi-Fi du centre</button><p class="mu" style="margin:0">À faire sur place, avec un téléphone connecté au Wi-Fi du centre (pas en 4G). Sur iPhone, coupez le « Relais privé iCloud » pour ce Wi-Fi.</p>')
+        : '<p class="mu">Adresse du réseau introuvable.</p>')
+      + '</section>';
+    h += '<section class="card wf-s"><h2 class="a-jour">Wi-Fi enregistrés · ' + rs.length + '</h2>' + (rs.length ? rs.map(function (x) { return '<div class="wf-r"><span class="grow"><b>' + esc(x.nom) + '</b><span class="mu">enregistré le ' + new Date(x.le).toLocaleDateString('fr-FR') + (x.par ? ' par ' + esc(nomProfil(x.par)) : '') + (x.cle === W.actuel ? ' · c’est le réseau actuel' : '') + '</span></span><button class="btn l sm" data-wifirm="' + esc(x.cle) + '">Retirer</button></div>'; }).join('') : '<p class="mu" style="margin:0">Aucun pour l’instant.</p>')
+      + '<button class="h-csup wf-raz" data-act="wifiraz">' + ico('poubelle', 18, 2) + 'Réinitialiser le Wi-Fi (changement de box)</button></section>';
+    return h + '</div>';
+  }
+  async function actionWifi(fn, args, msg) {
+    var r = await sb.rpc(fn, args || {}); if (r.error) { toast(msgErr(r.error)); return; }
+    S.wifi = r.data; toast(r.data && r.data.deja ? 'Ce Wi-Fi est déjà enregistré' : msg); render();
+  }
   // ---------- Inventaire de fin d'année et export comptable ----------
   // Seule la réserve compte : ce qui est sorti vers un cabinet ou la Sté est considéré comme consommé.
   // La clôture fige les quantités et les valeurs dans parametres « inv_fin_<année> » ; l'export Excel part de ce cliché.
@@ -6139,6 +6189,9 @@
     if (d.pted && S.ptg) { var pe = d.pted.split('|'); S.ptEd = { eid: pe[0], jour: pe[1] }; render(); return; }
     if (d.act === 'ptedfermer') { S.ptEd = null; render(); return; }
     if (d.act === 'ptsave' && S.ptEd) return sauverPointage(false);
+    if (d.act === 'pthcok' && S.ptEd) return verifierHorsCentre(true);
+    if (d.act === 'pthcko' && S.ptEd) return verifierHorsCentre(false);
+    if (d.act === 'pthcres' && S.ptEd) return verifierHorsCentre(true, true);
     if (d.act === 'ptsuppr' && S.ptEd) return sauverPointage(true);
     if (d.hrmode && S.hr) { S.hr.mode = d.hrmode; render(); window.scrollTo(0, 0); return; }
     if (d.hrnav && S.hr) { var Hn = S.hr, sn = +d.hrnav; if (Hn.mode === 'semaine') Hn.lundi = addJ(Hn.lundi, 7 * sn); else { var xm = Hn.mois.split('-'), dm2 = new Date(+xm[0], +xm[1] - 1 + sn, 1); Hn.mois = dm2.getFullYear() + '-' + ('0' + (dm2.getMonth() + 1)).slice(-2); } render(); return; }
@@ -6147,6 +6200,12 @@
     if (d.act === 'plexpadm' && S.pl) { S.plExp = { mois: [addJ(S.pl.lundi, 2).slice(0, 7)], adm: true }; render(); return; }
     if (d.act === 'plexp' && S.pl) { var mw = addJ(S.pl.lundi, 2).slice(0, 7); S.plExp = { mois: [mw] }; render(); return; }
     if (d.ify && S.invFin) { S.invFin.y += +d.ify; S.invFin.date = null; render(); return; }
+    if (d.wifim) { var wm = d.wifim, go = function () { actionWifi('wifi_mode', { p_mode: wm }, wm === 'off' ? 'Contrôle du Wi-Fi désactivé' : 'Mode ' + wm + ' activé'); };
+      if (wm === 'strict') { demander('Passer en mode strict ?', 'Hors du Wi-Fi du centre, plus personne ne pourra pointer. Vérifiez d’abord en mode souple que les pointages faits au centre sont bien reconnus.', 'Passer en strict').then(function (v) { if (v) go(); }); return; }
+      go(); return; }
+    if (d.act === 'wifiadd') { fenetre({ titre: 'Enregistrer ce Wi-Fi', texte: 'Le réseau auquel cet appareil est connecté sera reconnu comme le Wi-Fi du centre.', html: '<label class="mu">Nom<input class="in" id="wfnom" value="Wi-Fi du centre"></label>', ok: 'Enregistrer', non: 'Annuler', lire: function (bg) { var x = bg.querySelector('#wfnom'); S.wfNom = x ? x.value : ''; } }).then(function (v) { if (v) actionWifi('wifi_ajouter', { p_nom: S.wfNom || 'Wi-Fi du centre' }, '✔ Wi-Fi du centre enregistré'); }); return; }
+    if (d.wifirm) { demander('Retirer ce Wi-Fi ?', 'Les pointages faits depuis ce réseau ne seront plus reconnus comme « au centre ».', 'Retirer', true).then(function (v) { if (v) actionWifi('wifi_retirer', { p_cle: d.wifirm }, 'Wi-Fi retiré'); }); return; }
+    if (d.act === 'wifiraz') { demander('Réinitialiser le Wi-Fi du centre ?', 'Tous les Wi-Fi enregistrés sont effacés. Si le contrôle est en strict, il repasse en souple pour que personne ne soit bloqué. Enregistrez ensuite le nouveau Wi-Fi depuis un téléphone au centre.', 'Réinitialiser', true).then(function (v) { if (v) actionWifi('wifi_reinitialiser', {}, 'Wi-Fi réinitialisé'); }); return; }
     if (d.act === 'ifclos') return cloturerInvFin();
     if (d.act === 'ifrouvre') return rouvrirInvFin();
     if (d.act === 'ifexp') return exporterInvFin();

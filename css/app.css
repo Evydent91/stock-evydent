@@ -2275,3 +2275,21 @@ button.pl-seul.pl-fb:hover{box-shadow:0 0 0 2px var(--gold)}
 .rg-bloc.rgc.stk .rgc-t,.rg-bloc.rgc.stk .rg-it b{color:#17643f}
 .rg-bloc.rgc.stk .rg-it:hover{background:#e9f5ee}
 .rgl-cs{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:12px;padding:10px 8px;border:none;border-top:1px solid var(--soft);background:none;font:inherit;font-size:13.5px;color:#17643f;font-weight:600;cursor:pointer;text-align:left}.rgl-cs:hover{background:#e9f5ee;border-radius:8px}
+/* Wi-Fi du centre (pointage) */
+.wf{display:flex;flex-direction:column;gap:14px;max-width:760px}
+.wf-s{display:flex;flex-direction:column;gap:10px;margin:0}.wf-s .a-jour{margin:0}
+.wf-m{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+@media (max-width:640px){.wf-m{grid-template-columns:1fr}}
+.wf-o{display:flex;flex-direction:column;gap:4px;padding:12px;border-radius:12px;border:1.5px solid var(--line);background:#fff;font:inherit;color:var(--ink);text-align:left;cursor:pointer;min-height:44px}
+.wf-o b{font-size:16px}.wf-o span{font-size:13.5px;color:var(--mute)}
+.wf-o.on{border-color:var(--navy);background:#f4f6f8;box-shadow:inset 0 0 0 1px var(--navy)}
+.wf-o:disabled{opacity:.55;cursor:default}
+.wf-ok,.wf-ko{display:flex;align-items:center;gap:8px;margin:0;font-size:15px}.wf-ok{color:var(--ok)}.wf-ko{color:#8a3d0c}
+.wf-r{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--soft)}
+.wf-r .grow{display:flex;flex-direction:column;min-width:0}
+.wf-raz{align-self:flex-start;margin-top:6px}
+.wf .a-btn{display:flex;align-items:center;justify-content:center;gap:8px}
+.pt-hc{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:12px;background:var(--warnbg)}
+.pt-hc > b{display:flex;align-items:center;gap:6px;color:#7a3a08}.pt-hc .row{display:flex;gap:8px;flex-wrap:wrap}
+.pt-hc-add{align-self:flex-start;border:none;background:none;padding:4px 0;font:inherit;font-size:13.5px;font-weight:600;color:var(--navy);text-decoration:underline;cursor:pointer}
+.pl-pt.at{background:var(--warnbg);color:#7a3a08}
