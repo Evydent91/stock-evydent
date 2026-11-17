@@ -343,9 +343,10 @@
       placerTour(); return;
     }
     document.body.classList.remove('mode-a', 'ecran-ok');
+    document.body.classList.toggle('tdb-l', S.tab === 'tdb');
     var h = vTopStock();
     if (S.nouvelleVersion) h += '<div class="ban ok" style="max-width:1100px;margin:10px auto 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1">Une nouvelle version de l’application est disponible (' + esc(S.nouvelleVersion) + ').</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>';
-    h += '<main>' + vBienvenue() + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour, plus: vPlus, aide: vAide, maison: vMaison, moi: vMoiA, invfin: vInvFin }[S.tab] || vSortie)() + '</main>';
+    h += '<main>' + vBienvenue() + (S.loading ? '<p class="mu">Mise à jour…</p>' : '') + ({ accueil: vAccueil, sortie: vSortie, inventaire: vInventaire, demandes: vDemandes, stock: vStock, histo: vHisto, equipe: vEquipe, articles: vArticles, fournisseurs: vFournisseurs, commandes: vCommandes, compte: vCompte, retour: vRetour, plus: vPlus, aide: vAide, maison: vMaison, moi: vMoiA, invfin: vInvFin, tdb: vTdb }[S.tab] || vSortie)() + '</main>';
     h += '<p class="mu" style="text-align:center;font-size:12px;margin:0 0 90px">Version ' + esc(C.version || '') + '</p>';
     h += vNavMobile();
     h += (S.tab === 'sortie' ? vBarSortie() : S.tab === 'retour' ? vBarRetour() : S.tab === 'inventaire' && S.inv.emp != null && !S.inv.recap ? vBarInv() : '');
@@ -516,7 +517,7 @@
     camion: '<path d="M1 6h13v10H1zM14 10h4l3 3v3h-7"/><circle cx="5.5" cy="17.5" r="1.5"/><circle cx="17.5" cy="17.5" r="1.5"/>'
   };
   // Icônes au trait de la gestion de stock (barre du bas et bouton « Plus »)
-  var ICO_G = { invfin: 'agenda', accueil: 'maison', sortie: 'sortie', inventaire: 'invok', commandes: 'panier', demandes: 'attente', retour: 'retour', stock: 'boite', articles: 'etiquette', fournisseurs: 'camion', histo: 'histo', plus: 'telecharger', aide: 'aide', compte: 'cadenas', hub: 'maison' };
+  var ICO_G = { invfin: 'agenda', tdb: 'graph', accueil: 'maison', sortie: 'sortie', inventaire: 'invok', commandes: 'panier', demandes: 'attente', retour: 'retour', stock: 'boite', articles: 'etiquette', fournisseurs: 'camion', histo: 'histo', plus: 'telecharger', aide: 'aide', compte: 'cadenas', hub: 'maison' };
   function ico(n, sz, ep) { return '<svg class="ic" width="' + (sz || 24) + '" height="' + (sz || 24) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (ep || 2) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + SVGI[n] + '</svg>'; }
 
   // ---------- Accueil des assistantes : 3 grandes tuiles ----------
@@ -4390,7 +4391,7 @@
 
   // ---------- Navigation téléphone : barre du bas + menu ----------
   var ICO = { accueil: '🏠', sortie: '📤', retour: '↩️', inventaire: '📋', demandes: '⏳', stock: '📦', commandes: '🛒', articles: '🏷️', fournisseurs: '🚚', histo: '🕘', equipe: '👥', hub: '🏠', plus: '⚙️', compte: '🔑', aide: '❓', maison: '🏠', moi: '👤' };
-  var NOMS = { accueil: 'Accueil', sortie: 'Sortie', retour: 'Retour', inventaire: 'Inventaire', demandes: 'Demandes', stock: 'Stock', commandes: 'Commandes', articles: 'Articles', fournisseurs: 'Fournisseurs', histo: 'Historique', invfin: 'Fin d’année', equipe: 'Équipe', hub: 'Menu principal', plus: 'Plus', compte: 'Mon code', aide: 'Aide', maison: 'Accueil', moi: 'Moi' };
+  var NOMS = { accueil: 'Accueil', sortie: 'Sortie', retour: 'Retour', inventaire: 'Inventaire', demandes: 'Demandes', stock: 'Stock', commandes: 'Commandes', articles: 'Articles', fournisseurs: 'Fournisseurs', histo: 'Historique', invfin: 'Fin d’année', tdb: 'Analyses', equipe: 'Équipe', hub: 'Menu principal', plus: 'Plus', compte: 'Mon code', aide: 'Aide', maison: 'Accueil', moi: 'Moi' };
   function retourAcc(titre) { return '<div class="tache-hd">' + (!gestion() ? '<button class="retour-acc" data-act="accueil">' + ico('prec', 18, 2.6) + 'Accueil</button>' : '') + '<h2>' + titre + '</h2></div>'; }
   function enTache() { return !gestion() && ['sortie', 'retour', 'inventaire', 'mdemande'].indexOf(S.tab) >= 0; }
   // En-tête de la gestion de stock : retour au menu, titre, onglets en deux groupes
@@ -4398,7 +4399,7 @@
     var g = gestion(), att = g ? S.attente.length : 0;
     var g1 = (g ? [['accueil', 'Tableau de bord']] : []).concat([['sortie', 'Sortie'], ['retour', 'Retour'], ['inventaire', 'Inventaire']]);
     if (g) g1.push(['demandes', 'Demandes' + (att ? '<span class="badge">' + att + '</span>' : '')]);
-    var g2 = g ? [['stock', 'Stock'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs'], ['histo', 'Historique'], ['plus', 'Plus']] : [['histo', 'Historique']];
+    var g2 = g ? [['stock', 'Stock'], ['tdb', 'Analyses'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs'], ['histo', 'Historique'], ['plus', 'Plus']] : [['histo', 'Historique']];
     var bt = function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; };
     var titreTel = S.tab === 'accueil' ? 'Gestion de stock' : NOMS[S.tab] || 'Stock';
     return '<header class="top t2"><div class="top-in">'
@@ -4421,7 +4422,7 @@
       }).join('') + '</nav>';
     }
     var bas = ['accueil', 'sortie', 'inventaire', 'commandes'];
-    var quot = ['demandes', 'retour', 'histo'], cat = ['stock', 'articles', 'fournisseurs', 'invfin', 'plus', 'compte', 'aide'], menu = quot.concat(cat, ['hub']);
+    var quot = ['demandes', 'retour', 'histo'], cat = ['stock', 'tdb', 'articles', 'fournisseurs', 'invfin', 'plus', 'compte', 'aide'], menu = quot.concat(cat, ['hub']);
     var att = S.attente.length, dansMenu = menu.indexOf(S.tab) >= 0;
     var NOMS_G = { plus: 'Sauvegarde', compte: 'Mon mot de passe' };
     var h = '<nav class="bnav g5" aria-label="Menu principal">' + bas.map(function (t) {
@@ -4774,7 +4775,8 @@
       + tuile(cnt.commander, 'à commander', cnt.commander ? 'warn' : 'ok', 'stock:commander', (function () { var n = A.filter(function (a) { return filtreStock(a, 'commander') && stockDe(a.id, 0) <= 0; }).length; return n ? 'dont ' + n + ' en rupture' : 'Au seuil d’alerte ou en dessous'; })())
       + tuile(eur(valR), 'valeur de la réserve', '', 'stock:', 'Cabinets : ' + eur(valC))
       + '</div>';
-    h += '<button class="if-carte" data-tab="invfin"><span class="if-ci" aria-hidden="true">' + ico('agenda', 26) + '</span><span class="grow"><b>Inventaire de fin d’année ' + invFinAnnee() + '</b><span>Préparer, clôturer et exporter le stock de la réserve pour le comptable</span></span>' + ico('suiv', 20, 2.4) + '</button>';
+    h += '<div class="if-row"><button class="if-carte" data-tab="tdb"><span class="if-ci" aria-hidden="true">' + ico('graph', 26) + '</span><span class="grow"><b>Analyses du stock</b><span>Consommation, ruptures à venir, articles dormants, seuils suggérés, fournisseurs</span></span>' + ico('suiv', 20, 2.4) + '</button>'
+      + '<button class="if-carte" data-tab="invfin"><span class="if-ci" aria-hidden="true">' + ico('agenda', 26) + '</span><span class="grow"><b>Inventaire de fin d’année ' + invFinAnnee() + '</b><span>Préparer, clôturer et exporter le stock de la réserve pour le comptable</span></span>' + ico('suiv', 20, 2.4) + '</button></div>';
     // inventaires
     var emps = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (e) { var s = etatInventaire(e); s.emp = e; return s; });
     var aFaire = emps.filter(function (s) { return s.cls !== 'ok'; }).sort(function (a, b) { return a.ordre - b.ordre || a.emp - b.emp; });
@@ -5389,6 +5391,375 @@
     bloc('Articles sans prix (comptés à 0 €)', P.sansPrix); bloc('Quantités négatives', P.negatifs); bloc('Valeurs élevées à vérifier (prix ou conditionnement)', P.suspects);
     var feuilles = [s1, s2, s3, s4].map(function (o) { return { nom: o.nom, cases: o.cases, fusions: o.fusions, larg: o.larg, haut: o.haut }; });
     XLSX_EVY.creerMiseEnForme(feuilles).then(function (blob) { telecharger(blob, nomFichier('inventaire-fin-annee-' + y)); toast('✔ Export comptable téléchargé'); }).catch(function (e) { toast(msgErr(e)); });
+  }
+  // ---------- Analyses du stock (tableau de bord complet) ----------
+  // Tout se calcule à partir des mouvements, commandes et prix déjà enregistrés. Seule la réserve compte dans la valeur du stock.
+  var TDB_PER = [['12', '12 derniers mois'], ['6', '6 derniers mois'], ['3', '3 derniers mois'], ['an', 'Année en cours']];
+  var TDB_ONG = [['vue', 'Vue d’ensemble'], ['conso', 'Consommation'], ['art', 'Articles'], ['four', 'Fournisseurs']];
+  var MOIS_C = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  var TDB_J = 864e5, TDB_DELAI = 7;
+  function tdbMk(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); }
+  function tdbMois(per) {
+    var n = new Date(), k = per === 'an' ? n.getMonth() + 1 : +per || 12, out = [];
+    for (var i = k - 1; i >= 0; i--) out.push(new Date(n.getFullYear(), n.getMonth() - i, 1));
+    return out;
+  }
+  function tdbE(v) { return Math.round(v || 0).toLocaleString('fr-FR') + ' €'; }
+  function tdbK(v) { v = v || 0; return Math.abs(v) >= 1000 ? (v / 1000).toFixed(1).replace('.', ',') + ' k' : String(Math.round(v)); }
+  function tdbPct(x, dec) { if (x == null || !isFinite(x)) return '—'; var v = Math.abs(x * 100).toFixed(dec == null ? 1 : dec).replace('.', ','); return (x >= 0 ? '+' : '−') + v + ' %'; }
+  function tdbN(x, dec) { return (Math.round(x * Math.pow(10, dec || 0)) / Math.pow(10, dec || 0)).toLocaleString('fr-FR'); }
+  function tdbDuree(j) { if (j == null || !isFinite(j)) return '—'; if (j > 365) return '> 1 an'; if (j < 14) return Math.max(0, Math.round(j)) + ' j'; return Math.round(j / 7) + ' sem.'; }
+  function chargerTdb() {
+    S.tdb = S.tdb || { onglet: 'vue', per: '12', lieu: '', tout: {} };
+    var T = S.tdb; T.charge = true; T.err = null;
+    var dep = new Date(); dep.setMonth(dep.getMonth() - 13); dep.setDate(1); dep.setHours(0, 0, 0, 0);
+    var iso = dep.toISOString(), parId = function (q) { return q.order('id'); };
+    Promise.all([
+      toutLire('mouvements', 'id,cree_le,type,statut,lot,article_id,emplacement_de,emplacement_vers,quantite,quantite_reserve,avant,apres,valeur,commande_id,commande_ligne_id', function (q) { return q.gte('cree_le', iso).neq('type', 'demande').order('id'); }),
+      toutLire('commandes', 'id,fournisseur_id,numero,date_commande,statut,cree_le', parId),
+      toutLire('commande_lignes', 'id,commande_id,article_id,quantite', parId),
+      toutLire('prix_historique', 'article_id,fournisseur_id,date_prix,prix', function (q) { return q.order('date_prix').order('id'); }),
+      sb.from('mouvements').select('cree_le').eq('type', 'sortie').order('cree_le').limit(1)
+    ]).then(function (r) {
+      T.d = { mv: r[0], cmd: r[1], lig: r[2], ph: r[3], prem: r[4].data && r[4].data[0] ? r[4].data[0].cree_le : null };
+      T.at = Date.now(); T.charge = false; T.calc = null; render();
+    }).catch(function (e) { T.charge = false; T.err = msgErr(e); render(); });
+  }
+  function tdbCalc() {
+    var T = S.tdb, D = T.d, now = Date.now(), J = TDB_J;
+    if (T.calc && T.calc.per === T.per && T.calc.lieu === T.lieu && T.calc.art === S.articles && T.calc.stk === S.stocks && T.calc.cmdR === S.commandes) return T.calc;
+    var A = S.articles.filter(function (a) { return !a.archive; });
+    var cm = function (a) { return a ? +a.cout_moyen || 0 : 0; };
+    var qr = function (m, a) { return m.quantite_reserve != null ? +m.quantite_reserve : (+m.quantite || 0) / facteur(a); };
+    // 1. événements de consommation (sorties − retours), réceptions, écarts, positions de la réserve
+    var E = [], der = {}, recep = [], ecarts = [], resMv = {};
+    D.mv.forEach(function (m) {
+      var a = S.byId[m.article_id], t = new Date(m.cree_le).getTime();
+      if (m.type === 'sortie' && m.statut === 'ok') {
+        var q = qr(m, a); E.push({ t: t, a: m.article_id, l: m.emplacement_vers, q: q, v: q * cm(a) });
+        if (!der[m.article_id] || der[m.article_id] < t) der[m.article_id] = t;
+      } else if (m.type === 'retour' && m.statut === 'ok') {
+        var q2 = qr(m, a); E.push({ t: t, a: m.article_id, l: m.emplacement_de, q: -q2, v: -q2 * cm(a) });
+      } else if (m.type === 'reception' && m.statut === 'ok') recep.push({ t: t, m: m });
+      else if ((m.type === 'inventaire' || m.type === 'regul') && m.emplacement_de === 0) ecarts.push({ t: t, v: +m.valeur || 0 });
+      if (m.avant != null && m.apres != null && (m.emplacement_de === 0 || m.emplacement_vers === 0)) (resMv[m.article_id] = resMv[m.article_id] || []).push({ t: t, av: +m.avant, ap: +m.apres });
+    });
+    var prem = D.prem ? new Date(D.prem).getTime() : null, recul = prem ? Math.max(0, (now - prem) / J) : 0;
+    // 2. rythme de sortie : 90 derniers jours (ou depuis le début du suivi)
+    var jw = Math.min(90, recul), assez = jw >= 21, t0w = now - jw * J, rate = {}, vW = 0;
+    E.forEach(function (e) { if (e.t >= t0w) { rate[e.a] = (rate[e.a] || 0) + e.q; vW += e.v; } });
+    Object.keys(rate).forEach(function (k) { rate[k] = assez ? Math.max(0, rate[k]) / jw : 0; });
+    // 3. période choisie
+    var mois = tdbMois(T.per), deb = mois[0].getTime(), MK = mois.map(tdbMk), kCur = MK[MK.length - 1];
+    var moisPrem = prem ? tdbMk(new Date(prem)) : null;
+    var parMois = {}, parLM = {}, parArt = {}, parLieu = {}, totP = 0;
+    MK.forEach(function (k) { parMois[k] = 0; });
+    E.forEach(function (e) {
+      if (e.t < deb) return;
+      var k = tdbMk(new Date(e.t)); parMois[k] = (parMois[k] || 0) + e.v;
+      var L = parLM[e.l] = parLM[e.l] || {}; L[k] = (L[k] || 0) + e.v;
+      parArt[e.a] = (parArt[e.a] || 0) + e.v; parLieu[e.l] = (parLieu[e.l] || 0) + e.v; totP += e.v;
+    });
+    // 4. valeur de la réserve aujourd'hui et à chaque fin de mois (reconstituée à partir des mouvements)
+    var valR = 0; S.articles.forEach(function (a) { valR += stockDe(a.id, 0) * cm(a); });
+    var qA = function (aid, tt) { var L = resMv[aid]; if (!L) return null; var last = null; for (var i = 0; i < L.length; i++) { if (L[i].t <= tt) last = L[i].ap; else return last != null ? last : L[i].av; } return last; };
+    var valFin = function (tt) { if (tt >= now) return valR; var v = 0; S.articles.forEach(function (a) { var q = qA(a.id, tt); v += (q == null ? stockDe(a.id, 0) : q) * cm(a); }); return v; };
+    var vFin = {}; mois.forEach(function (d, i) { vFin[MK[i]] = valFin(new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime() - 1); });
+    var finPrec = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime() - 1, valPrec = valFin(finPrec);
+    // 5. commandes, délais de livraison, livraisons complètes, achats
+    var cmdById = {}, ligC = {}; D.cmd.forEach(function (c) { cmdById[c.id] = c; }); D.lig.forEach(function (l) { (ligC[l.commande_id] = ligC[l.commande_id] || []).push(l); });
+    var premRec = {}; recep.forEach(function (r) { var c = r.m.commande_id; if (c && (!premRec[c] || r.t < premRec[c].t)) premRec[c] = { t: r.t, lot: r.m.lot, q: {} }; });
+    recep.forEach(function (r) { var p = premRec[r.m.commande_id]; if (p && r.m.lot === p.lot && r.m.commande_ligne_id) p.q[r.m.commande_ligne_id] = (p.q[r.m.commande_ligne_id] || 0) + (+r.m.quantite || 0); });
+    var infoCmd = function (c) {
+      var p = premRec[c.id]; if (!p) return null;
+      if (p.t - new Date(c.cree_le).getTime() < 15 * 60e3) return { direct: true }; // facture importée directement : ni délai ni reliquat à mesurer
+      var dl = Math.max(0, Math.round((p.t - dDe(c.date_commande || c.cree_le).getTime()) / J));
+      var comp = (ligC[c.id] || []).every(function (l) { return !(+l.quantite > 0) || (p.q[l.id] || 0) >= +l.quantite - 1e-9; });
+      return { dl: dl, comp: comp };
+    };
+    var delaiF = {}; D.cmd.forEach(function (c) { var x = infoCmd(c); if (x && !x.direct) { var o = delaiF[c.fournisseur_id] = delaiF[c.fournisseur_id] || []; o.push(x.dl); } });
+    var delaiDe = function (fid) { var L = delaiF[fid]; return L && L.length ? { j: L.reduce(function (s, x) { return s + x; }, 0) / L.length, connu: true } : { j: TDB_DELAI, connu: false }; };
+    var debIso = tdbMk(mois[0]) + '-01', F = {}, achMois = {}, achTot = 0;
+    MK.forEach(function (k) { achMois[k] = 0; });
+    var fo = function (fid) { return F[fid] = F[fid] || { fid: fid, ach: 0, n: 0, dl: [], comp: 0, nc: 0, prix: [] }; };
+    recep.forEach(function (r) { if (r.t < deb) return; var c = cmdById[r.m.commande_id], v = +r.m.valeur || 0; var k = tdbMk(new Date(r.t)); achMois[k] = (achMois[k] || 0) + v; achTot += v; if (c) fo(c.fournisseur_id).ach += v; });
+    D.cmd.forEach(function (c) { if (String(c.date_commande || c.cree_le).slice(0, 10) < debIso) return; var f = fo(c.fournisseur_id); f.n++; var x = infoCmd(c); if (x && !x.direct) { f.dl.push(x.dl); f.nc++; if (x.comp) f.comp++; } });
+    // 6. évolution des prix (dernière facture comparée à celle d'il y a un an)
+    var ser = {}, hausses = [];
+    D.ph.forEach(function (p) { var k = p.article_id + '|' + p.fournisseur_id; (ser[k] = ser[k] || []).push(p); });
+    Object.keys(ser).forEach(function (k) {
+      var L = ser[k], last = L[L.length - 1], d1 = dDe(last.date_prix).getTime();
+      if (!(+last.prix > 0) || now - d1 > 400 * J) return;
+      var ref = null; L.forEach(function (p) { if (dDe(p.date_prix).getTime() <= d1 - 365 * J) ref = p; });
+      if (!ref) ref = L[0];
+      if (ref === last || d1 - dDe(ref.date_prix).getTime() < 60 * J || !(+ref.prix > 0)) return;
+      var x = { aid: last.article_id, fid: last.fournisseur_id, p0: +ref.prix, p1: +last.prix, d0: ref.date_prix, pct: +last.prix / +ref.prix - 1 };
+      hausses.push(x); fo(x.fid).prix.push(x.pct);
+    });
+    hausses.sort(function (a, b) { return b.pct - a.pct; });
+    // 7. par article : couverture, seuil suggéré, ABC, dormants
+    var arts = A.map(function (a) {
+      var r = stockDe(a.id, 0), j = rate[a.id] || 0, dl = delaiDe(a.fournisseur_id), s = +a.seuil || 0;
+      var sug = j > 0 ? Math.max(1, Math.ceil(j * (dl.j + 7) - 1e-9)) : null;
+      var revoir = assez && !a.sans_seuil && sug != null && (s > 0 ? Math.abs(sug - s) >= Math.max(1, 0.3 * s) : true);
+      return { a: a, r: r, j: j, sem: j * 7, tient: j > 0 ? Math.max(0, r) / j : null, dl: dl, seuil: s, sug: sug, revoir: revoir, v: parArt[a.id] || 0, val: Math.max(0, r) * cm(a), der: der[a.id] || null };
+    });
+    var cons = arts.filter(function (x) { return x.v > 0; }).sort(function (a, b) { return b.v - a.v; }), cumul = 0, tc = cons.reduce(function (s, x) { return s + x.v; }, 0);
+    cons.forEach(function (x) { var avant = cumul; cumul += x.v; x.cl = avant < tc * 0.8 ? 'A' : avant < tc * 0.95 ? 'B' : 'C'; });
+    var abc = { A: { n: 0, v: 0 }, B: { n: 0, v: 0 }, C: { n: 0, v: 0 } }; cons.forEach(function (x) { abc[x.cl].n++; abc[x.cl].v += x.v; });
+    var dormOk = recul >= 90, dorm = dormOk ? arts.filter(function (x) { return x.r > 0 && (!x.der || now - x.der > 90 * J) && (!x.a.cree_le || now - new Date(x.a.cree_le).getTime() > 90 * J); }).sort(function (a, b) { return b.val - a.val; }) : [];
+    var sansPrix = arts.filter(function (x) { return x.r > 0 && !(cm(x.a) > 0); });
+    var ruptures = A.filter(function (a) { return filtreStock(a, 'rupture'); });
+    var risque = arts.filter(function (x) { return assez && !x.a.sans_seuil && x.j > 0 && x.r > 0 && enCoursPour(x.a.id) <= 0 && x.tient < x.dl.j + 7; }).sort(function (a, b) { return (a.tient - a.dl.j) - (b.tient - b.dl.j); });
+    // 8. ce qui a le plus bougé (filtrable par lieu)
+    var fen = recul >= 180 ? [90, 'les 3 derniers mois comparés aux 3 précédents', 3] : recul >= 60 ? [30, 'les 30 derniers jours comparés aux 30 précédents', 1] : null, bouge = [];
+    if (fen) {
+      var w = fen[0] * J, b0 = {}, b1 = {};
+      E.forEach(function (e) { if (T.lieu && String(e.l) !== T.lieu) return; if (e.t >= now - w) b1[e.a] = (b1[e.a] || 0) + e.v; else if (e.t >= now - 2 * w) b0[e.a] = (b0[e.a] || 0) + e.v; });
+      Object.keys(Object.assign({}, b0, b1)).forEach(function (k) { var x0 = (b0[k] || 0) / fen[2], x1 = (b1[k] || 0) / fen[2]; if (Math.max(x0, x1) >= 15 && Math.abs(x1 - x0) >= 10) bouge.push({ aid: +k, x0: x0, x1: x1, d: x1 - x0 }); });
+      bouge.sort(function (a, b) { return Math.abs(b.d) - Math.abs(a.d); }); bouge = bouge.slice(0, 8);
+    }
+    // 9. par type de soins (filtrable par lieu)
+    var soins = {}; E.forEach(function (e) { if (e.t < deb || (T.lieu && String(e.l) !== T.lieu)) return; var a = S.byId[e.a], k = (a && String(a.type_soins || '').trim()) || 'Non renseigné'; soins[k] = (soins[k] || 0) + e.v; });
+    // indicateurs
+    var moisSuivis = MK.filter(function (k) { return moisPrem && k >= moisPrem; });
+    var prevs = moisSuivis.filter(function (k) { return k !== kCur; }), moy = prevs.length ? prevs.reduce(function (s, k) { return s + parMois[k]; }, 0) / prevs.length : null;
+    var parSem = assez ? vW / jw * 7 : 0, rot = null;
+    if (recul >= 60 && moisSuivis.length) { var vm = moisSuivis.reduce(function (s, k) { return s + vFin[k]; }, 0) / moisSuivis.length; if (vm > 0) rot = (vW / jw * 365) / vm; }
+    var ecP = ecarts.reduce(function (s, e) { return e.t >= deb ? s + e.v : s; }, 0);
+    T.calc = {
+      per: T.per, lieu: T.lieu, art: S.articles, stk: S.stocks, cmdR: S.commandes,
+      recul: recul, assez: assez, jw: jw, mois: mois, MK: MK, kCur: kCur, moisPrem: moisPrem,
+      parMois: parMois, parLM: parLM, parLieu: parLieu, totP: totP, vFin: vFin, valR: valR, valPrec: valPrec,
+      moy: moy, parSem: parSem, couv: parSem > 0 ? valR / parSem : null, rot: rot, ecP: ecP,
+      ruptures: ruptures, risque: risque, arts: arts, cons: cons, abc: abc, dorm: dorm, dormOk: dormOk, sansPrix: sansPrix,
+      revoir: arts.filter(function (x) { return x.revoir; }), hausses: hausses, bouge: bouge, fen: fen, soins: soins,
+      F: Object.keys(F).map(function (k) { return F[k]; }).filter(function (f) { return f.ach > 0 || f.n > 0; }).sort(function (a, b) { return b.ach - a.ach || b.n - a.n; }),
+      achMois: achMois, achTot: achTot, delaiDe: delaiDe
+    };
+    return T.calc;
+  }
+  function tdbNomA(id) { var a = S.byId[id]; return a ? a.nom : '(article supprimé)'; }
+  function tdbNomF(fid) { return fid ? S.fournisseurs[fid] || 'Fournisseur supprimé' : 'Sans fournisseur'; }
+  function tdbBarre(pct, cl) { return '<span class="tdb-bb"><span class="' + (cl || '') + '" style="width:' + Math.max(0, Math.min(100, pct)).toFixed(1) + '%"></span></span>'; }
+  function vTdb() {
+    if (!gestion()) return '<p class="mu">Réservé à la référente et à la responsable.</p>';
+    var T = S.tdb;
+    if (!T || (!T.charge && (!T.d || Date.now() - T.at > 10 * 60e3) && !T.err)) { chargerTdb(); T = S.tdb; }
+    var h = '<div class="tdb"><div class="tdb-hd"><h2>Analyses du stock</h2><span class="mu">Calculées à partir des sorties, des inventaires, des commandes et des factures. Seule la réserve compte dans la valeur du stock.</span></div>'
+      + '<div class="tdb-bar"><div class="tdb-tabs" role="tablist" aria-label="Rubriques des analyses">' + TDB_ONG.map(function (o) { return '<button role="tab" data-tdbo="' + o[0] + '" class="' + (T.onglet === o[0] ? 'on' : '') + '" aria-selected="' + (T.onglet === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div><span class="grow"></span>';
+    if (T.onglet === 'conso') h += '<label class="tdb-f">Lieu<select id="tdblieu"><option value="">Tous les lieux</option>' + [1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (e) { return '<option value="' + e + '"' + (T.lieu === String(e) ? ' selected' : '') + '>' + (e === 9 ? 'La Sté' : 'Cabinet ' + e) + '</option>'; }).join('') + '</select></label>';
+    if (T.onglet !== 'art') h += '<label class="tdb-f">Période<select id="tdbper">' + TDB_PER.map(function (p) { return '<option value="' + p[0] + '"' + (T.per === p[0] ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('') + '</select></label>';
+    h += '<button class="tdb-btn" data-act="tdbexp"' + (T.d ? '' : ' disabled') + '>' + ico('telecharger', 18, 2.2) + 'Exporter (Excel)</button></div>';
+    if (T.err) return h + '<div class="ban warn">Les analyses n’ont pas pu être calculées : ' + esc(T.err) + ' <button class="btn sm" data-act="tdbmaj">Réessayer</button></div></div>';
+    if (!T.d) return h + '<p class="mu">Calcul des analyses…</p></div>';
+    var C = tdbCalc();
+    if (C.recul < 90) h += '<div class="tdb-recul">' + ico('attente', 18, 2.4) + '<span><b>Pas encore assez de recul.</b> ' + (C.recul < 1 ? 'Aucune sortie enregistrée pour l’instant : les chiffres apparaîtront au fil des sorties.' : 'Les sorties sont suivies depuis ' + Math.round(C.recul) + ' jour' + (C.recul >= 2 ? 's' : '') + '. Les tendances, les dormants et les seuils suggérés deviennent fiables après 3 mois.') + '</span></div>';
+    h += ({ vue: tdbVue, conso: tdbConso, art: tdbArt, four: tdbFour }[T.onglet] || tdbVue)(C);
+    return h + '<p class="mu tdb-maj">Calculé à ' + new Date(T.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + ' · <button class="lnk" data-act="tdbmaj">Recalculer</button></p></div>';
+  }
+  function tdbKpi(l, v, t, cl, tcl) { return '<div class="tdb-kc"><small>' + l + '</small><b class="' + (cl || '') + '">' + v + '</b><span class="' + (tcl || '') + '">' + t + '</span></div>'; }
+  function tdbVue(C) {
+    var cur = C.parMois[C.kCur] || 0, dv = C.valPrec > 0 ? C.valR / C.valPrec - 1 : null, nj = new Date(), frac = nj.getDate() / new Date(nj.getFullYear(), nj.getMonth() + 1, 0).getDate(), dm = C.moy > 0 ? cur / (C.moy * frac) - 1 : null;
+    var h = '<div class="tdb-k">'
+      + tdbKpi('Valeur de la réserve', tdbE(C.valR), dv == null ? 'stock actuel de la réserve' : tdbPct(dv) + ' sur un mois')
+      + tdbKpi('Consommé ce mois', tdbE(cur), dm == null ? 'premier mois de suivi' : tdbPct(dm, 0) + ' sur un mois moyen à la même date', '', dm > 0.15 ? 'warn' : '')
+      + tdbKpi('Couverture', C.couv == null ? '—' : tdbN(C.couv, 1) + ' sem.', C.couv == null ? 'pas encore assez de sorties' : 'le stock tient environ ' + Math.max(1, Math.round(C.couv)) + ' semaine' + (Math.round(C.couv) > 1 ? 's' : ''))
+      + tdbKpi('Ruptures', String(C.ruptures.length), C.risque.length ? '+ ' + C.risque.length + ' article' + (C.risque.length > 1 ? 's' : '') + ' à risque' : 'aucun article à risque', C.ruptures.length ? 'ko' : 'okc', C.risque.length ? 'warn' : '')
+      + tdbKpi('Rotation', C.rot == null ? '—' : tdbN(C.rot, 1) + ' / an', C.rot == null ? 'disponible après 2 mois de suivi' : 'la réserve se renouvelle tous les ' + tdbN(Math.max(0.5, Math.round(24 / C.rot) / 2), 1) + ' mois')
+      + tdbKpi('Écarts d’inventaire', (C.ecP > 0 ? '+' : C.ecP < 0 ? '−' : '') + tdbE(Math.abs(C.ecP)), C.totP > 0 ? tdbN(Math.abs(C.ecP) / C.totP * 100, 1) + ' % de la consommation' : 'comptages de la réserve')
+      + '</div>';
+    // graphique consommation + valeur de la réserve
+    var vals = C.MK.map(function (k) { return C.parMois[k] || 0; }), resv = C.MK.map(function (k) { return C.vFin[k] || 0; });
+    var mx = Math.max.apply(null, vals.concat([1])), my = Math.max.apply(null, resv.concat([1]));
+    var echC = tdbEchelle(mx), echR = tdbEchelle(my);
+    var lect = '';
+    var kL = C.MK.length > 1 ? C.MK[C.MK.length - 2] : null;
+    if (kL && (!C.moisPrem || kL >= C.moisPrem) && C.parMois[kL] > 0) { var dL = dDe(kL + '-01'); lect = 'Lecture : en ' + MOIS[dL.getMonth()] + ', ' + tdbE(C.parMois[kL]) + ' de produits sont sortis de la réserve' + (C.moy > 0 ? ' (' + tdbPct(C.parMois[kL] / C.moy - 1, 0) + ' sur la moyenne)' : '') + ' ; la réserve valait ' + tdbE(C.vFin[kL]) + ' à la fin du mois.'; }
+    h += '<div class="tdb-g ga"><section class="tdb-s"><div class="tdb-h"><b>Consommation par mois et valeur de la réserve</b><span class="tdb-lg"><i class="lc"></i>consommation (€)</span><span class="tdb-lg"><i class="lr"></i>valeur de la réserve en fin de mois (échelle de droite)</span></div>'
+      + tdbGraph(C.MK, vals, echC, resv, echR, C.kCur)
+      + (lect ? '<span class="tdb-note">' + lect + '</span>' : '') + '</section>';
+    // risque de rupture
+    h += '<section class="tdb-s"><div class="tdb-h"><b>Risque de rupture</b>' + (C.risque.length ? '<span class="pill warn">' + C.risque.length + ' article' + (C.risque.length > 1 ? 's' : '') + '</span>' : '') + '</div><span class="tdb-note">Le stock de la réserve tiendra moins longtemps que le délai de livraison du fournisseur + 1 semaine (articles déjà en commande exclus).</span>';
+    if (!C.assez) h += '<p class="mu">Il faut au moins 3 semaines de sorties pour estimer le rythme.</p>';
+    else if (!C.risque.length) h += '<p class="tdb-vide">' + ico('ok', 18, 2.6) + 'Aucun article à risque pour l’instant.</p>';
+    else h += '<div class="tdb-th" style="grid-template-columns:minmax(0,1fr) 70px 80px"><span>Article</span><span class="r">Tient</span><span class="r">Livré en</span></div>'
+      + C.risque.slice(0, 7).map(function (x) { return '<button class="tdb-rw" data-tdba="' + x.a.id + '" style="grid-template-columns:minmax(0,1fr) 70px 80px"><span class="tdb-an"><b>' + esc(x.a.nom) + '</b><span>' + esc(tdbNomF(x.a.fournisseur_id)) + '</span></span><b class="r ' + (x.tient < x.dl.j ? 'ko' : 'warn') + '">' + tdbDuree(x.tient) + '</b><span class="r mu">' + (x.dl.connu ? '' : '≈ ') + Math.round(x.dl.j) + ' j</span></button>'; }).join('')
+      + (C.risque.length > 7 ? '<span class="tdb-note">+ ' + (C.risque.length - 7) + ' autre(s)</span>' : '');
+    h += '<button class="tdb-lien" data-go="commandes">Préparer les commandes' + ico('suiv', 18, 2.4) + '</button></section></div>';
+    // bas : top 5, lieux, alertes
+    var top = C.cons.slice(0, 5), mxT = top.length ? top[0].v : 1;
+    var lieux = Object.keys(C.parLieu).map(function (k) { return { e: +k, v: C.parLieu[k] }; }).filter(function (x) { return x.v > 0; }).sort(function (a, b) { return b.v - a.v; }), mxL = lieux.length ? lieux[0].v : 1;
+    h += '<div class="tdb-g g3"><section class="tdb-s"><b class="tdb-t">Les 5 articles qui coûtent le plus</b>'
+      + (top.length ? top.map(function (x) { return '<button class="tdb-rw tdb-bar3" data-tdba="' + x.a.id + '"><span class="tdb-el">' + esc(x.a.nom) + '</span>' + tdbBarre(x.v / mxT * 100) + '<b class="r">' + tdbE(x.v) + '</b></button>'; }).join('') : '<p class="mu">Pas encore de sorties sur la période.</p>')
+      + '</section><section class="tdb-s"><b class="tdb-t">Où va la consommation</b>'
+      + (lieux.length ? lieux.map(function (x) { return '<div class="tdb-bar3 lieu"><span>' + (x.e === 9 ? 'La Sté' : 'Cabinet ' + x.e) + '</span>' + tdbBarre(x.v / mxL * 100, x.e === 9 ? 'g' : '') + '<b class="r">' + tdbE(x.v) + '</b></div>'; }).join('') : '<p class="mu">Pas encore de sorties sur la période.</p>')
+      + '</section><section class="tdb-s"><b class="tdb-t">À regarder</b>';
+    var al = [];
+    if (C.dorm.length) al.push(['w', C.dorm.length, 'article' + (C.dorm.length > 1 ? 's' : '') + ' sans sortie depuis 3 mois (dormants)', 'art']);
+    if (C.sansPrix.length) al.push(['w', C.sansPrix.length, 'article' + (C.sansPrix.length > 1 ? 's' : '') + ' en réserve sans prix : valeur sous-estimée', 'art']);
+    if (C.revoir.length) al.push(['n', C.revoir.length, 'seuil' + (C.revoir.length > 1 ? 's' : '') + ' à revoir d’après la consommation réelle', 'art']);
+    var h10 = C.hausses.filter(function (x) { return x.pct > 0.1; }).length;
+    if (h10) al.push(['n', h10, 'hausse' + (h10 > 1 ? 's' : '') + ' de prix de plus de 10 % sur un an', 'four']);
+    h += al.length ? al.map(function (x) { return '<button class="tdb-al ' + x[0] + '" data-tdbo="' + x[3] + '"><b>' + x[1] + '</b><span>' + x[2] + '</span>' + ico('suiv', 16, 2.4) + '</button>'; }).join('') : '<p class="tdb-vide">' + ico('ok', 18, 2.6) + 'Rien de particulier à signaler.</p>';
+    return h + '</section></div>';
+  }
+  function tdbEchelle(mx) {
+    var p = Math.pow(10, Math.floor(Math.log10(mx))), pas = [1, 2, 2.5, 5, 10].map(function (k) { return k * p; }).filter(function (s) { return mx / s <= 4; })[0] || 10 * p;
+    return { max: pas * Math.ceil(mx / pas), pas: pas };
+  }
+  function tdbGraph(MK, vals, eC, resv, eR, kCur) {
+    var ax = function (e, droite) { var L = []; for (var v = e.max; v >= 0; v -= e.pas) L.push('<span>' + (v === 0 ? '0' : tdbK(v) + ' €') + '</span>'); return '<div class="tdb-ax' + (droite ? ' d' : '') + '">' + L.join('') + '</div>'; };
+    return '<div class="tdb-ch' + (resv ? '' : ' simple') + '">' + ax(eC) + '<div class="tdb-cols">' + MK.map(function (k, i) {
+      var d = dDe(k + '-01'), hb = vals[i] / eC.max * 100;
+      return '<div class="tdb-col" title="' + MOIS[d.getMonth()] + ' ' + d.getFullYear() + ' : ' + tdbE(vals[i]) + (resv ? ' consommés · réserve ' + tdbE(resv[i]) : '') + '"><em style="bottom:calc(' + hb.toFixed(1) + '% + 4px)">' + (vals[i] ? tdbK(vals[i]) : '') + '</em><i class="' + (k === kCur ? 'cur' : '') + '" style="height:' + hb.toFixed(1) + '%"></i>'
+        + (resv ? '<u style="bottom:' + Math.max(0, Math.min(100, resv[i] / eR.max * 100)).toFixed(1) + '%"></u>' : '') + '<s>' + MOIS_C[d.getMonth()] + '</s></div>';
+    }).join('') + '</div>' + (resv ? ax(eR, true) : '') + '</div>';
+  }
+  function tdbConso(C) {
+    var lieux = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(function (e) { return C.parLM[e]; });
+    if (!lieux.length) lieux = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    var mx = 1; lieux.forEach(function (e) { C.MK.forEach(function (k) { mx = Math.max(mx, (C.parLM[e] || {})[k] || 0); }); });
+    var gc = 'grid-template-columns:96px repeat(' + C.MK.length + ',minmax(44px,1fr)) 84px';
+    var h = '<section class="tdb-s"><div class="tdb-h"><b>Consommation par lieu et par mois (€)</b><span>plus la case est foncée, plus le lieu a consommé</span></div><div class="tdb-sc"><div class="tdb-hm" style="' + gc + '"><span></span>'
+      + C.MK.map(function (k) { return '<span class="tdb-hmm">' + MOIS_C[dDe(k + '-01').getMonth()] + '</span>'; }).join('') + '<span class="tdb-hmm r">Total</span>';
+    lieux.forEach(function (e) {
+      var L = C.parLM[e] || {}, tot = 0;
+      h += '<span class="tdb-hml' + (C.lieu === String(e) ? ' on' : '') + '">' + (e === 9 ? 'La Sté' : 'Cabinet ' + e) + '</span>' + C.MK.map(function (k) {
+        var v = L[k] || 0, x = Math.max(0, Math.min(1, v / mx)), l = Math.round(96 - x * 62); tot += v;
+        return '<span class="tdb-hc" style="background:hsl(205,28%,' + l + '%);color:' + (l < 62 ? '#fff' : 'var(--ink)') + '" title="' + (e === 9 ? 'La Sté' : 'Cabinet ' + e) + ' · ' + MOIS[dDe(k + '-01').getMonth()] + ' : ' + tdbE(v) + '">' + (v ? tdbK(v) : '') + '</span>';
+      }).join('') + '<b class="tdb-hmt">' + tdbK(tot) + ' €</b>';
+    });
+    h += '</div></div><span class="tdb-note">Sorties de la réserve vers chaque lieu, retours déduits, au coût moyen actuel de chaque article.</span></section>';
+    var so = Object.keys(C.soins).map(function (k) { return { n: k, v: C.soins[k] }; }).filter(function (x) { return x.v > 0; }).sort(function (a, b) { return (a.n === 'Non renseigné') - (b.n === 'Non renseigné') || b.v - a.v; });
+    var ts = so.reduce(function (s, x) { return s + x.v; }, 0), ms = Math.max.apply(null, so.map(function (x) { return x.v; }).concat([1]));
+    h += '<div class="tdb-g gb"><section class="tdb-s"><b class="tdb-t">Par type de soins' + (C.lieu ? ' · ' + (C.lieu === '9' ? 'La Sté' : 'cabinet ' + C.lieu) : '') + '</b>'
+      + (so.length ? so.map(function (x) { return '<div class="tdb-so"><span>' + esc(x.n) + '</span>' + tdbBarre(x.v / ms * 100, x.n === 'Non renseigné' ? 'm' : '') + '<b class="r">' + tdbE(x.v) + '</b><span class="r mu">' + Math.round(x.v / ts * 100) + ' %</span></div>'; }).join('') : '<p class="mu">Pas encore de sorties sur la période.</p>')
+      + '<span class="tdb-note">' + (C.soins['Non renseigné'] > ts * 0.3 ? Math.round(C.soins['Non renseigné'] / ts * 100) + ' % de la consommation concerne des articles sans type de soins : renseignez-le dans les fiches articles (Articles › fiche › Type de soins) pour une lecture utile.' : 'Le type de soins vient de la fiche article (Articles › fiche › Type de soins).') + '</span></section>';
+    h += '<section class="tdb-s"><div class="tdb-h"><b>Ce qui a le plus bougé' + (C.lieu ? ' · ' + (C.lieu === '9' ? 'La Sté' : 'cabinet ' + C.lieu) : '') + '</b>' + (C.fen ? '<span>' + C.fen[1] + '</span>' : '') + '</div>';
+    if (!C.fen) h += '<p class="mu">Disponible après 2 mois de sorties.</p>';
+    else if (!C.bouge.length) h += '<p class="tdb-vide">' + ico('ok', 18, 2.6) + 'Consommation stable : aucun écart notable.</p>';
+    else {
+      var gm = 'grid-template-columns:minmax(0,1fr) 96px 96px 84px', u = C.fen[2] > 1 ? ' / mois' : '';
+      h += '<div class="tdb-th" style="' + gm + '"><span>Article</span><span class="r">Avant' + u + '</span><span class="r">Récemment</span><span class="r">Écart</span></div>'
+        + C.bouge.map(function (x) { return '<button class="tdb-rw" data-tdba="' + x.aid + '" style="' + gm + '"><span class="tdb-el">' + esc(tdbNomA(x.aid)) + '</span><span class="r mu">' + tdbE(x.x0) + '</span><span class="r">' + tdbE(x.x1) + '</span><b class="r ' + (x.d > 0 ? 'warn' : 'blu') + '">' + (x.x0 > 0 ? tdbPct(x.x1 / x.x0 - 1, 0) : 'nouveau') + '</b></button>'; }).join('');
+    }
+    return h + '<span class="tdb-note">Une hausse forte peut venir d’une nouvelle habitude de travail, d’un gaspillage ou d’une erreur de sortie : à vérifier avec le cabinet concerné.</span></section></div>';
+  }
+  function tdbPill(k) { return '<span class="tdb-cl ' + (k || 'x') + '">' + (k || '–') + '</span>'; }
+  function tdbArt(C) {
+    var T = S.tdb, nA = C.cons.length || 1;
+    var h = '<div class="tdb-g gc"><section class="tdb-s"><b class="tdb-t">Classement ABC · 12 derniers mois</b><span class="tdb-note">Peu d’articles font l’essentiel de la dépense : ce sont eux à surveiller de près.</span>';
+    if (!C.cons.length) h += '<p class="mu">Pas encore de sorties pour classer les articles.</p>';
+    else {
+      h += '<div class="tdb-abc">' + ['A', 'B', 'C'].filter(function (k) { return C.abc[k].n; }).map(function (k) { return '<span class="' + k + '" style="width:' + (C.abc[k].n / nA * 100).toFixed(1) + '%">' + k + '</span>'; }).join('') + '</div><span class="tdb-note">largeur = part des articles</span>';
+      var tt = C.abc.A.v + C.abc.B.v + C.abc.C.v || 1, conseils = { A: 'compter souvent, seuil ajusté, jamais en rupture', B: 'suivi normal', C: 'commandes groupées, peu de suivi' };
+      h += ['A', 'B', 'C'].map(function (k) { var x = C.abc[k]; return '<div class="tdb-abcl">' + tdbPill(k) + '<span><b>' + x.n + ' article' + (x.n > 1 ? 's' : '') + ' · ' + Math.round(x.v / tt * 100) + ' % de la dépense</b><span>' + conseils[k] + '</span></span><span class="r mu">' + tdbE(x.v) + '</span></div>'; }).join('');
+    }
+    h += '</section>';
+    // couverture et seuils suggérés
+    var L = C.arts.filter(function (x) { return x.j > 0; }).sort(function (a, b) { return (b.revoir - a.revoir) || ((a.cl || 'C') < (b.cl || 'C') ? -1 : (a.cl || 'C') > (b.cl || 'C') ? 1 : 0) || a.tient - b.tient; });
+    var cl = {}; C.cons.forEach(function (x) { cl[x.a.id] = x.cl; });
+    var tout = T.tout.cov, vis = tout ? L : L.slice(0, 12), gc = 'grid-template-columns:34px minmax(0,1fr) 92px 78px 72px 60px 132px';
+    h += '<section class="tdb-s"><div class="tdb-h"><b>Couverture et seuils suggérés</b><span>seuil suggéré = consommation pendant le délai de livraison + 1 semaine de sécurité</span></div>';
+    if (!C.assez) h += '<p class="mu">Il faut au moins 3 semaines de sorties pour estimer le rythme de chaque article.</p>';
+    else if (!L.length) h += '<p class="mu">Aucune sortie récente.</p>';
+    else {
+      h += '<div class="tdb-sc"><div class="tdb-tbl"><div class="tdb-th" style="' + gc + '"><span></span><span>Article</span><span class="r">Réserve</span><span class="r">Sort / sem.</span><span class="r">Tient</span><span class="r">Seuil</span><span class="r">Suggéré</span></div>'
+        + vis.map(function (x) {
+          var risque = x.tient != null && x.tient < x.dl.j + 7;
+          var sg = x.a.sans_seuil ? '<span class="r mu">sans seuil</span>' : x.revoir ? '<span class="r tdb-sg"><b class="' + (x.sug > x.seuil ? 'warn' : 'blu') + '">' + tdbN(x.sug) + '</b><button class="btn l sm" data-tdbseuil="' + x.a.id + '|' + x.sug + '" title="Mettre le seuil de ' + esc(x.a.nom) + ' à ' + tdbN(x.sug) + '">Appliquer</button></span>' : '<span class="r mu">' + tdbN(x.sug) + ' ✓</span>';
+          return '<div class="tdb-rw nb" style="' + gc + '">' + tdbPill(cl[x.a.id]) + '<button class="tdb-el lk" data-tdba="' + x.a.id + '">' + esc(x.a.nom) + '</button><span class="r">' + fr(Math.round(x.r * 10) / 10) + ' <small class="mu">' + (x.a.conditionnement === 'BOITE' ? 'bte' : 'u.') + '</small></span><span class="r mu">' + tdbN(x.sem, 1) + '</span><b class="r ' + (risque ? 'ko' : '') + '">' + tdbDuree(x.tient) + '</b><span class="r mu">' + (x.a.sans_seuil ? '—' : tdbN(x.seuil)) + '</span>' + sg + '</div>';
+        }).join('') + '</div></div>';
+      if (L.length > 12) h += '<button class="tdb-lien" data-tdbtout="cov">' + (tout ? 'Afficher moins' : 'Afficher les ' + L.length + ' articles') + '</button>';
+      h += '<span class="tdb-note">« Tient » : nombre de jours avant que la réserve soit vide au rythme des ' + Math.round(C.jw) + ' derniers jours. Le délai de livraison est mesuré sur les commandes reçues (7 jours par défaut si le fournisseur n’a pas encore de commande reçue).</span>';
+    }
+    h += '</section></div>';
+    // dormants et sans prix
+    var vd = C.dorm.reduce(function (s, x) { return s + x.val; }, 0), td = T.tout.dorm, dv = td ? C.dorm : C.dorm.slice(0, 12);
+    h += '<div class="tdb-g gd"><section class="tdb-s"><div class="tdb-h"><b>Articles dormants' + (C.dormOk ? ' · ' + C.dorm.length : '') + '</b>' + (C.dorm.length ? '<span>aucune sortie depuis plus de 3 mois · ' + tdbE(vd) + ' immobilisés dans la réserve</span>' : '') + '</div>';
+    if (!C.dormOk) h += '<p class="mu">Disponible après 3 mois de sorties enregistrées.</p>';
+    else if (!C.dorm.length) h += '<p class="tdb-vide">' + ico('ok', 18, 2.6) + 'Aucun article dormant : tout ce qui est en réserve sort régulièrement.</p>';
+    else {
+      h += '<div class="tdb-dm">' + dv.map(function (x) { return '<button class="tdb-rw" data-tdba="' + x.a.id + '" style="grid-template-columns:minmax(0,1fr) auto 80px"><span class="tdb-el">' + esc(x.a.nom) + '</span><span class="r mu">' + (x.der ? 'dernière sortie le ' + new Date(x.der).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) : 'aucune sortie enregistrée') + '</span><b class="r">' + tdbE(x.val) + '</b></button>'; }).join('') + '</div>';
+      if (C.dorm.length > 12) h += '<button class="tdb-lien" data-tdbtout="dorm">' + (td ? 'Afficher moins' : 'Afficher les ' + C.dorm.length + ' articles') + '</button>';
+      h += '<span class="tdb-note">À décider : ne plus recommander, utiliser en priorité, ou archiver l’article.</span>';
+    }
+    h += '</section><section class="tdb-s"><div class="tdb-h"><b>En réserve sans prix · ' + C.sansPrix.length + '</b></div>';
+    h += C.sansPrix.length ? C.sansPrix.slice(0, 10).map(function (x) { return '<button class="tdb-rw" data-tdba="' + x.a.id + '" style="grid-template-columns:minmax(0,1fr) auto"><span class="tdb-el">' + esc(x.a.nom) + '</span><span class="r mu">' + fr(x.r) + ' ' + uRes(x.a) + '</span></button>'; }).join('') + (C.sansPrix.length > 10 ? '<span class="tdb-note">+ ' + (C.sansPrix.length - 10) + ' autre(s)</span>' : '') + '<span class="tdb-note">Ils comptent pour 0 € dans la valeur de la réserve : ouvrez la fiche pour saisir le prix.</span>'
+      : '<p class="tdb-vide">' + ico('ok', 18, 2.6) + 'Tous les articles en réserve ont un prix.</p>';
+    return h + '</section></div>';
+  }
+  function tdbFour(C) {
+    var mx = C.F.length ? Math.max.apply(null, C.F.map(function (f) { return f.ach; }).concat([1])) : 1;
+    var gc = 'grid-template-columns:minmax(0,1.2fr) 104px minmax(80px,1.2fr) 96px 104px 104px 96px';
+    var h = '<section class="tdb-s"><div class="tdb-h"><b>Les fournisseurs en un coup d’œil</b><span>d’après les commandes reçues et les factures importées</span></div>';
+    if (!C.F.length) h += '<p class="mu">Aucune commande sur la période.</p>';
+    else h += '<div class="tdb-sc"><div class="tdb-tbl w"><div class="tdb-th" style="' + gc + '"><span>Fournisseur</span><span class="r">Achats</span><span>Part des achats</span><span class="r">Commandes</span><span class="r">Délai moyen</span><span class="r">Livré complet</span><span class="r">Prix sur 1 an</span></div>'
+      + C.F.map(function (f) {
+        var dl = f.dl.length ? f.dl.reduce(function (s, x) { return s + x; }, 0) / f.dl.length : null, lc = f.nc ? f.comp / f.nc : null, pr = f.prix.length ? f.prix.reduce(function (s, x) { return s + x; }, 0) / f.prix.length : null;
+        return '<div class="tdb-rw nb" style="' + gc + '"><b class="tdb-el">' + esc(tdbNomF(f.fid)) + '</b><b class="r">' + tdbE(f.ach) + '</b>' + tdbBarre(f.ach / mx * 100) + '<span class="r mu">' + f.n + '</span><span class="r">' + (dl == null ? '—' : tdbN(dl, 1) + ' j') + '</span><b class="r ' + (lc == null ? '' : lc >= 0.9 ? 'okc' : 'warn') + '">' + (lc == null ? '—' : Math.round(lc * 100) + ' %') + '</b><b class="r ' + (pr > 0.05 ? 'warn' : '') + '">' + (pr == null ? '—' : tdbPct(pr)) + '</b></div>';
+      }).join('') + '</div></div><span class="tdb-note">Délai : de la date de commande à la première réception. Livré complet : tout est arrivé dès la première livraison (sans reliquat). Les factures importées directement ne comptent ni dans les délais ni dans les reliquats.</span>';
+    h += '</section>';
+    var vals = C.MK.map(function (k) { return C.achMois[k] || 0; }), e = tdbEchelle(Math.max.apply(null, vals.concat([1])));
+    var conso = C.totP, ecart = C.achTot - conso, rel = conso > 0 ? ecart / conso : 0;
+    var txt = C.achTot || conso ? 'Achats de la période : ' + tdbE(C.achTot) + ' pour ' + tdbE(conso) + ' consommés : ' + (Math.abs(rel) <= 0.05 ? 'le stock est stable, on n’achète pas plus qu’on n’utilise.' : ecart > 0 ? 'on achète plus qu’on ne consomme, la réserve grossit.' : 'on consomme plus qu’on n’achète, la réserve diminue.') : 'Pas encore d’achats ni de sorties sur la période.';
+    h += '<div class="tdb-g gd2"><section class="tdb-s"><div class="tdb-h"><b>Achats par mois (€)</b><span>réceptions et factures</span></div>' + tdbGraph(C.MK, vals, e, null, null, C.kCur) + '<span class="tdb-note">' + txt + '</span></section>';
+    h += '<section class="tdb-s"><b class="tdb-t">Plus fortes hausses de prix</b><span class="tdb-note">prix de la dernière facture comparé à celui d’il y a un an (ou au plus ancien connu)</span>';
+    var hs = C.hausses.filter(function (x) { return x.pct > 0; }).slice(0, 6), gh = 'grid-template-columns:minmax(0,1fr) 80px 80px 64px';
+    h += hs.length ? hs.map(function (x) { return '<button class="tdb-rw" data-tdba="' + x.aid + '" style="' + gh + '"><span class="tdb-an"><b>' + esc(tdbNomA(x.aid)) + '</b><span>' + esc(tdbNomF(x.fid)) + ' · depuis le ' + dDe(x.d0).toLocaleDateString('fr-FR') + '</span></span><span class="r mu">' + eur(x.p0) + '</span><span class="r">' + eur(x.p1) + '</span><b class="r warn">' + tdbPct(x.pct, 0) + '</b></button>'; }).join('') + '<span class="tdb-note">Un clic ouvre la fiche de l’article et son historique des prix.</span>'
+      : '<p class="mu">Pas encore assez d’historique de prix (il faut deux factures à au moins 2 mois d’écart).</p>';
+    return h + '</section></div>';
+  }
+  function tdbExporter() {
+    var T = S.tdb; if (!T || !T.d) return;
+    var C = tdbCalc(), per = (TDB_PER.filter(function (p) { return p[0] === T.per; })[0] || TDB_PER[0])[1];
+    var EUR = '#,##0 "€"', EUR2 = '#,##0.00 "€"', NB = '#,##0.##', PC = '0.0%', H = { gras: true, fond: '2B3E4C', coul: 'FFFFFF', bord: 'fin', ali: 'left', retour: true }, B = { bord: 'fin', ali: 'left' };
+    var st = function (fmt) { return fmt ? { bord: 'fin', ali: 'right', fmt: fmt } : B; };
+    var feuille = function (nom, larg, cols, rows, fmts) {
+      var o = { nom: nom, cases: [], fusions: [], larg: larg, haut: {} };
+      cols.forEach(function (t, c) { o.cases.push({ r: 0, c: c, v: t, st: H }); });
+      rows.forEach(function (row, r) { row.forEach(function (v, c) { o.cases.push({ r: r + 1, c: c, v: v == null ? '' : v, st: typeof v === 'number' ? st(fmts[c] || NB) : B }); }); });
+      return o;
+    };
+    var r2 = function (x) { return Math.round(x * 100) / 100; };
+    var s1 = feuille('Synthèse', [40, 22, 50], ['Indicateur', 'Valeur', 'Explication'], [
+      ['Période', per, 'au ' + new Date().toLocaleDateString('fr-FR')],
+      ['Valeur de la réserve', r2(C.valR), 'stock actuel de la réserve au coût moyen (cabinets et Sté = consommé)'],
+      ['Consommé sur la période', r2(C.totP), 'sorties de la réserve, retours déduits'],
+      ['Consommé ce mois', r2(C.parMois[C.kCur] || 0), C.moy != null ? 'moyenne des mois précédents : ' + tdbE(C.moy) : ''],
+      ['Achats sur la période', r2(C.achTot), 'réceptions et factures'],
+      ['Couverture (semaines)', C.couv == null ? '—' : Math.round(C.couv * 10) / 10, 'combien de semaines la réserve tient au rythme actuel'],
+      ['Rotation (par an)', C.rot == null ? '—' : Math.round(C.rot * 10) / 10, 'nombre de fois où la réserve se renouvelle en un an'],
+      ['Ruptures', C.ruptures.length, 'articles à zéro dans la réserve'],
+      ['Articles à risque de rupture', C.risque.length, 'la réserve tiendra moins que le délai de livraison + 1 semaine'],
+      ['Écarts d’inventaire (réserve)', r2(C.ecP), 'différences constatées lors des comptages'],
+      ['Articles dormants', C.dormOk ? C.dorm.length : '—', 'en réserve, aucune sortie depuis 3 mois'],
+      ['Valeur immobilisée en dormants', C.dormOk ? r2(C.dorm.reduce(function (s, x) { return s + x.val; }, 0)) : '—', ''],
+      ['Seuils à revoir', C.revoir.length, 'seuil suggéré très différent du seuil actuel']
+    ], {});
+    [1, 2, 3, 4, 9, 11].forEach(function (i) { var c = s1.cases.filter(function (x) { return x.r === i + 1 && x.c === 1; })[0]; if (c && typeof c.v === 'number') c.st = st(EUR2); });
+    var s2 = feuille('Par mois', [16, 18, 22, 16], ['Mois', 'Consommé', 'Réserve en fin de mois', 'Achats'], C.MK.map(function (k) { var d = dDe(k + '-01'); return [MOIS[d.getMonth()] + ' ' + d.getFullYear(), r2(C.parMois[k] || 0), r2(C.vFin[k] || 0), r2(C.achMois[k] || 0)]; }), { 1: EUR, 2: EUR, 3: EUR });
+    var s3 = feuille('Par lieu', [14].concat(C.MK.map(function () { return 11; }), [12]), ['Lieu'].concat(C.MK.map(function (k) { var d = dDe(k + '-01'); return MOIS_C[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2); }), ['Total']),
+      [1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (e) { var L = C.parLM[e] || {}, t = 0; return [e === 9 ? 'La Sté' : 'Cabinet ' + e].concat(C.MK.map(function (k) { t += L[k] || 0; return r2(L[k] || 0); }), [r2(t)]); }), (function () { var f = {}; for (var i = 1; i <= C.MK.length + 1; i++) f[i] = EUR; return f; })());
+    var cl = {}; C.cons.forEach(function (x) { cl[x.a.id] = x.cl; });
+    var s4 = feuille('Articles', [40, 14, 22, 8, 14, 12, 10, 12, 12, 10, 12, 16, 14], ['Article', 'Référence', 'Fournisseur', 'Classe', 'Consommé', 'Réserve', 'Unité', 'Sort / sem.', 'Tient (jours)', 'Seuil', 'Seuil suggéré', 'Dernière sortie', 'Valeur réserve'],
+      C.arts.slice().sort(function (a, b) { return b.v - a.v || a.a.nom.localeCompare(b.a.nom); }).map(function (x) {
+        return [x.a.nom, x.a.reference && x.a.reference !== 'SR' ? x.a.reference : '', S.fournisseurs[x.a.fournisseur_id] || '', cl[x.a.id] || '', r2(x.v), r2(x.r), x.a.conditionnement === 'BOITE' ? 'boîte' : 'unité', x.j > 0 ? Math.round(x.sem * 10) / 10 : '', x.tient != null ? Math.round(x.tient) : '', x.a.sans_seuil ? 'sans seuil' : x.seuil, x.sug != null && !x.a.sans_seuil ? x.sug : '', x.der ? new Date(x.der).toLocaleDateString('fr-FR') : '', r2(x.val)];
+      }), { 4: EUR2, 12: EUR2 });
+    var s5 = feuille('Fournisseurs', [30, 14, 12, 14, 14, 14], ['Fournisseur', 'Achats', 'Commandes', 'Délai moyen (j)', 'Livré complet', 'Prix sur 1 an'], C.F.map(function (f) {
+      var dl = f.dl.length ? f.dl.reduce(function (s, x) { return s + x; }, 0) / f.dl.length : null, pr = f.prix.length ? f.prix.reduce(function (s, x) { return s + x; }, 0) / f.prix.length : null;
+      return [tdbNomF(f.fid), r2(f.ach), f.n, dl == null ? '' : Math.round(dl * 10) / 10, f.nc ? Math.round(f.comp / f.nc * 1000) / 1000 : '', pr == null ? '' : Math.round(pr * 1000) / 1000];
+    }), { 1: EUR2, 4: PC, 5: PC });
+    var s6 = feuille('Hausses de prix', [40, 26, 14, 14, 14, 12], ['Article', 'Fournisseur', 'Depuis le', 'Prix alors', 'Dernier prix', 'Évolution'], C.hausses.map(function (x) { return [tdbNomA(x.aid), tdbNomF(x.fid), dDe(x.d0).toLocaleDateString('fr-FR'), x.p0, x.p1, Math.round(x.pct * 1000) / 1000]; }), { 3: EUR2, 4: EUR2, 5: PC });
+    XLSX_EVY.creerMiseEnForme([s1, s2, s3, s4, s5, s6]).then(function (blob) { telecharger(blob, nomFichier('analyses-stock')); toast('✔ Analyses téléchargées'); }).catch(function (e) { toast(msgErr(e)); });
+  }
+  function tdbAppliquerSeuil(id, v) {
+    var a = S.byId[id]; if (!a) return;
+    sb.from('articles').update({ seuil: v }).eq('id', id).then(function (r) {
+      if (r.error) { toast(msgErr(r.error)); return; }
+      toast('✔ Seuil de « ' + a.nom + ' » mis à ' + tdbN(v)); charger();
+    });
   }
   // ---------- Import d'une facture PDF dans une commande en cours ----------
   function nRef(r) { return String(r || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
@@ -6032,6 +6403,12 @@
     if (d.ecp) { S.ecarts = S.ecarts || {}; S.ecarts.p = d.ecp; chargerEcarts(); render(); return; }
     if (d.act === 'sauver') return telechargerSauvegarde();
     if (d.act === 'aexp') return exporterArticles();
+    if (d.tdbo && S.tdb) { S.tdb.onglet = d.tdbo; render(); window.scrollTo(0, 0); return; }
+    if (d.tdba) { S.tab = 'articles'; S.menu = false; ouvrirArticle(+d.tdba); window.scrollTo(0, 0); return; }
+    if (d.tdbtout && S.tdb) { S.tdb.tout[d.tdbtout] = !S.tdb.tout[d.tdbtout]; render(); return; }
+    if (d.tdbseuil) { var tsl = d.tdbseuil.split('|'); return tdbAppliquerSeuil(+tsl[0], +tsl[1]); }
+    if (d.act === 'tdbexp') return tdbExporter();
+    if (d.act === 'tdbmaj') { chargerTdb(); render(); return; }
     if (d.act === 'asuppr') return supprimerArticle();
     if (d.act === 'aimpno') { S.artImp = null; render(); return; }
     if (d.act === 'aimpok') return appliquerImportArticles();
@@ -6306,6 +6683,7 @@
   document.addEventListener('change', function (e) {
     var t = e.target; if (!S.me) return;
     if (t.id === 'trff' && t.files && t.files[0]) { trfLire(t.files[0]); t.value = ''; return; }
+    if ((t.id === 'tdbper' || t.id === 'tdblieu') && S.tdb) { S.tdb[t.id === 'tdbper' ? 'per' : 'lieu'] = t.value; render(); return; }
     if (S.trfX && t.dataset) { if (t.dataset.trfp) { S.trfX.p[t.dataset.trfp] = t.checked; return; } if (t.dataset.trfd) { S.trfX.d[t.dataset.trfd] = t.checked; return; } if (t.dataset.trfr) { S.trfX.par[t.dataset.trfr] = t.checked; return; } if (t.dataset.trf2) { S.trfX[t.dataset.trf2] = t.checked; return; } if (t.dataset.trfdt) { S.trfX[t.dataset.trfdt] = t.value; return; } }
     if (S.trfI && t.dataset && t.dataset.trfl) { S.trfI.lien[t.dataset.trfl] = t.value; render(); return; }
     if (t.id === 'pfver' && S.pf) { var vv = versionsTrame({ id: S.pf.id }).filter(function (x) { return x.depuis === t.value; })[0]; if (vv) { S.pf.ver = t.value; S.pf.d.trame = JSON.parse(JSON.stringify(vv.trame || {})); render(); } return; }
