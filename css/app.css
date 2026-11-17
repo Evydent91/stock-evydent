@@ -2386,3 +2386,9 @@ button.tdb-el.lk{border:none;background:none;padding:0;text-align:left;font-size
 @media (max-width:600px){.tdb-k{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.tdb-kc{padding:12px}.tdb-kc b{font-size:21px}.tdb-ch{height:220px;grid-template-columns:40px minmax(0,1fr) 40px}.tdb-ch.simple{grid-template-columns:40px minmax(0,1fr)}.tdb-cols{gap:3px}.tdb-col em{display:none}.tdb-col s{font-size:10.5px}.tdb-ax{font-size:10.5px}.tdb-bar .grow{display:none}.tdb-f{flex:1}.tdb-f select{flex:1}.tdb-btn{flex:1;justify-content:center}.tdb-h>b{min-width:0}}
 .tdb-ax span{white-space:nowrap}.tdb-btn{white-space:nowrap}
 @media (max-width:600px){.tdb-ch{grid-template-columns:44px minmax(0,1fr) 44px}.tdb-ch.simple{grid-template-columns:44px minmax(0,1fr)}.tdb-col:nth-child(even) s{visibility:hidden}.tdb-ax{font-size:10px}.tdb-btn{font-size:13.5px;padding:0 12px}.tdb-h .tdb-lg{font-size:12px}}
+/* case « hors centre » de la semaine de pointage */
+.pt-et{max-width:100%;white-space:normal;line-height:1.25}
+.pt-sc.hc{border-color:#e8c19a;background:#fffaf4}
+.pt-sc .pt-et{background:none;padding:0;border-radius:0;font-size:14.5px}
+.pt-sc.hc small{color:#8a4b14}
+.pt-sc:has(.pt-et.ko){border-color:#efc6c1;background:#fff8f7}
