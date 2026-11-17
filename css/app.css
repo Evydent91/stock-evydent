@@ -2525,3 +2525,13 @@ h2 button.lk2,h3 button.lk2{font-family:inherit;font-weight:inherit}
 .gq-x strong{color:var(--ink)}
 .gq-p{margin:10px 2px 0;font-size:14.5px}
 @media (max-width:700px){.gq-g{grid-template-columns:1fr}.gq-f{display:flex;flex-wrap:nowrap;overflow-x:auto}.gq-f button{flex:none}.gq-c .stk-p,.gq-c .pill{font-size:12px}}
+/* Recherche : familles côte à côte, tuiles de même hauteur */
+.gq-cols.n2,.gq-cols.n3{display:grid;gap:0 16px;align-items:start}
+.gq-cols.n2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.gq-cols.n3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.gq-cols.n2 .gq-g,.gq-cols.n3 .gq-g{grid-template-columns:minmax(0,1fr)}
+.gq-c{height:104px;min-height:0}
+.gq-x b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:16px}
+.gq-x span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gq-c .stk-p,.gq-c .pill{flex:none}
+@media (max-width:900px){.gq-cols.n2,.gq-cols.n3{display:block}}
