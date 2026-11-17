@@ -6270,7 +6270,7 @@
         var n = i + 2, cell = function (k) { return idx[k] == null ? null : r[idx[k]]; }, v = {}, err = [];
         var id = vide(cell('id')) ? null : nombre(cell('id'));
         var a = id ? S.byId[id] || S.archives.filter(function (x) { return x.id === id; })[0] : null;
-        if (id && !a) { R.erreurs.push('Ligne ' + n + ' : N° ' + id + ' inconnu'); return; }
+        if (id && !a) { R.erreurs.push('Ligne ' + n + ' (N° ' + id + (vide(cell('nom')) ? '' : ' · ' + String(cell('nom')).trim()) + ') : N° inconnu dans l’appli'); return; }
         if (!vide(cell('supprimer')) && ouiNon(cell('supprimer'))) {
           if (!a) { R.erreurs.push('Ligne ' + n + ' : « Supprimer » sur une ligne sans N°'); return; }
           var st = stockPartout(a.id), enc = enCoursPour(a.id);
@@ -6354,7 +6354,7 @@
     } else {
       corps += '<p class="mu ia-note">Corrigez le fichier Excel puis réimportez-le. ' + (EG.some(function (g) { return g.bloque; }) ? 'Tant qu’une référence est en double, l’import est bloqué.' : 'Sinon, les lignes en erreur sont ignorées et le reste peut être appliqué.') + '</p>'
         + EG.map(function (g) {
-          var aide = /^Fournisseur « .* » inconnu$/.test(g.t) ? 'Écrivez le nom exact d’un fournisseur de l’appli (onglet Fournisseurs), ou SF pour « sans fournisseur ».' : /Boîte ou Unité/.test(g.t) ? 'Écrivez Boîte ou Unité.' : /oui ou non/.test(g.t) ? 'Écrivez oui ou non.' : /invalide/.test(g.t) ? 'Un nombre positif est attendu.' : '';
+          var aide = /^N° inconnu/.test(g.t) ? 'Ces N° n’existent pas sur ce site : article supprimé depuis l’export, ou fichier exporté depuis l’autre site (test ou réel). Ces lignes ne seront ni créées ni modifiées. Pour les créer, videz la case N° de ces lignes dans Excel puis réimportez : elles deviendront de nouvelles fiches.' : /^Fournisseur « .* » inconnu$/.test(g.t) ? 'Écrivez le nom exact d’un fournisseur de l’appli (onglet Fournisseurs), ou SF pour « sans fournisseur ».' : /Boîte ou Unité/.test(g.t) ? 'Écrivez Boîte ou Unité.' : /oui ou non/.test(g.t) ? 'Écrivez oui ou non.' : /invalide/.test(g.t) ? 'Un nombre positif est attendu.' : '';
           return '<div class="ia-er' + (g.bloque ? ' bl' : '') + '"><b>' + esc(g.t) + '</b>' + (aide ? '<span class="ia-aide">' + aide + '</span>' : '') + (g.l.length ? '<span class="ia-erl">' + g.l.slice(0, 40).map(function (x) { return '<span class="ia-lg" title="' + esc(x.n) + '">ligne ' + x.l + (x.n ? ' · ' + esc(x.n) : '') + '</span>'; }).join('') + (g.l.length > 40 ? '<span class="mu">+ ' + (g.l.length - 40) + '</span>' : '') + '</span>' : '') + '</div>';
         }).join('');
     }
