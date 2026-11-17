@@ -2614,3 +2614,5 @@ button.oc-c:hover,button.oc-c:focus-visible,.oc-c.on{border-color:var(--navy)}
 .oc-w2 .oc-c b{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .oc-w2.fer{height:44px;border-radius:8px;background:repeating-linear-gradient(135deg,var(--soft),var(--soft) 6px,#fff 6px,#fff 12px)}
 @media (max-width:1100px){.oc-tx{grid-template-columns:repeat(5,minmax(0,1fr))}.oc-ks{grid-template-columns:repeat(2,minmax(0,1fr))}.oc-g{grid-template-columns:76px repeat(8,minmax(0,1fr));gap:5px;padding:10px}.oc-c b{font-size:13.5px}.oc-c span{font-size:12px}}
+.wf-ty{background:var(--soft)!important;color:var(--ink2)!important}
+.wf-2{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 0;font-size:14.5px}
