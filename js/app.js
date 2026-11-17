@@ -13,7 +13,7 @@
     articles: [], byId: {}, stocks: {}, fournisseurs: {}, profils: [], attente: [], histo: [],
     sortie: { cab: null, q: '', panier: {}, msg: null, busy: false },
     ret: { cab: null, q: '', panier: {}, msg: null, busy: false },
-    stockQ: '', stockF: '', histTous: false, eqEdit: null, pwAbc: false, dernierInv: {}, recents: [], j0: null, invJ0: {}, fiche: null, artQ: '', artF: 'tous', artMax: 100, archives: [], fournListe: [], foArch: false, commandes: [], lignes: {}, afPrix: {}, cmdSub: 'sug', sugQ: {}, sugOpen: {}, alias: {}, nc: { fid: '', num: '', q: '', l: [] },
+    stockQ: '', stockF: '', stockCab: '', histTous: false, eqEdit: null, pwAbc: false, dernierInv: {}, recents: [], j0: null, invJ0: {}, fiche: null, artQ: '', artF: 'tous', artMax: 100, archives: [], fournListe: [], foArch: false, commandes: [], lignes: {}, afPrix: {}, cmdSub: 'sug', sugQ: {}, sugOpen: {}, alias: {}, nc: { fid: '', num: '', q: '', l: [] },
     inv: { emp: null, d: {}, q: '', tous: false, recap: false, motifs: {}, busy: false, msg: null, max: 80 }
   };
   var LABEL = { assistante: 'Assistante', referente: 'Référente', responsable: 'Responsable' };
@@ -4809,15 +4809,58 @@
   }
 
   // ---------- Stock (gestion) ----------
+  // Quantité d'un cabinet ou de la Sté, avec son unité (unités si l'article sort à l'unité d'une boîte, sinon comme en réserve)
+  function qteCab(a, c) {
+    var v = stockDe(a.id, c), f = facteur(a);
+    if (f > 1) return fr(v) + ' u.' + (Math.floor(v / f) >= 1 ? ' <span class="mu">(' + fr(Math.floor(v / f)) + ' boîte' + (Math.floor(v / f) > 1 ? 's' : '') + ' entière' + (Math.floor(v / f) > 1 ? 's' : '') + ')</span>' : '');
+    return fr(v) + ' ' + uRes(a);
+  }
+  // Case « cabinet » comme pour l'inventaire : Tous, cabinets 1 à 8, la Sté
+  function tuilesStockCab(cur) {
+    var emps = [''].concat([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    return '<section class="iv-emps st-emps stk-emps" aria-label="Stock affiché">' + emps.map(function (e) {
+      var on = String(cur) === String(e), n = e === '' ? 0 : S.articles.filter(function (a) { return Math.abs(stockDe(a.id, e)) > 1e-9; }).length;
+      return '<button class="iv-emp' + (on ? ' on' : '') + '" data-stcab="' + e + '" aria-pressed="' + on + '"><b>' + (e === '' ? 'Tous' : e === 9 ? 'La Sté' : 'Cab. ' + e + (S.me.cabinet === e ? ' ★' : '')) + '</b><span>' + (e === '' ? 'réserve' : n ? '≈ ' + n + ' art.' : 'vide') + '</span></button>';
+    }).join('') + '</section>';
+  }
+  function vStockCab(c) {
+    var q = norm(S.stockQ), der = S.dernierInv[c], j = joursDepuis(der), val = 0;
+    var tous = S.articles.filter(function (a) { return Math.abs(stockDe(a.id, c)) > 1e-9; });
+    tous.forEach(function (a) { val += stockDe(a.id, c) / facteur(a) * (+a.cout_moyen || 0); });
+    var l = tous.filter(function (a) { return !q || norm(a.nom + ' ' + (a.reference || '') + ' ' + (S.fournisseurs[a.fournisseur_id] || '')).indexOf(q) >= 0; }).sort(function (a, b) { return a.nom.localeCompare(b.nom, 'fr'); });
+    var h = '<div class="ban warn stk-cb"><b>' + nomEmp(c) + '</b> · ' + (der ? 'compté le ' + new Date(der).toLocaleDateString('fr-FR') + ' (' + (j ? 'il y a ' + j + ' j' : 'aujourd’hui') + ')' : 'jamais compté') + ' · ' + tous.length + ' ' + pl(tous.length, 'article') + ' · environ ' + eur(val)
+      + '<br><span class="mu">Stock approximatif : dernier inventaire + sorties − retours depuis. Ce qui a été utilisé au fauteuil n’est pas déduit : le chiffre redevient exact à chaque inventaire.</span></div>';
+    h += '<section class="stk-l"><div class="stk-f"><label class="stk-q">' + ico('loupe', 18, 2.2) + '<input id="stq" type="search" placeholder="Article, référence, fournisseur" value="' + esc(S.stockQ) + '" aria-label="Rechercher"></label></div>'
+      + (q ? '<p class="stk-n">' + l.length + ' article' + (l.length > 1 ? 's' : '') + '</p>' : '')
+      + '<div class="stk-h stk-hc" aria-hidden="true"><span>Article</span><span>' + (c === 9 ? 'À la Sté' : 'Au cabinet ' + c) + ' (≈)</span><span>Réserve</span><span>État</span></div>';
+    h += l.map(function (a) {
+      var r = stockDe(a.id, 0), s = +a.seuil || 0, enc = enCoursPour(a.id);
+      var k2 = a.sans_seuil ? ['neu', 'Sans seuil'] : !(s > 0) ? ['neu', 'Seuil ?'] : r > s ? ['ok', 'OK'] : r + enc > s ? ['enc', 'Commandé · ' + fr(enc)] : r <= 0 ? ['rup', 'En rupture'] : ['cmd', 'À commander'];
+      return '<button class="stk-r stk-rc" data-aopen="' + a.id + '"><span class="stk-a"><b>' + esc(a.nom) + '</b><span>' + esc(a.reference || 'sans réf.') + ' · ' + esc(S.fournisseurs[a.fournisseur_id] || 'Sans fournisseur') + '</span></span>'
+        + '<span class="stk-cq"><b>≈ ' + qteCab(a, c) + '</b></span>'
+        + '<span class="stk-c">Réserve : ' + fr(r) + ' ' + uRes(a) + '</span>'
+        + '<span class="stk-e"><span class="stk-p ' + k2[0] + '">' + k2[1] + '</span></span></button>';
+    }).join('') + (l.length ? '' : '<p class="mu stk-vide">' + (q ? 'Aucun article trouvé dans cet emplacement.' : 'Rien d’enregistré dans cet emplacement.') + '</p>') + '</section>';
+    return h;
+  }
   function vStock() {
-    var q = norm(S.stockQ), F = S.stockF || '', l = S.articles.filter(function (a) { return filtreStock(a, F) && (!q || norm(a.nom + ' ' + (a.reference || '') + ' ' + (S.fournisseurs[a.fournisseur_id] || '')).indexOf(q) >= 0); });
-    var val = S.articles.reduce(function (t, a) { return t + stockDe(a.id, 0) * (+a.cout_moyen || 0); }, 0);
-    var nb = function (f) { return S.articles.filter(function (a) { return filtreStock(a, f); }).length; };
+    var cab = S.stockCab === '' || S.stockCab == null ? '' : +S.stockCab;
+    if (cab !== '') return vStockTete() + tuilesStockCab(cab) + vStockCab(cab);
+    return vStockTete() + tuilesStockCab('') + vStockTous();
+  }
+  function vStockTete() {
     var att = S.attente.length, h = '';
     if (att) {
       var m0 = S.attente[0], a0 = S.byId[m0.article_id] || { nom: '?' };
       h += '<button class="stk-ban" data-tab="demandes"><span class="stk-ban-i">' + ico('ok', 18, 2.4) + '</span><span class="grow"><b>' + att + ' demande' + (att > 1 ? 's' : '') + ' à confirmer</b> <span class="mu">· ' + esc(a0.nom) + ' × ' + fr(m0.quantite) + ', ' + cabTxt(m0.emplacement_vers) + (m0.hors_cabinet ? ', hors cabinet' : '') + (att > 1 ? '…' : '') + '</span></span><b class="stk-ban-v">Voir</b></button>';
     }
+    return h;
+  }
+  function vStockTous() {
+    var q = norm(S.stockQ), F = S.stockF || '', l = S.articles.filter(function (a) { return filtreStock(a, F) && (!q || norm(a.nom + ' ' + (a.reference || '') + ' ' + (S.fournisseurs[a.fournisseur_id] || '')).indexOf(q) >= 0); });
+    var val = S.articles.reduce(function (t, a) { return t + stockDe(a.id, 0) * (+a.cout_moyen || 0); }, 0);
+    var nb = function (f) { return S.articles.filter(function (a) { return filtreStock(a, f); }).length; };
+    var h = '';
     var k = function (f, v, lab, sous, cls) { return '<button class="stk-k ' + cls + (F === f ? ' on' : '') + '" data-go="stock:' + f + '" aria-pressed="' + (F === f) + '"><b>' + v + '</b><span>' + lab + '</span><small>' + sous + '</small></button>'; };
     h += '<div class="stk-ks">' + k('', S.articles.length, 'articles', 'tous, sauf archivés', 'tous')
       + '<div class="stk-k val"><b>' + eur(val) + '</b><span>valeur de la réserve</span><small>au coût moyen TTC</small></div>'
@@ -4831,7 +4874,7 @@
       for (var c = 1; c <= 9; c++) { var v = stockDe(a.id, c); if (v) det.push({ c: c, t: (c === 9 ? 'Sté' : 'cab. ' + c) + ' : ' + fr(v) }); }
       var k2 = a.sans_seuil ? ['neu', 'Sans seuil'] : !(s > 0) ? ['neu', 'Seuil ?'] : r > s ? ['ok', 'OK'] : r + enc > s ? ['enc', 'Commandé · ' + fr(enc)] : r <= 0 ? ['rup', 'En rupture'] : ['cmd', 'À commander'];
       var pct = s > 0 ? Math.max(0, Math.min(100, r / (2 * s) * 100)) : r > 0 ? 100 : 0;
-      var cabT = !det.length ? '—' : det.length === 1 ? (det[0].c === 9 ? 'la Sté' : 'cabinet ' + det[0].c) : det.length + ' emplacements';
+      var cabT = !det.length ? '—' : det.map(function (x) { return (x.c === 9 ? 'Sté' : x.c) + ' : ' + fr(stockDe(a.id, x.c)); }).join(' · ');
       return '<button class="stk-r" data-aopen="' + a.id + '"><span class="stk-a"><b>' + esc(a.nom) + '</b><span>' + esc(a.reference || 'sans réf.') + ' · ' + esc(S.fournisseurs[a.fournisseur_id] || 'Sans fournisseur') + '</span></span>'
         + '<span class="stk-q2"><span><b>' + fr(r) + ' ' + uRes(a) + '</b>' + (s > 0 ? ' <span class="mu">/ seuil ' + fr(s) + '</span>' : '') + '</span><span class="stk-bar"><i class="' + k2[0] + '" style="width:' + pct.toFixed(0) + '%"></i></span></span>'
         + '<span class="stk-c" title="' + esc(det.map(function (x) { return x.t; }).join(' · ')) + '">' + cabT + '</span>'
@@ -6602,7 +6645,7 @@
   document.addEventListener('click', function (e) {
     var t = e.target.closest('button'); if (!t || !S.me) return;
     var d = t.dataset;
-    if (d.go) { var g = d.go.split(':'); S.tab = g[0]; S.tabChoisi = true; if (g[0] === 'stock') S.stockF = g[1] || ''; if (g[0] === 'inventaire' && g[1] !== undefined) choisirEmp(+g[1]); if (g[0] === 'histo') { S.histTous = true; chargerHisto(); } render(); window.scrollTo(0, 0); return; }
+    if (d.go) { var g = d.go.split(':'); S.tab = g[0]; S.tabChoisi = true; if (g[0] === 'stock') { S.stockF = g[1] || ''; S.stockCab = ''; } if (g[0] === 'inventaire' && g[1] !== undefined) choisirEmp(+g[1]); if (g[0] === 'histo') { S.histTous = true; chargerHisto(); } render(); window.scrollTo(0, 0); return; }
     if (d.act === 'ireste') { S.inv.reste = true; S.inv.cherche = false; S.inv.q = ''; render(); return; }
     if (d.act === 'itout') { S.inv.reste = false; S.inv.cherche = false; S.inv.q = ''; render(); return; }
     if (d.act === 'icherche') { S.inv.cherche = !S.inv.cherche; S.inv.q = ''; render(); var iq = $('iq'); if (iq) iq.focus(); return; }
@@ -6663,6 +6706,7 @@
     if (d.foarch != null) { S.foArch = d.foarch === '1'; render(); return; }
     if (d.act === 'plinterim') { if (S.pl) basculerInterim(S.pl.lundi); return; }
     if (d.act === 'pladm') { S.plAdm = !plAdmOn(); lsSet('evy-pl-adm', S.plAdm ? '1' : '0'); render(); return; }
+    if (d.stcab != null) { S.stockCab = d.stcab === '' ? '' : +d.stcab; render(); return; }
     if (d.scab) { S.sortie.cab = +d.scab; render(); return; }
     if (d.htous != null) { var ht = d.htous === '1'; if (ht !== !!S.histTous) { S.histTous = ht; render(); chargerHisto(); } return; }
     if (d.rcab) { S.ret.cab = +d.rcab; render(); return; }
