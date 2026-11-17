@@ -2501,3 +2501,8 @@ h2 button.lk2,h3 button.lk2{font-family:inherit;font-weight:inherit}
   .stk-x .ar-x{display:none}
   .af-t{flex-wrap:wrap}
 }
+.fx-top h2{overflow-wrap:anywhere}
+.fx-top.row,.fx-top > .row{align-items:flex-start}
+.fx-top .grow{min-width:min(100%,220px)}
+.fx-st{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:12px}
+.fx-a .fx-top .mu{display:block;margin-top:4px;overflow-wrap:anywhere}
