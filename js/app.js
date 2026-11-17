@@ -3075,7 +3075,6 @@
       + '<button class="a-btn navy" data-ptsens="arrivee">J’arrive</button><button class="a-btn blanc" data-ptsens="sortie">Je pars (j’ai oublié de pointer mon arrivée)</button><button class="pt-ann" data-act="ptok">Annuler</button></div></div>';
     if (R.busy) { t = 'Pointage…'; g = ''; }
     else if (R.etat === 'arrivee') { t = 'Arrivée enregistrée'; g = hTs(R.heure); sous = 'Bonne journée' + (R.prenom ? ', ' + esc(R.prenom) : '') + ' ! Scannez le même QR code en partant.'; }
-    if (R.hors_centre && (R.etat === 'arrivee' || R.etat === 'sortie')) sous = 'Pointage fait hors du Wi-Fi du centre : la référente va le vérifier. Pensez à vous connecter au Wi-Fi du centre la prochaine fois.';
     else if (R.etat === 'sortie') { t = 'Sortie enregistrée'; g = hTs(R.heure); sous = (R.sans_arrivee ? 'Votre arrivée n’a pas été pointée : la référente la complètera.' : 'Arrivée à ' + hTs(R.arrivee) + '.') + ' Bonne soirée' + (R.prenom ? ', ' + esc(R.prenom) : '') + ' !'; }
     else if (R.etat === 'simulation_coupee') { t = 'Simulation coupée'; g = ''; sous = 'L’heure simulée n’est pas autorisée. La référente peut l’activer dans Pointage (site de test).'; }
     else if (R.etat === 'doublon') { t = 'Déjà enregistré'; g = ''; sous = 'Votre pointage vient d’être pris en compte, inutile de scanner deux fois.' + (R.arrivee ? ' Arrivée : ' + hTs(R.arrivee) + (R.sortie ? ', sortie : ' + hTs(R.sortie) : '') + '.' : ''); }
@@ -3085,6 +3084,8 @@
     else if (R.etat === 'non_soumis') { t = 'Pas de pointage pour vous'; g = ''; sous = 'Votre fiche n’est pas soumise au pointage journalier.'; }
     else if (R.etat === 'sans_fiche') { t = 'Compte non relié'; g = ''; sous = 'Votre compte n’est pas encore relié à votre fiche. Prévenez la référente.'; }
     else { t = 'Pointage impossible'; g = ''; sous = esc(R.msg || 'Réessayez dans un instant.'); }
+    if (R.hors_centre && (R.etat === 'arrivee' || R.etat === 'sortie')) sous = 'Pointage fait hors du Wi-Fi du centre : la référente va le vérifier. Pensez à vous connecter au Wi-Fi du centre la prochaine fois.';
+    sous = sous.replace(/ ([!?:;])/g, '\u00a0$1');   // espace insécable : la ponctuation ne passe jamais seule à la ligne
     return '<div class="pt-res ' + (R.busy ? '' : ok ? 'ok' : 'ko') + '"><div class="pt-res-in">' + (R.busy ? '' : '<span class="pt-ic">' + ico(ok ? 'ok' : R.etat === 'doublon' ? 'attente' : 'croix', 44, 2.4) + '</span>')
       + '<h1>' + t + '</h1>' + (g ? '<p class="pt-h">' + g + '</p>' : '') + (sous ? '<p>' + sous + '</p>' : '') + (R.busy ? '' : '<button class="a-btn navy" data-act="ptok">Continuer</button>') + '</div></div>';
   }
