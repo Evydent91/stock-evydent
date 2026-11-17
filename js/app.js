@@ -4453,7 +4453,7 @@
     if (g) g1.push(['demandes', 'Demandes' + (att ? '<span class="badge">' + att + '</span>' : '')]);
     var g2 = g ? [['stock', 'Stock'], ['tdb', 'Analyses'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs'], ['histo', 'Historique'], ['plus', 'Plus']] : [['histo', 'Historique']];
     var bt = function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; };
-    var titreTel = S.tab === 'accueil' ? 'Gestion de stock' : S.gq ? 'Recherche' : (g && NOMR[S.tab]) || NOMS[S.tab] || 'Stock';
+    var titreTel = S.gq ? 'Recherche' : S.tab === 'accueil' ? 'Gestion de stock' : (g && NOMR[S.tab]) || NOMS[S.tab] || 'Stock';
     return '<header class="top t2"><div class="top-in">'
       + '<span class="t2-g">' + (g ? '<button class="t2-back" data-tab="hub" aria-label="Accueil">' + ico('prec', 20, 2.4) + '<span>Accueil</span></button>' : '<button class="t2-back" data-tab="maison">' + ico('prec', 20, 2.4) + '<span>Accueil</span></button>') + '</span>'
       + '<h1 class="t2-t"><span class="m-hide">Gestion de stock</span><span class="m-only">' + esc(titreTel) + '</span></h1>'
@@ -4813,28 +4813,33 @@
     return h + '</div>';
   }
   function champGq() { return '<label class="stk-q gq-m">' + ico('loupe', 18, 2.2) + '<input id="gq2" type="search" placeholder="Chercher partout" value="' + esc(S.gq) + '" aria-label="Chercher partout"></label>'; }
-  // Recherche unique : articles, fournisseurs, commandes
+  // Recherche unique : des tuiles, rangées par famille (fournisseurs, commandes, articles), avec un filtre en haut
   function vRecherche() {
     var q = norm(S.gq).trim(), h = champGq() + '<div class="gq-hd"><h2>Recherche « ' + esc(S.gq.trim()) + ' »</h2><button class="btn l sm" data-act="gqx">Fermer la recherche</button></div>';
     if (q.length < 2) return h + '<p class="mu">Tapez au moins 2 lettres ou chiffres.</p>';
     var ok = function (t) { return norm(t).indexOf(q) >= 0; };
-    var A = S.articles.concat(S.archives).filter(function (a) { return ok(a.nom + ' ' + (a.reference || '') + ' ' + (S.afPrix[a.id] || []).map(function (x) { return x.reference || ''; }).join(' ') + ' ' + (S.fournisseurs[a.fournisseur_id] || '') + ' ' + (a.type_soins || '')); });
+    // un article est trouvé par son nom, ses références ou son type de soins (pas par son fournisseur : la tuile du fournisseur y mène)
+    var A = S.articles.concat(S.archives).filter(function (a) { return ok(a.nom + ' ' + (a.reference || '') + ' ' + (S.afPrix[a.id] || []).map(function (x) { return x.reference || ''; }).join(' ') + ' ' + (a.type_soins || '')); });
     A.sort(function (x, y) { return (ok(y.nom) ? 1 : 0) - (ok(x.nom) ? 1 : 0) || x.nom.localeCompare(y.nom, 'fr'); });
     var Fo = S.fournListe.filter(function (f) { return ok(f.nom); });
-    var Co = S.commandes.filter(function (c) { return ok((c.numero || '') + ' ' + (S.fournisseurs[c.fournisseur_id] || '')); }).slice(0, 8);
+    var Co = S.commandes.filter(function (c) { return ok((c.numero || '') + ' ' + (S.fournisseurs[c.fournisseur_id] || '')); });
+    Co.sort(function (x, y) { var o = function (c) { return c.statut === 'attente' || c.statut === 'partielle' ? 0 : 1; }; return o(x) - o(y); });
     if (!A.length && !Fo.length && !Co.length) return h + '<p class="mu">Rien trouvé. Essayez un autre mot, une référence ou le nom d’un fournisseur.</p>';
-    if (A.length) h += '<div class="sect st-sect">Articles · ' + A.length + '</div><div class="card liste st-l">' + A.slice(0, 30).map(function (a) {
-      var e = etatArt(a), cabs = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(function (c) { return Math.abs(stockDe(a.id, c)) > 1e-9; });
-      return '<button class="it lrow" data-voir="a:' + a.id + '"><span class="it-n"><b>' + esc(a.nom) + (a.reference && !estSR(a) ? '<span class="ref">' + esc(a.reference) + '</span>' : '') + '</b><span>' + esc(S.fournisseurs[a.fournisseur_id] || 'Sans fournisseur') + ' · réserve ' + fr(stockDe(a.id, 0)) + ' ' + uRes(a) + (cabs.length ? ' · aussi : ' + cabs.map(function (c) { return c === 9 ? 'Sté' : 'cab. ' + c; }).join(', ') : '') + '</span></span><span class="stk-p ' + e[0] + '">' + e[1] + '</span><span aria-hidden="true">›</span></button>';
-    }).join('') + '</div>' + (A.length > 30 ? '<p class="mu">30 premiers articles affichés : précisez la recherche.</p>' : '');
-    if (Fo.length) h += '<div class="sect st-sect">Fournisseurs · ' + Fo.length + '</div><div class="card liste st-l">' + Fo.map(function (f) {
-      var na = S.articles.filter(function (a) { return a.fournisseur_id === f.id; }).length;
-      return '<button class="it lrow" data-voir="f:' + f.id + '"><span class="it-n"><b>' + esc(f.nom) + '</b><span>' + na + ' article' + (na > 1 ? 's' : '') + ' en principal' + (f.telephone ? ' · ' + esc(f.telephone) : '') + (f.archive ? ' · archivé' : '') + '</span></span><span aria-hidden="true">›</span></button>';
+    var fam = [['f', 'Fournisseurs', Fo.length], ['c', 'Commandes', Co.length], ['a', 'Articles', A.length]].filter(function (x) { return x[2]; }), F = fam.some(function (x) { return x[0] === S.gqF; }) ? S.gqF : '';
+    if (fam.length > 1) h += '<div class="gq-f" role="tablist" aria-label="Afficher">' + [['', 'Tout', A.length + Fo.length + Co.length]].concat(fam).map(function (x) { return '<button role="tab" aria-selected="' + (F === x[0]) + '" class="' + (F === x[0] ? 'on' : '') + '" data-gqf="' + x[0] + '">' + x[1] + '<b>' + x[2] + '</b></button>'; }).join('') + '</div>';
+    var titre = function (ic, t, n) { return '<h3 class="gq-t">' + ico(ic, 20, 2.2) + t + '<span>' + n + '</span></h3>'; };
+    if (Fo.length && (!F || F === 'f')) h += titre('camion', 'Fournisseurs', Fo.length) + '<div class="gq-g">' + Fo.map(function (f) {
+      var na = S.articles.filter(function (a) { return a.fournisseur_id === f.id || (S.afPrix[a.id] || []).some(function (x) { return x.fournisseur_id === f.id; }); }).length, cs = S.commandes.filter(function (c) { return c.fournisseur_id === f.id; }), ne = cs.filter(function (c) { return c.statut === 'attente' || c.statut === 'partielle'; }).length;
+      return '<button class="gq-c fo" data-voir="f:' + f.id + '"><span class="gq-ic" aria-hidden="true">' + ico('camion', 24) + '</span><span class="gq-x"><b>' + esc(f.nom) + '</b><span>' + na + ' article' + (na > 1 ? 's' : '') + ' · ' + cs.length + ' commande' + (cs.length > 1 ? 's' : '') + (f.telephone ? ' · ' + esc(f.telephone) : '') + '</span></span>' + (f.archive ? '<span class="stk-p neu">Archivé</span>' : ne ? '<span class="stk-p enc">' + ne + ' en cours</span>' : '') + ico('suiv', 18, 2.4) + '</button>';
     }).join('') + '</div>';
-    if (Co.length) h += '<div class="sect st-sect">Commandes · ' + Co.length + '</div><div class="card liste st-l">' + Co.map(function (c) {
-      var li = S.lignes[c.id] || [], st = CST[c.statut] || ['', c.statut];
-      return '<button class="it lrow" data-voir="c:' + c.id + '"><span class="it-n"><b>' + esc(S.fournisseurs[c.fournisseur_id] || 'Fournisseur supprimé') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</b><span>Commandée le ' + c.date_commande.split('-').reverse().join('/') + ' · ' + li.length + ' ligne' + (li.length > 1 ? 's' : '') + '</span></span><span class="pill ' + st[0] + '">' + st[1] + '</span><span aria-hidden="true">›</span></button>';
-    }).join('') + '</div>';
+    if (Co.length && (!F || F === 'c')) h += titre('panier', 'Commandes', Co.length) + '<div class="gq-g">' + Co.slice(0, F ? 60 : 6).map(function (c) {
+      var li = S.lignes[c.id] || [], tot = li.reduce(function (t, x) { return t + x.quantite * x.prix; }, 0), st = CST[c.statut] || ['', c.statut];
+      return '<button class="gq-c" data-voir="c:' + c.id + '"><span class="gq-ic" aria-hidden="true">' + ico('panier', 24) + '</span><span class="gq-x"><b>' + esc(S.fournisseurs[c.fournisseur_id] || 'Fournisseur supprimé') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</b><span>' + c.date_commande.split('-').reverse().join('/') + ' · ' + li.length + ' ligne' + (li.length > 1 ? 's' : '') + ' · ' + eur(tot) + '</span></span><span class="pill ' + st[0] + '">' + st[1] + '</span>' + ico('suiv', 18, 2.4) + '</button>';
+    }).join('') + '</div>' + (!F && Co.length > 6 ? '<button class="lnk gq-p" data-gqf="c">Voir les ' + Co.length + ' commandes</button>' : '');
+    if (A.length && (!F || F === 'a')) h += titre('boite', 'Articles', A.length) + '<div class="gq-g">' + A.slice(0, F ? 90 : 12).map(function (a) {
+      var e = etatArt(a), nc = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(function (c) { return Math.abs(stockDe(a.id, c)) > 1e-9; }).length;
+      return '<button class="gq-c" data-voir="a:' + a.id + '"><span class="gq-ic" aria-hidden="true">' + ico('boite', 24) + '</span><span class="gq-x"><b>' + esc(a.nom) + '</b><span>' + (a.reference && !estSR(a) ? esc(a.reference) + ' · ' : '') + esc(S.fournisseurs[a.fournisseur_id] || 'Sans fournisseur') + '</span><span>Réserve : <strong>' + fr(stockDe(a.id, 0)) + ' ' + uRes(a) + '</strong>' + (nc ? ' · ' + nc + ' autre' + (nc > 1 ? 's' : '') + ' lieu' + (nc > 1 ? 'x' : '') : '') + '</span></span><span class="stk-p ' + e[0] + '">' + e[1] + '</span>' + ico('suiv', 18, 2.4) + '</button>';
+    }).join('') + '</div>' + (!F && A.length > 12 ? '<button class="lnk gq-p" data-gqf="a">Voir les ' + A.length + ' articles</button>' : F && A.length > 90 ? '<p class="mu">90 premiers articles affichés : précisez la recherche.</p>' : '');
     return h;
   }
   // Accueil « À faire » : une tuile par sujet qui demande une action (nombre, libellé, un bouton) ; rien à faire = pas de tuile
@@ -6710,6 +6715,7 @@
     var d = t.dataset;
     if (d.voir) { var vv = d.voir.split(':'); voir(vv[0], vv[1]); return; }
     if (d.act === 'gqx') { S.gq = ''; render(); return; }
+    if (d.gqf != null) { S.gqF = d.gqf; render(); window.scrollTo(0, 0); return; }
     if (d.go) { var g = d.go.split(':'); S.tab = g[0]; S.tabChoisi = true; S.retours = []; S.gq = ''; S.fiche = null; S.menu = false; if (g[0] === 'commandes' && g[1]) S.cmdSub = g[1]; if (g[0] === 'stock') { S.stockF = g[1] || ''; S.stockCab = ''; S.stockQ = ''; } if (g[0] === 'inventaire' && g[1] !== undefined) choisirEmp(+g[1]); if (g[0] === 'histo') { S.histTous = true; chargerHisto(); } render(); window.scrollTo(0, 0); return; }
     if (d.act === 'ireste') { S.inv.reste = true; S.inv.cherche = false; S.inv.q = ''; render(); return; }
     if (d.act === 'itout') { S.inv.reste = false; S.inv.cherche = false; S.inv.q = ''; render(); return; }
@@ -7006,7 +7012,7 @@
     else if (t.id === 'rq') { S.ret.q = t.value; S.ret.msg = null; render(); }
     else if (t.dataset && t.dataset.rqte) { setRet(t.dataset.rqte, t.value); var rb = document.querySelector('.bar'); if (rb) rb.outerHTML = vBarRetour(); }
     else if (t.id === 'stq') { S.stockQ = t.value; render(); }
-    else if (t.id === 'gq' || t.id === 'gq2') { S.gq = t.value; render(); }
+    else if (t.id === 'gq' || t.id === 'gq2') { S.gq = t.value; S.gqF = ''; render(); }
     else if (t.dataset && t.dataset.sugq) { S.sugQ[t.dataset.sugq] = t.value; }
     else if (t.id === 'ncnum') { S.nc.num = t.value; }
     else if (t.id === 'cnum') { S.fiche.num = t.value; }
