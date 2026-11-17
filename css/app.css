@@ -2414,3 +2414,37 @@ button.tdb-el.lk{border:none;background:none;padding:0;text-align:left;font-size
 .ptt-ck{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr);gap:4px 12px;font-size:13.5px;padding-left:34px}
 .ptt-ck.ko{color:var(--ko)}.ptt-ck.ko .mu{color:var(--ko)}
 @media (max-width:700px){.ptt-f2{grid-template-columns:minmax(0,1fr)}.ptt-ck{grid-template-columns:minmax(0,1fr);padding-left:0;border-top:1px dashed var(--soft);padding-top:4px}}
+/* Import Excel des articles : aperçu lisible */
+.ia{display:flex;flex-direction:column;gap:12px;border:2px solid var(--gold)}
+.ia-hd{display:flex;align-items:center;gap:12px}.ia-hd .grow{display:flex;flex-direction:column;gap:2px}.ia-hd b{font-size:17px}.ia-hd .mu{font-size:13.5px}
+.ia-ic{width:40px;height:40px;border-radius:12px;background:var(--ivory);color:var(--navy);display:flex;align-items:center;justify-content:center;flex:none}
+.ia-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.ia-tab{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 14px;border-radius:12px;border:1.5px solid var(--line);background:#fff;font:inherit;color:var(--ink);text-align:left;cursor:pointer;min-height:44px}
+.ia-tab b{font-size:22px;line-height:1.1}.ia-tab span{font-size:13px;color:var(--mute);font-weight:600}
+.ia-tab.ok b{color:var(--ok)}.ia-tab.ko b{color:var(--ko)}.ia-tab.warn b{color:var(--warn)}
+.ia-tab.on{border-color:var(--navy);box-shadow:inset 0 0 0 1px var(--navy);background:#f4f6f8}
+.ia-tab:disabled{opacity:.5;cursor:default}
+.ia-alerte{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;border:none;background:var(--warnbg);color:#5a2b06;font:inherit;font-size:14px;text-align:left;cursor:pointer;width:100%}
+.ia-alerte span{flex:1}.ia-alerte u{font-weight:700;white-space:nowrap}
+.ia-ch-f{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.ia-ch-f .mu{font-size:13px;margin-right:4px}
+.ia-f{min-height:34px;padding:0 12px;border-radius:999px;border:1.5px solid var(--line);background:#fff;font:inherit;font-size:13.5px;color:var(--ink);cursor:pointer}
+.ia-f b{color:var(--navy);margin-left:2px}.ia-f.on{background:var(--navy);border-color:var(--navy);color:#fff}.ia-f.on b{color:var(--gold)}
+.ia-l{display:flex;flex-direction:column;max-height:560px;overflow:auto;border:1px solid var(--soft);border-radius:12px}
+.ia-r{display:grid;grid-template-columns:minmax(180px,300px) minmax(0,1fr);gap:6px 16px;align-items:start;padding:10px 14px;border-bottom:1px solid var(--soft)}
+.ia-r:last-child{border-bottom:none}
+.ia-nom{font-size:14.5px;font-weight:600;line-height:1.35;display:flex;flex-direction:column}.ia-nom small{font-weight:400;color:var(--mute);font-size:12.5px}
+.ia-dd{display:flex;flex-wrap:wrap;gap:6px}
+.ia-d{display:inline-flex;align-items:baseline;gap:6px;padding:4px 10px;border-radius:8px;background:var(--ivory);font-size:13.5px;white-space:nowrap;max-width:100%}
+.ia-d em{font-style:normal;color:var(--mute);font-size:12.5px}
+.ia-d s{color:#8a8f94;text-decoration-color:#b9bdc1}.ia-d i{font-style:normal;color:var(--gold);font-weight:700}.ia-d b{color:var(--navy)}
+.ia-d.hl{box-shadow:inset 0 0 0 1.5px var(--gold)}.ia-d.n{background:var(--okbg)}.ia-d.ko{background:var(--kobg)}.ia-d.ko b{color:var(--ko)}
+.ia-note{margin:0;font-size:13.5px}
+.ia-plus{align-self:flex-start;min-height:40px;border:none;background:none;font:inherit;font-weight:700;color:var(--navy);cursor:pointer;padding:0}
+.ia-er{display:flex;flex-direction:column;gap:6px;padding:10px 14px;border-radius:12px;background:#fff8f7;border:1px solid #efc6c1}
+.ia-er>b{color:var(--ko);font-size:14.5px}.ia-er.bl{background:var(--kobg)}
+.ia-erl{display:flex;flex-wrap:wrap;gap:6px}
+.ia-lg{font-size:12.5px;padding:2px 8px;border-radius:6px;background:#fff;border:1px solid #efc6c1;color:var(--ink);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ia-bas{display:flex;align-items:center;gap:8px;flex-wrap:wrap;position:sticky;bottom:0;background:#fff;padding:10px 0 2px;border-top:1px solid var(--soft)}
+.ia-bas .mu{font-size:13.5px}
+@media (max-width:700px){.ia-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.ia-r{grid-template-columns:minmax(0,1fr)}.ia-d{white-space:normal}}
+.ia-aide{font-size:13px;color:#5a2b06}

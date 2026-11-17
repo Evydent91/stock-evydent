@@ -6312,18 +6312,54 @@
     if (k === 'conditionnement' || k === 'consommation') return x === 'BOITE' ? 'Boîte' : 'Unité';
     return x === '' || x == null ? '—' : String(x);
   }
+  // Erreurs du fichier regroupées par motif : « fournisseur « xxx » inconnu · lignes 12, 45, 294 »
+  function iaErreurs(R) {
+    var G = {}, ordre = [];
+    R.erreurs.forEach(function (e) {
+      var m = e.match(/^Ligne (\d+)(?: \((.*?)\))? : (.*)$/), msgs = m ? m[3].split(/, (?=[a-zéèêàùA-Z«])/) : [e];
+      msgs.forEach(function (x) {
+        var k = x.charAt(0).toUpperCase() + x.slice(1);
+        if (!G[k]) { G[k] = []; ordre.push(k); }
+        if (m) G[k].push({ l: +m[1], n: m[2] || '' });
+      });
+    });
+    return ordre.map(function (k) { return { t: k, l: G[k], bloque: /plusieurs articles/.test(k) }; });
+  }
   function vImportArticles() {
     var R = S.artImp;
-    if (R.lecture) return '<div class="card"><b>Lecture du fichier…</b></div>';
-    var h = '<div class="card" style="border:2px solid var(--gold)"><b>📥 Import Excel des articles</b><p class="mu" style="margin:4px 0 8px">' + R.nb + ' ligne(s) lue(s) · <b>' + R.modifs.length + '</b> fiche(s) modifiée(s) · <b>' + R.nouveaux.length + '</b> nouvelle(s) · <b>' + R.suppr.length + '</b> à supprimer · ' + R.erreurs.length + ' erreur(s). Rien n’est enregistré avant « Appliquer ».</p>';
-    if (R.erreurs.length) h += '<div class="ban ko"><b>À corriger dans le fichier' + (R.erreurs.some(function (e) { return /plusieurs articles/.test(e); }) ? ' (import bloqué)' : ' (ces lignes seront ignorées)') + ' :</b><br>' + R.erreurs.map(esc).join('<br>') + '</div>';
-    h += R.modifs.slice(0, 300).map(function (m) {
-      return '<div class="it"><div class="it-n"><b>' + esc(m.a.nom) + '</b><span>' + m.diffs.map(function (k) { return R.CH[k] + ' : ' + esc(valTxt(k, m.act[k])) + ' → <b>' + esc(valTxt(k, m.v[k])) + '</b>'; }).join(' · ') + '</span></div></div>';
-    }).join('');
-    h += R.nouveaux.map(function (x) { return '<div class="it"><div class="it-n"><b>' + esc(x.v.nom) + ' <span class="pill ok">nouvelle fiche</span></b><span>' + Object.keys(x.v).filter(function (k) { return k !== 'nom'; }).map(function (k) { return R.CH[k] + ' : ' + esc(valTxt(k, x.v[k])); }).join(' · ') + '</span></div></div>'; }).join('');
-    h += R.suppr.map(function (a) { return '<div class="it"><div class="it-n"><b>' + esc(a.nom) + ' <span class="pill ko">sera supprimée définitivement</span></b><span>Fiche, prix par fournisseur et historique des prix effacés ; les mouvements passés restent sous son nom.</span></div></div>'; }).join('');
-    var bloque = R.erreurs.some(function (e) { return /plusieurs articles/.test(e); }) || !(R.modifs.length + R.nouveaux.length + R.suppr.length);
-    return h + '<div class="row" style="margin-top:12px"><span class="grow"></span><button class="btn l" data-act="aimpno">Annuler</button><button class="btn" data-act="aimpok"' + (bloque || R.busy ? ' disabled' : '') + '>' + (R.busy ? 'Enregistrement… ' + (R.fait || 0) + '/' + (R.modifs.length + R.nouveaux.length + R.suppr.length) : 'Appliquer') + '</button></div></div>';
+    if (R.lecture) return '<div class="card ia"><b>Lecture du fichier…</b></div>';
+    var EG = iaErreurs(R), nErrL = {}; EG.forEach(function (g) { g.l.forEach(function (x) { nErrL[x.l] = 1; }); });
+    var nErr = Object.keys(nErrL).length + EG.filter(function (g) { return !g.l.length; }).length;
+    var inch = Math.max(0, R.nb - R.modifs.length - R.nouveaux.length - R.suppr.length);
+    var vues = [['modifs', 'Fiches modifiées', R.modifs.length, ''], ['nouveaux', 'Nouvelles fiches', R.nouveaux.length, 'ok'], ['suppr', 'À supprimer', R.suppr.length, 'ko'], ['erreurs', 'Lignes en erreur', nErr, 'warn']];
+    if (!R.vue) R.vue = (vues.filter(function (v) { return v[2]; })[0] || vues[0])[0];
+    var bloque = EG.some(function (g) { return g.bloque; }) || !(R.modifs.length + R.nouveaux.length + R.suppr.length);
+    var h = '<section class="card ia"><div class="ia-hd"><span class="ia-ic" aria-hidden="true">' + ico('telecharger', 22, 2.2) + '</span><div class="grow"><b>Import Excel des articles</b><span class="mu">' + R.nb + ' ligne' + (R.nb > 1 ? 's' : '') + ' lue' + (R.nb > 1 ? 's' : '') + (inch ? ' · ' + inch + ' sans changement' : '') + ' · rien n’est enregistré avant « Appliquer »</span></div></div>';
+    h += '<div class="ia-tabs" role="tablist">' + vues.map(function (v) { return '<button role="tab" class="ia-tab ' + v[3] + (R.vue === v[0] ? ' on' : '') + '" aria-selected="' + (R.vue === v[0]) + '" data-iav="' + v[0] + '"' + (v[2] ? '' : ' disabled') + '><b>' + v[2] + '</b><span>' + v[1] + '</span></button>'; }).join('') + '</div>';
+    if (EG.length && R.vue !== 'erreurs') h += '<button class="ia-alerte" data-iav="erreurs">' + ico('attente', 18, 2.4) + '<span>' + (EG.some(function (g) { return g.bloque; }) ? '<b>Import bloqué :</b> une référence est utilisée par plusieurs articles. ' : '<b>' + nErr + ' ligne' + (nErr > 1 ? 's' : '') + ' en erreur</b> seront ignorée' + (nErr > 1 ? 's' : '') + ' : ') + EG.slice(0, 2).map(function (g) { return esc(g.t); }).join(' ; ') + (EG.length > 2 ? '…' : '') + '</span><u>Voir</u></button>';
+    var corps = '';
+    if (R.vue === 'modifs') {
+      var parCh = {}; R.modifs.forEach(function (m) { m.diffs.forEach(function (k) { parCh[k] = (parCh[k] || 0) + 1; }); });
+      var ks = Object.keys(parCh).sort(function (a, b) { return parCh[b] - parCh[a]; });
+      if (R.champ && !parCh[R.champ]) R.champ = null;
+      corps += '<div class="ia-ch-f"><span class="mu">Champs modifiés :</span><button class="ia-f' + (R.champ ? '' : ' on') + '" data-iaf="">Tous</button>' + ks.map(function (k) { return '<button class="ia-f' + (R.champ === k ? ' on' : '') + '" data-iaf="' + k + '">' + esc(R.CH[k]) + ' <b>' + parCh[k] + '</b></button>'; }).join('') + '</div>';
+      var L = R.modifs.filter(function (m) { return !R.champ || m.diffs.indexOf(R.champ) >= 0; }), max = R.tout ? L.length : 60;
+      corps += '<div class="ia-l">' + L.slice(0, max).map(function (m) {
+        return '<div class="ia-r"><b class="ia-nom">' + esc(m.a.nom) + '</b><div class="ia-dd">' + m.diffs.map(function (k) { return '<span class="ia-d' + (R.champ === k ? ' hl' : '') + '"><em>' + esc(R.CH[k]) + '</em><s>' + esc(valTxt(k, m.act[k])) + '</s><i aria-hidden="true">→</i><b>' + esc(valTxt(k, m.v[k])) + '</b></span>'; }).join('') + '</div></div>';
+      }).join('') + '</div>' + (L.length > max ? '<button class="ia-plus" data-act="iatout">Afficher les ' + L.length + ' fiches</button>' : '');
+    } else if (R.vue === 'nouveaux') {
+      corps += '<div class="ia-l">' + R.nouveaux.map(function (x) { return '<div class="ia-r"><b class="ia-nom">' + esc(x.v.nom) + '<small>ligne ' + x.ligne + '</small></b><div class="ia-dd">' + Object.keys(x.v).filter(function (k) { return k !== 'nom'; }).map(function (k) { return '<span class="ia-d n"><em>' + esc(R.CH[k]) + '</em><b>' + esc(valTxt(k, x.v[k])) + '</b></span>'; }).join('') + '</div></div>'; }).join('') + '</div>';
+    } else if (R.vue === 'suppr') {
+      corps += '<p class="mu ia-note">Fiche, prix par fournisseur et historique des prix effacés ; les mouvements passés restent sous leur nom.</p><div class="ia-l">' + R.suppr.map(function (a) { return '<div class="ia-r"><b class="ia-nom">' + esc(a.nom) + '</b><div class="ia-dd"><span class="ia-d ko"><b>sera supprimée définitivement</b></span></div></div>'; }).join('') + '</div>';
+    } else {
+      corps += '<p class="mu ia-note">Corrigez le fichier Excel puis réimportez-le. ' + (EG.some(function (g) { return g.bloque; }) ? 'Tant qu’une référence est en double, l’import est bloqué.' : 'Sinon, les lignes en erreur sont ignorées et le reste peut être appliqué.') + '</p>'
+        + EG.map(function (g) {
+          var aide = /^Fournisseur « .* » inconnu$/.test(g.t) ? 'Écrivez le nom exact d’un fournisseur de l’appli (onglet Fournisseurs), ou SF pour « sans fournisseur ».' : /Boîte ou Unité/.test(g.t) ? 'Écrivez Boîte ou Unité.' : /oui ou non/.test(g.t) ? 'Écrivez oui ou non.' : /invalide/.test(g.t) ? 'Un nombre positif est attendu.' : '';
+          return '<div class="ia-er' + (g.bloque ? ' bl' : '') + '"><b>' + esc(g.t) + '</b>' + (aide ? '<span class="ia-aide">' + aide + '</span>' : '') + (g.l.length ? '<span class="ia-erl">' + g.l.slice(0, 40).map(function (x) { return '<span class="ia-lg" title="' + esc(x.n) + '">ligne ' + x.l + (x.n ? ' · ' + esc(x.n) : '') + '</span>'; }).join('') + (g.l.length > 40 ? '<span class="mu">+ ' + (g.l.length - 40) + '</span>' : '') + '</span>' : '') + '</div>';
+        }).join('');
+    }
+    h += corps;
+    return h + '<div class="ia-bas"><span class="mu grow">' + (bloque ? (EG.some(function (g) { return g.bloque; }) ? 'Import bloqué : corrigez les références en double.' : 'Rien à appliquer.') : (R.modifs.length + R.nouveaux.length + R.suppr.length) + ' changement' + ((R.modifs.length + R.nouveaux.length + R.suppr.length) > 1 ? 's' : '') + ' à appliquer' + (nErr ? ', ' + nErr + ' ligne' + (nErr > 1 ? 's' : '') + ' ignorée' + (nErr > 1 ? 's' : '') : '')) + '</span><button class="btn l" data-act="aimpno">Annuler</button><button class="btn" data-act="aimpok"' + (bloque || R.busy ? ' disabled' : '') + '>' + (R.busy ? 'Enregistrement… ' + (R.fait || 0) + '/' + (R.modifs.length + R.nouveaux.length + R.suppr.length) : 'Appliquer') + '</button></div></section>';
   }
   function enregistrerFiche(a, v) {
     // a = fiche existante (ou null pour une nouvelle), v = valeurs du fichier
@@ -6609,6 +6645,9 @@
     if (d.act === 'tdbmaj') { chargerTdb(); render(); return; }
     if (d.act === 'asuppr') return supprimerArticle();
     if (d.act === 'aimpno') { S.artImp = null; render(); return; }
+    if (d.iav && S.artImp) { S.artImp.vue = d.iav; render(); return; }
+    if (d.iaf !== undefined && S.artImp) { S.artImp.champ = d.iaf || null; S.artImp.tout = false; render(); return; }
+    if (d.act === 'iatout' && S.artImp) { S.artImp.tout = true; render(); return; }
     if (d.act === 'aimpok') return appliquerImportArticles();
     if (d.act === 'iexp') return exporterComptage();
     if (d.act === 'svoir') { S.sortie.voir = !S.sortie.voir; render(); window.scrollTo(0, 0); return; }
