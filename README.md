@@ -17,9 +17,13 @@ Aucun secret dans ce dépôt : seules les clés publiques Supabase y figurent.
 Le schéma est maintenu uniquement par les fichiers numérotés de `supabase/migrations/`,
 appliqués dans l'éditeur SQL de Supabase : d'abord sur Evydent-Dev, puis sur Evydent-Prod après validation.
 
-**Migrations à appliquer : 028_pointage_wifi.sql (Wi-Fi du centre pour le pointage) — dev et prod ; 029_pointage_test.sql (module de test du pointage) — Evydent-Dev seulement (sans effet sur la prod, le module y reste fermé).** Dernière migration appliquée : dev 027, prod 027 (027_referent_profil.sql, à lancer sur la prod avec la version 2.4.1, 15/11/2026)** — avant : passage-prod-007-026.sql (14/11/2026)
+**Version 2.4.7 mise en ligne le 17/11/2026. Migrations à lancer pour cette version :**
+- sur Evydent-Prod : `supabase/prod/passage-prod-028-030.sql` (028 Wi-Fi du centre + 030 cabinets des dentistes ; la 029, module de test du pointage, ne concerne que le site de test) ;
+- sur Evydent-Dev : `supabase/migrations/030_cabinets_dentistes.sql` (028 et 029 y ont été lancées pendant les essais).
 
-**À lancer : 030_cabinets_dentistes.sql** (cabinet habituel et cabinet du jour des dentistes, pour « Occupation des cabinets ») — sur Evydent-Dev pour tester, puis sur Evydent-Prod à la validation de la 2.4.7. Sans elle, la page fonctionne en déduisant le cabinet de celui de l'assistante.
+Tant que ce n'est pas fait, le site marche : la page Wi-Fi du centre affiche un message d'attente et « Occupation des cabinets » déduit le cabinet de celui de l'assistante.
+
+Dernière migration notée comme appliquée sur la prod : 027 (027_referent_profil.sql, version 2.4.1, 15/11/2026) — avant : passage-prod-007-026.sql (14/11/2026).
 
 ## Fonctions Supabase (Edge Functions)
 

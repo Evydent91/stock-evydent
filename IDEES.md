@@ -23,7 +23,7 @@ Légende : 🟢 prête à faire · 🟡 à préciser avec Gwen · ⚪ à l’ét
 - 🟡 **Importer une sauvegarde** : recharger dans l'appli un fichier Excel de sauvegarde (onglet Plus), pour restaurer les données après un problème. À préciser : tout remplacer ou seulement une partie (fiches, stock, fournisseurs), et qui a le droit de le faire.
 
 ## Ergonomie
-- 🧪 **Gestion de stock en six rubriques, liens partout, recherche unique, accueil « À faire »** — en test sur le site de test (2.4.7-dev.15), à valider par Gwen.
+- 🧪 **Gestion de stock en six rubriques, liens partout, recherche unique, accueil « À faire »** — en ligne depuis la 2.4.7.
 - 🟡 **Relier des articles entre eux** : produit équivalent ou de remplacement (même produit chez deux fournisseurs, autre taille). À préciser avec Gwen.
 - 🟢 **Depuis la fiche article : « Ajouter à une commande »** (ouvrir la commande en cours du fournisseur ou en créer une) et lien vers la courbe des prix.
 - 🧪 **Meilleure ergonomie sur téléphone (type iPhone)** — en test sur le site de test (version 2.1) : écrans plus adaptés au petit écran et au pouce (onglets, boutons, listes, barre du bas), affichage sur l'écran d'accueil comme une application. À préciser avec Gwen à partir de captures des écrans gênants.
@@ -37,7 +37,7 @@ Légende : 🟢 prête à faire · 🟡 à préciser avec Gwen · ⚪ à l’ét
 - Toute évolution de la base = nouvelle migration numérotée (007, 008…), appliquée sur Dev puis sur Prod avant la fusion dev → main.
 
 ## Planning (idées pour plus tard)
-- 🧪 **Occupation des cabinets** (tuile sur l'accueil, cabinet habituel par dentiste, cabinet du jour) — en test sur le site de test (2.4.7-dev.23), migration 030 à lancer.
+- 🧪 **Occupation des cabinets** (tuile sur l'accueil, cabinet habituel par dentiste, cabinet du jour) — en ligne depuis la 2.4.7 ; migration 030 à lancer sur les deux bases.
 - ⚪ Occupation des cabinets : vue mois, export, et alerte sur l'accueil quand deux dentistes sont prévus dans le même cabinet.
 - Routine de fin de mois (rapport d'organisation, § 5C) : 5 questions une par une pour préparer le mois suivant (jours fixes des dentistes et mercredi de Dr Sacha, congés des praticiens, exceptions CFA des apprenties, congés des assistantes, jours fériés).
 - Mode dégradé (§ 5B) : en cas d'absence imprévue, proposer d'abord l'assistante en Admin / Sté ce jour-là.
