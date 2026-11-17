@@ -4837,59 +4837,28 @@
     }).join('') + '</div>';
     return h;
   }
-  // Accueil « À faire » : seulement ce qui demande une action, puis les derniers mouvements
+  // Accueil « À faire » : une tuile par sujet qui demande une action (nombre, libellé, un bouton) ; rien à faire = pas de tuile
   function vAccueil() {
     if (telephone()) return vAccueilTel();
-    var A = S.articles, F = function (f) { return A.filter(function (a) { return filtreStock(a, f); }); };
+    var A = S.articles, N = function (f) { return A.filter(function (a) { return filtreStock(a, f); }).length; }, pl2 = function (n, sg, plu) { return n > 1 ? plu : sg; };
     var valR = 0, valC = 0;
     A.forEach(function (a) { var cm = +a.cout_moyen || 0, f = facteur(a); valR += stockDe(a.id, 0) * cm; for (var c = 1; c <= 9; c++) valC += stockDe(a.id, c) / f * cm; });
-    var heure = new Date().getHours(), n = 0;
-    var bloc = function (cls, titre, sous, act, corps) { n++; return '<section class="card af-c ' + cls + '"><div class="af-t"><span class="grow"><b>' + titre + '</b>' + (sous ? '<span class="mu">' + sous + '</span>' : '') + '</span>' + (act || '') + '</div>' + (corps ? '<div class="af-l">' + corps + '</div>' : '') + '</section>'; };
-    var plus = function (l, max, go) { return l.length > max ? '<button class="lnk af-p" ' + go + '>et ' + (l.length - max) + ' autre' + (l.length - max > 1 ? 's' : '') + '</button>' : ''; };
-    var corps = '';
-    // 1. demandes
-    var att = S.attente;
-    if (att.length) corps += bloc('warn', att.length + ' demande' + (att.length > 1 ? 's' : '') + ' à confirmer', 'Sorties au-delà de la réserve', '<button class="btn sm" data-tab="demandes">Traiter</button>', att.slice(0, 4).map(function (m) { var a = S.byId[m.article_id] || { nom: '?' }; return '<span class="af-i">' + lA(m.article_id, a.nom) + ' × ' + fr(m.quantite) + ' <span class="mu">· ' + cabTxt(m.emplacement_vers) + ' · ' + esc(m.auteur_nom || '?') + '</span></span>'; }).join('') + plus(att, 4, 'data-tab="demandes"'));
-    // 2. ruptures
-    var rup = F('rupture');
-    if (rup.length) corps += bloc('ko', rup.length + ' article' + (rup.length > 1 ? 's' : '') + ' en rupture', 'Réserve à zéro', '<button class="btn l sm" data-go="stock:rupture">Voir la liste</button>', rup.slice(0, 8).map(function (a) { var enc = enCoursPour(a.id), nc = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(function (c) { return stockDe(a.id, c) > 0; }).length; return '<span class="af-i">' + lA(a.id, a.nom) + (enc ? ' <span class="stk-p enc">Commandé · ' + fr(enc) + '</span>' : '') + (nc ? ' <span class="mu">· encore dans ' + nc + ' lieu' + (nc > 1 ? 'x' : '') + '</span>' : '') + '</span>'; }).join('') + plus(rup, 8, 'data-go="stock:rupture"'));
-    // 3. à commander, par fournisseur
-    var cmd = F('commander');
-    if (cmd.length) {
-      var parF = {}; cmd.forEach(function (a) { var k = a.fournisseur_id || 0; (parF[k] = parF[k] || []).push(a); });
-      corps += bloc('warn', cmd.length + ' article' + (cmd.length > 1 ? 's' : '') + ' à commander', 'Au seuil ou en dessous, pas encore commandés', '<button class="btn sm" data-go="commandes:sug">Préparer les commandes</button>', Object.keys(parF).sort(function (x, y) { return (S.fournisseurs[x] || 'zz').localeCompare(S.fournisseurs[y] || 'zz'); }).map(function (k) {
-        var l = parF[k], nr = l.filter(function (a) { return stockDe(a.id, 0) <= 0; }).length;
-        return '<span class="af-i"><b>' + (+k ? lF(+k, '?') : 'Fournisseur à renseigner') + '</b> <span class="mu">· ' + l.length + ' article' + (l.length > 1 ? 's' : '') + (nr ? ', dont ' + nr + ' en rupture' : '') + ' :</span> ' + l.slice(0, 4).map(function (a) { return lA(a.id, a.nom); }).join(', ') + (l.length > 4 ? '…' : '') + '</span>';
-      }).join(''));
-    }
-    // 4. livraisons attendues
-    var ouv = S.commandes.filter(function (c) { return c.statut === 'attente' || c.statut === 'partielle'; });
-    if (ouv.length) corps += bloc('info', ouv.length + ' livraison' + (ouv.length > 1 ? 's' : '') + ' attendue' + (ouv.length > 1 ? 's' : ''), 'Commandes en cours à réceptionner', '<button class="btn l sm" data-go="commandes:enc">Voir les commandes</button>', ouv.slice(0, 6).map(function (c) {
-      var li = S.lignes[c.id] || [], reste = li.filter(function (l) { return !l.reliquat_abandonne && l.quantite - l.recu > 0; }).length, j = joursDepuis(c.date_commande);
-      return '<span class="af-i"><button class="lk2" data-voir="c:' + c.id + '">' + esc(S.fournisseurs[c.fournisseur_id] || 'Fournisseur supprimé') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</button> <span class="mu">· commandée ' + (j > 0 ? 'il y a ' + j + ' j' : 'aujourd’hui') + ' · ' + reste + ' ligne' + (reste > 1 ? 's' : '') + ' à recevoir' + (c.statut === 'partielle' ? ' (reliquat)' : '') + '</span></span>';
-    }).join('') + plus(ouv, 6, 'data-go="commandes:enc"'));
-    // 5. inventaires
-    var emps = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (e) { var x = etatInventaire(e); x.emp = e; return x; }), aFaire = emps.filter(function (x) { return x.cls !== 'ok'; }).sort(function (a, b) { return a.ordre - b.ordre || a.emp - b.emp; });
-    if (aFaire.length) corps += bloc(aFaire.some(function (x) { return x.cls === 'ko'; }) ? 'ko' : 'warn', aFaire.length + ' inventaire' + (aFaire.length > 1 ? 's' : '') + ' à faire', 'Chaque emplacement est compté une fois par mois', '', '<div class="invs">' + aFaire.map(function (x) { return '<button class="inv ' + x.cls + '" data-go="inventaire:' + x.emp + '"><b>' + cabTxt(x.emp) + '</b>' + x.txt + '</button>'; }).join('') + '</div>');
-    // 6. fiches à compléter
-    var fc = ['sr', 'sf', 'seuil'].filter(function (f) { return F(f).length; });
-    if (fc.length) corps += bloc('', 'Fiches à compléter', 'Sans référence, sans fournisseur ou sans seuil d’alerte', '', '<div class="chips" style="margin:0">' + fc.map(function (f) { return '<button class="chip warn" data-go="stock:' + f + '">' + STF[f] + ' · ' + F(f).length + '</button>'; }).join('') + '</div>');
-    // 7. sauvegarde
-    if (sauvegardeEnRetard()) corps += bloc('', 'Sauvegarde du mois', S.sauv && S.sauv.date ? 'Dernière sauvegarde il y a ' + joursDepuis(S.sauv.date) + ' jours' : 'Aucune sauvegarde téléchargée pour l’instant', '<button class="btn l sm" data-act="sauver"' + (S.sauvBusy ? ' disabled' : '') + '>' + (S.sauvBusy ? 'Préparation…' : 'Télécharger') + '</button>', '');
-    var h = '<div class="af-hd"><h2>' + (heure < 18 ? 'Bonjour' : 'Bonsoir') + ' ' + esc(S.me.nom) + '</h2><span class="mu">' + (n ? n + ' point' + (n > 1 ? 's' : '') + ' à traiter' : '') + '</span></div>';
-    h += n ? corps : '<div class="ban ok af-ok">' + ico('ok', 22, 2.4) + '<span><b>Tout est à jour.</b> Aucune demande, aucune rupture, rien à commander, inventaires faits.</span></div>';
-    h += '<p class="af-v">Réserve : <b>' + eur(valR) + '</b> · cabinets et Sté : ≈ ' + eur(valC) + ' · ' + A.length + ' articles <button class="lnk" data-tab="tdb">Voir les analyses</button></p>';
-    // derniers mouvements
-    var hors = S.recents.filter(function (m) { return m.hors_cabinet && new Date(m.cree_le) > new Date(Date.now() - 7 * 864e5); }).length;
-    h += '<div class="card"><div class="row wrap" style="margin-bottom:4px"><b class="grow">Derniers mouvements de l’équipe</b>' + (hors ? '<span class="pill warn">' + hors + ' hors cabinet (7 j)</span>' : '') + '</div>';
-    if (!S.recents.length) h += '<p class="mu" style="margin:6px 0 0">Aucun mouvement pour l’instant.</p>';
-    else h += S.recents.slice(0, 10).map(function (m) {
-      var a = S.byId[m.article_id] || { nom: m.article_nom ? m.article_nom + ' (supprimé)' : '(article)' }, st = STAT[m.statut] || ['', m.statut];
-      var lieu = m.type === 'retour' ? ' ' + cabTxt(m.emplacement_de) + ' → réserve' : m.type === 'sortie' || m.type === 'demande' ? ' → ' + cabTxt(m.emplacement_vers) : m.emplacement_de != null ? ' · ' + cabTxt(m.emplacement_de) : '';
-      return '<div class="it"><div class="it-n"><b>' + (TYP[m.type] || m.type) + lieu + ' · ' + lA(m.article_id, a.nom) + ' × ' + fr(m.quantite) + '</b><span>' + quand(m.cree_le) + ' · ' + esc(m.auteur_nom || '') + '</span></div>'
-        + (m.statut !== 'ok' ? '<span class="pill ' + st[0] + '">' + st[1] + '</span>' : '') + (m.hors_cabinet ? '<span class="pill warn">hors cabinet</span>' : '') + '</div>';
-    }).join('') + '<div style="margin-top:8px"><button class="lnk" data-go="histo">Tout l’historique</button></div>';
-    return h + '</div>';
+    var T = [], tu = function (cls, ic, n, lab, bouton, attr) { T.push('<section class="af-tu ' + cls + '"><span class="af-ic" aria-hidden="true">' + ico(ic, 26) + '</span><p class="af-n">' + (n != null ? '<b>' + n + '</b> ' : '') + lab + '</p><button class="btn af-b" ' + attr + '>' + bouton + '</button></section>'); };
+    var att = S.attente.length, rup = N('rupture'), cmd = N('commander');
+    var ouv = S.commandes.filter(function (c) { return c.statut === 'attente' || c.statut === 'partielle'; }).length;
+    var inv = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(etatInventaire), invN = inv.filter(function (x) { return x.cls !== 'ok'; }).length, invKo = inv.some(function (x) { return x.cls === 'ko'; });
+    var fcs = ['sr', 'sf', 'seuil'].filter(function (f) { return N(f); }), fcN = A.filter(function (a) { return filtreStock(a, 'sr') || filtreStock(a, 'sf') || filtreStock(a, 'seuil'); }).length;
+    if (att) tu('warn', 'attente', att, pl2(att, 'demande à confirmer', 'demandes à confirmer'), 'Traiter', 'data-tab="demandes"');
+    if (rup) tu('ko', 'boite', rup, pl2(rup, 'article en rupture', 'articles en rupture'), 'Voir', 'data-go="stock:rupture"');
+    if (cmd) tu('warn', 'panier', cmd, pl2(cmd, 'article à commander', 'articles à commander'), 'Commander', 'data-go="commandes:sug"');
+    if (ouv) tu('info', 'camion', ouv, pl2(ouv, 'livraison attendue', 'livraisons attendues'), 'Réceptionner', 'data-go="commandes:enc"');
+    if (invN) tu(invKo ? 'ko' : 'warn', 'invok', invN, pl2(invN, 'inventaire à faire', 'inventaires à faire'), 'Compter', 'data-tab="inventaire"');
+    if (fcN) tu('', 'etiquette', fcN, pl2(fcN, 'fiche à compléter', 'fiches à compléter'), 'Compléter', 'data-go="stock:' + fcs[0] + '"');
+    if (sauvegardeEnRetard()) tu('', 'telecharger', null, 'Sauvegarde du mois', S.sauvBusy ? 'Préparation…' : 'Télécharger', 'data-act="sauver"' + (S.sauvBusy ? ' disabled' : ''));
+    var heure = new Date().getHours();
+    var h = '<div class="af-hd"><h2>' + (heure < 18 ? 'Bonjour' : 'Bonsoir') + ' ' + esc(S.me.nom) + '</h2></div>';
+    h += T.length ? '<div class="af-g">' + T.join('') + '</div>' : '<p class="af-rien">' + ico('ok', 22, 2.4) + 'Rien à faire pour l’instant.</p>';
+    return h + '<p class="af-v">Réserve : <b>' + eur(valR) + '</b> · cabinets et Sté : ≈ ' + eur(valC) + ' · ' + A.length + ' articles</p>';
   }
 
   // ---------- Stock (gestion) ----------

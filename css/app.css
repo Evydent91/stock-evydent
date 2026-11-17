@@ -2479,15 +2479,16 @@ h2 button.lk2,h3 button.lk2{font-family:inherit;font-weight:inherit}
 .gq-hd h2{margin:0;flex:1;min-width:0}
 .af-hd{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 10px}
 .af-hd h2{margin:0}
-.af-c{border-left:5px solid var(--line);padding:12px 16px}
-.af-c.ko{border-left-color:#d8574c}.af-c.warn{border-left-color:#e4a05a}.af-c.info{border-left-color:#6f9bd0}
-.af-t{display:flex;align-items:center;gap:12px}
-.af-t b{display:block;font-size:17px}
-.af-t .mu{font-size:13.5px}
-.af-l{display:flex;flex-direction:column;gap:5px;margin-top:8px;font-size:15px}
-.af-i{line-height:1.4}
-.af-p{align-self:flex-start;font-size:14px}
-.af-ok{display:flex;align-items:center;gap:10px}
+.af-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin:6px 0 0}
+.af-tu{background:#fff;border-radius:18px;box-shadow:0 1px 3px rgba(31,42,51,.08);border-top:5px solid var(--line);padding:18px 18px 16px;display:flex;flex-direction:column;gap:10px;min-height:190px}
+.af-tu.ko{border-top-color:#d8574c}.af-tu.warn{border-top-color:#e4a05a}.af-tu.info{border-top-color:#6f9bd0}
+.af-ic{width:46px;height:46px;border-radius:14px;background:var(--soft);color:var(--navy);display:flex;align-items:center;justify-content:center}
+.af-tu.ko .af-ic{background:var(--kobg);color:var(--ko)}.af-tu.warn .af-ic{background:var(--warnbg);color:var(--warn)}.af-tu.info .af-ic{background:#e9f1fa;color:#1d4f86}
+.af-n{margin:0;flex:1;font-size:18px;font-weight:600;line-height:1.25;color:var(--ink)}
+.af-n b{display:block;font-family:var(--serif);font-size:44px;font-weight:600;line-height:1}
+.af-tu.ko .af-n b{color:var(--ko)}.af-tu.warn .af-n b{color:var(--warn)}
+.af-b{width:100%;min-height:44px}
+.af-rien{display:flex;align-items:center;gap:10px;margin:18px 2px;font-size:17px;color:var(--ok);font-weight:600}
 .af-v{margin:14px 2px;font-size:14.5px;color:var(--ink2)}
 .af-v .lnk{margin-left:8px;font-size:14px}
 @media (max-width:1100px){.t2-q{flex-basis:260px}.t2-6 button{padding:10px 9px;font-size:15px}}
@@ -2499,7 +2500,6 @@ h2 button.lk2,h3 button.lk2{font-family:inherit;font-weight:inherit}
   .snav button{flex:none;padding:0 14px}
   .stk-x{padding:0 0 10px;border:none}
   .stk-x .ar-x{display:none}
-  .af-t{flex-wrap:wrap}
 }
 .fx-top h2{overflow-wrap:anywhere}
 .fx-top.row,.fx-top > .row{align-items:flex-start}
