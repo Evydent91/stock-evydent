@@ -2274,3 +2274,4 @@ button.pl-seul.pl-fb:hover{box-shadow:0 0 0 2px var(--gold)}
 .rg-it.rgc b{font-size:15px;font-weight:600}.rg-it.rgc small{font-size:13.5px;color:var(--mute);white-space:nowrap}
 .rg-bloc.rgc.stk .rgc-t,.rg-bloc.rgc.stk .rg-it b{color:#17643f}
 .rg-bloc.rgc.stk .rg-it:hover{background:#e9f5ee}
+.rgl-cs{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:12px;padding:10px 8px;border:none;border-top:1px solid var(--soft);background:none;font:inherit;font-size:13.5px;color:#17643f;font-weight:600;cursor:pointer;text-align:left}.rgl-cs:hover{background:#e9f5ee;border-radius:8px}

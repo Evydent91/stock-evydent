@@ -1351,13 +1351,17 @@
       var act = S.equipe.filter(function (p) { return p.actif; }).sort(tri), anc = S.equipe.filter(function (p) { return !p.actif; }).sort(tri);
       var lp = function (p) { var ty = typeDe(p.type), c = +p.contrat_h || 0, sous = []; if (ty.contrat !== false && p.type !== 'interimaire' && c) sous.push(fh(c)); if (p.pointage) sous.push('pointe'); return li('data-rglp', p.id, initiale(p.prenom), 'p' + coulPers(p), esc(p.prenom), esc(sous.join(' · '))); };
       h += groupesEquipe(act).map(function (g) { return '<span class="rgl-g">' + esc(g.n) + '</span>' + g.l.map(lp).join(''); }).join('') + (anc.length ? '<span class="rgl-g">Anciennes et anciens</span>' + anc.map(lp).join('') : '');
+      var lies0 = {}; S.equipe.forEach(function (p) { if (p.profil_id) lies0[p.profil_id] = 1; }); var sf = (S.profils || []).filter(function (p) { return !lies0[p.id]; }).length;
+      if (sf) h += '<button class="rgl-cs" data-tab="equipe">' + sf + ' ' + pl(sf, 'compte') + ' sans fiche planning' + ico('suiv', 16, 2.4) + '</button>';
     }
     return h + '</nav>';
   }
   // Menu de gauche : sur grand écran, L'équipe et Les dentistes ouvrent directement une fiche (la dernière vue, sinon la première de la liste)
+  // Sur grand écran, la liste des prénoms est à côté de la fiche : la page de liste n'a plus lieu d'être
+  function listeACote() { return !telephone() && window.innerWidth >= 1280; }
   function ouvrirDepuisMenu(dent) {
     var tri = function (a, b) { return (a.ordre - b.ordre) || a.prenom.localeCompare(b.prenom); };
-    if (window.innerWidth < 1280 || telephone()) { S.tab = dent ? 'pdent' : 'pequipe'; render(); return; }
+    if (!listeACote()) { S.tab = dent ? 'pdent' : 'pequipe'; render(); return; }
     if (dent) {
       var ld = S.dentistes.filter(function (d) { return d.actif; }).sort(tri), dd = S.rgDerD && S.dentistes.filter(function (d) { return String(d.id) === String(S.rgDerD); })[0];
       if (!dd && !ld.length) { S.tab = 'pdent'; render(); return; }
@@ -1653,6 +1657,7 @@
     return G.sort(function (a, b) { return ordre(a.k) - ordre(b.k); });
   }
   function vPEquipe() {
+    if (listeACote() && S.equipe && S.equipe.some(function (p) { return p.actif; })) { setTimeout(function () { if (S.tab === 'pequipe') ouvrirDepuisMenu(false); }, 0); }
     var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'L’équipe', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
     if (!planPret()) return h + '<div class="ban warn">La mise à jour 009 de la base n’est pas encore faite.</div></div>';
     var tri = function (a, b) { return (a.ordre - b.ordre) || a.prenom.localeCompare(b.prenom); };
@@ -1697,7 +1702,7 @@
     var horsPl = ty.planning === false, ONG = [['infos', 'Infos, profil et compte', 'Profil et compte'], ['semaine', horsPl ? 'Horaires habituels' : 'Semaine type'], ['absences', 'Absences'], ['regles', 'Règles et consigne']];
     if (F.onglet === 'compte') F.onglet = 'infos';
     var og = nouv ? 'infos' : F.onglet || (tel ? null : 'semaine');
-    var h = '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" ' + (tel && og && !nouv ? 'data-pfong=""' : 'data-tab="pequipe"') + '>' + ico('prec', 22, 2.4) + (tel && og && !nouv ? esc(p.prenom || 'Fiche') : 'L’équipe') + '</button><h1>' + (nouv ? 'Nouvelle fiche' : tel && og ? (function (o) { return o[2] || o[1]; })(ONG.filter(function (o) { return o[0] === og; })[0]) : esc(p.prenom || '…')) + '</h1><span class="a-cale"></span></div></header><div class="a-corps h-fiche fi">';
+    var h = '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" ' + (tel && og && !nouv ? 'data-pfong=""' : listeACote() ? 'data-tab="reglages"' : 'data-tab="pequipe"') + '>' + ico('prec', 22, 2.4) + (tel && og && !nouv ? esc(p.prenom || 'Fiche') : listeACote() ? 'Réglages' : 'L’équipe') + '</button><h1>' + (nouv ? 'Nouvelle fiche' : tel && og ? (function (o) { return o[2] || o[1]; })(ONG.filter(function (o) { return o[0] === og; })[0]) : esc(p.prenom || '…')) + '</h1><span class="a-cale"></span></div></header><div class="a-corps h-fiche fi">';
     // --- résumé
     var at = attitre(p), da = at && dentById(at), auj = dIso(new Date());
     var avenir = (S.conges || []).filter(function (x) { return String(x.equipe_id) === String(F.id) && x.au >= auj && x.statut !== 'refuse'; }).sort(function (a, b) { return a.du < b.du ? -1 : 1; }).slice(0, 3).map(function (x) { return '<span class="fi-av"><i class="' + (x.type === 'FORMATION' ? 'fo' : x.type === 'ARRET' ? 'ar' : 'cp') + '"></i>' + esc(typeTxt(x.type)) + ' ' + periode(x.du, x.au) + (x.statut === 'attente' ? ' · en attente' : '') + '</span>'; });
@@ -1999,6 +2004,7 @@
       + (seul.length ? '<span class="warn">Sans assistante le ' + seul.map(function (j) { return JOURS[j].toLowerCase(); }).join(', ') + ' (semaine type)</span>' : '') + '</span>' + ico('suiv', 20, 2.2) + '</button>';
   }
   function vPDent() {
+    if (listeACote() && S.dentistes && S.dentistes.some(function (d) { return d.actif; })) { setTimeout(function () { if (S.tab === 'pdent') ouvrirDepuisMenu(true); }, 0); }
     var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'Les dentistes', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
     if (!planPret()) return h + '<div class="ban warn">La mise à jour 009 de la base n’est pas encore faite.</div></div>';
     var tri = function (a, b) { return (a.ordre - b.ordre) || a.prenom.localeCompare(b.prenom); };
@@ -2017,7 +2023,7 @@
   function vDFiche() {
     var F = S.df; if (!F) { S.tab = 'pdent'; return vPDent(); }
     var d = F.d, nouv = F.id === 'new', as = nouv ? {} : assistantesDe(F.id);
-    var h = '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" data-tab="pdent">' + ico('prec', 22, 2.4) + 'Dentistes</button><h1>' + (nouv ? 'Nouveau' : 'Dr ' + esc(d.prenom || '…')) + '</h1><span class="a-cale"></span></div></header><div class="a-corps h-fiche">';
+    var h = '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" data-tab="' + (listeACote() ? 'reglages' : 'pdent') + '">' + ico('prec', 22, 2.4) + (listeACote() ? 'Réglages' : 'Dentistes') + '</button><h1>' + (nouv ? 'Nouveau' : 'Dr ' + esc(d.prenom || '…')) + '</h1><span class="a-cale"></span></div></header><div class="a-corps h-fiche">';
     h += '<div class="card" style="display:flex;flex-direction:column;gap:12px">'
       + '<label class="mu">Prénom (affiché « Dr … »)<input class="in" data-dff="prenom" value="' + esc(d.prenom) + '"></label>'
       + '<div><span class="mu">Jours de présence habituels</span><div class="h-jours">' + [1, 2, 3, 4, 5].map(function (j) { return '<button type="button" class="h-jbtn' + (d.jours && d.jours[j] ? ' on' : '') + '" data-djour="' + j + '" aria-pressed="' + !!(d.jours && d.jours[j]) + '">' + JC[j] + '</button>'; }).join('') + '</div></div>'
