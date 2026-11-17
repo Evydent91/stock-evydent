@@ -5662,7 +5662,9 @@
       + (W.actuel ? (ici ? '<p class="wf-ok">' + ico('ok', 18, 2.6) + 'Connecté au <b>' + esc(ici.nom) + '</b> : un pointage d’ici serait accepté.</p>' : '<p class="wf-ko">' + ico('attente', 18, 2.4) + 'Ce réseau n’est pas enregistré : un pointage d’ici serait « hors centre ».</p><button class="a-btn navy" data-act="wifiadd">' + ico('plus', 20, 2.2) + 'Enregistrer ce Wi-Fi comme Wi-Fi du centre</button><p class="mu" style="margin:0">À faire sur place, avec un téléphone connecté au Wi-Fi du centre (pas en 4G). Sur iPhone, coupez le « Relais privé iCloud » pour ce Wi-Fi.</p>')
         : '<p class="mu">Adresse du réseau introuvable.</p>')
       + '</section>';
-    h += '<section class="card wf-s"><h2 class="a-jour">Wi-Fi enregistrés · ' + rs.length + '</h2>' + (rs.length ? rs.map(function (x) { return '<div class="wf-r"><span class="grow"><b>' + esc(x.nom) + (x.op ? ' <em class="wf-op">' + esc(x.op) + '</em>' : '') + ' <em class="wf-op wf-ty">' + typeWifi(x.cle) + '</em></b><span class="mu">enregistré le ' + new Date(x.le).toLocaleDateString('fr-FR') + (x.par ? ' par ' + esc(nomProfil(x.par)) : '') + (x.cle === W.actuel ? ' · c’est le réseau actuel' : '') + '</span></span><button class="btn l sm" data-wifimod="' + esc(x.cle) + '">Modifier</button><button class="btn l sm" data-wifirm="' + esc(x.cle) + '">Retirer</button></div>'; }).join('') : '<p class="mu" style="margin:0">Aucun pour l’instant.</p>')
+    if (!S.wfInfo) chargerInfosWifi();
+    h += tuileInfosWifi(W, rs);
+    h += '<section class="card wf-s"><h2 class="a-jour">Wi-Fi enregistrés · ' + rs.length + '</h2>' + (rs.length ? rs.map(function (x) { return '<div class="wf-r"><span class="grow"><b>' + esc(x.nom) + (x.op ? ' <em class="wf-op">' + esc(x.op) + '</em>' : '') + ' <em class="wf-op wf-ty">' + typeWifi(x.cle) + '</em></b><span class="mu"><code>' + esc(x.cle) + '</code> · enregistré le ' + new Date(x.le).toLocaleDateString('fr-FR') + (x.par ? ' par ' + esc(nomProfil(x.par)) : '') + (x.cle === W.actuel ? ' · c’est le réseau actuel' : '') + '</span></span><button class="btn l sm" data-wifimod="' + esc(x.cle) + '">Modifier</button><button class="btn l sm" data-wifirm="' + esc(x.cle) + '">Retirer</button></div>'; }).join('') : '<p class="mu" style="margin:0">Aucun pour l’instant.</p>')
       + (rs.length && !(rs.some(function (x) { return typeWifi(x.cle) === 'IPv4'; }) && rs.some(function (x) { return typeWifi(x.cle) === 'IPv6'; })) ? '<div class="ban info wf-2"><b>Une seule adresse de la box est enregistrée (' + typeWifi(rs[0].cle) + ').</b> Une box a deux adresses, IPv4 et IPv6 : un téléphone qui arrive par l’autre ne serait pas reconnu. ' + (ici ? '<button class="btn sm" data-act="wifi2"' + (S.wifi2 ? ' disabled' : '') + '>' + (S.wifi2 ? 'Recherche…' : 'Ajouter l’autre adresse') + '</button>' : 'À compléter sur place, depuis un appareil connecté au Wi-Fi du centre.') + '</div>' : '')
       + '<button class="h-csup wf-raz" data-act="wifiraz">' + ico('poubelle', 18, 2) + 'Réinitialiser le Wi-Fi (changement de box)</button></section>';
     return h + '</div>';
@@ -5697,6 +5699,28 @@
       if (r.data) S.wifi = r.data; n++;
     }
     return n;
+  }
+  // Détail de ce que l'appli capte de la connexion de cet appareil (page Wi-Fi du centre)
+  function chargerInfosWifi() {
+    S.wfInfo = { charge: true };
+    Promise.all([adresseVia('https://api.ipify.org?format=json'), adresseVia('https://api6.ipify.org?format=json')]).then(function (c) { S.wfInfo = { v4: c[0], v6: c[1], le: new Date() }; if (S.tab === 'pwifi') render(); });
+  }
+  function tuileInfosWifi(W, rs) {
+    var I = S.wfInfo || { charge: true }, ua = navigator.userAgent || '', cn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    var app = /iPhone|iPad|iPod/.test(ua) ? 'iPhone ou iPad' : /Android/.test(ua) ? 'Téléphone ou tablette Android' : 'Ordinateur', nav = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) || /CriOS/.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'autre navigateur';
+    var cx = cn && cn.type ? (cn.type === 'wifi' ? 'Wi-Fi' : cn.type === 'cellular' ? 'Données mobiles (4G / 5G)' : cn.type === 'ethernet' ? 'Câble réseau' : cn.type) : 'Non communiqué par cet appareil';
+    var connu = function (c) { return c && rs.some(function (x) { return x.cle === c; }); };
+    var et = function (c) { return !c ? '' : connu(c) ? '<span class="pill ok">enregistrée</span>' : '<span class="pill warn">non enregistrée</span>'; };
+    var val = function (c) { return I.charge ? '<span class="mu">recherche…</span>' : c ? '<code>' + esc(c) + '</code>' : '<span class="mu">aucune sur cette connexion</span>'; };
+    var li = function (t, v, e, aide) { return '<div class="wi-r"><span class="wi-t">' + t + (aide ? '<small>' + aide + '</small>' : '') + '</span><span class="wi-v">' + v + '</span><span class="wi-e">' + (e || '') + '</span></div>'; };
+    return '<section class="card wf-s wi"><div class="row wrap"><h2 class="a-jour grow">Ce que l’appli capte de cette connexion</h2><button class="btn l sm" data-act="wifiinfo"' + (I.charge ? ' disabled' : '') + '>' + (I.charge ? 'Recherche…' : 'Actualiser') + '</button></div><div>'
+      + li('Adresse utilisée pour le pointage', W.actuel ? '<code>' + esc(W.actuel) + '</code> <em class="wf-op wf-ty">' + typeWifi(W.actuel) + '</em>' : '<span class="mu">introuvable</span>', W.actuel ? (connu(W.actuel) ? '<span class="pill ok">reconnue : au centre</span>' : '<span class="pill warn">hors centre</span>') : '', 'celle que le serveur voit quand cet appareil pointe')
+      + li('Adresse IPv4 de la box', val(I.v4), I.charge ? '' : et(I.v4))
+      + li('Adresse IPv6 de la box', val(I.v6), I.charge ? '' : et(I.v6), 'début de l’adresse, commun à tous les appareils de la box')
+      + li('Type de connexion', esc(cx), '', cn && cn.type ? '' : 'un iPhone ne dit pas s’il est en Wi-Fi ou en 4G')
+      + li('Appareil', app + ' · ' + nav, '')
+      + li('Vérifié', I.le ? 'à ' + I.le.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '<span class="mu">en cours</span>', '')
+      + '</div><p class="mu wi-n">L’appli ne capte rien d’autre : ni le nom du Wi-Fi, ni son mot de passe, ni la position. Une adresse faite de chiffres séparés par des points est une IPv4 ; avec des « : », une IPv6.</p></section>';
   }
   var OPS_WIFI = ['Free', 'Orange', 'SFR', 'Bouygues Telecom', 'Autre'];
   function champsWifi(nom, op) {
@@ -7105,6 +7129,7 @@
         if (S.wfOp && r.data && r.data.actuel) { var r2 = await sb.rpc('wifi_modifier', { p_cle: r.data.actuel, p_nom: S.wfNom || 'Wi-Fi du centre', p_op: S.wfOp }); if (!r2.error) r = r2; }
         S.wifi = r.data; var deja = r.data && r.data.deja; toast(deja ? 'Ce Wi-Fi est déjà enregistré' : '✔ Wi-Fi du centre enregistré'); render();
         var n2 = await completerWifi(S.wfNom, S.wfOp); if (n2) { toast('✔ Les deux adresses de la box sont enregistrées (IPv4 et IPv6)'); render(); } }); return; }
+    if (d.act === 'wifiinfo') { chargerInfosWifi(); chargerWifi(); render(); return; }
     if (d.act === 'wifi2' && S.wifi) { var w0 = (S.wifi.reseaux || []).filter(function (x) { return x.cle === S.wifi.actuel; })[0]; if (!w0 || S.wifi2) return; S.wifi2 = true; render();
       completerWifi(w0.nom, w0.op).then(function (n3) { S.wifi2 = false; toast(n3 ? '✔ Autre adresse de la box ajoutée' : 'Autre adresse introuvable : cette connexion n’en a peut-être qu’une, ou le service de détection ne répond pas'); render(); }); return; }
     if (d.wifimod && S.wifi) { var wx = (S.wifi.reseaux || []).filter(function (x) { return x.cle === d.wifimod; })[0]; if (!wx) return;

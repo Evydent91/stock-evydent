@@ -2616,3 +2616,12 @@ button.oc-c:hover,button.oc-c:focus-visible,.oc-c.on{border-color:var(--navy)}
 @media (max-width:1100px){.oc-tx{grid-template-columns:repeat(5,minmax(0,1fr))}.oc-ks{grid-template-columns:repeat(2,minmax(0,1fr))}.oc-g{grid-template-columns:76px repeat(8,minmax(0,1fr));gap:5px;padding:10px}.oc-c b{font-size:13.5px}.oc-c span{font-size:12px}}
 .wf-ty{background:var(--soft)!important;color:var(--ink2)!important}
 .wf-2{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 0;font-size:14.5px}
+/* Wi-Fi du centre : détail de la connexion captée */
+.wi .a-jour{margin:0}
+.wi-r{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.3fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--soft)}
+.wi-t{font-weight:600;color:var(--ink2);display:flex;flex-direction:column}
+.wi-t small{font-weight:400;font-size:12.5px;color:var(--mute)}
+.wi-v{overflow-wrap:anywhere}
+.wi code,.wf-r code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;background:var(--soft);border-radius:6px;padding:2px 6px}
+.wi-n{margin:4px 0 0;font-size:13.5px}
+@media (max-width:700px){.wi-r{grid-template-columns:1fr;gap:4px}}
