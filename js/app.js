@@ -477,6 +477,7 @@
   // ---------- Icônes dessinées (les mêmes que la maquette) ----------
   var SVGI = {
     qr: '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path d="M14 14h2v2h-2zM18 14h2M14 18v2h2M18 18h2v2"/>',
+    fauteuil: '<path d="M5 11V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4"/><path d="M3 13a2 2 0 0 1 4 0v3h10v-3a2 2 0 0 1 4 0v5H3z"/><path d="M6 18v2M18 18v2"/>',
     bas: '<path d="M6 9l6 6 6-6"/>',
     haut: '<path d="M6 15l6-6 6 6"/>',
     graph: '<path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/>',
@@ -1057,7 +1058,7 @@
 
   // ---------- Accueil de la référente et de la responsable (2 tuiles), Réglages, Équipe, Dentistes ----------
   // Écrans de la maquette « Accueil référente et responsable ». Chaque écran a son en-tête bleu.
-  var HUB = ['ptest', 'pwifi', 'mconges', 'mdemande', 'ptransfert', 'hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
+  var HUB = ['occup', 'ptest', 'pwifi', 'mconges', 'mdemande', 'ptransfert', 'hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
   var JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'], JC = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
   // Affectations possibles d'une demi-journée (en plus des dentistes)
   // Postes (modifiables dans Réglages › Postes) ; École et « Ne travaille pas » sont fixes
@@ -1167,10 +1168,11 @@
       + (telephone() ? '' : '<button class="h-tuile" data-tab="planning"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span>Qui travaille, avec quel dentiste, et les heures</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>' + tuilePointage())
       + (telephone() ? '<button class="h-tuile cg" data-tab="mconges"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Mes congés</b><span>Demander, suivre mes demandes, mon solde</span></span>'
         : '<button class="h-tuile cg" data-tab="pconges"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Congés</b><span' + (ca ? ' class="h-av-t"' : '') + '>' + (ca ? ca + ' ' + pl(ca, 'demande') + ' à valider' : 'Demandes, absences du mois, soldes') + '</span></span>')
-        + '<span class="tc">' + ico('suiv', 22, 2.4) + '</span></button></div>'
+        + '<span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
+      + (telephone() ? '' : tuileOccup()) + '</div>'
       + ((S.oublis || []).length ? '<button class="h-alerte" data-tab="pointage">' + ico('attente', 22) + '<span><b>' + S.oublis.length + ' ' + pl(S.oublis.length, 'oubli') + ' de pointage</b> ' + pl(S.oublis.length, 'signalé') + ' à valider</span>' + ico('suiv', 20, 2.2) + '</button>' : '')
       + (ca ? '<button class="h-alerte" data-tab="pconges">' + ico('attente', 22) + '<span><b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à traiter</span>' + ico('suiv', 20, 2.4) + '</button>' : '')
-      + (telephone() ? '<div class="h-pc"><span class="h-pc-l">À ouvrir sur ordinateur</span><div class="h-pc-g"><span>' + ico('agenda', 20) + '<b>Planning</b></span><span>' + ico('qr', 20) + '<b>Pointage</b></span></div></div>' : '')
+      + (telephone() ? '<div class="h-pc"><span class="h-pc-l">À ouvrir sur ordinateur</span><div class="h-pc-g"><span>' + ico('agenda', 20) + '<b>Planning</b></span><span>' + ico('qr', 20) + '<b>Pointage</b></span><span>' + ico('fauteuil', 20) + '<b>Occupation des cabinets</b></span></div></div>' : '')
       + '</div>';
     return h;
   }
@@ -2029,6 +2031,7 @@
     h += '<div class="card" style="display:flex;flex-direction:column;gap:12px">'
       + '<label class="mu">Prénom (affiché « Dr … »)<input class="in" data-dff="prenom" value="' + esc(d.prenom) + '"></label>'
       + '<div><span class="mu">Jours de présence habituels</span><div class="h-jours">' + [1, 2, 3, 4, 5].map(function (j) { return '<button type="button" class="h-jbtn' + (d.jours && d.jours[j] ? ' on' : '') + '" data-djour="' + j + '" aria-pressed="' + !!(d.jours && d.jours[j]) + '">' + JC[j] + '</button>'; }).join('') + '</div></div>'
+      + (occColonne() ? '<label class="mu">Cabinet habituel<select class="in" data-dff="cabinet"><option value="">Non renseigné</option>' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+d.cabinet === c ? ' selected' : '') + '>Cabinet ' + c + '</option>'; }).join('') + '</select></label>' : '')
       + '<label class="mu">Spécificités<textarea class="in" rows="2" data-dff="note" placeholder="Ex. : + 1 mercredi par mois">' + esc(d.note || '') + '</textarea></label>'
       + '<label class="row"><input type="checkbox" data-dff="actif"' + (d.actif ? ' checked' : '') + ' style="width:20px;height:20px;flex:none"><span>Travaille au centre <span class="mu">(décocher pour un ancien dentiste)</span></span></label>'
       + (d.actif ? '<div class="h-g2"><label class="mu">Présent(e) à partir du<input class="in" type="date" data-dff="present_du" value="' + esc(String(d.present_du || '').slice(0, 10)) + '"></label><label class="mu">Jusqu’au<input class="in" type="date" data-dff="present_au" value="' + esc(String(d.present_au || '').slice(0, 10)) + '"></label></div><p class="mu" style="margin:-4px 0 0;font-size:13.5px">Laissez vide s’il n’y a pas de limite. Avant ou après ces dates, le dentiste ne compte pas dans le planning, les « dentistes seuls » ni les congés.</p>' : '') + '</div>';
@@ -2084,13 +2087,14 @@
     if (!String(d.prenom || '').trim()) { toast('Le prénom est obligatoire'); return; }
     var o = { prenom: String(d.prenom).trim().replace(/^Dr\.?\s+/i, ''), jours: d.jours || {}, note: String(d.note || '').trim() || null, actif: !!d.actif };
     if ('present_du' in d || 'present_au' in d) { o.present_du = d.present_du ? String(d.present_du).slice(0, 10) : null; o.present_au = d.present_au ? String(d.present_au).slice(0, 10) : null; if (o.present_du && o.present_au && o.present_au < o.present_du) { toast('La date « jusqu’au » est avant la date d’arrivée'); return; } }
+    if (occColonne()) o.cabinet = d.cabinet ? +d.cabinet : null;
     if (F.id === 'new') o.ordre = S.dentistes.reduce(function (m, x) { return Math.max(m, x.ordre || 0); }, 0) + 1;
     F.busy = true; render();
     (F.id === 'new' ? sb.from('dentistes').insert(o).select().single() : sb.from('dentistes').update(o).eq('id', F.id).select().single()).then(function (r) {
       if (r.error) throw r.error;
       var x = r.data || Object.assign({ id: F.id }, F.d, o);
       F.busy = false; F.id = x.id; F.d = JSON.parse(JSON.stringify(x)); F.raz = true; toast('✔ Dr ' + x.prenom + ' enregistré'); chargerPlan();
-    }).catch(function (e) { F.busy = false; toast(/present_(du|au)/.test(String(e && e.message)) ? 'Les dates de présence demandent la mise à jour 026 de la base' : msgErr(e)); render(); });
+    }).catch(function (e) { F.busy = false; toast(/present_(du|au)/.test(String(e && e.message)) ? 'Les dates de présence demandent la mise à jour 026 de la base' : /cabinet/.test(String(e && e.message)) ? 'Le cabinet habituel demande la mise à jour 030 de la base' : msgErr(e)); render(); });
   }
 
   function chargerPlan() {
@@ -2120,15 +2124,115 @@
   }
   function renderH() {
     S.coulCat = null;
-    var ecr = { mconges: function () { moiG(); return vMesCongesA(); }, mdemande: function () { moiG(); return vDemandeA(); }, hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pwifi: vPWifi, ptest: vPTest, pprofils: vPProfils, ptransfert: vPTransfert }[S.tab] || vHub;
-    if ((S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage') && telephone()) ecr = vSurPC;
+    var ecr = { mconges: function () { moiG(); return vMesCongesA(); }, mdemande: function () { moiG(); return vDemandeA(); }, hub: vHub, occup: vOccup, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pwifi: vPWifi, ptest: vPTest, pprofils: vPProfils, ptransfert: vPTransfert }[S.tab] || vHub;
+    if ((S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || S.tab === 'occup') && telephone()) ecr = vSurPC;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
-    h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr' || S.tab === 'pequipe') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || ((S.tab === 'pconges' || S.tab === 'ppostes' || S.tab === 'pregles' || S.tab === 'pprofils' || S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible') && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
+    h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr' || S.tab === 'pequipe') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'occup' || S.tab === 'heures' || S.tab === 'pointage' || ((S.tab === 'pconges' || S.tab === 'ppostes' || S.tab === 'pregles' || S.tab === 'pprofils' || S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible') && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
     [S.pf, S.df].forEach(function (F) { if (F && F.raz) { F.raz = false; F.o = JSON.stringify(F.d); } });
     if (S.tab === 'pfiche') h += vBarPFiche();
     if (S.tab === 'dfiche') h += vBarDFiche();
     if (S.tab === 'mdemande') h += vBarDemandeA();
     return h;
+  }
+
+  // ---------- Occupation des cabinets ----------
+  // Qui est dans quel cabinet, matin et après-midi : le dentiste (présent d'après ses jours, jours en plus et absences),
+  // son cabinet (celui du jour s'il a été changé, sinon son cabinet habituel, sinon celui de son assistante) et ses assistantes au planning.
+  function occColonne() { return (S.dentistes || []).some(function (d) { return 'cabinet' in d; }); }
+  function occCabAssist(p) { var pr = p && p.profil_id && (S.profils || []).filter(function (x) { return x.id === p.profil_id; })[0]; return pr && pr.cabinet ? +pr.cabinet : null; }
+  function occOuvre(iso, sens) { var n = 0; while ((jourSem(iso) < 1 || jourSem(iso) > 5) && n++ < 7) iso = addJ(iso, sens < 0 ? -1 : 1); return iso; }
+  function occJour(iso) {
+    var j = jourSem(iso), fer = ferie(iso), ferme = j < 1 || j > 5 || !!fer, ps = persPlanning(), cab = {}, sans = [];
+    for (var c = 1; c <= 8; c++) cab[c] = { AM: [], PM: [] };
+    if (!ferme) (S.dentistes || []).filter(function (d) { return dentPresent(d, iso); }).sort(function (a, b) { return (a.ordre - b.ordre) || (a.id - b.id); }).forEach(function (d) {
+      var cle = 'D:' + d.id, as = {}; ['AM', 'PM'].forEach(function (k) { as[k] = ps.filter(function (p) { return caseEff(p, iso, k).a === cle; }); });
+      var cj = d.cab_jours && +d.cab_jours[iso], n = cj || +d.cabinet || occCabAssist(as.AM[0]) || occCabAssist(as.PM[0]) || null, src = cj ? 'jour' : +d.cabinet ? 'fiche' : 'assistante';
+      var hd = d.jours && d.jours[j]; hd = typeof hd === 'string' && hd ? hm(hd) : null;
+      var demis = hd && hd <= '14:00' ? ['AM'] : ['AM', 'PM'];
+      if (!n) { sans.push({ d: d, as: as.AM.concat(as.PM.filter(function (p) { return as.AM.indexOf(p) < 0; })) }); return; }
+      demis.forEach(function (k) { cab[n][k].push({ d: d, as: as[k], src: src, dep: k === 'PM' ? hd : hd && hd <= '14:00' ? hd : null }); });
+    });
+    var nb = function (k) { var x = 0; for (var c2 = 1; c2 <= 8; c2++) if (cab[c2][k].length) x++; return x; };
+    return { ferme: ferme, raison: fer ? 'Jour férié' + (typeof fer === 'string' ? ' : ' + fer : '') : 'Le centre est fermé le week-end', cab: cab, sans: sans, am: nb('AM'), pm: nb('PM') };
+  }
+  // Lignes du planning de la semaine affichée (ajoutées à celles déjà chargées)
+  function occAssurer(lundi) {
+    var P = S.pl = S.pl || { lundi: lundiDe(dIso(new Date())), rows: {} }, O = S.occ, ven = addJ(lundi, 4);
+    if (O.ref !== P.rows) { O.ref = P.rows; O.ok = {}; }
+    if (O.ok[lundi] || (P.de && P.de <= lundi && P.a >= ven) || O.charge) return;
+    O.charge = lundi;
+    toutLire('planning', '*', function (q) { return q.gte('jour', lundi).lte('jour', ven).order('jour'); }).then(function (rows) {
+      P.rows = P.rows || {}; rows.forEach(function (r) { P.rows[cleCase(r.equipe_id, String(r.jour).slice(0, 10), r.demi)] = r; });
+      O.ref = P.rows; O.ok[lundi] = true; O.charge = null; JOUR_CACHE = {}; if (S.tab === 'occup' || S.tab === 'hub') render();
+    }).catch(function () { O.ok[lundi] = true; O.charge = null; });
+  }
+  function occInit() { var O = S.occ = S.occ || { jour: occOuvre(dIso(new Date()), 1), mode: 'jour', ok: {}, ref: null, ed: null }; return O; }
+  function tuileOccup() {
+    if (!S.dentistes) return '';
+    var O = occInit(), auj = dIso(new Date()), J = occJour(auj); occAssurer(lundiDe(auj));
+    return '<button class="h-tuile oc" data-tab="occup"><span class="ti">' + ico('fauteuil', 34) + '</span><span class="tt"><b>Occupation des cabinets</b><span>' + (J.ferme ? 'Centre fermé aujourd’hui' : 'Aujourd’hui : ' + J.am + ' sur 8 le matin · ' + J.pm + ' sur 8 l’après-midi') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>';
+  }
+  function occTaux(lundi) {
+    var T = { tot: 0, occ: 0, c: {} }; for (var c = 1; c <= 8; c++) T.c[c] = { occ: 0, tot: 0 };
+    for (var i = 0; i < 5; i++) { var J = occJour(addJ(lundi, i)); if (J.ferme) continue; for (var c2 = 1; c2 <= 8; c2++) ['AM', 'PM'].forEach(function (k) { T.c[c2].tot++; T.tot++; if (J.cab[c2][k].length) { T.c[c2].occ++; T.occ++; } }); }
+    return T;
+  }
+  function occCase(l, iso, court) {
+    if (!l.length) return '<div class="oc-c lib">' + (court ? '' : '<b>Libre</b>') + '</div>';
+    if (l.length > 1) return court ? '<div class="oc-c ko" title="' + esc(l.map(function (x) { return 'Dr ' + x.d.prenom; }).join(', ')) + '"><b>' + l.length + ' dent.</b></div>'
+      : '<button class="oc-c ko' + (String(S.occ.ed) === String(l[l.length - 1].d.id) ? ' on' : '') + '" data-oced="' + l[l.length - 1].d.id + '"><b>' + l.map(function (x) { return 'Dr ' + esc(x.d.prenom); }).join(' + ') + '</b><span>même cabinet</span><small>toucher pour déplacer Dr ' + esc(l[l.length - 1].d.prenom) + '</small></button>';
+    var x = l[0], seul = !x.as.length;
+    if (court) return '<div class="oc-c ' + (seul ? 'av' : 'occ') + '" title="Dr ' + esc(x.d.prenom) + (seul ? ' · sans assistante' : ' · ' + esc(x.as.map(function (p) { return p.prenom; }).join(', '))) + '"><b>' + esc(x.d.prenom) + '</b></div>';
+    return '<button class="oc-c ' + (seul ? 'av' : 'occ') + (String(S.occ.ed) === String(x.d.id) ? ' on' : '') + '" data-oced="' + x.d.id + '"><b>Dr ' + esc(x.d.prenom) + '</b><span>' + (seul ? 'sans assistante' : esc(x.as.map(function (p) { return p.prenom; }).join(', '))) + '</span>' + (x.dep ? '<small>part à ' + esc(x.dep.replace(':', 'h').replace(/h00$/, 'h')) + '</small>' : x.src === 'jour' ? '<small>ce jour seulement</small>' : x.src === 'assistante' ? '<small>d’après l’assistante</small>' : '') + '</button>';
+  }
+  function vOccup() {
+    var O = occInit(), lundi = lundiDe(O.jour), sem = O.mode === 'semaine', dJ = dDe(O.jour);
+    var h = hdA({ back: ['data-tab="hub"', 'Accueil'], t: 'Occupation des cabinets', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps oc-b">';
+    if (!S.dentistes) return h + '<p class="mu">Chargement du planning…</p></div>';
+    occAssurer(lundi);
+    var titre = sem ? 'Semaine ' + periode(lundi, addJ(lundi, 4)) : dJ.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^./, function (c) { return c.toUpperCase(); });
+    h += '<div class="oc-bar"><button class="oc-nav" data-ocj="-1" aria-label="' + (sem ? 'Semaine précédente' : 'Jour précédent') + '">' + ico('prec', 20, 2.4) + '</button><b>' + titre + '</b><button class="oc-nav" data-ocj="1" aria-label="' + (sem ? 'Semaine suivante' : 'Jour suivant') + '">' + ico('suiv', 20, 2.4) + '</button>'
+      + (O.jour !== occOuvre(dIso(new Date()), 1) ? '<button class="btn l sm" data-ocj="auj">Aujourd’hui</button>' : '') + '<span class="grow"></span><span class="cm-seg" role="tablist" aria-label="Période"><button role="tab" aria-selected="' + !sem + '" class="' + (!sem ? 'on' : '') + '" data-ocm="jour">Jour</button><button role="tab" aria-selected="' + sem + '" class="' + (sem ? 'on' : '') + '" data-ocm="semaine">Semaine</button></span></div>';
+    var sansCab = (S.dentistes || []).filter(function (d) { return d.actif && !+d.cabinet; }).length;
+    if (!occColonne()) h += '<div class="ban info oc-ban"><b>Cabinets déduits des assistantes.</b> Le cabinet affiché est celui de l’assistante placée avec le dentiste : il peut être faux en cas de remplacement. Pour donner un cabinet à chaque dentiste, la base du site doit recevoir la mise à jour 030.</div>';
+    else if (sansCab) h += '<div class="ban info oc-ban"><b>' + sansCab + ' dentiste' + (sansCab > 1 ? 's' : '') + ' sans cabinet habituel.</b> Pour eux, le cabinet est déduit de celui de l’assistante. <button class="lien" data-tab="pdent">Renseigner les cabinets</button></div>';
+    var T = occTaux(lundi), pc = function (x) { return x.tot ? Math.round(x.occ * 100 / x.tot) : 0; };
+    var tx = '<h3 class="oc-st">' + (sem ? 'Taux d’occupation de la semaine' : 'Semaine ' + periode(lundi, addJ(lundi, 4)) + ' · taux d’occupation') + '</h3><section class="oc-tx">' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { var x = T.c[c]; return '<div class="oc-t"><span>Cab. ' + c + '</span><b>' + pc(x) + ' %</b><i><em style="width:' + pc(x) + '%"></em></i><small>' + x.occ + ' demi-journée' + (x.occ > 1 ? 's' : '') + ' sur ' + x.tot + '</small></div>'; }).join('')
+      + '<div class="oc-t tot"><span>Centre</span><b>' + pc(T) + ' %</b><i><em style="width:' + pc(T) + '%"></em></i><small>' + T.occ + ' demi-journées sur ' + T.tot + '</small></div></section>';
+    if (sem) {
+      var Js = [0, 1, 2, 3, 4].map(function (i) { var iso = addJ(lundi, i); return { iso: iso, J: occJour(iso) }; });
+      h += '<section class="oc-w"><div class="oc-wr oc-wh"><span></span>' + Js.map(function (x) { return '<button class="oc-wd" data-ocjour="' + x.iso + '"><b>' + JOURS[jourSem(x.iso)] + ' ' + (+x.iso.slice(8)) + '</b><span>' + (x.J.ferme ? 'fermé' : 'matin · après-midi') + '</span></button>'; }).join('') + '</div>'
+        + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<div class="oc-wr"><span class="oc-wn">Cab. ' + c + '</span>' + Js.map(function (x) { return x.J.ferme ? '<div class="oc-w2 fer"></div>' : '<div class="oc-w2">' + occCase(x.J.cab[c].AM, x.iso, true) + occCase(x.J.cab[c].PM, x.iso, true) + '</div>'; }).join('') + '</div>'; }).join('') + '</section>'
+        + '<p class="oc-leg"><i class="occ"></i>occupé<i class="lib"></i>libre<i class="av"></i>dentiste sans assistante<i class="ko"></i>deux dentistes dans le même cabinet<span class="grow"></span>Touchez un jour pour voir le détail.</p>';
+      return h + tx + '</div>';
+    }
+    var J = occJour(O.jour);
+    if (J.ferme) return h + '<div class="card oc-fer">' + ico('agenda', 26) + '<b>' + esc(J.raison) + '</b></div>' + tx + '</div>';
+    var libres = [1, 2, 3, 4, 5, 6, 7, 8].filter(function (c) { return !J.cab[c].AM.length && !J.cab[c].PM.length; }).length, seuls = 0, dbl = 0;
+    [1, 2, 3, 4, 5, 6, 7, 8].forEach(function (c) { ['AM', 'PM'].forEach(function (k) { var l = J.cab[c][k]; if (l.length > 1) dbl++; else if (l.length && !l[0].as.length) seuls++; }); });
+    var av = seuls + dbl + J.sans.length;
+    h += '<div class="oc-ks"><div class="oc-k"><b>' + J.am + ' / 8</b><span>cabinets occupés le matin</span></div><div class="oc-k"><b>' + J.pm + ' / 8</b><span>cabinets occupés l’après-midi</span></div><div class="oc-k lib"><b>' + libres + '</b><span>' + (libres > 1 ? 'cabinets libres' : 'cabinet libre') + ' toute la journée</span></div><div class="oc-k ' + (av ? 'av' : 'lib') + '"><b>' + av + '</b><span>' + (av ? 'à vérifier' : 'rien à vérifier') + '</span></div></div>';
+    h += '<section class="oc-g"><div class="oc-col oc-l"><div class="oc-h">&nbsp;</div><div class="oc-r">Matin</div><div class="oc-r">Après-midi</div></div>' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<div class="oc-col"><div class="oc-h">Cab. ' + c + '</div>' + occCase(J.cab[c].AM, O.jour) + occCase(J.cab[c].PM, O.jour) + '</div>'; }).join('') + '</section>';
+    h += '<p class="oc-leg"><i class="occ"></i>occupé<i class="lib"></i>libre<i class="av"></i>dentiste sans assistante<i class="ko"></i>deux dentistes dans le même cabinet' + (occColonne() ? '<span class="grow"></span>Touchez un dentiste pour changer son cabinet ce jour-là.' : '') + '</p>';
+    if (J.sans.length) h += '<div class="card oc-sans"><b>Cabinet à préciser</b>' + J.sans.map(function (x) { return '<div class="it"><div class="it-n"><b>Dr ' + esc(x.d.prenom) + '</b><span>présent ce jour' + (x.as.length ? ' · avec ' + esc(x.as.map(function (p) { return p.prenom; }).join(', ')) : ' · sans assistante') + ' · aucun cabinet connu</span></div>' + (occColonne() ? '<button class="btn l sm" data-oced="' + x.d.id + '">Choisir un cabinet</button>' : '') + '</div>'; }).join('') + '</div>';
+    var ed = O.ed && dentById(O.ed);
+    if (ed && occColonne()) {
+      var cj = ed.cab_jours && +ed.cab_jours[O.jour], cur = cj || +ed.cabinet || 0;
+      h += '<div class="card oc-ed"><div class="row wrap"><b class="grow">Dr ' + esc(ed.prenom) + ' · ' + titre.toLowerCase() + '</b><button class="btn l sm" data-oced="' + ed.id + '">Fermer</button></div><p class="mu">Dans quel cabinet travaille-t-il ce jour-là ? Son cabinet habituel : ' + (+ed.cabinet ? '<b>cabinet ' + +ed.cabinet + '</b>' : '<b>non renseigné</b>') + '. <button class="lien" data-dent="' + ed.id + '">Modifier sa fiche</button></p><div class="oc-edc">'
+        + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<button class="chip' + (cur === c ? ' on' : '') + '" data-occab="' + c + '" aria-pressed="' + (cur === c) + '"' + (O.busy ? ' disabled' : '') + '>Cab. ' + c + (+ed.cabinet === c ? ' ★' : '') + '</button>'; }).join('') + (cj ? '<button class="chip" data-occab="0"' + (O.busy ? ' disabled' : '') + '>Revenir au cabinet habituel</button>' : '') + '</div></div>';
+    }
+    return h + tx + '</div>';
+  }
+  function occCabJour(did, iso, n) {
+    var d = dentById(did), O = S.occ; if (!d || O.busy) return;
+    var cj = Object.assign({}, d.cab_jours || {}), lim = addJ(dIso(new Date()), -45);
+    if (n && n !== +d.cabinet) cj[iso] = n; else delete cj[iso];
+    Object.keys(cj).forEach(function (k) { if (k < lim) delete cj[k]; });   // on ne garde pas les jours de plus de 45 jours
+    O.busy = true; render();
+    sb.from('dentistes').update({ cab_jours: cj }).eq('id', d.id).then(function (r) {
+      if (r.error) throw r.error; O.busy = false; d.cab_jours = cj; O.ed = null;
+      toast('✔ Dr ' + d.prenom + ' : ' + (cj[iso] ? 'cabinet ' + cj[iso] + ' ' + periode(iso, iso) : 'cabinet habituel')); render();
+    }).catch(function (e) { O.busy = false; toast(/cab_jours/.test(String(e && e.message)) ? 'Le cabinet du jour demande la mise à jour 030 de la base' : msgErr(e)); render(); });
   }
 
   // ---------- Congés ----------
@@ -6873,6 +6977,12 @@
     if (d.rglnew) return changerFiche(d.rglnew, 'new');
     if (d.pf) { ouvrirPers(d.pf); if (d.pfo && S.pf) { S.pf.onglet = d.pfo; render(); } return; }
     if (d.dent) return ouvrirDent(d.dent);
+    if (d.ocj) { var OC = S.occ; if (d.ocj === 'auj') OC.jour = occOuvre(dIso(new Date()), 1); else if (OC.mode === 'semaine') OC.jour = addJ(lundiDe(OC.jour), 7 * +d.ocj); else OC.jour = occOuvre(addJ(OC.jour, +d.ocj), +d.ocj); OC.ed = null; render(); return; }
+    if (d.ocm) { S.occ.mode = d.ocm; S.occ.ed = null; render(); return; }
+    if (d.ocjour) { S.occ.jour = d.ocjour; S.occ.mode = 'jour'; S.occ.ed = null; render(); window.scrollTo(0, 0); return; }
+    if (d.oced && !occColonne()) { toast('Pour choisir le cabinet d’un dentiste, la base doit recevoir la mise à jour 030'); return; }
+    if (d.oced) { S.occ.ed = String(S.occ.ed) === d.oced ? null : d.oced; render(); return; }
+    if (d.occab != null) return occCabJour(S.occ.ed, S.occ.jour, +d.occab);
     if (d.act === 'pfnew') return ouvrirPers('new');
     if (d.act === 'dfnew') return ouvrirDent('new');
     if (d.act === 'pfsave') return sauverPers();

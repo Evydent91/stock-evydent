@@ -37,6 +37,8 @@ Légende : 🟢 prête à faire · 🟡 à préciser avec Gwen · ⚪ à l’ét
 - Toute évolution de la base = nouvelle migration numérotée (007, 008…), appliquée sur Dev puis sur Prod avant la fusion dev → main.
 
 ## Planning (idées pour plus tard)
+- 🧪 **Occupation des cabinets** (tuile sur l'accueil, cabinet habituel par dentiste, cabinet du jour) — en test sur le site de test (2.4.7-dev.23), migration 030 à lancer.
+- ⚪ Occupation des cabinets : vue mois, export, et alerte sur l'accueil quand deux dentistes sont prévus dans le même cabinet.
 - Routine de fin de mois (rapport d'organisation, § 5C) : 5 questions une par une pour préparer le mois suivant (jours fixes des dentistes et mercredi de Dr Sacha, congés des praticiens, exceptions CFA des apprenties, congés des assistantes, jours fériés).
 - Mode dégradé (§ 5B) : en cas d'absence imprévue, proposer d'abord l'assistante en Admin / Sté ce jour-là.
 - Vue mois et impression / PDF du planning.

@@ -19,6 +19,8 @@ appliqués dans l'éditeur SQL de Supabase : d'abord sur Evydent-Dev, puis sur E
 
 **Migrations à appliquer : 028_pointage_wifi.sql (Wi-Fi du centre pour le pointage) — dev et prod ; 029_pointage_test.sql (module de test du pointage) — Evydent-Dev seulement (sans effet sur la prod, le module y reste fermé).** Dernière migration appliquée : dev 027, prod 027 (027_referent_profil.sql, à lancer sur la prod avec la version 2.4.1, 15/11/2026)** — avant : passage-prod-007-026.sql (14/11/2026)
 
+**À lancer : 030_cabinets_dentistes.sql** (cabinet habituel et cabinet du jour des dentistes, pour « Occupation des cabinets ») — sur Evydent-Dev pour tester, puis sur Evydent-Prod à la validation de la 2.4.7. Sans elle, la page fonctionne en déduisant le cabinet de celui de l'assistante.
+
 ## Fonctions Supabase (Edge Functions)
 
 | Fonction | Rôle | Dev | Prod |
