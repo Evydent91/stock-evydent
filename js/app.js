@@ -1057,7 +1057,7 @@
 
   // ---------- Accueil de la référente et de la responsable (2 tuiles), Réglages, Équipe, Dentistes ----------
   // Écrans de la maquette « Accueil référente et responsable ». Chaque écran a son en-tête bleu.
-  var HUB = ['pwifi', 'mconges', 'mdemande', 'ptransfert', 'hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
+  var HUB = ['ptest', 'pwifi', 'mconges', 'mdemande', 'ptransfert', 'hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
   var JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'], JC = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
   // Affectations possibles d'une demi-journée (en plus des dentistes)
   // Postes (modifiables dans Réglages › Postes) ; École et « Ne travaille pas » sont fixes
@@ -1315,7 +1315,7 @@
 
   // Réglages : tous les réglages de l'application, regroupés par outil
   // Réglages sur ordinateur : menu fixe à gauche, toujours visible, pour passer d'un réglage à l'autre en un clic
-  var RG_TABS = ['reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pregles', 'ppostes', 'pqui', 'pqr', 'pwifi', 'pprofils', 'ptypes', 'proles', 'pvisible', 'ptransfert'];
+  var RG_TABS = ['reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pregles', 'ppostes', 'pqui', 'pqr', 'pwifi', 'ptest', 'pprofils', 'ptypes', 'proles', 'pvisible', 'ptransfert'];
   function navReglages() {
     var cur = S.tab === 'pfiche' ? 'pequipe' : S.tab === 'dfiche' ? 'pdent' : S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible' ? 'pprofils' : S.tab;
     var L = function (t, attr, tab) { return '<button class="rgn-l' + (tab && tab === cur ? ' on' : '') + '" ' + attr + (tab && tab === cur ? ' aria-current="page"' : '') + '>' + t + '</button>'; };
@@ -1330,7 +1330,7 @@
       + L('Tous les réglages', 'data-tab="reglages"', 'reglages')
       + G('eq', 'Équipe', [['L’équipe', 'data-act="rgeq"', 'pequipe'], ['Les dentistes', 'data-act="rgde"', 'pdent'], ['Profils', 'data-tab="pprofils"', 'pprofils']])
       + G('pl', 'Planning', [['Postes', 'data-tab="ppostes"', 'ppostes'], ['Règles des heures', 'data-tab="pregles"', 'pregles']])
-      + G('pt', 'Pointage', [['QR code', 'data-act="rgqr"', 'pqr'], ['Wi-Fi du centre', 'data-tab="pwifi"', 'pwifi'], ['Qui pointe', 'data-tab="pqui"', 'pqui']])
+      + G('pt', 'Pointage', [['QR code', 'data-act="rgqr"', 'pqr'], ['Wi-Fi du centre', 'data-tab="pwifi"', 'pwifi'], ['Qui pointe', 'data-tab="pqui"', 'pqui']].concat(CONFIG.env === 'dev' ? [['Module de test', 'data-tab="ptest"', 'ptest']] : []))
       + G('cg', 'Congés', [['Demandes et planning', 'data-tab="pconges"']])
       + G('ap', 'Application', [['Transfert vers la prod', 'data-tab="ptransfert"', 'ptransfert']])
       + G('st', 'Gestion de stock', [['Comptes de connexion', 'data-tab="equipe"'], ['Articles', 'data-tab="articles"'], ['Fournisseurs', 'data-tab="fournisseurs"'], ['Sauvegarde et journal', 'data-tab="plus"'], ['Mon mot de passe', 'data-tab="compte"']], 'stk')
@@ -1407,7 +1407,7 @@
       h += '<div class="rg-grille rgc-g">'
         + bc('Équipe', [li('L’équipe', planPret() ? n + ' ' + pl(n, 'personne') : '', 'data-act="rgeq"', 'fiches semaine type absences contrat'), li('Les dentistes', planPret() ? nd + ' ' + pl(nd, 'dentiste') : '', 'data-act="rgde"', 'jours de présence départs anticipés'), li('Profils', profilsListe().filter(function (x) { return !x.retire; }).length + ' profils', 'data-tab="pprofils"', 'planning contrat ce que chacun voit référente')])
         + bc('Planning', [li('Postes', postes().filter(function (x) { return !x.retire; }).length + ' postes', 'data-tab="ppostes"', 'sté admin accueil plages horaires fixe variable couleur'), li('Règles des heures', 'congés, férié, reliquat', 'data-tab="pregles"', 'maladie école formation cp samedi')])
-        + bc('Pointage', [li('QR code', 'afficher, imprimer', 'data-act="rgqr"', 'régénérer'), li('Wi-Fi du centre', S.wifi ? ({ off: 'désactivé', souple: 'souple', strict: 'strict' })[S.wifi.mode || 'off'] : 'contrôle du pointage', 'data-tab="pwifi"', 'wifi réseau box souple strict'), li('Calcul et alertes', 'retard ' + R.pt_tol + ' min', 'data-tab="pregles"', 'reliquat temps pointé départ'), li('Qui pointe', np + ' ' + pl(np, 'personne'), 'data-tab="pqui"', 'soumise compte')])
+        + bc('Pointage', [li('QR code', 'afficher, imprimer', 'data-act="rgqr"', 'régénérer'), li('Wi-Fi du centre', S.wifi ? ({ off: 'désactivé', souple: 'souple', strict: 'strict' })[S.wifi.mode || 'off'] : 'contrôle du pointage', 'data-tab="pwifi"', 'wifi réseau box souple strict'), li('Calcul et alertes', 'retard ' + R.pt_tol + ' min', 'data-tab="pregles"', 'reliquat temps pointé départ'), li('Qui pointe', np + ' ' + pl(np, 'personne'), 'data-tab="pqui"', 'soumise compte')].concat(CONFIG.env === 'dev' ? [li('Module de test', 'site de test', 'data-tab="ptest"', 'essai simulation scénarios')] : []))
         + bc('Congés', [li('Demandes et planning', ca ? ca + ' à traiter' : 'congés du mois', 'data-tab="pconges"', 'valider soldes absences')])
         + bc('Application', [li('Transfert vers la prod', 'test → site réel', 'data-tab="ptransfert"', 'exporter importer équipe dentistes réglages congés')])
         + bc('Gestion de stock', [li('Comptes de connexion', 'identifiants, codes', 'data-tab="equipe"', 'rôles cabinet par défaut'), li('Articles', 'seuils, lieux', 'data-tab="articles"', 'types de soins'), li('Fournisseurs', 'coordonnées', 'data-tab="fournisseurs"', 'comptes'), li('Sauvegarde et journal', sv ? 'à télécharger' : 'à jour', 'data-tab="plus"', 'versions données'), li('Mon mot de passe', 'changer', 'data-tab="compte"', '')], 'stk')
@@ -1428,7 +1428,7 @@
         it('QR code', 'Afficher, imprimer, régénérer', 'data-act="rgqr"'),
         it('Wi-Fi du centre', 'Pointage accepté seulement depuis le Wi-Fi du centre', 'data-tab="pwifi"'),
         it('Calcul et alertes', (R.pt_reliquat !== false ? 'Reliquat sur le temps pointé' : 'Reliquat sur le planning') + ' · retard ' + R.pt_tol + ' min · départ ' + R.pt_tol_dep + ' min', 'data-tab="pregles"'),
-        it('Qui pointe', np + ' ' + pl(np, 'personne') + ' soumise' + (np > 1 ? 's' : '') + ', avec ou sans compte', 'data-tab="pqui"')])
+        it('Qui pointe', np + ' ' + pl(np, 'personne') + ' soumise' + (np > 1 ? 's' : '') + ', avec ou sans compte', 'data-tab="pqui"')].concat(CONFIG.env === 'dev' ? [it('Module de test', 'Site de test : pointer à la place de quelqu’un, scénarios automatiques', 'data-tab="ptest"')] : []))
       + bloc('C', 'b4', 'Congés', 'Demandes et absences', [
         it('Demandes et planning des congés', 'À valider, congés du mois', 'data-tab="pconges"')])
       + bloc('S', 'b5', 'Gestion de stock', 'Articles, commandes, inventaire', [
@@ -2120,7 +2120,7 @@
   }
   function renderH() {
     S.coulCat = null;
-    var ecr = { mconges: function () { moiG(); return vMesCongesA(); }, mdemande: function () { moiG(); return vDemandeA(); }, hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pwifi: vPWifi, pprofils: vPProfils, ptransfert: vPTransfert }[S.tab] || vHub;
+    var ecr = { mconges: function () { moiG(); return vMesCongesA(); }, mdemande: function () { moiG(); return vDemandeA(); }, hub: vHub, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pwifi: vPWifi, ptest: vPTest, pprofils: vPProfils, ptransfert: vPTransfert }[S.tab] || vHub;
     if ((S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage') && telephone()) ecr = vSurPC;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
     h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr' || S.tab === 'pequipe') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || ((S.tab === 'pconges' || S.tab === 'ppostes' || S.tab === 'pregles' || S.tab === 'pprofils' || S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible') && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
@@ -5246,6 +5246,189 @@
 
   // ---------- Réglages › Pointage › Wi-Fi du centre ----------
   // Le serveur compare l'adresse internet d'où vient le pointage à celle(s) de la box du centre. Aucune position n'est demandée.
+  // ---------- Module de test du pointage (site de test seulement, migration 029) ----------
+  // Pointe « à la place » d'une personne en passant par le vrai pointer() du serveur : heure, réseau, mode Wi-Fi et QR simulés.
+  function pttEtat() {
+    var T = S.ptt = S.ptt || { sens: 'auto', reseau: 'reel', mode: '', qr: 'valide', jour: dIso(new Date()), heure: '', scen: null };
+    if (!T.pers) { var p0 = (S.equipe || []).filter(function (e) { return e.actif && e.pointage; })[0]; if (p0) T.pers = p0.id; }
+    if (!T.sjour) { var d = new Date(); d.setDate(d.getDate() + 400); while (d.getDay() !== 2) d.setDate(d.getDate() + 1); T.sjour = dIso(d); }   // un mardi dans plus d'un an : aucun vrai pointage
+    if (!T.spers) T.spers = T.pers;
+    return T;
+  }
+  function pttCharger() {
+    var T = S.ptt; T.ch = true;
+    sb.from('parametres').select('valeur').eq('cle', 'pointage_test').maybeSingle().then(function (r) { T.ch = false; T.actif = !!(r.data && r.data.valeur === true); T.lu = true; render(); });
+  }
+  function pttQuand(jour, heure, sec) {
+    var x = String(heure || '').split(':'), d = dDe(jour); d.setHours(+x[0] || 0, +x[1] || 0, sec || 0, 0); return d.toISOString();
+  }
+  function pttErr(e) { var m = String(e && e.message || e); return /pointer_test|pointage_test_effacer|function|schema cache/i.test(m) && !/fermé|Réservé|introuvable/.test(m) ? 'La mise à jour 029 de la base n’est pas encore faite sur Evydent-Dev.' : msgErr(e); }
+  function pttAppel(eid, jour, o) {
+    return sb.rpc('pointer_test', { p_equipe_id: eid, p_quand: pttQuand(jour, o.h, o.s), p_sens: o.sens || null, p_reseau: o.reseau || 'reel', p_wifi_mode: o.mode || null, p_qr: o.qr || 'valide' })
+      .then(function (r) { if (r.error) throw r.error; return r.data || {}; });
+  }
+  function pttLigne(eid, jour) { return sb.from('pointages').select('*').eq('equipe_id', eid).eq('jour', jour).maybeSingle().then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function pttEffacer(eid, jour) { return sb.rpc('pointage_test_effacer', { p_equipe_id: eid, p_jour: jour }).then(function (r) { if (r.error) throw r.error; }); }
+  function pttEcran(res) { var s0 = S.ptRes; S.ptRes = res; var h = vResultatPointage(); S.ptRes = s0; var t = (h.match(/<h1>(.*?)<\/h1>/) || [])[1] || '', p = ((h.match(/<p>([^<]*)<\/p>/) || [])[1] || '').replace(/ /g, ' '); return { t: t, p: p }; }
+  function pttSeg(id, val, opts) { return '<div class="ptt-seg" role="radiogroup">' + opts.map(function (o) { return '<button role="radio" aria-checked="' + (val === o[0]) + '" class="' + (val === o[0] ? 'on' : '') + '" data-pttv="' + id + '|' + o[0] + '">' + o[1] + '</button>'; }).join('') + '</div>'; }
+  function vPTest() {
+    var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'Module de test du pointage', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps ptt">';
+    if (CONFIG.env !== 'dev') return h + '<div class="ban warn">Ce module n’existe que sur le site de test.</div></div>';
+    var T = pttEtat();
+    if (!T.lu && !T.ch) pttCharger();
+    var ps = (S.equipe || []).filter(function (e) { return e.actif; }).sort(function (a, b) { return (b.pointage ? 1 : 0) - (a.pointage ? 1 : 0) || String(a.prenom).localeCompare(b.prenom); });
+    var optP = function (v) { return ps.map(function (e) { return '<option value="' + e.id + '"' + (+v === e.id ? ' selected' : '') + '>' + esc(e.prenom) + (e.pointage ? '' : ' (non soumise au pointage)') + '</option>'; }).join(''); };
+    h += '<p class="a-aide">Site de test seulement. Le module pointe « à la place » d’une personne en passant par le vrai serveur de pointage : on choisit l’heure, le réseau (Wi-Fi du centre ou non), le mode du contrôle Wi-Fi et le QR code, sans changer les vrais réglages. Chaque essai est noté « module de test » dans le journal du pointage.</p>';
+    h += '<section class="card ptt-s"><div class="ptt-hd"><h2 class="a-jour">Module</h2>' + (T.lu ? '<span class="pill ' + (T.actif ? 'ok' : '') + '">' + (T.actif ? 'ouvert' : 'fermé') + '</span>' : '') + '</div>'
+      + '<p class="mu">Ouvert, la référente et la responsable peuvent pointer à la place des autres sur ce site de test. À fermer après les essais.</p>'
+      + (T.lu ? '<button class="btn' + (T.actif ? ' l' : '') + '" data-act="pttactif">' + (T.actif ? 'Fermer le module' : 'Ouvrir le module') + '</button>' : '<p class="mu">Chargement…</p>') + (T.err ? '<div class="ban warn">' + esc(T.err) + '</div>' : '') + '</section>';
+    if (!T.actif) return h + '</div>';
+    // 1. pointer à la place de quelqu'un
+    var p = persById(+T.pers) || {}, wm = (S.wifi && S.wifi.mode) || '';
+    h += '<section class="card ptt-s"><h2 class="a-jour">Pointer à la place de quelqu’un</h2><div class="ptt-f">'
+      + '<label><span>Personne</span><select class="in" id="pttpers">' + optP(T.pers) + '</select></label>'
+      + '<label><span>Jour</span><input class="in" type="date" id="pttjour" value="' + esc(T.jour) + '"></label>'
+      + '<label><span>Heure</span><input class="in" ' + HM + ' id="pttheure" value="' + esc(T.heure) + '" placeholder="maintenant"></label></div>'
+      + '<div class="ptt-f2"><span>Sens</span>' + pttSeg('sens', T.sens, [['auto', 'Automatique (comme le téléphone)'], ['arrivee', 'Arrivée'], ['sortie', 'Sortie']]) + '</div>'
+      + '<div class="ptt-f2"><span>Réseau</span>' + pttSeg('reseau', T.reseau, [['reel', 'Réel (cet appareil)'], ['centre', 'Wi-Fi du centre'], ['hors', 'Hors centre']]) + '</div>'
+      + '<div class="ptt-f2"><span>Contrôle Wi-Fi</span>' + pttSeg('mode', T.mode, [['', 'Réglage actuel' + (wm ? ' (' + ({ off: 'désactivé', souple: 'souple', strict: 'strict' })[wm] + ')' : '')], ['off', 'Désactivé'], ['souple', 'Souple'], ['strict', 'Strict']]) + '</div>'
+      + '<div class="ptt-f2"><span>QR code</span>' + pttSeg('qr', T.qr, [['valide', 'Valide'], ['perime', 'Périmé']]) + '</div>'
+      + '<div class="ptt-b"><button class="a-btn navy" data-act="pttgo"' + (T.busy ? ' disabled' : '') + '>' + ico('qr', 20, 2.2) + 'Pointer comme ' + esc(p.prenom || '…') + '</button><button class="btn l" data-act="pttvoir">Voir dans Pointage</button><button class="btn l danger" data-act="pttraz">Effacer ce jour</button></div>';
+    if (T.ligne !== undefined) {
+      var L = T.ligne, c = L ? calculJour(p, T.jour, L) : null;
+      h += '<div class="ptt-row"><b>' + esc(p.prenom || '') + ' · ' + jourLong(T.jour) + '</b>'
+        + (L ? '<span>Arrivée <b>' + (L.arrivee ? hTs(L.arrivee) : '—') + '</b>' + (L.arrivee_hc ? ' <em class="ptt-hc">hors centre</em>' : '') + '</span><span>Sortie <b>' + (L.sortie ? hTs(L.sortie) : '—') + '</b>' + (L.sortie_hc ? ' <em class="ptt-hc">hors centre</em>' : '') + '</span><span>Heures comptées <b>' + (c && c.effMin != null ? fh(c.effMin / 60) : 'aucune') + '</b>' + (ptHc(L) ? ' (en attente de vérification)' : '') + '</span>' : '<span class="mu">Aucun pointage ce jour-là.</span>')
+        + (T.der ? '<span class="mu">Dernier essai : réponse « ' + esc(T.der.etat || '?') + ' »' + (T.der.test ? ' · réseau vu ' + esc(T.der.test.reseau || '?') + ' · contrôle ' + esc(T.der.test.mode || 'off') : '') + '</span>' : '') + '</div>';
+    }
+    h += '</section>';
+    // 2. scénarios automatiques
+    var sp = persById(+T.spers) || {}, R = T.scen;
+    h += '<section class="card ptt-s"><h2 class="a-jour">Scénarios automatiques</h2><p class="mu">Une série d’essais enchaînés, avec le résultat attendu et le résultat obtenu. Ils se font sur un jour de test (sans vrai pointage), qui est effacé à la fin.</p><div class="ptt-f">'
+      + '<label><span>Personne</span><select class="in" id="pttspers">' + optP(T.spers) + '</select></label>'
+      + '<label><span>Jour de test</span><input class="in" type="date" id="pttsjour" value="' + esc(T.sjour) + '"></label></div>'
+      + '<div class="ptt-b"><button class="a-btn navy" data-act="pttscen"' + (R && R.cours ? ' disabled' : '') + '>' + (R && R.cours ? 'Essais en cours…' : 'Lancer les ' + PTT_SCEN.length + ' scénarios') + '</button>' + (R && !R.cours && R.l.length ? '<button class="btn l" data-act="pttcopie">Copier le rapport</button>' : '') + '</div>';
+    if (R) {
+      var nOk = R.l.filter(function (x) { return x.etat === 'ok'; }).length, nKo = R.l.filter(function (x) { return x.etat === 'ko'; }).length;
+      h += '<p class="ptt-som ' + (nKo ? 'ko' : R.cours ? '' : 'ok') + '">' + (R.cours ? 'En cours : ' + R.l.length + ' / ' + PTT_SCEN.length : nKo ? nKo + ' scénario' + (nKo > 1 ? 's' : '') + ' en échec sur ' + R.l.length : 'Tout est bon : ' + nOk + ' scénario' + (nOk > 1 ? 's' : '') + ' réussi' + (nOk > 1 ? 's' : '')) + (R.err ? ' · ' + esc(R.err) : '') + '</p>';
+      h += R.l.map(function (x) {
+        return '<div class="ptt-sc ' + x.etat + '"><div class="ptt-st"><span class="ptt-ic" aria-hidden="true">' + (x.etat === 'ok' ? '✓' : x.etat === 'ko' ? '✗' : 'i') + '</span><b>' + esc(x.n) + '</b></div>'
+          + x.c.map(function (k) { return '<div class="ptt-ck ' + (k.ok === false ? 'ko' : '') + '"><span>' + esc(k.t) + '</span><span class="mu">attendu : ' + esc(k.a) + '</span><span>obtenu : <b>' + esc(k.o) + '</b></span></div>'; }).join('') + '</div>';
+      }).join('');
+    }
+    return h + '</section></div>';
+  }
+  // Un pointage manuel du module : même logique que le téléphone (choix « arrivée ou sortie » l'après-midi)
+  function pttPointer(sens) {
+    var T = S.ptt, eid = +T.pers, p = persById(eid) || {}, now = new Date(), heure = T.heure || (('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2));
+    var s = sens || (T.sens === 'auto' ? null : T.sens);
+    var go = function () {
+      S.ptRes = { busy: true }; render();
+      pttAppel(eid, T.jour, { h: heure, s: T.heure ? 0 : now.getSeconds(), sens: s, reseau: T.reseau, mode: T.mode, qr: T.qr }).then(function (res) {
+        T.der = res; S.ptRes = res; render(); return pttLigne(eid, T.jour);
+      }).then(function (l) { T.ligne = l; render(); }).catch(function (e) { S.ptRes = null; T.err = pttErr(e); render(); });
+    };
+    if (s || T.qr === 'perime') return go();
+    pttLigne(eid, T.jour).then(function (l) {
+      var x = heure.split(':'), m = +x[0] * 60 + +x[1];
+      if (!(l && (l.arrivee || l.sortie)) && m >= milieuJournee(p, T.jour)) { S.ptRes = { choix: '__test' }; render(); return; }
+      go();
+    }).catch(function (e) { T.err = pttErr(e); render(); });
+  }
+  // Scénarios : chacun repart d'un jour vide ; c(...) ajoute une vérification attendu / obtenu
+  var PTT_SCEN = [
+    { n: 'Arrivée puis sortie (contrôle Wi-Fi désactivé)', f: async function (X) {
+      var a = await X.p({ h: '08:30', mode: 'off' }), e = pttEcran(a); X.c('Réponse du serveur', 'arrivee', a.etat); X.c('Écran affiché', 'Arrivée enregistrée', e.t);
+      var b = await X.p({ h: '17:00', mode: 'off' }), e2 = pttEcran(b); X.c('Réponse au 2e scan', 'sortie', b.etat); X.c('Écran affiché', 'Sortie enregistrée', e2.t);
+      var l = await X.l(); X.c('Arrivée enregistrée', '8 h 30', l && hTs(l.arrivee)); X.c('Sortie enregistrée', '17 h 00', l && hTs(l.sortie));
+      var c = calculJour(X.pe, X.j, l); X.c('Heures comptées', 'des heures (8 h 30 → 17 h 00, pause déduite)', c.effMin != null ? fh(c.effMin / 60) : 'aucune', c.effMin != null && c.effMin > 0);
+    } },
+    { n: 'Double scan à 30 secondes', f: async function (X) {
+      await X.p({ h: '08:30', mode: 'off' }); var b = await X.p({ h: '08:30', s: 30, mode: 'off' }), e = pttEcran(b);
+      X.c('Réponse du serveur', 'doublon', b.etat); X.c('Écran affiché', 'Déjà enregistré', e.t);
+      var l = await X.l(); X.c('Pas de sortie créée', 'sortie vide', l && l.sortie ? hTs(l.sortie) : 'sortie vide');
+    } },
+    { n: 'Nouveau scan de sortie : la dernière heure compte', f: async function (X) {
+      await X.p({ h: '08:30', mode: 'off' }); await X.p({ h: '12:00', mode: 'off' }); var b = await X.p({ h: '17:15', mode: 'off' });
+      X.c('Réponse du serveur', 'sortie', b.etat); var l = await X.l(); X.c('Sortie retenue', '17 h 15', l && hTs(l.sortie));
+    } },
+    { n: 'Oubli de l’arrivée : « Je pars »', f: async function (X) {
+      var b = await X.p({ h: '17:00', sens: 'sortie', mode: 'off' }), e = pttEcran(b);
+      X.c('Réponse du serveur', 'sortie', b.etat); X.c('Arrivée signalée manquante', 'oui', b.sans_arrivee ? 'oui' : 'non'); X.c('Écran affiché', 'Sortie enregistrée', e.t);
+      X.c('Message', 'arrivée non pointée', /pas été pointée/.test(e.p) ? 'arrivée non pointée' : e.p, /pas été pointée/.test(e.p));
+      var l = await X.l(); X.c('Ligne du jour', 'arrivée vide, sortie 17 h 00', l ? (l.arrivee ? hTs(l.arrivee) : 'arrivée vide') + ', sortie ' + hTs(l.sortie) : 'aucune');
+    } },
+    { n: 'Premier scan l’après-midi : le téléphone demande « arrivée ou sortie »', f: async function (X) {
+      var mi = milieuJournee(X.pe, X.j), mh = Math.floor(mi / 60) + ' h ' + ('0' + mi % 60).slice(-2);
+      X.c('Milieu de journée de ' + X.pe.prenom, 'calculé d’après sa semaine type', mh, true);
+      X.c('Scan à 15 h 00 sans pointage', 'question posée', 15 * 60 >= mi ? 'question posée' : 'arrivée directe', 15 * 60 >= mi);
+      X.c('Scan à 8 h 00 sans pointage', 'arrivée directe', 8 * 60 >= mi ? 'question posée' : 'arrivée directe', 8 * 60 < mi);
+    } },
+    { n: 'QR code périmé', f: async function (X) {
+      var a = await X.p({ h: '08:30', qr: 'perime', mode: 'off' }), e = pttEcran(a);
+      X.c('Réponse du serveur', 'qr_perime', a.etat); X.c('Écran affiché', 'QR code périmé', e.t); X.c('Aucun pointage créé', 'aucun', (await X.l()) ? 'un pointage existe' : 'aucun');
+    } },
+    { n: 'Wi-Fi souple, au centre', f: async function (X) {
+      var a = await X.p({ h: '08:30', mode: 'souple', reseau: 'centre' }), e = pttEcran(a);
+      X.c('Réponse du serveur', 'arrivee', a.etat); X.c('Marqué hors centre', 'non', a.hors_centre ? 'oui' : 'non'); X.c('Écran affiché', 'Arrivée enregistrée', e.t);
+      var l = await X.l(); X.c('À vérifier', 'non', l && l.arrivee_hc ? 'oui' : 'non');
+    } },
+    { n: 'Wi-Fi souple, hors centre, puis vérification', f: async function (X) {
+      var a = await X.p({ h: '08:30', mode: 'souple', reseau: 'hors' }), e = pttEcran(a);
+      X.c('Arrivée : réponse', 'arrivee + hors centre', a.etat + (a.hors_centre ? ' + hors centre' : '')); X.c('Arrivée : écran', 'Arrivée enregistrée', e.t);
+      X.c('Arrivée : message', 'hors du Wi-Fi du centre', /hors du Wi-Fi/.test(e.p) ? 'hors du Wi-Fi du centre' : e.p, /hors du Wi-Fi/.test(e.p));
+      var b = await X.p({ h: '17:00', mode: 'souple', reseau: 'hors' }), e2 = pttEcran(b);
+      X.c('Sortie : réponse', 'sortie + hors centre', b.etat + (b.hors_centre ? ' + hors centre' : '')); X.c('Sortie : écran', 'Sortie enregistrée', e2.t);
+      var l = await X.l(); X.c('Ligne marquée à vérifier', 'arrivée et sortie', l ? [l.arrivee_hc ? 'arrivée' : '', l.sortie_hc ? 'sortie' : ''].filter(Boolean).join(' et ') || 'rien' : 'aucune ligne');
+      X.c('Réseau gardé pour « reconnaître ce Wi-Fi »', '203.0.113.77', l && l.arrivee_res);
+      var c = calculJour(X.pe, X.j, l); X.c('Heures avant vérification', 'aucune (en attente)', c.effMin != null ? fh(c.effMin / 60) : 'aucune (en attente)');
+      var u = await sb.from('pointages').update({ arrivee_hc: false, sortie_hc: false, arrivee_res: null, sortie_res: null, corrige_par: S.me.id, corrige_le: new Date().toISOString() }).eq('equipe_id', X.eid).eq('jour', X.j);
+      if (u.error) throw u.error;
+      var l2 = await X.l(), c2 = calculJour(X.pe, X.j, l2); X.c('Heures après « Accepter »', 'comptées', c2.effMin != null ? fh(c2.effMin / 60) : 'aucune', c2.effMin != null && c2.effMin > 0);
+    } },
+    { n: 'Wi-Fi strict, hors centre : pointage refusé', f: async function (X) {
+      var a = await X.p({ h: '08:30', mode: 'strict', reseau: 'hors' }), e = pttEcran(a);
+      X.c('Réponse du serveur', 'hors_centre', a.etat); X.c('Écran affiché', 'Pas sur le Wi-Fi du centre', e.t); X.c('Aucun pointage créé', 'aucun', (await X.l()) ? 'un pointage existe' : 'aucun');
+    } },
+    { n: 'Wi-Fi strict, au centre', f: async function (X) {
+      var a = await X.p({ h: '08:30', mode: 'strict', reseau: 'centre' }), e = pttEcran(a);
+      X.c('Réponse du serveur', 'arrivee', a.etat); X.c('Écran affiché', 'Arrivée enregistrée', e.t);
+    } },
+    { n: 'Personne non soumise au pointage', f: async function (X) {
+      var q = (S.equipe || []).filter(function (e) { return e.actif && !e.pointage; })[0];
+      if (!q) { X.c('Personne non soumise', 'au moins une dans l’équipe', 'aucune : essai non fait', null); return; }
+      var a = await pttAppel(q.id, X.j, { h: '08:30', mode: 'off' }), e = pttEcran(a);
+      X.c('Réponse pour ' + q.prenom, 'non_soumis', a.etat); X.c('Écran affiché', 'Pas de pointage pour vous', e.t);
+      var l = await pttLigne(q.id, X.j); X.c('Aucun pointage créé', 'aucun', l ? 'un pointage existe' : 'aucun'); if (l) await pttEffacer(q.id, X.j);
+    } },
+    { n: 'Réseau réel de cet appareil (contrôle souple)', info: true, f: async function (X) {
+      var a = await X.p({ h: '08:30', mode: 'souple', reseau: 'reel' }), t = a.test || {}, v6 = String(t.reseau || '').indexOf(':') >= 0;
+      X.c('Réseau vu par le serveur', 'adresse de la box', (t.reseau || '?') + (t.reseau ? (v6 ? ' (IPv6)' : ' (IPv4)') : ''), null);
+      X.c('Reconnu comme Wi-Fi du centre', 'selon les Wi-Fi enregistrés', a.hors_centre ? 'non : un pointage d’ici serait « hors centre »' : 'oui', null);
+    } }
+  ];
+  async function pttScenarios() {
+    var T = S.ptt, eid = +T.spers, J = T.sjour, pe = persById(eid);
+    if (!pe || !J) { toast('Choisissez une personne et un jour de test'); return; }
+    var l0; try { l0 = await pttLigne(eid, J); } catch (e) { T.err = pttErr(e); render(); return; }
+    if (l0 && !(await demander('Ce jour a déjà un pointage', pe.prenom + ' a déjà un pointage le ' + dateCourte(J) + '. Les scénarios vont l’effacer. Continuer ?', 'Effacer et lancer', true))) return;
+    var R = T.scen = { cours: true, l: [], eid: eid, j: J, pers: pe.prenom, le: new Date() }; render();
+    for (var i = 0; i < PTT_SCEN.length; i++) {
+      var sc = PTT_SCEN[i], it = { n: sc.n, c: [], etat: 'ok' };
+      var X = { eid: eid, j: J, pe: pe, p: function (o) { return pttAppel(eid, J, o); }, l: function () { return pttLigne(eid, J); },
+        c: function (t, a, o, ok) { var r = ok !== undefined ? ok : String(o) === String(a); it.c.push({ t: t, a: a, o: o == null ? '—' : String(o), ok: r }); if (r === false) it.etat = 'ko'; } };
+      try { await pttEffacer(eid, J); await sc.f(X); if (sc.info && it.etat !== 'ko') it.etat = 'info'; }
+      catch (e) { it.etat = 'ko'; it.c.push({ t: 'Erreur', a: 'pas d’erreur', o: pttErr(e), ok: false }); }
+      R.l.push(it); render();
+      if (it.c.length && /029/.test(it.c[it.c.length - 1].o)) break;
+    }
+    try { await pttEffacer(eid, J); } catch (e) { R.err = 'jour de test non effacé : ' + pttErr(e); }
+    R.cours = false; render();
+  }
+  function pttRapport() {
+    var R = S.ptt.scen; if (!R) return '';
+    return 'Module de test du pointage · ' + R.le.toLocaleString('fr-FR') + ' · ' + R.pers + ' · jour de test ' + R.j + ' · version ' + CONFIG.version + '\n'
+      + R.l.map(function (x) { return (x.etat === 'ok' ? '✓ ' : x.etat === 'ko' ? '✗ ' : 'i ') + x.n + '\n' + x.c.map(function (k) { return '   ' + (k.ok === false ? '✗ ' : '· ') + k.t + ' : attendu ' + k.a + ' / obtenu ' + k.o; }).join('\n'); }).join('\n');
+  }
   function chargerWifi() {
     S.wifiCh = true;
     sb.rpc('wifi_etat').then(function (r) { S.wifiCh = false; if (r.error) { S.wifiErr = /wifi_etat|function/.test(String(r.error.message)) ? 'La mise à jour 028 de la base n’est pas encore faite.' : msgErr(r.error); } else { S.wifi = r.data; S.wifiErr = null; } render(); });
@@ -6405,6 +6588,19 @@
     if (d.ecp) { S.ecarts = S.ecarts || {}; S.ecarts.p = d.ecp; chargerEcarts(); render(); return; }
     if (d.act === 'sauver') return telechargerSauvegarde();
     if (d.act === 'aexp') return exporterArticles();
+    if (d.pttv && S.ptt) { var pv = d.pttv.split('|'); S.ptt[pv[0]] = pv[1]; render(); return; }
+    if (d.act && /^ptt/.test(d.act) && S.ptt) {
+      var T0 = S.ptt, gv = function (id) { var x = document.getElementById(id); return x ? x.value : null; };
+      if (gv('pttpers')) { T0.pers = +gv('pttpers'); T0.jour = gv('pttjour') || T0.jour; T0.heure = (gv('pttheure') || '').trim(); }
+      if (gv('pttspers')) { T0.spers = +gv('pttspers'); T0.sjour = gv('pttsjour') || T0.sjour; }
+      T0.err = null;
+      if (d.act === 'pttactif') { var nv = !T0.actif; sb.from('parametres').upsert({ cle: 'pointage_test', valeur: nv }, { onConflict: 'cle' }).then(function (r) { if (r.error) { T0.err = msgErr(r.error); render(); return; } T0.actif = nv; toast(nv ? 'Module de test ouvert' : 'Module de test fermé'); render(); }); return; }
+      if (d.act === 'pttgo') { if (T0.heure && !/^\d{1,2}:\d{2}$/.test(T0.heure)) { toast('Heure à écrire comme 08:30'); return; } return pttPointer(); }
+      if (d.act === 'pttvoir') { S.ptg = S.ptg || { rows: {} }; S.ptg.mode = 'jour'; S.ptg.jour = T0.jour; S.tab = 'pointage'; render(); chargerPointages(true); return; }
+      if (d.act === 'pttraz') { demander('Effacer ce pointage ?', 'Le pointage de ' + ((persById(T0.pers) || {}).prenom || '?') + ' du ' + dateCourte(T0.jour) + ' sera effacé.', 'Effacer', true).then(function (ok) { if (!ok) return; pttEffacer(T0.pers, T0.jour).then(function () { T0.ligne = null; T0.der = null; toast('Pointage effacé'); render(); }).catch(function (e) { T0.err = pttErr(e); render(); }); }); return; }
+      if (d.act === 'pttscen') return pttScenarios();
+      if (d.act === 'pttcopie') { var tx = pttRapport(); (navigator.clipboard ? navigator.clipboard.writeText(tx) : Promise.reject()).then(function () { toast('✔ Rapport copié'); }, function () { fenetre({ titre: 'Rapport', html: '<textarea class="in" style="width:100%;min-height:240px" readonly>' + esc(tx) + '</textarea>', ok: 'Fermer' }); }); return; }
+    }
     if (d.tdbo && S.tdb) { S.tdb.onglet = d.tdbo; render(); window.scrollTo(0, 0); return; }
     if (d.tdba) { S.tab = 'articles'; S.menu = false; ouvrirArticle(+d.tdba); window.scrollTo(0, 0); return; }
     if (d.tdbtout && S.tdb) { S.tdb.tout[d.tdbtout] = !S.tdb.tout[d.tdbtout]; render(); return; }
@@ -6531,6 +6727,7 @@
     if ((d.poup != null || d.podown != null || d.poret != null || d.poouv != null || d.pgadd != null || d.pgdel != null || d.tyret != null || /^(poadd|posave|tyadd|tysave)$/.test(d.act || '')) && actionReglages(d)) return;
     if (d.act === 'rgqr') return ouvrirPageQR('reglages');
     if (d.act === 'scan') return ouvrirScanner();
+    if (d.ptsens && S.ptRes && S.ptRes.choix === '__test') { S.ptRes = null; return pttPointer(d.ptsens); }
     if (d.ptsens && S.ptRes && S.ptRes.choix) return envoyerPointage(S.ptRes.choix, d.ptsens);
     if (d.act === 'simraz') { S.sim = null; try { sessionStorage.removeItem('evy-sim'); } catch (e) {} chargerMonPointage(); render(); return; }
     if (d.act === 'simscan') { var jt0 = ''; try { jt0 = localStorage.getItem('evy-jeton-test') || ''; } catch (e) {} if (jt0) { JETON_QR = jt0; pointerQR(); } return; }
@@ -6685,6 +6882,9 @@
   document.addEventListener('change', function (e) {
     var t = e.target; if (!S.me) return;
     if (t.id === 'trff' && t.files && t.files[0]) { trfLire(t.files[0]); t.value = ''; return; }
+    if ((t.id === 'pttpers' || t.id === 'pttjour') && S.ptt) { S.ptt[t.id === 'pttpers' ? 'pers' : 'jour'] = t.id === 'pttpers' ? +t.value : t.value; var Tq = S.ptt; Tq.der = null; pttLigne(Tq.pers, Tq.jour).then(function (l) { Tq.ligne = l; render(); }).catch(function () {}); render(); return; }
+    if ((t.id === 'pttspers' || t.id === 'pttsjour') && S.ptt) { S.ptt[t.id === 'pttspers' ? 'spers' : 'sjour'] = t.id === 'pttspers' ? +t.value : t.value; return; }
+    if (t.id === 'pttheure' && S.ptt) { S.ptt.heure = String(t.value || '').trim(); return; }
     if ((t.id === 'tdbper' || t.id === 'tdblieu') && S.tdb) { S.tdb[t.id === 'tdbper' ? 'per' : 'lieu'] = t.value; render(); return; }
     if (S.trfX && t.dataset) { if (t.dataset.trfp) { S.trfX.p[t.dataset.trfp] = t.checked; return; } if (t.dataset.trfd) { S.trfX.d[t.dataset.trfd] = t.checked; return; } if (t.dataset.trfr) { S.trfX.par[t.dataset.trfr] = t.checked; return; } if (t.dataset.trf2) { S.trfX[t.dataset.trf2] = t.checked; return; } if (t.dataset.trfdt) { S.trfX[t.dataset.trfdt] = t.value; return; } }
     if (S.trfI && t.dataset && t.dataset.trfl) { S.trfI.lien[t.dataset.trfl] = t.value; render(); return; }

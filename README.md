@@ -17,7 +17,7 @@ Aucun secret dans ce dépôt : seules les clés publiques Supabase y figurent.
 Le schéma est maintenu uniquement par les fichiers numérotés de `supabase/migrations/`,
 appliqués dans l'éditeur SQL de Supabase : d'abord sur Evydent-Dev, puis sur Evydent-Prod après validation.
 
-**Migration à appliquer : 028_pointage_wifi.sql (Wi-Fi du centre pour le pointage) — dev 028 à passer, prod avec la version qui l’embarque.** Dernière migration appliquée : dev 027, prod 027 (027_referent_profil.sql, à lancer sur la prod avec la version 2.4.1, 15/11/2026)** — avant : passage-prod-007-026.sql (14/11/2026)
+**Migrations à appliquer : 028_pointage_wifi.sql (Wi-Fi du centre pour le pointage) — dev et prod ; 029_pointage_test.sql (module de test du pointage) — Evydent-Dev seulement (sans effet sur la prod, le module y reste fermé).** Dernière migration appliquée : dev 027, prod 027 (027_referent_profil.sql, à lancer sur la prod avec la version 2.4.1, 15/11/2026)** — avant : passage-prod-007-026.sql (14/11/2026)
 
 ## Fonctions Supabase (Edge Functions)
 
