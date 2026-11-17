@@ -2194,8 +2194,10 @@
     if (!S.dentistes) return h + '<p class="mu">Chargement du planning…</p></div>';
     occAssurer(lundi);
     var titre = sem ? 'Semaine ' + periode(lundi, addJ(lundi, 4)) : dJ.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^./, function (c) { return c.toUpperCase(); });
-    h += '<div class="oc-bar"><button class="oc-nav" data-ocj="-1" aria-label="' + (sem ? 'Semaine précédente' : 'Jour précédent') + '">' + ico('prec', 20, 2.4) + '</button><b>' + titre + '</b><button class="oc-nav" data-ocj="1" aria-label="' + (sem ? 'Semaine suivante' : 'Jour suivant') + '">' + ico('suiv', 20, 2.4) + '</button>'
-      + (O.jour !== occOuvre(dIso(new Date()), 1) ? '<button class="btn l sm" data-ocj="auj">Aujourd’hui</button>' : '') + '<span class="grow"></span><span class="cm-seg" role="tablist" aria-label="Période"><button role="tab" aria-selected="' + !sem + '" class="' + (!sem ? 'on' : '') + '" data-ocm="jour">Jour</button><button role="tab" aria-selected="' + sem + '" class="' + (sem ? 'on' : '') + '" data-ocm="semaine">Semaine</button></span></div>';
+    var auj0 = occOuvre(dIso(new Date()), 1), surAuj = sem ? lundiDe(auj0) === lundi : O.jour === auj0;
+    // Flèches et « Aujourd'hui » toujours au même endroit, à gauche : le titre peut changer de longueur sans les déplacer
+    h += '<div class="oc-bar"><span class="oc-navs"><button class="oc-nav" data-ocj="-1" aria-label="' + (sem ? 'Semaine précédente' : 'Jour précédent') + '">' + ico('prec', 20, 2.4) + '</button><button class="oc-nav" data-ocj="1" aria-label="' + (sem ? 'Semaine suivante' : 'Jour suivant') + '">' + ico('suiv', 20, 2.4) + '</button><button class="btn l sm oc-auj" data-ocj="auj"' + (surAuj ? ' disabled' : '') + '>Aujourd’hui</button></span><b>' + titre + '</b>'
+      + '<span class="grow"></span><span class="cm-seg" role="tablist" aria-label="Période"><button role="tab" aria-selected="' + !sem + '" class="' + (!sem ? 'on' : '') + '" data-ocm="jour">Jour</button><button role="tab" aria-selected="' + sem + '" class="' + (sem ? 'on' : '') + '" data-ocm="semaine">Semaine</button></span></div>';
     var sansCab = (S.dentistes || []).filter(function (d) { return d.actif && !+d.cabinet; }).length;
     if (!occColonne()) h += '<div class="ban info oc-ban"><b>Cabinets déduits des assistantes.</b> Le cabinet affiché est celui de l’assistante placée avec le dentiste : il peut être faux en cas de remplacement. Pour donner un cabinet à chaque dentiste, la base du site doit recevoir la mise à jour 030.</div>';
     else if (sansCab) h += '<div class="ban info oc-ban"><b>' + sansCab + ' dentiste' + (sansCab > 1 ? 's' : '') + ' sans cabinet habituel.</b> Pour eux, le cabinet est déduit de celui de l’assistante. <button class="lien" data-tab="pdent">Renseigner les cabinets</button></div>';
@@ -5103,6 +5105,7 @@
     var h = retourBtn('Tous les articles');
     if (!a) return h + '<p class="mu">Chargement…</p>';
     if (F.edit) return h + synthStock(a) + vEditArticle();
+    if (F.sauve) h += '<div class="ban ok fx-sv">' + ico('ok', 22, 2.4) + '<b class="grow">' + F.sauve + '</b><button class="btn" data-act="anew">+ Nouvel article</button></div>';
     var f = facteur(a), cabs = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(function (c) { return stockDe(a.id, c); });
     h += '<div class="fx-w"><aside class="fx-a"><div class="card fx-top"><div class="row wrap"><div class="grow"><h2>' + esc(a.nom) + '</h2><span class="mu">Réf. ' + (a.reference && !estSR(a) ? esc(a.reference) : '<span class="pill warn">SR</span>') + ' · ' + lF(a.fournisseur_id, 'SF') + (a.type_soins ? ' · ' + esc(a.type_soins) : '') + '</span><div class="fx-st"><span class="stk-p ' + etatArt(a)[0] + '">' + etatArt(a)[1] + '</span><button class="btn sm" data-act="aedit">Modifier</button></div></div></div></div>' + synthStock(a) + '</aside><div class="fx-m">';
     h += '<div class="card fx-c"><h3 class="fx-h">Conditionnement et stock</h3><dl class="dl">'
@@ -5145,7 +5148,9 @@
       + '<div class="card"><b>📍 Lieux d’utilisation</b> <span class="mu">(l’article n’apparaît que dans les listes de ces lieux ; la recherche trouve tout)</span>'
       + '<label class="row" style="margin-top:8px"><input type="checkbox" data-af-f="lieu_cabinets"' + (a.lieu_cabinets !== false ? ' checked' : '') + ' style="width:20px;height:20px"> Lieu 1 : Cabinets (n’importe quel cabinet)</label>'
       + '<label class="row" style="margin-top:6px"><input type="checkbox" data-af-f="lieu_ste"' + (a.lieu_ste === true ? ' checked' : '') + ' style="width:20px;height:20px"> Lieu 2 : La Sté</label>'
-      + '<label class="mu" style="display:block;margin-top:10px">Type de soins<input class="in" data-af-f="type_soins" value="' + esc(a.type_soins || '') + '" placeholder="ex. Endo, Chirurgie…"></label></div>';
+      + '<label class="mu" style="display:block;margin-top:10px">Type de soins' + (F.tsNew
+        ? '<span class="row" style="gap:8px"><input class="in grow" id="tsnew" data-af-f="type_soins" value="' + esc(a.type_soins || '') + '" placeholder="Nom du nouveau type de soins"><button type="button" class="btn l sm" data-act="tsliste">Choisir dans la liste</button></span>'
+        : '<select class="in" data-af-f="type_soins"><option value="">— aucun —</option>' + typesSoins(a.type_soins).map(function (t) { return '<option value="' + esc(t) + '"' + (norm(t) === norm(a.type_soins) ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '<option value="__nouveau">+ Nouveau type de soins…</option></select>') + '</label></div>';
     h += '<div class="card"><b>🚚 Fournisseurs</b> <span class="mu">(★ le premier = principal)</span>' + F.foEdit.map(function (x, i) {
       return '<div class="row wrap forow" style="margin-top:8px"><span style="width:18px">' + (i === 0 ? '★' : '') + '</span><select class="in grow" data-fo-i="' + i + '" data-fo-k="fournisseur_id">' + optFo(x.fournisseur_id, 'Choisir…') + '</select>'
         + '<input class="in" style="width:110px" inputmode="decimal" placeholder="Prix €" data-fo-i="' + i + '" data-fo-k="prix" value="' + esc(x.prix || '') + '"><input class="in" style="width:130px" placeholder="Réf." data-fo-i="' + i + '" data-fo-k="reference" value="' + esc(x.reference || '') + '">'
@@ -5153,11 +5158,20 @@
     }).join('') + '<button class="btn l sm" style="margin-top:10px" data-act="foadd">+ Ajouter un fournisseur</button></div>';
     return h + '<div class="row wrap actrow"><button class="btn l" data-act="aannule">Annuler</button><button class="btn" data-act="asave"' + (F.busy ? ' disabled' : '') + '>Enregistrer</button>' + (!nouv ? '<span class="grow"></span><button class="btn l sm" data-act="aarch">' + (a.archive ? 'Réactiver' : 'Archiver') + '</button><button class="btn ko sm" data-act="asuppr">🗑 Supprimer</button>' : '') + '</div>';
   }
+  // Types de soins déjà utilisés dans les fiches (une seule écriture par type), pour la liste déroulante
+  function typesSoins(plus) {
+    var vus = {}, l = [];
+    S.articles.concat(S.archives).map(function (a) { return a.type_soins; }).concat([plus]).forEach(function (t) { t = String(t || '').trim(); if (t && t !== '__nouveau' && !vus[norm(t)]) { vus[norm(t)] = 1; l.push(t); } });
+    return l.sort(function (x, y) { return x.localeCompare(y, 'fr'); });
+  }
   function sauverArticle() {
     var F = S.fiche, a = F.d, nouv = F.id === 'new';
     var o = { nom: String(a.nom || '').trim(), reference: String(a.reference || '').trim() || 'SR', conditionnement: a.conditionnement, qte_par_boite: Math.max(1, nb(a.qte_par_boite) || 1),
       consommation: a.consommation, seuil: a.sans_seuil ? 0 : Math.max(0, nb(a.seuil)), sans_seuil: !!a.sans_seuil, conso_verifiee: !!a.conso_verifiee,
       lieu_cabinets: a.lieu_cabinets !== false, lieu_ste: a.lieu_ste === true, type_soins: String(a.type_soins || '').trim() || null };
+    if (o.type_soins === '__nouveau') o.type_soins = null;
+    // un type déjà connu garde son écriture (« Endo » et « endo » ne font pas deux types)
+    if (o.type_soins) { var tsE = typesSoins().filter(function (t) { return norm(t) === norm(o.type_soins); })[0]; if (tsE) o.type_soins = tsE; }
     if (!o.nom) { toast('Le nom est obligatoire'); return; }
     var fo = F.foEdit.filter(function (x) { return x.fournisseur_id; });
     var vus = {}; fo = fo.filter(function (x) { if (vus[x.fournisseur_id]) return false; vus[x.fournisseur_id] = 1; return true; });
@@ -5181,7 +5195,7 @@
         });
       });
     }).then(function (id) {
-      toast(nouv ? '✔ Article créé' : '✔ Article enregistré'); S.fiche.busy = false; charger().then(function () { ouvrirArticle(id); });
+      toast(nouv ? '✔ Article créé' : '✔ Article enregistré'); S.fiche.busy = false; charger().then(function () { ouvrirArticle(id); if (S.fiche) { S.fiche.sauve = nouv ? 'Article créé' : 'Article enregistré'; render(); window.scrollTo(0, 0); } });
     }).catch(function (e) { F.busy = false; toast(msgErr(e)); render(); });
   }
   function stockPartout(id) { var t = []; for (var e = 0; e <= 9; e++) { var q = stockDe(id, e); if (Math.abs(q) > 1e-9) t.push(cabTxt(e) + ' : ' + fr(q)); } return t; }
@@ -7003,6 +7017,7 @@
     if (d.aopen) { voir('a', d.aopen); return; }
     if (d.act === 'anew') { S.retours = []; S.tab = 'stock'; ouvrirArticle('new'); window.scrollTo(0, 0); return; }
     if (d.act === 'mvplus') { S.fiche.mvTout = true; render(); return; }
+    if (d.act === 'tsliste' && S.fiche) { S.fiche.tsNew = false; S.fiche.d.type_soins = ''; render(); return; }
     if (d.act === 'fclose') { revenir(); return; }
     if (d.act === 'aedit') { S.fiche.edit = true; S.fiche.d = JSON.parse(JSON.stringify(S.fiche.d)); S.fiche.foEdit = null; render(); return; }
     if (d.act === 'aannule') { if (S.fiche.id === 'new') S.fiche = null; else { var id0 = S.fiche.id; ouvrirArticle(id0); } render(); return; }
@@ -7279,7 +7294,8 @@
     else if (t.id === 'rcab') { S.ret.cab = +t.value; render(); }
     else if (t.id === 'ncfo') { S.nc.fid = t.value; S.nc.l.forEach(function (l) { l.prix = prixChez(S.byId[l.article_id], +t.value); }); render(); }
     else if (t.id === 'foarch') { S.foArch = t.checked; render(); }
-    else if (t.dataset && (t.dataset.afF || t.dataset.foK) && S.fiche) { if (t.dataset.afF) S.fiche.d[t.dataset.afF] = t.type === 'checkbox' ? t.checked : t.value; else S.fiche.foEdit[+t.dataset.foI][t.dataset.foK] = t.value; if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); }
+    else if (t.dataset && (t.dataset.afF || t.dataset.foK) && S.fiche) { if (t.dataset.afF === 'type_soins' && t.value === '__nouveau') { S.fiche.tsNew = true; S.fiche.d.type_soins = ''; render(); var tsi = document.getElementById('tsnew'); if (tsi) tsi.focus(); return; }
+      if (t.dataset.afF) S.fiche.d[t.dataset.afF] = t.type === 'checkbox' ? t.checked : t.value; else S.fiche.foEdit[+t.dataset.foI][t.dataset.foK] = t.value; if (t.tagName === 'SELECT' || t.type === 'checkbox') render(); }
     else if (t.id === 'iemp') { if (t.value === '') { S.inv.emp = null; } else choisirEmp(+t.value); render(); }
     else if (t.id === 'itous') { S.inv.tous = t.checked; render(); }
     else if (t.dataset && t.dataset.imotif) { S.inv.motifs[t.dataset.imotif] = t.value; }

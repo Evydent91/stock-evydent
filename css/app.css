@@ -2625,3 +2625,9 @@ button.oc-c:hover,button.oc-c:focus-visible,.oc-c.on{border-color:var(--navy)}
 .wi code,.wf-r code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;background:var(--soft);border-radius:6px;padding:2px 6px}
 .wi-n{margin:4px 0 0;font-size:13.5px}
 @media (max-width:700px){.wi-r{grid-template-columns:1fr;gap:4px}}
+/* Occupation : flèches fixes ; fiche article : bandeau après enregistrement */
+.oc-navs{display:flex;align-items:center;gap:8px;flex:none}
+.oc-auj{min-height:44px;width:124px}
+.oc-auj:disabled{opacity:.45;cursor:default}
+.oc-bar > b{min-width:0;text-align:left;margin-left:6px}
+.fx-sv{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:16.5px}
