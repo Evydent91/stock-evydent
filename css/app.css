@@ -2642,3 +2642,32 @@ button.oc-c:hover,button.oc-c:focus-visible,.oc-c.on{border-color:var(--navy)}
 .pl-nav:not(.clair) .pl-tbtn b{white-space:nowrap}
 .cg2-nav .btn.cache{visibility:hidden}
 .cg2-nav b{flex:none;white-space:nowrap}@media (max-width:420px){.cg2-nav{gap:6px}.cg2-nav b{width:132px;font-size:16px}.cg2-nav .btn.sm{padding:0 10px;font-size:13px}}
+/* Choix de période commun : (‹)(›) à gauche, date cliquable (calendrier), retour à aujourd'hui */
+.nd{display:flex;align-items:center;gap:10px;min-width:0}
+.nd-f{display:flex;gap:6px;flex:none}
+.nd .h-rond{width:44px;height:44px}
+.nd .h-rond.cache{visibility:hidden}
+.nd-t{position:relative;min-width:0;width:340px;flex:none;display:flex}
+.nd-cal{display:flex;align-items:center;gap:8px;min-height:44px;padding:4px 10px;border:none;border-radius:12px;background:none;color:inherit;font:inherit;cursor:pointer;max-width:100%;min-width:0;text-align:left}
+.nd-cal b{font-size:17px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nd-cal .ic{flex:none;color:var(--gold)}
+.nd-cal:hover{background:rgba(255,255,255,.1)}
+.nd.clair .nd-cal{color:var(--ink)}.nd.clair .nd-cal:hover{background:var(--soft)}.nd.clair .nd-cal .ic{color:var(--navy)}
+.nd-cal.fixe{cursor:default}.nd-cal.fixe:hover{background:none}
+.nd-in{position:absolute;left:12px;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
+.nd-auj{display:inline-flex;align-items:center;gap:6px;flex:none;cursor:pointer}
+.nd-auj.cache{visibility:hidden}
+.cg2-nd .nd-t{width:210px}
+.cg2-nd .nd-cal b{font-size:18px}
+.pl-nav.nd-l{display:flex;justify-content:flex-start}
+.nd-carte{background:#fff;border-radius:16px;padding:8px;box-shadow:0 1px 3px rgba(31,42,51,.08);margin-bottom:12px}
+.oc-bar .nd{flex:none}
+@media (max-width:700px){
+  .nd{width:100%;gap:6px}
+  .nd-t{width:auto;flex:1}
+  .nd-cal{padding:4px 6px;gap:6px}.nd-cal b{font-size:15.5px}
+  .nd-auj{width:40px;height:40px;padding:0;justify-content:center}.nd-auj span{display:none}
+  .cg2-nd .nd-t{width:auto}
+}
+.nd-ct{display:none}@media (max-width:700px){.nd-lg{display:none}.nd-ct{display:inline}}
+.nd-auj{font-size:15px}
