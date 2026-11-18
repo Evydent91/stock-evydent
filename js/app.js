@@ -5139,8 +5139,8 @@
     var h = '<div class="ban j0">✏️ <b>' + (nouv ? 'Nouvel article' : 'Modification') + '</b> : rien n’est enregistré tant que vous ne touchez pas « Enregistrer ».</div>';
     h += '<div class="card"><div class="g2">'
       + '<label class="mu">Nom<input class="in" data-af-f="nom" value="' + esc(a.nom) + '"></label>'
-      + '<label class="mu">Référence (SR si aucune)<input class="in" data-af-f="reference" value="' + esc(a.reference || '') + '"></label>'
-      + (colRefFab() ? '<label class="mu">Référence fabricant <span style="font-weight:400">(celle du fabricant, différente de celle du fournisseur)</span><input class="in" data-af-f="ref_fabricant" value="' + esc(a.ref_fabricant || '') + '" placeholder="Facultatif"></label>' : '')
+      + '<label class="mu">Référence fournisseur (SR si aucune)<input class="in" data-af-f="reference" value="' + esc(a.reference || '') + '"></label>'
+      + (colRefFab() ? '<label class="mu">Référence fabricant<input class="in" data-af-f="ref_fabricant" value="' + esc(a.ref_fabricant || '') + '" placeholder="Facultatif · différente de la référence du fournisseur"></label>' : '')
       + '<label class="mu">Livré<select class="in" data-af-f="conditionnement"><option value="Unité"' + (a.conditionnement === 'Unité' ? ' selected' : '') + '>À l’unité</option><option value="BOITE"' + (a.conditionnement === 'BOITE' ? ' selected' : '') + '>En boîte</option></select></label>'
       + '<label class="mu">Unités par boîte<input class="in" inputmode="decimal" data-af-f="qte_par_boite" value="' + esc(a.qte_par_boite) + '"></label>'
       + '<label class="mu">Sortie au cabinet<select class="in" data-af-f="consommation"><option value="Unité"' + (a.consommation === 'Unité' ? ' selected' : '') + '>À l’unité</option><option value="BOITE"' + (a.consommation === 'BOITE' ? ' selected' : '') + '>À la boîte entière</option></select></label>'
