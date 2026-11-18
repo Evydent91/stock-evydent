@@ -4928,7 +4928,7 @@
     if (q.length < 2) return h + '<p class="mu">Tapez au moins 2 lettres ou chiffres.</p>';
     var ok = function (t) { return norm(t).indexOf(q) >= 0; };
     // un article est trouvé par son nom, ses références ou son type de soins (pas par son fournisseur : la tuile du fournisseur y mène)
-    var A = S.articles.concat(S.archives).filter(function (a) { return ok(a.nom + ' ' + (a.reference || '') + ' ' + (S.afPrix[a.id] || []).map(function (x) { return x.reference || ''; }).join(' ') + ' ' + (a.type_soins || '')); });
+    var A = S.articles.concat(S.archives).filter(function (a) { return ok(a.nom + ' ' + (a.reference || '') + ' ' + (a.ref_fabricant || '') + ' ' + (S.afPrix[a.id] || []).map(function (x) { return x.reference || ''; }).join(' ') + ' ' + (a.type_soins || '')); });
     A.sort(function (x, y) { return (ok(y.nom) ? 1 : 0) - (ok(x.nom) ? 1 : 0) || x.nom.localeCompare(y.nom, 'fr'); });
     var Fo = S.fournListe.filter(function (f) { return ok(f.nom); });
     var Co = S.commandes.filter(function (c) { return ok((c.numero || '') + ' ' + (S.fournisseurs[c.fournisseur_id] || '')); });
@@ -5028,7 +5028,7 @@
   }
   function vStockTous() {
     var q = norm(S.stockQ), F = S.stockF || '', fx = function (a, f) { return f === 'archive' ? true : f === 'nolieu' ? a.lieu_cabinets === false && a.lieu_ste !== true : filtreStock(a, f); };
-    var l = (F === 'archive' ? S.archives : S.articles).filter(function (a) { return fx(a, F) && (!q || norm(a.nom + ' ' + (a.reference || '') + ' ' + (S.fournisseurs[a.fournisseur_id] || '') + ' ' + (a.type_soins || '')).indexOf(q) >= 0); });
+    var l = (F === 'archive' ? S.archives : S.articles).filter(function (a) { return fx(a, F) && (!q || norm(a.nom + ' ' + (a.reference || '') + ' ' + (a.ref_fabricant || '') + ' ' + (S.fournisseurs[a.fournisseur_id] || '') + ' ' + (a.type_soins || '')).indexOf(q) >= 0); });
     var val = S.articles.reduce(function (t, a) { return t + stockDe(a.id, 0) * (+a.cout_moyen || 0); }, 0);
     var nb = function (f) { return f === 'archive' ? S.archives.length : S.articles.filter(function (a) { return fx(a, f); }).length; };
     var h = S.artImp ? vImportArticles() : '';
@@ -5109,6 +5109,7 @@
     var f = facteur(a), cabs = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(function (c) { return stockDe(a.id, c); });
     h += '<div class="fx-w"><aside class="fx-a"><div class="card fx-top"><div class="row wrap"><div class="grow"><h2>' + esc(a.nom) + '</h2><span class="mu">Réf. ' + (a.reference && !estSR(a) ? esc(a.reference) : '<span class="pill warn">SR</span>') + ' · ' + lF(a.fournisseur_id, 'SF') + (a.type_soins ? ' · ' + esc(a.type_soins) : '') + '</span><div class="fx-st"><span class="stk-p ' + etatArt(a)[0] + '">' + etatArt(a)[1] + '</span><button class="btn sm" data-act="aedit">Modifier</button></div></div></div></div>' + synthStock(a) + '</aside><div class="fx-m">';
     h += '<div class="card fx-c"><h3 class="fx-h">Conditionnement et stock</h3><dl class="dl">'
+      + (colRefFab() ? '<dt>Référence fabricant</dt><dd>' + (a.ref_fabricant ? esc(a.ref_fabricant) : '<span class="mu">—</span>') + '</dd>' : '')
       + '<dt>Conditionnement</dt><dd>' + condTxt(a) + (a.conditionnement === 'BOITE' && +a.qte_par_boite > 1 && !a.conso_verifiee ? ' <span class="pill warn">consommation à vérifier</span>' : '') + '</dd>'
       + '<dt>Réserve</dt><dd>' + fr(stockDe(a.id, 0)) + ' ' + uRes(a) + (f > 1 ? ' (' + fr(stockDe(a.id, 0) * f) + ' u.)' : '') + '</dd>'
       + '<dt>Cabinets et Sté (≈)</dt><dd>' + (cabs.length ? cabs.map(function (c) { return '<button class="lk2" data-voir="cab:' + c + '">' + (c === 9 ? 'la Sté' : 'cabinet ' + c) + '</button> : ' + fr(stockDe(a.id, c)) + ' u.'; }).join(' · ') : 'aucun') + '</dd>'
@@ -5139,6 +5140,7 @@
     h += '<div class="card"><div class="g2">'
       + '<label class="mu">Nom<input class="in" data-af-f="nom" value="' + esc(a.nom) + '"></label>'
       + '<label class="mu">Référence (SR si aucune)<input class="in" data-af-f="reference" value="' + esc(a.reference || '') + '"></label>'
+      + (colRefFab() ? '<label class="mu">Référence fabricant <span style="font-weight:400">(celle du fabricant, différente de celle du fournisseur)</span><input class="in" data-af-f="ref_fabricant" value="' + esc(a.ref_fabricant || '') + '" placeholder="Facultatif"></label>' : '')
       + '<label class="mu">Livré<select class="in" data-af-f="conditionnement"><option value="Unité"' + (a.conditionnement === 'Unité' ? ' selected' : '') + '>À l’unité</option><option value="BOITE"' + (a.conditionnement === 'BOITE' ? ' selected' : '') + '>En boîte</option></select></label>'
       + '<label class="mu">Unités par boîte<input class="in" inputmode="decimal" data-af-f="qte_par_boite" value="' + esc(a.qte_par_boite) + '"></label>'
       + '<label class="mu">Sortie au cabinet<select class="in" data-af-f="consommation"><option value="Unité"' + (a.consommation === 'Unité' ? ' selected' : '') + '>À l’unité</option><option value="BOITE"' + (a.consommation === 'BOITE' ? ' selected' : '') + '>À la boîte entière</option></select></label>'
@@ -5159,6 +5161,8 @@
     return h + '<div class="row wrap actrow"><button class="btn l" data-act="aannule">Annuler</button><button class="btn" data-act="asave"' + (F.busy ? ' disabled' : '') + '>Enregistrer</button>' + (!nouv ? '<span class="grow"></span><button class="btn l sm" data-act="aarch">' + (a.archive ? 'Réactiver' : 'Archiver') + '</button><button class="btn ko sm" data-act="asuppr">🗑 Supprimer</button>' : '') + '</div>';
   }
   // Types de soins déjà utilisés dans les fiches (une seule écriture par type), pour la liste déroulante
+  // La colonne « référence fabricant » existe-t-elle dans la base (mise à jour 031) ?
+  function colRefFab() { return S.articles.concat(S.archives).some(function (a) { return 'ref_fabricant' in a; }); }
   function typesSoins(plus) {
     var vus = {}, l = [];
     S.articles.concat(S.archives).map(function (a) { return a.type_soins; }).concat([plus]).forEach(function (t) { t = String(t || '').trim(); if (t && t !== '__nouveau' && !vus[norm(t)]) { vus[norm(t)] = 1; l.push(t); } });
@@ -5170,6 +5174,7 @@
       consommation: a.consommation, seuil: a.sans_seuil ? 0 : Math.max(0, nb(a.seuil)), sans_seuil: !!a.sans_seuil, conso_verifiee: !!a.conso_verifiee,
       lieu_cabinets: a.lieu_cabinets !== false, lieu_ste: a.lieu_ste === true, type_soins: String(a.type_soins || '').trim() || null };
     if (o.type_soins === '__nouveau') o.type_soins = null;
+    if (colRefFab()) o.ref_fabricant = String(a.ref_fabricant || '').trim() || null;
     // un type déjà connu garde son écriture (« Endo » et « endo » ne font pas deux types)
     if (o.type_soins) { var tsE = typesSoins().filter(function (t) { return norm(t) === norm(o.type_soins); })[0]; if (tsE) o.type_soins = tsE; }
     if (!o.nom) { toast('Le nom est obligatoire'); return; }
@@ -5196,7 +5201,7 @@
       });
     }).then(function (id) {
       toast(nouv ? '✔ Article créé' : '✔ Article enregistré'); S.fiche.busy = false; charger().then(function () { ouvrirArticle(id); if (S.fiche) { S.fiche.sauve = nouv ? 'Article créé' : 'Article enregistré'; render(); window.scrollTo(0, 0); } });
-    }).catch(function (e) { F.busy = false; toast(msgErr(e)); render(); });
+    }).catch(function (e) { F.busy = false; toast(/ref_fabricant/.test(String(e && e.message)) ? 'La référence fabricant demande la mise à jour 031 de la base' : msgErr(e)); render(); });
   }
   function stockPartout(id) { var t = []; for (var e = 0; e <= 9; e++) { var q = stockDe(id, e); if (Math.abs(q) > 1e-9) t.push(cabTxt(e) + ' : ' + fr(q)); } return t; }
   async function supprimerArticle() {

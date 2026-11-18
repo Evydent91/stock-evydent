@@ -21,6 +21,8 @@ appliqués dans l'éditeur SQL de Supabase : d'abord sur Evydent-Dev, puis sur E
 - sur Evydent-Prod : `supabase/prod/passage-prod-028-030.sql` (028 Wi-Fi du centre + 030 cabinets des dentistes ; la 029, module de test du pointage, ne concerne que le site de test) ;
 - sur Evydent-Dev : `supabase/migrations/030_cabinets_dentistes.sql` (028 et 029 y ont été lancées pendant les essais).
 
+**À lancer ensuite : `031_ref_fabricant.sql`** (case « Référence fabricant » de la fiche article) — sur Evydent-Dev pour tester, puis sur Evydent-Prod à la validation de la 2.4.9. Sans elle, la case n'apparaît pas.
+
 Tant que ce n'est pas fait, le site marche : la page Wi-Fi du centre affiche un message d'attente et « Occupation des cabinets » déduit le cabinet de celui de l'assistante.
 
 Dernière migration notée comme appliquée sur la prod : 027 (027_referent_profil.sql, version 2.4.1, 15/11/2026) — avant : passage-prod-007-026.sql (14/11/2026).
