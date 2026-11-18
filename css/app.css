@@ -2631,3 +2631,14 @@ button.oc-c:hover,button.oc-c:focus-visible,.oc-c.on{border-color:var(--navy)}
 .oc-auj:disabled{opacity:.45;cursor:default}
 .oc-bar > b{min-width:0;text-align:left;margin-left:6px}
 .fx-sv{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:16.5px}
+/* Flèches de période immobiles : le titre ne pousse plus les boutons quand sa longueur change */
+.rf-navs{display:flex;align-items:center;gap:8px;flex:none}
+.rf-bar > b{min-width:0}
+.hr-titre{width:330px;min-width:0}
+.cg2-nav b{width:190px;min-width:0}
+@media (max-width:700px){.cg2-nav b{width:150px}}
+@media (max-width:560px){.hr-titre{width:auto}}
+.pl-titre{width:400px}
+.pl-nav:not(.clair) .pl-tbtn b{white-space:nowrap}
+.cg2-nav .btn.cache{visibility:hidden}
+.cg2-nav b{flex:none;white-space:nowrap}@media (max-width:420px){.cg2-nav{gap:6px}.cg2-nav b{width:132px;font-size:16px}.cg2-nav .btn.sm{padding:0 10px;font-size:13px}}
