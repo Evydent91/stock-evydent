@@ -81,6 +81,15 @@
   function facteur(a) { return a && a.conditionnement === 'BOITE' && a.consommation === 'Unité' && +a.qte_par_boite > 1 ? +a.qte_par_boite : 1; }
   function stockDe(id, emp) { return (S.stocks[id] && S.stocks[id][emp]) || 0; }
   function dispoUnites(a) { return nb(stockDe(a.id, 0) * facteur(a)); }
+  // Quantité d'un mouvement lisible. La réserve d'un article « livré en boîte, sorti à l'unité » se compte en boîtes :
+  // chaque unité sortie retire une fraction de boîte (1 sur 6 = 0,17). On affiche donc les unités, avec l'équivalent en boîtes.
+  var MV_RES = ['inventaire', 'regul', 'correction', 'reception', 'annulation'], MV_EC = ['inventaire', 'regul', 'correction'];
+  function qteMvTxt(m, a) {
+    var q = +m.quantite || 0, f = facteur(a), res = MV_RES.indexOf(m.type) >= 0 && (m.emplacement_de === 0 || m.emplacement_vers === 0), ec = MV_EC.indexOf(m.type) >= 0, sg = ec && q > 0 ? '+' : '';
+    if (!res || f <= 1) return sg + fr(q) + (res && a && a.conditionnement === 'BOITE' ? ' boîte' + (Math.abs(q) >= 2 ? 's' : '') : '');
+    var u = Math.round(q * f * 100) / 100;
+    return sg + fr(u) + ' u. <small class="mu">(' + sg + fr(Math.round(q * 100) / 100) + ' boîte' + (Math.abs(q) >= 2 ? 's' : '') + ' de ' + fr(f) + ')</small>';
+  }
   function uRes(a) { return a.conditionnement === 'BOITE' ? 'boîte(s)' : 'u.'; }
   function quand(d) { var x = new Date(d); return x.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + ' ' + x.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
   function cabTxt(e) { return e === 0 ? 'Réserve' : e === 9 ? 'La Sté' : 'Cab. ' + e; }
@@ -1008,7 +1017,7 @@
       ic = 'attente'; cls = ' orange'; t = 'Demande · ' + nom; warn = m.statut === 'attente';
       sous = hr + ' · ' + (m.statut === 'attente' ? 'en attente de la référente' : m.statut === 'refuse' ? 'refusée' : m.statut === 'ok' ? 'confirmée' : (STAT[m.statut] || ['', m.statut])[1]); q = qteA(a, m.quantite);
     } else if (m.type === 'retour') { ic = 'retour'; t = 'Retour · ' + nom; sous = hr + ' · cabinet ' + m.emplacement_de + ' → réserve' + rempl; q = m.quantite_reserve != null && +m.quantite_reserve !== +m.quantite ? fr(m.quantite_reserve) + ' ' + pl(m.quantite_reserve, 'boîte') : qteA(a, m.quantite); }
-    else { t = (TYP[m.type] || m.type) + ' · ' + nom; sous = hr; q = fr(m.quantite); }
+    else { t = (TYP[m.type] || m.type) + ' · ' + nom; sous = hr; q = qteMvTxt(m, a); }
     if (!e.inv && m.type !== 'demande' && m.statut && m.statut !== 'ok') sous += ' · ' + (STAT[m.statut] || ['', m.statut])[1];
     return '<div class="a-ev"><span class="a-evi' + cls + '">' + ico(ic, 20, 2.2) + '</span><div class="a-it-n"><b>' + t + '</b><span' + (warn ? ' class="warn"' : '') + '>' + sous + '</span></div>' + (q ? '<b>' + q + '</b>' : '') + '</div>';
   }
@@ -5094,7 +5103,7 @@
       var a = S.byId[m.article_id] || { nom: m.article_nom ? m.article_nom + ' (supprimé)' : '(article)' }, st = STAT[m.statut] || ['', m.statut];
       var lieu = m.type === 'retour' ? cabTxt(m.emplacement_de) + ' → réserve' : m.type === 'sortie' || m.type === 'demande' ? '→ ' + cabTxt(m.emplacement_vers) : m.emplacement_de != null ? cabTxt(m.emplacement_de) : '';
       return '<div class="hi-r"><span class="hi-d">' + quand(m.cree_le) + '</span><span class="hi-m"><span><span class="hi-t ' + (CL[m.type] || '') + '">' + (TYP[m.type] || m.type) + '</span> <b>' + lA(m.article_id, a.nom) + '</b></span><span class="mu">' + lieu + (m.statut !== 'ok' ? ' <span class="pill ' + st[0] + '">' + st[1] + '</span>' : '') + (m.hors_cabinet ? ' <span class="pill warn">hors cabinet</span>' : '') + (m.ecart ? ' · écart ' + fr(m.ecart) + (m.valeur ? ' · ' + eur(m.valeur) : '') : '') + '</span></span>'
-        + '<span class="hi-q">' + (m.type === 'retour' && m.quantite_reserve != null && +m.quantite_reserve !== +m.quantite ? fr(m.quantite_reserve) + ' boîte(s) <small class="mu">' + fr(m.quantite) + ' u.</small>' : fr(m.quantite)) + '</span><span class="hi-p">' + esc(m.auteur_nom || '') + '</span></div>';
+        + '<span class="hi-q">' + (m.type === 'retour' && m.quantite_reserve != null && +m.quantite_reserve !== +m.quantite ? fr(m.quantite_reserve) + ' boîte(s) <small class="mu">' + fr(m.quantite) + ' u.</small>' : m.type === 'sortie' || m.type === 'demande' || m.type === 'retour' ? fr(m.quantite) : qteMvTxt(m, S.byId[m.article_id])) + '</span><span class="hi-p">' + esc(m.auteur_nom || '') + '</span></div>';
     }).join('') + '</section>';
   }
 
@@ -5154,7 +5163,7 @@
     var mv = F.mv, mvL = mv ? (F.mvTout ? mv : mv.slice(0, 8)) : [];
     h += '<div class="card fx-c"><h3 class="fx-h">Derniers mouvements</h3>' + (!mv ? '<p class="mu">Chargement…</p>' : !mv.length ? '<p class="mu">Aucun mouvement enregistré pour cet article.</p>' : mvL.map(function (m) {
       var st = STAT[m.statut] || ['', m.statut], lieu = m.type === 'retour' ? cabTxt(m.emplacement_de) + ' → réserve' : m.type === 'sortie' || m.type === 'demande' ? '→ ' + cabTxt(m.emplacement_vers) : m.emplacement_de != null ? cabTxt(m.emplacement_de) : '';
-      return '<div class="it"><div class="it-n"><b>' + (TYP[m.type] || m.type) + (lieu ? ' ' + lieu : '') + ' × ' + fr(m.quantite) + '</b><span>' + quand(m.cree_le) + ' · ' + esc(m.auteur_nom || '') + (m.commande_id && cmdDe(m.commande_id) ? ' · <button class="lk2" data-voir="c:' + m.commande_id + '">voir la commande</button>' : '') + '</span></div>' + (m.statut !== 'ok' ? '<span class="pill ' + st[0] + '">' + st[1] + '</span>' : '') + (m.hors_cabinet ? '<span class="pill warn">hors cabinet</span>' : '') + '</div>';
+      return '<div class="it"><div class="it-n"><b>' + (TYP[m.type] || m.type) + (lieu ? ' ' + lieu : '') + (MV_EC.indexOf(m.type) >= 0 ? ' · écart ' : ' × ') + qteMvTxt(m, a) + '</b><span>' + quand(m.cree_le) + ' · ' + esc(m.auteur_nom || '') + (m.commande_id && cmdDe(m.commande_id) ? ' · <button class="lk2" data-voir="c:' + m.commande_id + '">voir la commande</button>' : '') + '</span></div>' + (m.statut !== 'ok' ? '<span class="pill ' + st[0] + '">' + st[1] + '</span>' : '') + (m.hors_cabinet ? '<span class="pill warn">hors cabinet</span>' : '') + '</div>';
     }).join('') + (!F.mvTout && mv.length > 8 ? '<div style="margin-top:8px"><button class="lnk" data-act="mvplus">Afficher les ' + mv.length + ' derniers</button></div>' : '')) + '</div>';
     h += '<div class="card fx-c"><h3 class="fx-h">Fournisseurs et prix</h3>' + (F.fo.length ? F.fo.map(function (x) { return '<div class="it"><div class="it-n"><b>' + (x.rang === 0 ? '★ ' : '') + lF(x.fournisseur_id, '?') + '</b><span>' + (x.reference ? 'réf. ' + esc(x.reference) + ' · ' : '') + eur(x.prix) + '</span></div></div>'; }).join('') : '<p class="mu">Aucun fournisseur (SF).</p>') + '</div>';
     h += '<div class="card fx-c"><h3 class="fx-h">Historique des prix</h3>' + (F.hist.length ? '<div class="scroll"><table class="tbl tbl-p"><tbody>' + F.hist.map(function (p) { return '<tr><td>' + p.date_prix.split('-').reverse().join('/') + '</td><td>' + esc(S.fournisseurs[p.fournisseur_id] || '') + '</td><td class="n">' + eur(p.prix) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="mu">Aucun prix enregistré.</p>') + '</div></div></div>';
