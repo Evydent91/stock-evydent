@@ -5261,14 +5261,24 @@
     var F = S.fiche, a = F.d, c = F.cor, f = facteur(a);
     if (c.etape === 2) {
       var ch = corChanges();
-      return '<div class="ban ko" role="alert"><b>⚠️ Confirmez la correction</b><ul style="margin:6px 0 6px 18px;padding:0">' + ch.map(function (x) { return '<li>' + cabTxt(x.emp) + ' : ' + fr(x.avant) + ' → <strong>' + fr(x.apres) + '</strong></li>'; }).join('') + '</ul>Les quantités seront remplacées <b>sans perte ni gain</b> ; le coût moyen ne change pas. La correction reste tracée dans l’historique.'
+      return '<div class="ban ko" role="alert"><b>⚠️ Confirmez la correction</b><ul style="margin:6px 0 6px 18px;padding:0">' + ch.map(function (x) { return '<li>' + cabTxt(x.emp) + ' : ' + (x.u ? fr(x.u.avant) + ' u. → <strong>' + fr(x.u.apres) + ' u.</strong> <span class="mu">(' + fr(x.avant) + ' → ' + fr(x.apres) + ' boîte(s))</span>' : fr(x.avant) + ' → <strong>' + fr(x.apres) + '</strong>') + '</li>'; }).join('') + '</ul>Les quantités seront remplacées <b>sans perte ni gain</b> ; le coût moyen ne change pas. La correction reste tracée dans l’historique.'
         + '<div class="row" style="margin-top:10px"><button class="btn l sm" data-act="cor1">Non, revenir</button><button class="btn ko sm" data-act="corgo">Oui, corriger</button></div></div>';
     }
-    return '<div class="card" style="border:2px dashed #b45309;margin-top:10px"><b>🛠 Correction sans impact financier</b><p class="mu" style="margin:4px 0 8px">Pour rectifier une erreur de saisie. Réserve en ' + (f > 1 ? 'boîtes' : uRes(a)) + ', cabinets en unités.</p><div class="g4">'
+    return '<div class="card" style="border:2px dashed #b45309;margin-top:10px"><b>🛠 Correction sans impact financier</b><p class="mu" style="margin:4px 0 8px">Pour rectifier une erreur de saisie. ' + (f > 1 ? 'Tout se saisit en unités (réserve comprise : boîtes de ' + fr(f) + ').' : 'Réserve en ' + uRes(a) + ', cabinets en unités.') + '</p><div class="g4">'
       + [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (e) { return '<label class="mu">' + cabTxt(e) + '<input class="in" inputmode="decimal" data-cor="' + e + '" value="' + esc(c.v[e]) + '"></label>'; }).join('')
       + '</div><div class="row" style="margin-top:10px"><button class="btn l sm" data-act="corx">Annuler</button><button class="btn sm" data-act="cor2">Enregistrer la correction</button></div></div>';
   }
-  function corChanges() { var a = S.fiche.d, c = S.fiche.cor, out = []; for (var e = 0; e <= 9; e++) { var v = Math.max(0, nb(String(c.v[e]).replace(',', '.'))), s = stockDe(a.id, e); if (Math.abs(v - s) > 1e-9) out.push({ emp: e, avant: s, apres: v }); } return out; }
+  // Réserve d'un article sorti à l'unité : saisie en unités, convertie en boîtes à 4 décimales (comme l'inventaire).
+  // Une case laissée telle quelle ne change rien, même si le stock réel a plus de décimales que l'affichage.
+  function corChanges() {
+    var a = S.fiche.d, c = S.fiche.cor, out = [];
+    for (var e = 0; e <= 9; e++) {
+      var f = e === 0 ? facteur(a) : 1, s = stockDe(a.id, e), vu = Math.max(0, nb(String(c.v[e]).replace(',', '.')));
+      if (Math.abs(vu - nb(s * f)) < 0.005) continue;
+      out.push({ emp: e, avant: s, apres: Math.round(vu / f * 10000) / 10000, u: f > 1 ? { avant: nb(s * f), apres: vu } : null });
+    }
+    return out;
+  }
   function corGo() {
     var a = S.fiche.d, ch = corChanges();
     Promise.all(ch.map(function (x) { return sb.rpc('fixer_stock', { p_article: a.id, p_emplacement: x.emp, p_quantite: x.apres, p_type: 'correction', p_motif: 'Correction sans impact financier' }); })).then(function (rs) {
@@ -7089,7 +7099,7 @@
     if (d.act === 'foadd') { S.fiche.foEdit.push({ fournisseur_id: '', prix: '', reference: '' }); render(); return; }
     if (d.fodel) { S.fiche.foEdit.splice(+d.fodel, 1); render(); return; }
     if (d.fotop) { var x0 = S.fiche.foEdit.splice(+d.fotop, 1)[0]; S.fiche.foEdit.unshift(x0); render(); return; }
-    if (d.act === 'cor') { var a0 = S.fiche.d, v0 = {}; for (var e0 = 0; e0 <= 9; e0++) v0[e0] = fr(stockDe(a0.id, e0)); S.fiche.cor = { etape: 1, v: v0 }; render(); return; }
+    if (d.act === 'cor') { var a0 = S.fiche.d, v0 = {}; for (var e0 = 0; e0 <= 9; e0++) v0[e0] = fr(stockDe(a0.id, e0) * (e0 === 0 ? facteur(a0) : 1)); S.fiche.cor = { etape: 1, v: v0 }; render(); return; }
     if (d.act === 'corx') { S.fiche.cor = null; render(); return; }
     if (d.act === 'cor2') { if (!corChanges().length) { toast('Aucune quantité modifiée'); return; } S.fiche.cor.etape = 2; render(); return; }
     if (d.act === 'cor1') { S.fiche.cor.etape = 1; render(); return; }
