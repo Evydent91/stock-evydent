@@ -322,6 +322,39 @@
     if (!e) { e = document.createElement('div'); e.id = 'ver-coin'; e.setAttribute('aria-label', 'Version de l’application'); document.body.appendChild(e); document.body.classList.add('coin'); }
     e.textContent = (C.env === 'dev' ? 'Bêta test · ' : '') + 'v' + (C.version || '');
   }
+  // ---------- Menu latéral (ordinateur) et barre du bas (téléphone) : aller d'une page à l'autre sans repasser par l'accueil ----------
+  var STOCK_TABS = ['accueil', 'sortie', 'retour', 'inventaire', 'demandes', 'stock', 'commandes', 'articles', 'fournisseurs', 'histo', 'plus', 'invfin', 'tdb', 'ecarts', 'journal', 'compte', 'aide'];
+  function railPage() {
+    var t = S.tab;
+    if (t === 'hub') return 'hub';
+    if (['planning', 'heures', 'pointage', 'pconges', 'occup'].indexOf(t) >= 0) return t;
+    if (t === 'mconges' || t === 'mdemande') return 'mconges';
+    if (STOCK_TABS.indexOf(t) >= 0) return 'accueil';
+    return 'reglages';
+  }
+  function railOn() { return gestion() && !telephone() && window.innerWidth >= 900; }
+  function railMini() { var v = null; try { v = localStorage.getItem('evy-rail'); } catch (e) {} return v ? v === 'mini' : window.innerWidth < 1600; }
+  function vRail() {
+    var cur = railPage(), ca = congesAttente().length + congesAnnul().length, ou = (S.oublis || []).length, mini = railMini();
+    var it = function (tab, n, ic, b) { return '<button class="rail-l' + (cur === tab ? ' on' : '') + '" data-tab="' + tab + '"' + (cur === tab ? ' aria-current="page"' : '') + ' title="' + esc(n) + '">' + '<span class="rail-i">' + ico(ic, 21, 2.1) + (b && mini ? '<em class="rail-p">' + b + '</em>' : '') + '</span><span class="rail-t">' + n + '</span>' + (b && !mini ? '<em class="rail-b">' + b + '</em>' : '') + '</button>'; };
+    return '<nav class="rail" aria-label="Pages"><div class="rail-hd"><span class="rail-lo" aria-hidden="true">E</span><b class="rail-t">Evydent</b></div>'
+      + it('hub', 'Accueil', 'maison') + it('planning', 'Planning', 'equipe') + it('heures', 'Heures', 'histo') + it('pointage', 'Pointage', 'qr', ou) + it('pconges', 'Congés', 'agenda', ca) + it('occup', 'Occupation', 'fauteuil') + it('accueil', 'Gestion de stock', 'boite')
+      + '<span class="rail-sp"></span>' + it('reglages', 'Réglages', 'reglage')
+      + '<button class="rail-l rail-r" data-act="railmini" aria-label="' + (mini ? 'Afficher les noms des pages' : 'Réduire en icônes') + '" title="' + (mini ? 'Afficher les noms' : 'Réduire en icônes') + '"><span class="rail-i">' + ico(mini ? 'suiv' : 'prec', 20, 2.4) + '</span><span class="rail-t">Réduire en icônes</span></button></nav>';
+  }
+  function poserRail(app) {
+    var on = railOn();
+    document.body.classList.toggle('rail-on', on);
+    document.body.classList.toggle('rail-mini', on && railMini());
+    if (on) app.insertAdjacentHTML('afterbegin', vRail());
+  }
+  // Téléphone de la référente / responsable : les pages qu'elle ouvre sur téléphone (le reste se fait sur ordinateur)
+  function vBarTel() {
+    if (!gestion() || !telephone() || ['hub', 'mconges', 'reglages'].indexOf(S.tab) < 0) return '';
+    var cur = railPage(), ca = congesAttente().length + congesAnnul().length;
+    var it = function (tab, n, ic, b) { return '<button data-tab="' + tab + '" class="' + (cur === tab ? 'on' : '') + '"' + (cur === tab ? ' aria-current="page"' : '') + '><span class="bi">' + ico(ic, 24) + (b ? '<span class="badge">' + b + '</span>' : '') + '</span><span>' + n + '</span></button>'; };
+    return '<nav class="bnav hb4" aria-label="Pages">' + it('hub', 'Accueil', 'maison', ca) + it('mconges', 'Mes congés', 'agenda') + it('accueil', 'Stock', 'boite', S.attente && S.attente.length) + it('reglages', 'Réglages', 'reglage') + '</nav>';
+  }
   function render() {
     JOUR_CACHE = {};
     coinVersion();
@@ -335,7 +368,9 @@
     }
     if (S.ptRes) { app.innerHTML = vResultatPointage(); document.body.classList.remove('mode-h', 'mode-a'); return; }
     if (gestion() && HUB.indexOf(S.tab) >= 0) {
-      poser(app, renderH());
+      poser(app, renderH() + vBarTel());
+      poserRail(app);
+      document.body.classList.toggle('hb-on', !!vBarTel());
       document.body.classList.remove('mode-a', 'ecran-ok', 'sans-nav'); document.body.classList.add('mode-h');
       var rgOn = RG_TABS.indexOf(S.tab) >= 0 && !telephone();
       document.body.classList.toggle('rg-on', rgOn);
@@ -345,8 +380,8 @@
       if (rgOn) { app.insertAdjacentHTML('beforeend', navReglages()); var hdE = app.querySelector('.a-mh, header'); if (hdE) document.documentElement.style.setProperty('--hd-h', hdE.offsetHeight + 'px'); }
       placerTour(); return;
     }
-    document.body.classList.remove('mode-h', 'rg-on', 'rgl-on');
-    if (modeA()) {
+    document.body.classList.remove('mode-h', 'rg-on', 'rgl-on', 'hb-on');
+    if (modeA()) { document.body.classList.remove('rail-on', 'rail-mini');
       poser(app, renderA());
       document.body.classList.add('mode-a');
       document.body.classList.toggle('ecran-ok', S.tab === 'sortie' && !!S.sortie.ok);
@@ -364,6 +399,7 @@
     // On remet le curseur dans le champ de saisie en cours, mais jamais sur une liste déroulante :
     // sur iPhone, redonner le focus à une liste la rouvre une seconde fois.
     poser(app, h);
+    poserRail(app);
     document.body.classList.toggle('sans-nav', !!S.me && enTache());
     placerTour();
   }
@@ -7096,6 +7132,7 @@
     if (d.ecp) { S.ecarts = S.ecarts || {}; S.ecarts.p = d.ecp; chargerEcarts(); render(); return; }
     if (d.act === 'sauver') return telechargerSauvegarde();
     if (d.act === 'aexp') return exporterArticles();
+    if (d.act === 'railmini') { try { localStorage.setItem('evy-rail', railMini() ? 'large' : 'mini'); } catch (e) {} render(); return; }
     if (d.pttv && S.ptt) { var pv = d.pttv.split('|'); S.ptt[pv[0]] = pv[1]; render(); return; }
     if (d.act && /^ptt/.test(d.act) && S.ptt) {
       var T0 = S.ptt, gv = function (id) { var x = document.getElementById(id); return x ? x.value : null; };
