@@ -2732,3 +2732,22 @@ body.rail-mini .rail-hd{justify-content:center;padding:2px 0 14px}
   body.hb-on .h-app{padding-bottom:calc(var(--nav) + 24px + env(safe-area-inset-bottom))}
   .bnav .bi{position:relative}
 }
+/* Planning : appliquer le réglage d'une case à toute la semaine */
+.pl-sem{border-radius:16px;margin:4px 0 2px}
+.pl-sem.on{border:2px solid var(--gold);background:#fbf8ee;padding:10px 12px;display:flex;flex-direction:column;gap:10px}
+.pl-sem.on .pl-jc{background:none;padding:0;margin:0}
+.pl-semj{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.pl-semj button{min-height:54px;border-radius:12px;border:1.5px solid var(--line);background:#fff;color:var(--mute);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font:inherit;cursor:pointer;padding:2px 4px;min-width:0}
+.pl-semj button b{font-size:14.5px;color:var(--ink)}.pl-semj button small{font-size:11.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl-semj button.r small{color:#8a3d0c;font-weight:700}
+.pl-semj button.on{background:var(--navy);border-color:var(--navy);color:#fff}.pl-semj button.on b{color:#fff}.pl-semj button.on.r small{color:var(--gold)}
+.pl-semn{font-size:13px}
+.pl-semt{border:1px solid #eceae4;border-radius:12px;overflow:hidden;margin:10px 0}
+.pl-semt table{width:100%;border-collapse:collapse;font-size:14px}
+.pl-semt th,.pl-semt td{padding:8px 10px;text-align:left;border-top:1px solid #f1efe9;vertical-align:middle}
+.pl-semt thead th{background:#f6f3ec;font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--mute);border-top:none}
+.pl-semt td{color:var(--mute)}.pl-semt td b{color:var(--ink)}.pl-semt td.f{color:#a8913c;font-weight:700;width:18px;padding:0}
+.pl-semt tr.garde td,.pl-semt tr.garde th{background:#fafafa}
+.pl-semh{display:flex;justify-content:space-between;gap:10px;margin:0 0 8px;font-size:15px}.pl-semh .ec{color:#8a3d0c}.pl-semh small{font-weight:600;color:var(--mute)}
+.pl-flash{box-shadow:0 0 0 3px var(--gold)!important;transition:box-shadow .3s}
+.pl-semt th{white-space:nowrap}
