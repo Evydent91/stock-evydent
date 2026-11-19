@@ -3886,7 +3886,7 @@
       sb.from('pointage_cle').select('*').eq('id', 1).maybeSingle()
     ]).then(function (r) {
       if (!S.ptLog || S.ptLog.cle !== cle) return;
-      var vus = {}; E.l = r[0].concat(r[1]).filter(function (x) { if (vus[x.id]) return false; vus[x.id] = 1; return true; }).sort(function (a, b) { return a.quand < b.quand ? -1 : a.quand > b.quand ? 1 : a.id - b.id; });
+      var vus = {}; E.l = r[0].concat(r[1]).filter(function (x) { if (vus[x.id]) return false; vus[x.id] = 1; return true; }).sort(function (a, b) { return a.quand > b.quand ? -1 : a.quand < b.quand ? 1 : b.id - a.id; });   // le plus récent en haut
       E.q = r[2] && r[2].data; render();
     }).catch(function (e) { if (!S.ptLog) return; E.err = /pointage_journal/.test(String(e && e.message)) ? 'La mise à jour 018 de la base n’est pas encore faite.' : msgErr(e); render(); });
   }
