@@ -23,6 +23,8 @@ appliqués dans l'éditeur SQL de Supabase : d'abord sur Evydent-Dev, puis sur E
 
 **À lancer ensuite : `031_ref_fabricant.sql`** (case « Référence fabricant » de la fiche article) — sur Evydent-Dev pour tester, puis sur Evydent-Prod à la validation de la 2.4.9. Sans elle, la case n'apparaît pas.
 
+**Et `032_cout_moyen_depuis_prix.sql`** (un article avec un prix fournisseur n'est plus valorisé 0 € dans la réserve) — Evydent-Dev, puis Evydent-Prod avec la 2.4.9.
+
 Tant que ce n'est pas fait, le site marche : la page Wi-Fi du centre affiche un message d'attente et « Occupation des cabinets » déduit le cabinet de celui de l'assistante.
 
 Dernière migration notée comme appliquée sur la prod : 027 (027_referent_profil.sql, version 2.4.1, 15/11/2026) — avant : passage-prod-007-026.sql (14/11/2026).

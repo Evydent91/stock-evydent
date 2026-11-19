@@ -79,6 +79,8 @@
   function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
   function gestion() { return S.me && (S.me.role === 'referente' || S.me.role === 'responsable'); }
   function facteur(a) { return a && a.conditionnement === 'BOITE' && a.consommation === 'Unité' && +a.qte_par_boite > 1 ? +a.qte_par_boite : 1; }
+  // Valeur d'une boîte (ou unité) de réserve : coût moyen des réceptions, sinon prix du fournisseur principal
+  function valUnit(a) { return a ? (+a.cout_moyen > 0 ? +a.cout_moyen : +a.prix > 0 ? +a.prix : 0) : 0; }
   function stockDe(id, emp) { return (S.stocks[id] && S.stocks[id][emp]) || 0; }
   function dispoUnites(a) { return nb(stockDe(a.id, 0) * facteur(a)); }
   // Quantité d'un mouvement lisible. La réserve d'un article « livré en boîte, sorti à l'unité » se compte en boîtes :
@@ -4938,7 +4940,7 @@
   function vAccueilTel() {
     var A = S.articles, n = function (f) { return A.filter(function (a) { return filtreStock(a, f); }).length; };
     var att = S.attente.length, cmd = n('commander'), rup = n('rupture'), cmdR = A.filter(function (a) { return filtreStock(a, 'commander') && stockDe(a.id, 0) <= 0; }).length;
-    var valR = 0, valC = 0; A.forEach(function (a) { var cm = +a.cout_moyen || 0, f = facteur(a); valR += stockDe(a.id, 0) * cm; for (var c = 1; c <= 9; c++) valC += stockDe(a.id, c) / f * cm; });
+    var valR = 0, valC = 0; A.forEach(function (a) { var cm = valUnit(a), f = facteur(a); valR += stockDe(a.id, 0) * cm; for (var c = 1; c <= 9; c++) valC += stockDe(a.id, c) / f * cm; });
     var emps = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (e) { var x = etatInventaire(e); x.emp = e; return x; }), aF = emps.filter(function (x) { return x.cls !== 'ok'; }).length;
     var T = function (tab, fonce, ic, titre, sous, em) { return '<button class="ga-t' + (fonce ? ' fonce' : '') + '" data-tab="' + tab + '"><span class="ga-ic" aria-hidden="true">' + ico(ic, 30) + '</span><span class="ga-tx"><b>' + titre + '</b><span>' + sous + '</span>' + (em ? '<em>' + em + '</em>' : '') + '</span>' + ico('suiv', 22, 2.4) + '</button>'; };
     var h = '<div class="ga">' + champGq();
@@ -4993,7 +4995,7 @@
     if (telephone()) return vAccueilTel();
     var A = S.articles, N = function (f) { return A.filter(function (a) { return filtreStock(a, f); }).length; }, pl2 = function (n, sg, plu) { return n > 1 ? plu : sg; };
     var valR = 0, valC = 0;
-    A.forEach(function (a) { var cm = +a.cout_moyen || 0, f = facteur(a); valR += stockDe(a.id, 0) * cm; for (var c = 1; c <= 9; c++) valC += stockDe(a.id, c) / f * cm; });
+    A.forEach(function (a) { var cm = valUnit(a), f = facteur(a); valR += stockDe(a.id, 0) * cm; for (var c = 1; c <= 9; c++) valC += stockDe(a.id, c) / f * cm; });
     var T = [], tu = function (cls, ic, n, lab, bouton, attr) { T.push('<section class="af-tu ' + cls + '"><span class="af-ic" aria-hidden="true">' + ico(ic, 26) + '</span><p class="af-n">' + (n != null ? '<b>' + n + '</b> ' : '') + lab + '</p><button class="btn af-b" ' + attr + '>' + bouton + '</button></section>'); };
     var att = S.attente.length, rup = N('rupture'), cmd = N('commander');
     var ouv = S.commandes.filter(function (c) { return c.statut === 'attente' || c.statut === 'partielle'; }).length;
@@ -5030,7 +5032,7 @@
   function vStockCab(c) {
     var q = norm(S.stockQ), der = S.dernierInv[c], j = joursDepuis(der), val = 0;
     var tous = S.articles.filter(function (a) { return Math.abs(stockDe(a.id, c)) > 1e-9; });
-    tous.forEach(function (a) { val += stockDe(a.id, c) / facteur(a) * (+a.cout_moyen || 0); });
+    tous.forEach(function (a) { val += stockDe(a.id, c) / facteur(a) * valUnit(a); });
     var l = tous.filter(function (a) { return !q || norm(a.nom + ' ' + (a.reference || '') + ' ' + (S.fournisseurs[a.fournisseur_id] || '')).indexOf(q) >= 0; }).sort(function (a, b) { return a.nom.localeCompare(b.nom, 'fr'); });
     var h = '<div class="ban warn stk-cb"><b>' + nomEmp(c) + '</b> · ' + (der ? 'compté le ' + new Date(der).toLocaleDateString('fr-FR') + ' (' + (j ? 'il y a ' + j + ' j' : 'aujourd’hui') + ')' : 'jamais compté') + ' · ' + tous.length + ' ' + pl(tous.length, 'article') + ' · environ ' + eur(val)
       + '<br><span class="mu">Stock approximatif : dernier inventaire + sorties − retours depuis. Ce qui a été utilisé au fauteuil n’est pas déduit : le chiffre redevient exact à chaque inventaire.</span></div>';
@@ -5065,7 +5067,7 @@
   function vStockTous() {
     var q = norm(S.stockQ), F = S.stockF || '', fx = function (a, f) { return f === 'archive' ? true : f === 'nolieu' ? a.lieu_cabinets === false && a.lieu_ste !== true : filtreStock(a, f); };
     var l = (F === 'archive' ? S.archives : S.articles).filter(function (a) { return fx(a, F) && (!q || norm(a.nom + ' ' + (a.reference || '') + ' ' + (a.ref_fabricant || '') + ' ' + (S.fournisseurs[a.fournisseur_id] || '') + ' ' + (a.type_soins || '')).indexOf(q) >= 0); });
-    var val = S.articles.reduce(function (t, a) { return t + stockDe(a.id, 0) * (+a.cout_moyen || 0); }, 0);
+    var val = S.articles.reduce(function (t, a) { return t + stockDe(a.id, 0) * valUnit(a); }, 0);
     var nb = function (f) { return f === 'archive' ? S.archives.length : S.articles.filter(function (a) { return fx(a, f); }).length; };
     var h = S.artImp ? vImportArticles() : '';
     var k = function (f, v, lab, sous, cls) { return '<button class="stk-k ' + cls + (F === f ? ' on' : '') + '" data-go="stock:' + f + '" aria-pressed="' + (F === f) + '"><b>' + v + '</b><span>' + lab + '</span><small>' + sous + '</small></button>'; };
@@ -5131,7 +5133,7 @@
   function synthStock(a) {
     var f = facteur(a), r = stockDe(a.id, 0), cabs = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(function (c) { return Math.abs(stockDe(a.id, c)) > 1e-9; });
     if (Math.abs(r) < 1e-9 && !cabs.length) return '<div class="ban ok"><b>Aucun stock</b> : réserve, cabinets et Sté à 0.</div>';
-    var uc = cabs.reduce(function (t, c) { return t + stockDe(a.id, c); }, 0), cm = +a.cout_moyen || 0, val = r * cm + uc / f * cm, parts = [];
+    var uc = cabs.reduce(function (t, c) { return t + stockDe(a.id, c); }, 0), cm = valUnit(a), val = r * cm + uc / f * cm, parts = [];
     if (Math.abs(r) > 1e-9) parts.push(fr(r) + ' ' + uRes(a) + ' en réserve');
     if (cabs.length) parts.push(fr(uc) + ' u. dans ' + cabs.length + ' cabinet' + (cabs.length > 1 ? 's' : '') + ' (' + cabs.map(function (c) { return c === 9 ? 'Sté' : c; }).join(', ') + ')');
     return '<div class="ban warn"><b>En stock</b> : ' + parts.join(' + ') + (cm ? ' · valeur ≈ ' + eur(val) : '') + '.</div>';
@@ -5152,7 +5154,7 @@
       + '<dt>Lieux d’utilisation</dt><dd>' + lieuxTxt(a) + '</dd>'
       + '<dt>Type de soins</dt><dd>' + (a.type_soins ? esc(a.type_soins) : '<span class="mu">—</span>') + '</dd>'
       + '<dt>Seuil d’alerte</dt><dd>' + (a.sans_seuil ? 'aucun (voulu)' : +a.seuil > 0 ? fr(a.seuil) + ' ' + uRes(a) : '<span class="pill warn">à renseigner</span>') + '</dd>'
-      + '<dt>Coût moyen</dt><dd>' + eur(a.cout_moyen) + ' / ' + (a.conditionnement === 'BOITE' ? 'boîte' : 'unité') + '</dd></dl>'
+      + '<dt>Coût moyen</dt><dd>' + eur(valUnit(a)) + ' / ' + (a.conditionnement === 'BOITE' ? 'boîte' : 'unité') + (!(+a.cout_moyen > 0) && +a.prix > 0 ? ' <span class="mu">(prix du fournisseur, en attendant une réception)</span>' : '') + '</dd></dl>'
       + (F.cor ? vCorrection() : '<button class="btn l sm" data-act="cor">Corriger les quantités sans impact financier</button>') + '</div>';
     // commandes qui contiennent cet article
     var cms = S.commandes.filter(function (c) { return (S.lignes[c.id] || []).some(function (l) { return l.article_id === a.id; }); }), cEnc = cms.filter(function (c) { return c.statut === 'attente' || c.statut === 'partielle'; }), cAut = cms.filter(function (c) { return cEnc.indexOf(c) < 0; }).slice(0, 3);
@@ -5231,7 +5233,7 @@
         var hist = lignes.filter(function (l) { var o2 = anciens[l.fournisseur_id]; return l.prix > 0 && (!o2 || nb(o2.prix) !== l.prix); }).map(function (l) { return { article_id: id, fournisseur_id: l.fournisseur_id, date_prix: aujourdhui(), prix: l.prix, source: 'Saisie dans la fiche' }; });
         return sb.from('article_fournisseurs').insert(lignes).then(function (r2) {
           if (r2.error) throw r2.error;
-          var maj = { prix: lignes[0].prix }; if (nouv && lignes[0].prix) maj.cout_moyen = lignes[0].prix;
+          var maj = { prix: lignes[0].prix }; if ((nouv || !(+(S.byId[id] || {}).cout_moyen > 0)) && lignes[0].prix) maj.cout_moyen = lignes[0].prix;
           return Promise.all([sb.from('articles').update(maj).eq('id', id), hist.length ? sb.from('prix_historique').upsert(hist, { onConflict: 'article_id,fournisseur_id,date_prix,prix', ignoreDuplicates: true }) : Promise.resolve({})]).then(function () { return id; });
         });
       });
@@ -5837,7 +5839,7 @@
   function invFinLignes() {
     var fo = S.fournisseurs || {};
     return S.articles.map(function (a) {
-      var q = stockDe(a.id, 0), cu = +a.cout_moyen || 0;
+      var q = stockDe(a.id, 0), cu = valUnit(a);
       return { id: a.id, ref: a.reference && a.reference !== 'SR' ? a.reference : '', nom: a.nom, fo: fo[a.fournisseur_id] || '', u: uRes(a), q: q, cu: cu, v: Math.round(q * cu * 100) / 100 };
     }).filter(function (l) { return l.q !== 0; }).sort(function (a, b) { return (a.fo || 'zz').localeCompare(b.fo || 'zz') || a.nom.localeCompare(b.nom); });
   }
@@ -5976,7 +5978,7 @@
     var T = S.tdb, D = T.d, now = Date.now(), J = TDB_J;
     if (T.calc && T.calc.per === T.per && T.calc.lieu === T.lieu && T.calc.art === S.articles && T.calc.stk === S.stocks && T.calc.cmdR === S.commandes) return T.calc;
     var A = S.articles.filter(function (a) { return !a.archive; });
-    var cm = function (a) { return a ? +a.cout_moyen || 0 : 0; };
+    var cm = valUnit;
     var qr = function (m, a) { return m.quantite_reserve != null ? +m.quantite_reserve : (+m.quantite || 0) / facteur(a); };
     // 1. événements de consommation (sorties − retours), réceptions, écarts, positions de la réserve
     var E = [], der = {}, recep = [], ecarts = [], resMv = {};
