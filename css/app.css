@@ -2674,3 +2674,29 @@ button.oc-c:hover,button.oc-c:focus-visible,.oc-c.on{border-color:var(--navy)}
 .wf-det{margin:12px 0 0;font-size:14px;line-height:1.45}.wf-det code{font-size:13px}
 .wf-dt{display:flex;gap:6px;align-items:flex-start;margin-top:6px;padding:6px 10px;border-radius:8px;background:var(--kobg);color:var(--ko);font-size:13px;line-height:1.4}.wf-dt .ic{flex:none;margin-top:2px}
 .cg2-ap{font-style:normal;font-size:10.5px;font-weight:700;color:#8b7a3a;background:#f4efdf;border-radius:6px;padding:0 5px;margin-left:5px;vertical-align:1px}
+/* Occupation des cabinets : mois et année */
+.oc-ch{margin:0 0 8px}
+.oc-sc{overflow-x:auto;max-width:100%}
+.oc-ms{gap:10px}
+.oc-mg{display:grid;gap:8px 4px;align-items:center;min-width:760px}
+.oc-mh{display:flex;flex-direction:column;align-items:center;border:none;background:none;font:inherit;color:var(--navy);padding:2px 0;border-radius:8px;cursor:pointer;line-height:1.1}
+.oc-mh small{font-size:10.5px;color:var(--mute);font-weight:700}.oc-mh b{font-size:13.5px}
+.oc-mh:hover{background:var(--soft)}.oc-mh.auj b{color:#8b7a3a;text-decoration:underline;text-decoration-color:var(--gold);text-decoration-thickness:2px}
+.oc-mn{font-weight:700;color:var(--navy);font-size:14px;white-space:nowrap}.oc-mn.tot{color:var(--ink)}
+.oc-mc{height:34px;display:flex;flex-direction:column;gap:2px;padding:0;border:none;background:none;cursor:pointer;border-radius:6px}
+.oc-mc i{flex:1;border-radius:4px;display:block}
+.oc-mc i.occ{background:#bcd6ee}.oc-mc i.lib{background:#dff0e5}.oc-mc i.av{background:#f6cfa8}.oc-mc i.ko{background:#f1b5b0}
+.oc-mc:hover{box-shadow:0 0 0 2px var(--gold)}
+.oc-mc.fer{height:34px;border-radius:6px;background:repeating-linear-gradient(45deg,#eef0f2 0 5px,#f7f8f9 5px 10px);cursor:default}
+.oc-yg{display:grid;grid-template-columns:76px repeat(12,minmax(48px,1fr)) 64px;gap:4px;align-items:center;min-width:820px}
+.oc-yh{border:none;background:none;font:inherit;font-size:13px;font-weight:700;color:var(--mute);padding:4px 0;border-radius:8px;cursor:pointer;text-align:center}
+.oc-yh:hover{background:var(--soft);color:var(--navy)}.oc-yh.auj{color:#8b7a3a}.oc-yh.r{cursor:default;text-align:right}.oc-yh.r:hover{background:none;color:var(--mute)}
+.oc-yc{height:38px;border:none;border-radius:8px;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
+.oc-yc.prev{font-style:italic;box-shadow:inset 0 0 0 1.5px rgba(201,185,122,.8)}
+.oc-yc:hover{box-shadow:0 0 0 2px var(--gold)}
+.oc-yt{text-align:right;font-size:14px}
+.oc-pd{background:#fff;border-radius:18px;padding:14px 16px;box-shadow:0 1px 3px rgba(31,42,51,.08);display:flex;flex-direction:column;gap:6px;margin-top:14px}
+.oc-pd .oc-st{margin:0 0 4px}
+.oc-pdr{display:grid;grid-template-columns:130px minmax(80px,1fr) 150px minmax(0,1.4fr);gap:10px;align-items:center;font-size:14px;min-height:34px}
+.oc-pdn{font-weight:700;text-align:right}
+@media (max-width:700px){.oc-pdr{grid-template-columns:110px minmax(0,1fr);}.oc-pdr .mu{grid-column:1/-1;font-size:12.5px}.oc-pdn{text-align:left}}

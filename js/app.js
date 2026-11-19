@@ -2191,6 +2191,86 @@
     for (var i = 0; i < 5; i++) { var J = occJour(addJ(lundi, i)); if (J.ferme) continue; for (var c2 = 1; c2 <= 8; c2++) ['AM', 'PM'].forEach(function (k) { T.c[c2].tot++; T.tot++; if (J.cab[c2][k].length) { T.c[c2].occ++; T.occ++; } }); }
     return T;
   }
+  // Planning d'une période entière (mois ou année), chargé une fois : sans planning saisi, on retombe sur les semaines types
+  function occAssurerPer(de, a) {
+    var P = S.pl = S.pl || { lundi: lundiDe(dIso(new Date())), rows: {} }, O = S.occ, k = de + '|' + a;
+    O.okP = O.okP || {};
+    if (O.okP[k] || O.chargeP) return;
+    O.chargeP = k;
+    toutLire('planning', '*', function (q) { return q.gte('jour', de).lte('jour', a).order('jour'); }).then(function (rows) {
+      P.rows = P.rows || {}; rows.forEach(function (r) { P.rows[cleCase(r.equipe_id, String(r.jour).slice(0, 10), r.demi)] = r; });
+      O.ref = P.rows; O.okP[k] = true; O.chargeP = null; O.stats = null; JOUR_CACHE = {}; if (S.tab === 'occup') render();
+    }).catch(function () { O.okP[k] = true; O.chargeP = null; render(); });
+  }
+  // Statistiques d'occupation jour par jour sur une période : par cabinet, par mois, par dentiste
+  function occStats(de, a) {
+    var O = S.occ, P = S.pl || {}, k = de + '|' + a + '|' + Object.keys(P.rows || {}).length + '|' + (S.dentistes || []).length;
+    if (O.stats && O.stats.k === k) return O.stats;
+    var R = { k: k, jours: {}, c: {}, m: {}, d: {}, tot: { occ: 0, tot: 0 } };
+    for (var c = 1; c <= 8; c++) R.c[c] = { occ: 0, tot: 0 };
+    for (var iso = de; iso <= a; iso = addJ(iso, 1)) {
+      var J = occJour(iso), mk = iso.slice(0, 7); R.jours[iso] = J;
+      if (J.ferme) continue;
+      var M = R.m[mk] = R.m[mk] || { tot: { occ: 0, tot: 0 }, c: {} };
+      for (var c2 = 1; c2 <= 8; c2++) {
+        var mc = M.c[c2] = M.c[c2] || { occ: 0, tot: 0 };
+        ['AM', 'PM'].forEach(function (dm) {
+          var l = J.cab[c2][dm]; mc.tot++; M.tot.tot++; R.c[c2].tot++; R.tot.tot++;
+          if (l.length) { mc.occ++; M.tot.occ++; R.c[c2].occ++; R.tot.occ++; }
+          l.forEach(function (x) { var D = R.d[x.d.id] = R.d[x.d.id] || { d: x.d, n: 0, cab: {}, seul: 0 }; D.n++; D.cab[c2] = (D.cab[c2] || 0) + 1; if (!x.as.length) D.seul++; });
+        });
+      }
+    }
+    O.stats = R; return R;
+  }
+  function occPct(x) { return x && x.tot ? Math.round(x.occ * 100 / x.tot) : 0; }
+  function occCartes(T, titre) {
+    return '<h3 class="oc-st">' + titre + '</h3><section class="oc-tx">' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { var x = T.c[c]; return '<div class="oc-t"><span>Cab. ' + c + '</span><b>' + occPct(x) + ' %</b><i><em style="width:' + occPct(x) + '%"></em></i><small>' + x.occ + ' demi-journée' + (x.occ > 1 ? 's' : '') + ' sur ' + x.tot + '</small></div>'; }).join('')
+      + '<div class="oc-t tot"><span>Centre</span><b>' + occPct(T.tot) + ' %</b><i><em style="width:' + occPct(T.tot) + '%"></em></i><small>' + T.tot.occ + ' demi-journées sur ' + T.tot.tot + '</small></div></section>';
+  }
+  function occParDent(R, quand) {
+    var L = Object.keys(R.d).map(function (k) { return R.d[k]; }).sort(function (a, b) { return b.n - a.n; });
+    if (!L.length) return '';
+    var mx = L[0].n;
+    return '<section class="oc-pd"><h3 class="oc-st">Par dentiste · ' + quand + '</h3>' + L.map(function (D) {
+      var cabs = Object.keys(D.cab).sort(function (a, b) { return D.cab[b] - D.cab[a]; });
+      return '<div class="oc-pdr"><b>Dr ' + esc(D.d.prenom) + '</b><span class="tdb-bb"><span style="width:' + (D.n / mx * 100).toFixed(1) + '%"></span></span><span class="oc-pdn">' + D.n + ' demi-journée' + (D.n > 1 ? 's' : '') + '</span><span class="mu">' + cabs.map(function (c) { return 'cab. ' + c + (cabs.length > 1 ? ' (' + D.cab[c] + ')' : ''); }).join(', ') + (D.seul ? ' · ' + D.seul + ' sans assistante' : '') + '</span></div>';
+    }).join('') + '</section>';
+  }
+  function occDemi(l) { return !l.length ? 'lib' : l.length > 1 ? 'ko' : l[0].as.length ? 'occ' : 'av'; }
+  function occTitreDemi(l) { return !l.length ? 'libre' : l.map(function (x) { return 'Dr ' + x.d.prenom + (x.as.length ? ' avec ' + x.as.map(function (p) { return p.prenom; }).join(', ') : ' sans assistante'); }).join(' + '); }
+  function vOccMois(O) {
+    var m = O.jour.slice(0, 7), d1 = m + '-01', dN = dIso(new Date(+m.slice(0, 4), +m.slice(5, 7), 0)), R = occStats(d1, dN);
+    var jours = []; for (var iso = d1; iso <= dN; iso = addJ(iso, 1)) { var j = jourSem(iso); if (j >= 1 && j <= 5) jours.push(iso); }
+    var M = R.m[m] || { tot: { occ: 0, tot: 0 }, c: {} }, T = { c: {}, tot: M.tot }; for (var c = 1; c <= 8; c++) T.c[c] = M.c[c] || { occ: 0, tot: 0 };
+    var nomM = MOIS[+m.slice(5, 7) - 1], auj = dIso(new Date());
+    var tpl = '64px', col = {}, k = 2; jours.forEach(function (iso, n) { if (n && jourSem(iso) === 1) { tpl += ' 8px'; k++; } col[iso] = k++; tpl += ' minmax(26px,1fr)'; });
+    var g = '<div class="oc-mg" style="grid-template-columns:' + tpl + '"><span></span>' + jours.map(function (iso) { return '<button class="oc-mh' + (iso === auj ? ' auj' : '') + '" style="grid-column:' + col[iso] + '" data-ocjour="' + iso + '" title="Voir le ' + periode(iso, iso).replace(/^le /, '') + '"><small>' + 'LMMJV'[jourSem(iso) - 1] + '</small><b>' + (+iso.slice(8)) + '</b></button>'; }).join('');
+    for (var c2 = 1; c2 <= 8; c2++) {
+      g += '<span class="oc-mn" style="grid-column:1">Cab. ' + c2 + '</span>' + jours.map(function (iso) {
+        var J = R.jours[iso];
+        if (J.ferme) return '<span class="oc-mc fer" style="grid-column:' + col[iso] + '" title="' + esc(J.raison) + '"></span>';
+        var am = J.cab[c2].AM, pm = J.cab[c2].PM;
+        return '<button class="oc-mc" style="grid-column:' + col[iso] + '" data-ocjour="' + iso + '" title="Cab. ' + c2 + ' · ' + esc(JOURS[jourSem(iso)].toLowerCase() + ' ' + (+iso.slice(8))) + '&#10;matin : ' + esc(occTitreDemi(am)) + '&#10;après-midi : ' + esc(occTitreDemi(pm)) + '"><i class="' + occDemi(am) + '"></i><i class="' + occDemi(pm) + '"></i></button>';
+      }).join('');
+    }
+    g += '</div>';
+    return occCartes(T, 'Taux d’occupation · ' + nomM)
+      + '<section class="oc-w oc-ms"><div class="oc-sc">' + g + '</div><p class="oc-leg"><i class="occ"></i>occupé<i class="lib"></i>libre<i class="av"></i>dentiste sans assistante<i class="ko"></i>deux dentistes<span class="grow"></span>Chaque case : matin en haut, après-midi en bas. Touchez un jour pour le détail.</p></section>'
+      + occParDent(R, nomM);
+  }
+  function vOccAn(O) {
+    var y = O.jour.slice(0, 4), R = occStats(y + '-01-01', y + '-12-31'), mAuj = dIso(new Date()).slice(0, 7);
+    var T = { c: R.c, tot: R.tot };
+    var cel = function (x, mk) { var p = occPct(x), l = Math.round(96 - p / 100 * 62); return '<button class="oc-yc' + (mk > mAuj ? ' prev' : '') + '" data-ocmois="' + mk + '" style="background:hsl(205,28%,' + l + '%);color:' + (l < 62 ? '#fff' : 'var(--ink)') + '" title="' + (x && x.tot ? x.occ + ' demi-journées occupées sur ' + x.tot : 'aucun jour ouvré') + (mk > mAuj ? ' · prévision' : '') + '">' + (x && x.tot ? p + ' %' : '—') + '</button>'; };
+    var mks = MOIS_C.map(function (n, i) { return y + '-' + ('0' + (i + 1)).slice(-2); });
+    var g = '<div class="oc-yg"><span></span>' + mks.map(function (mk, i) { return '<button class="oc-yh' + (mk === mAuj ? ' auj' : '') + '" data-ocmois="' + mk + '">' + MOIS_C[i] + '</button>'; }).join('') + '<span class="oc-yh r">Année</span>';
+    for (var c = 1; c <= 8; c++) g += '<span class="oc-mn">Cab. ' + c + '</span>' + mks.map(function (mk) { return cel((R.m[mk] || { c: {} }).c[c], mk); }).join('') + '<b class="oc-yt">' + occPct(R.c[c]) + ' %</b>';
+    g += '<span class="oc-mn tot">Centre</span>' + mks.map(function (mk) { return cel((R.m[mk] || {}).tot, mk); }).join('') + '<b class="oc-yt">' + occPct(R.tot) + ' %</b></div>';
+    return occCartes(T, 'Taux d’occupation · année ' + y)
+      + '<section class="oc-w"><h3 class="oc-st" style="margin:0">Mois par mois</h3><div class="oc-sc">' + g + '</div><p class="oc-leg">Plus la case est foncée, plus le cabinet est occupé.' + (y + '-12' > mAuj ? ' Les mois à venir (en italique) sont une prévision d’après les semaines types et les absences déjà posées.' : '') + ' Sans planning saisi (par exemple avant la mise en service de l’appli), le calcul suit les semaines types.' + '<span class="grow"></span>Touchez un mois pour le détail.</p></section>'
+      + occParDent(R, 'année ' + y);
+  }
   function occCase(l, iso, court) {
     if (!l.length) return '<div class="oc-c lib">' + (court ? '' : '<b>Libre</b>') + '</div>';
     if (l.length > 1) return court ? '<div class="oc-c ko" title="' + esc(l.map(function (x) { return 'Dr ' + x.d.prenom; }).join(', ')) + '"><b>' + l.length + ' dent.</b></div>'
@@ -2200,18 +2280,19 @@
     return '<button class="oc-c ' + (seul ? 'av' : 'occ') + (String(S.occ.ed) === String(x.d.id) ? ' on' : '') + '" data-oced="' + x.d.id + '"><b>Dr ' + esc(x.d.prenom) + '</b><span>' + (seul ? 'sans assistante' : esc(x.as.map(function (p) { return p.prenom; }).join(', '))) + '</span>' + (x.dep ? '<small>part à ' + esc(x.dep.replace(':', 'h').replace(/h00$/, 'h')) + '</small>' : x.hors ? '<small>d’après le planning</small>' : x.src === 'jour' ? '<small>ce jour seulement</small>' : x.src === 'assistante' ? '<small>d’après l’assistante</small>' : '') + '</button>';
   }
   function vOccup() {
-    var O = occInit(), lundi = lundiDe(O.jour), sem = O.mode === 'semaine', dJ = dDe(O.jour);
+    var O = occInit(), lundi = lundiDe(O.jour), sem = O.mode === 'semaine', mo = O.mode === 'mois', an = O.mode === 'an', dJ = dDe(O.jour);
     var h = hdA({ back: ['data-tab="hub"', 'Accueil'], t: 'Occupation des cabinets', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps oc-b">';
     if (!S.dentistes) return h + '<p class="mu">Chargement du planning…</p></div>';
-    occAssurer(lundi);
-    var titre = sem ? 'Semaine ' + periode(lundi, addJ(lundi, 4)) : dJ.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^./, function (c) { return c.toUpperCase(); });
-    var auj0 = occOuvre(dIso(new Date()), 1), surAuj = sem ? lundiDe(auj0) === lundi : O.jour === auj0;
+    if (mo) occAssurerPer(O.jour.slice(0, 7) + '-01', dIso(new Date(dJ.getFullYear(), dJ.getMonth() + 1, 0))); else if (an) occAssurerPer(O.jour.slice(0, 4) + '-01-01', O.jour.slice(0, 4) + '-12-31'); else occAssurer(lundi);
+    var titre = an ? 'Année ' + O.jour.slice(0, 4) : mo ? (MOIS[dJ.getMonth()] + ' ' + dJ.getFullYear()).replace(/^./, function (c) { return c.toUpperCase(); }) : sem ? 'Semaine ' + periode(lundi, addJ(lundi, 4)) : dJ.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^./, function (c) { return c.toUpperCase(); });
+    var auj0 = occOuvre(dIso(new Date()), 1), surAuj = an ? auj0.slice(0, 4) === O.jour.slice(0, 4) : mo ? auj0.slice(0, 7) === O.jour.slice(0, 7) : sem ? lundiDe(auj0) === lundi : O.jour === auj0;
     // Flèches et « Aujourd'hui » toujours au même endroit, à gauche : le titre peut changer de longueur sans les déplacer
-    h += '<div class="oc-bar">' + navDate({ cle: 'ocj', pas: sem ? 'semaine' : 'jour', clair: true, titre: titre, val: sem ? lundi : O.jour, auj: surAuj ? '' : sem ? 'Cette semaine' : 'Aujourd’hui', aujv: 'auj' })
-      + '<span class="grow"></span><span class="cm-seg" role="tablist" aria-label="Période"><button role="tab" aria-selected="' + !sem + '" class="' + (!sem ? 'on' : '') + '" data-ocm="jour">Jour</button><button role="tab" aria-selected="' + sem + '" class="' + (sem ? 'on' : '') + '" data-ocm="semaine">Semaine</button></span></div>';
+    h += '<div class="oc-bar">' + navDate({ cle: 'ocj', pas: an ? 'an' : mo ? 'mois' : sem ? 'semaine' : 'jour', clair: true, titre: titre, val: sem ? lundi : O.jour, auj: surAuj ? '' : an ? 'Cette année' : mo ? 'Ce mois-ci' : sem ? 'Cette semaine' : 'Aujourd’hui', aujv: 'auj' })
+      + '<span class="grow"></span><span class="cm-seg" role="tablist" aria-label="Période"><button role="tab" aria-selected="' + (!sem && !mo && !an) + '" class="' + (!sem && !mo && !an ? 'on' : '') + '" data-ocm="jour">Jour</button><button role="tab" aria-selected="' + sem + '" class="' + (sem ? 'on' : '') + '" data-ocm="semaine">Semaine</button><button role="tab" aria-selected="' + mo + '" class="' + (mo ? 'on' : '') + '" data-ocm="mois">Mois</button><button role="tab" aria-selected="' + an + '" class="' + (an ? 'on' : '') + '" data-ocm="an">Année</button></span></div>';
     var sansCab = (S.dentistes || []).filter(function (d) { return d.actif && !+d.cabinet; }).length;
     if (!occColonne()) h += '<div class="ban info oc-ban"><b>Cabinets déduits des assistantes.</b> Le cabinet affiché est celui de l’assistante placée avec le dentiste : il peut être faux en cas de remplacement. Pour donner un cabinet à chaque dentiste, la base du site doit recevoir la mise à jour 030.</div>';
     else if (sansCab) h += '<div class="ban info oc-ban"><b>' + sansCab + ' dentiste' + (sansCab > 1 ? 's' : '') + ' sans cabinet habituel.</b> Pour eux, le cabinet est déduit de celui de l’assistante. <button class="lien" data-tab="pdent">Renseigner les cabinets</button></div>';
+    if (mo || an) { var chP = O.chargeP; return h + (chP ? '<p class="mu oc-ch">Calcul de la période…</p>' : '') + (mo ? vOccMois(O) : vOccAn(O)) + '</div>'; }
     var T = occTaux(lundi), pc = function (x) { return x.tot ? Math.round(x.occ * 100 / x.tot) : 0; };
     var tx = '<h3 class="oc-st">' + (sem ? 'Taux d’occupation de la semaine' : 'Semaine ' + periode(lundi, addJ(lundi, 4)) + ' · taux d’occupation') + '</h3><section class="oc-tx">' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { var x = T.c[c]; return '<div class="oc-t"><span>Cab. ' + c + '</span><b>' + pc(x) + ' %</b><i><em style="width:' + pc(x) + '%"></em></i><small>' + x.occ + ' demi-journée' + (x.occ > 1 ? 's' : '') + ' sur ' + x.tot + '</small></div>'; }).join('')
       + '<div class="oc-t tot"><span>Centre</span><b>' + pc(T) + ' %</b><i><em style="width:' + pc(T) + '%"></em></i><small>' + T.occ + ' demi-journées sur ' + T.tot + '</small></div></section>';
@@ -2996,7 +3077,7 @@
   // Titre de la semaine : une touche ouvre un calendrier pour aller directement à une semaine
   // ---------- Choix de période commun à tout le site ----------
   // (‹)(›) toujours à gauche, puis la date (clic = calendrier), puis le retour à aujourd'hui. Les flèches ne bougent jamais.
-  var ND_LIB = { jour: ['Jour précédent', 'Jour suivant', 'Choisir un jour dans le calendrier'], semaine: ['Semaine précédente', 'Semaine suivante', 'Choisir une semaine dans le calendrier'], mois: ['Mois précédent', 'Mois suivant', 'Choisir un mois dans le calendrier'] };
+  var ND_LIB = { jour: ['Jour précédent', 'Jour suivant', 'Choisir un jour dans le calendrier'], semaine: ['Semaine précédente', 'Semaine suivante', 'Choisir une semaine dans le calendrier'], mois: ['Mois précédent', 'Mois suivant', 'Choisir un mois dans le calendrier'], an: ['Année précédente', 'Année suivante', 'Choisir une année dans le calendrier'] };
   function navDate(o) {
     var L = ND_LIB[o.pas] || ND_LIB.semaine, st = o.pasP || 1, fl = o.fleches !== false, v = o.clair ? ' gris' : '';
     var fb = function (sens, lab, ic) { return '<button class="h-rond nd-b' + v + (fl ? '' : ' cache') + '" data-' + o.cle + '="' + (sens * st) + '" aria-label="' + lab + '"' + (fl ? '' : ' tabindex="-1" aria-hidden="true"') + '>' + ico(ic, 20, 2.4) + '</button>'; };
@@ -7133,8 +7214,9 @@
     if (d.rglnew) return changerFiche(d.rglnew, 'new');
     if (d.pf) { ouvrirPers(d.pf); if (d.pfo && S.pf) { S.pf.onglet = d.pfo; render(); } return; }
     if (d.dent) return ouvrirDent(d.dent);
-    if (d.ocj) { var OC = S.occ; if (d.ocj === 'auj') OC.jour = occOuvre(dIso(new Date()), 1); else if (OC.mode === 'semaine') OC.jour = addJ(lundiDe(OC.jour), 7 * +d.ocj); else OC.jour = occOuvre(addJ(OC.jour, +d.ocj), +d.ocj); OC.ed = null; render(); return; }
+    if (d.ocj) { var OC = S.occ, dj0 = dDe(OC.jour); if (d.ocj === 'auj') OC.jour = occOuvre(dIso(new Date()), 1); else if (OC.mode === 'mois') OC.jour = occOuvre(dIso(new Date(dj0.getFullYear(), dj0.getMonth() + +d.ocj, 1)), 1); else if (OC.mode === 'an') OC.jour = occOuvre(dIso(new Date(dj0.getFullYear() + +d.ocj, dj0.getMonth(), 1)), 1); else if (OC.mode === 'semaine') OC.jour = addJ(lundiDe(OC.jour), 7 * +d.ocj); else OC.jour = occOuvre(addJ(OC.jour, +d.ocj), +d.ocj); OC.ed = null; render(); return; }
     if (d.ocm) { S.occ.mode = d.ocm; S.occ.ed = null; render(); return; }
+    if (d.ocmois) { S.occ.jour = occOuvre(d.ocmois + '-01', 1); S.occ.mode = 'mois'; S.occ.ed = null; render(); window.scrollTo(0, 0); return; }
     if (d.ocjour) { S.occ.jour = d.ocjour; S.occ.mode = 'jour'; S.occ.ed = null; render(); window.scrollTo(0, 0); return; }
     if (d.oced && !occColonne()) { toast('Pour choisir le cabinet d’un dentiste, la base doit recevoir la mise à jour 030'); return; }
     if (d.oced) { S.occ.ed = String(S.occ.ed) === d.oced ? null : d.oced; render(); return; }
