@@ -3214,12 +3214,12 @@
     else if (R.etat === 'simulation_coupee') { t = 'Simulation coupée'; g = ''; sous = 'L’heure simulée n’est pas autorisée. La référente peut l’activer dans Pointage (site de test).'; }
     else if (R.etat === 'doublon') { t = 'Déjà enregistré'; g = ''; sous = 'Votre pointage vient d’être pris en compte, inutile de scanner deux fois.' + (R.arrivee ? ' Arrivée : ' + hTs(R.arrivee) + (R.sortie ? ', sortie : ' + hTs(R.sortie) : '') + '.' : ''); }
     else if (R.etat === 'hors_ligne') { t = 'Pas de réseau'; g = ''; sous = 'Votre ' + (R.g.sens === 'arrivee' ? 'arrivée' : 'sortie') + ' de ' + R.g.heure.replace(':', ' h ') + ' est gardée sur ce téléphone. Elle sera transmise à la référente dès que le réseau revient (vous n’avez rien à faire).'; }
-    else if (R.etat === 'hors_centre') { t = 'Pas sur le Wi-Fi du centre'; g = ''; sous = 'Le pointage n’est possible que depuis le Wi-Fi du centre. Connectez votre téléphone au Wi-Fi du centre, puis scannez de nouveau.'; }
+    else if (R.etat === 'hors_centre') { t = 'Pas sur le Wi-Fi du centre'; g = ''; sous = 'Le pointage n’est possible que depuis le Wi-Fi du centre. Connectez votre téléphone au Wi-Fi du centre, puis scannez de nouveau.' + (/iPhone|iPad|iPod/.test(navigator.userAgent || '') ? ' Sur iPhone, coupez aussi le Relais privé iCloud pour ce Wi-Fi (Réglages › Wi-Fi › ⓘ).' : ''); }
     else if (R.etat === 'qr_perime') { t = 'QR code périmé'; g = ''; sous = 'Ce QR code n’est plus valable. Scannez celui affiché au centre.'; }
     else if (R.etat === 'non_soumis') { t = 'Pas de pointage pour vous'; g = ''; sous = 'Votre fiche n’est pas soumise au pointage journalier.'; }
     else if (R.etat === 'sans_fiche') { t = 'Compte non relié'; g = ''; sous = 'Votre compte n’est pas encore relié à votre fiche. Prévenez la référente.'; }
     else { t = 'Pointage impossible'; g = ''; sous = esc(R.msg || 'Réessayez dans un instant.'); }
-    if (R.hors_centre && (R.etat === 'arrivee' || R.etat === 'sortie')) sous = 'Pointage fait hors du Wi-Fi du centre : la référente va le vérifier. Pensez à vous connecter au Wi-Fi du centre la prochaine fois.';
+    if (R.hors_centre && (R.etat === 'arrivee' || R.etat === 'sortie')) sous = 'Pointage fait hors du Wi-Fi du centre : la référente va le vérifier. Pensez à vous connecter au Wi-Fi du centre la prochaine fois.' + (/iPhone|iPad|iPod/.test(navigator.userAgent || '') ? ' Sur iPhone, coupez aussi le Relais privé iCloud pour ce Wi-Fi (Réglages › Wi-Fi › ⓘ).' : '');
     sous = sous.replace(/ ([!?:;])/g, '\u00a0$1');   // espace insécable : la ponctuation ne passe jamais seule à la ligne
     return '<div class="pt-res ' + (R.busy ? '' : ok ? 'ok' : 'ko') + '"><div class="pt-res-in">' + (R.busy ? '' : '<span class="pt-ic">' + ico(ok ? 'ok' : R.etat === 'doublon' ? 'attente' : 'croix', 44, 2.4) + '</span>')
       + '<h1>' + t + '</h1>' + (g ? '<p class="pt-h">' + g + '</p>' : '') + (sous ? '<p>' + sous + '</p>' : '') + (R.busy ? '' : '<button class="a-btn navy" data-act="ptok">Continuer</button>') + '</div></div>';
@@ -3633,7 +3633,8 @@
     var E = S.ptEd, r = S.ptg.rows[E.eid + '|' + E.jour]; if (!r) return;
     if (retenir) {
       var cle0 = r.arrivee_res || r.sortie_res;
-      if (ZSCALER.test(cle0 || '')) { await fenetre({ titre: 'Adresse non reconnaissable', html: '<p>Ce pointage est passé par <b>Zscaler</b> (<code>' + esc(cle0) + '</code>), un filtre de sécurité dont l’adresse change tous les jours : l’enregistrer ne servirait à rien. Le pointage peut quand même être accepté avec « Accepter ».</p><p class="mu">Pointez depuis un téléphone connecté au Wi-Fi du centre, pas depuis un ordinateur équipé de ce filtre.</p>', ok: 'Compris' }); return; }
+      var dt = adresseDouteuse(cle0);
+      if (dt) { await fenetre({ titre: 'Ce n’est pas le Wi-Fi du centre', html: '<p>Ce pointage est arrivé par <b>' + dt.t + '</b> (<code>' + esc(cle0) + '</code>) : ' + dt.d + '. L’enregistrer ne servirait à rien et laisserait pointer « au centre » depuis n’importe où.</p><p>Le pointage peut quand même être accepté avec « Accepter ».</p><p class="mu">' + (dt.k === 'zscaler' ? 'Pointez depuis un téléphone connecté au Wi-Fi du centre, pas depuis un ordinateur équipé de ce filtre.' : dt.k === 'relais' ? 'Sur l’iPhone : Réglages › Wi-Fi › ⓘ à côté du Wi-Fi du centre › désactiver « Relais privé iCloud » et « Limiter le suivi de l’adresse IP ».' : 'Le téléphone doit être connecté au Wi-Fi du centre au moment du scan (Wi-Fi activé, mot de passe enregistré).') + '</p>', ok: 'Compris' }); return; }
       var nom = await fenetre({ titre: 'Reconnaître ce Wi-Fi ?', texte: 'Les prochains pointages faits depuis ce réseau seront acceptés comme « au centre ». Ne le faites que si la personne était bien au centre.', ok: 'Reconnaître', non: 'Annuler' });
       if (!nom) return;
       var w = await sb.rpc('wifi_ajouter', { p_nom: 'Wi-Fi du centre (reconnu le ' + dateCourte(dIso(new Date())) + ')', p_cle: cle0 }); if (w.error) { toast(msgErr(w.error)); return; }
@@ -5712,7 +5713,7 @@
       + '</section>';
     if (!S.wfInfo) chargerInfosWifi();
     h += tuileInfosWifi(W, rs);
-    h += '<section class="card wf-s"><h2 class="a-jour">Wi-Fi enregistrés · ' + rs.length + '</h2>' + (rs.length ? rs.map(function (x) { return '<div class="wf-r"><span class="grow"><b>' + esc(x.nom) + (x.op ? ' <em class="wf-op">' + esc(x.op) + '</em>' : '') + ' <em class="wf-op wf-ty">' + typeWifi(x.cle) + '</em></b><span class="mu"><code>' + esc(x.cle) + '</code> · enregistré le ' + new Date(x.le).toLocaleDateString('fr-FR') + (x.par ? ' par ' + esc(nomProfil(x.par)) : '') + (x.cle === W.actuel ? ' · c’est le réseau actuel' : '') + '</span></span><button class="btn l sm" data-wifimod="' + esc(x.cle) + '">Modifier</button><button class="btn l sm" data-wifirm="' + esc(x.cle) + '">Retirer</button></div>'; }).join('') : '<p class="mu" style="margin:0">Aucun pour l’instant.</p>')
+    h += '<section class="card wf-s"><h2 class="a-jour">Wi-Fi enregistrés · ' + rs.length + '</h2>' + (rs.length ? rs.map(function (x) { return '<div class="wf-r"><span class="grow"><b>' + esc(x.nom) + (x.op ? ' <em class="wf-op">' + esc(x.op) + '</em>' : '') + ' <em class="wf-op wf-ty">' + typeWifi(x.cle) + '</em></b><span class="mu"><code>' + esc(x.cle) + '</code> · enregistré le ' + new Date(x.le).toLocaleDateString('fr-FR') + (x.par ? ' par ' + esc(nomProfil(x.par)) : '') + (x.cle === W.actuel ? ' · c’est le réseau actuel' : '') + '</span>' + (adresseDouteuse(x.cle) ? '<span class="wf-dt">' + ico('attente', 15, 2.4) + '<span><b>' + adresseDouteuse(x.cle).t + ' : à retirer.</b> Ce n’est pas l’adresse de la box : ' + adresseDouteuse(x.cle).d + '. L’avoir enregistrée laisse pointer « au centre » depuis n’importe où.</span></span>' : '') + '</span><button class="btn l sm" data-wifimod="' + esc(x.cle) + '">Modifier</button><button class="btn l sm" data-wifirm="' + esc(x.cle) + '">Retirer</button></div>'; }).join('') : '<p class="mu" style="margin:0">Aucun pour l’instant.</p>')
       + (rs.length && !(rs.some(function (x) { return typeWifi(x.cle) === 'IPv4'; }) && rs.some(function (x) { return typeWifi(x.cle) === 'IPv6'; })) ? '<div class="ban info wf-2"><b>Une seule adresse de la box est enregistrée (' + typeWifi(rs[0].cle) + ').</b> Une box a deux adresses, IPv4 et IPv6 : un téléphone qui arrive par l’autre ne serait pas reconnu. ' + (ici ? '<button class="btn sm" data-act="wifi2"' + (S.wifi2 ? ' disabled' : '') + '>' + (S.wifi2 ? 'Recherche…' : 'Ajouter l’autre adresse') + '</button>' : 'À compléter sur place, depuis un appareil connecté au Wi-Fi du centre.') + '</div>' : '')
       + '<button class="h-csup wf-raz" data-act="wifiraz">' + ico('poubelle', 18, 2) + 'Réinitialiser le Wi-Fi (changement de box)</button></section>';
     return h + '</div>';
@@ -5756,6 +5757,14 @@
   // Cet appareil sort-il sur internet directement par la box ? Sinon (filtre de sécurité type Zscaler, VPN, Relais privé iCloud),
   // l'adresse vue par le serveur n'est pas celle de la box et change souvent : inutilisable pour reconnaître le centre.
   var ZSCALER = /^(147\.161\.|165\.225\.|170\.85\.|136\.226\.|185\.46\.21[2-5]\.|104\.129\.|89\.167\.131\.|94\.188\.131\.)/;
+  // Adresses qui ne peuvent pas être celle d'une box : intermédiaires partagés par des milliers de personnes, ou réseau mobile
+  function adresseDouteuse(c) {
+    c = String(c || '');
+    if (ZSCALER.test(c)) return { k: 'zscaler', t: 'Zscaler (filtre de sécurité)', d: 'adresse d’un filtre de sécurité installé par un service informatique : elle change tous les jours' };
+    if (/^(172\.(22[4-9]|23[0-9])\.|104\.28\.|146\.75\.|140\.248\.)/.test(c)) return { k: 'relais', t: 'Relais privé iCloud', d: 'adresse du Relais privé iCloud d’un iPhone : partagée par des milliers d’utilisateurs dans toute la France, elle change sans cesse' };
+    if (/^92\.184\./.test(c)) return { k: 'mobile', t: '4G / 5G Orange', d: 'adresse du réseau mobile Orange (téléphone en 4G / 5G, pas sur le Wi-Fi) : partagée par de nombreux abonnés' };
+    return null;
+  }
   function wifiDetour(W, I) {
     if (!W || !W.actuel || !I || I.charge || !(I.v4 || I.v6)) return null;
     if (W.actuel === I.v4 || W.actuel === I.v6) return null;
