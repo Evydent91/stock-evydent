@@ -3632,7 +3632,9 @@
   async function verifierHorsCentre(ok, retenir) {
     var E = S.ptEd, r = S.ptg.rows[E.eid + '|' + E.jour]; if (!r) return;
     if (retenir) {
-      var cle0 = r.arrivee_res || r.sortie_res, nom = await fenetre({ titre: 'Reconnaître ce Wi-Fi ?', texte: 'Les prochains pointages faits depuis ce réseau seront acceptés comme « au centre ». Ne le faites que si la personne était bien au centre.', ok: 'Reconnaître', non: 'Annuler' });
+      var cle0 = r.arrivee_res || r.sortie_res;
+      if (ZSCALER.test(cle0 || '')) { await fenetre({ titre: 'Adresse non reconnaissable', html: '<p>Ce pointage est passé par <b>Zscaler</b> (<code>' + esc(cle0) + '</code>), un filtre de sécurité dont l’adresse change tous les jours : l’enregistrer ne servirait à rien. Le pointage peut quand même être accepté avec « Accepter ».</p><p class="mu">Pointez depuis un téléphone connecté au Wi-Fi du centre, pas depuis un ordinateur équipé de ce filtre.</p>', ok: 'Compris' }); return; }
+      var nom = await fenetre({ titre: 'Reconnaître ce Wi-Fi ?', texte: 'Les prochains pointages faits depuis ce réseau seront acceptés comme « au centre ». Ne le faites que si la personne était bien au centre.', ok: 'Reconnaître', non: 'Annuler' });
       if (!nom) return;
       var w = await sb.rpc('wifi_ajouter', { p_nom: 'Wi-Fi du centre (reconnu le ' + dateCourte(dIso(new Date())) + ')', p_cle: cle0 }); if (w.error) { toast(msgErr(w.error)); return; }
       S.wifi = w.data; ok = true;
@@ -5751,6 +5753,20 @@
     S.wfInfo = { charge: true };
     Promise.all([adresseVia('https://api.ipify.org?format=json'), adresseVia('https://api6.ipify.org?format=json')]).then(function (c) { S.wfInfo = { v4: c[0], v6: c[1], le: new Date() }; if (S.tab === 'pwifi') render(); });
   }
+  // Cet appareil sort-il sur internet directement par la box ? Sinon (filtre de sécurité type Zscaler, VPN, Relais privé iCloud),
+  // l'adresse vue par le serveur n'est pas celle de la box et change souvent : inutilisable pour reconnaître le centre.
+  var ZSCALER = /^(147\.161\.|165\.225\.|170\.85\.|136\.226\.|185\.46\.21[2-5]\.|104\.129\.|89\.167\.131\.|94\.188\.131\.)/;
+  function wifiDetour(W, I) {
+    if (!W || !W.actuel || !I || I.charge || !(I.v4 || I.v6)) return null;
+    if (W.actuel === I.v4 || W.actuel === I.v6) return null;
+    return { srv: W.actuel, box: I.v4 || I.v6, zs: ZSCALER.test(W.actuel), relais: /iPhone|iPad|iPod/.test(navigator.userAgent || '') };
+  }
+  function avisDetour(x) {
+    return '<div class="ban warn wf-det"><b>Cet appareil ne passe pas directement par la box.</b> Le serveur du pointage voit <code>' + esc(x.srv) + '</code>, alors que la box est <code>' + esc(x.box) + '</code>. '
+      + (x.zs ? 'L’adresse vue par le serveur appartient à <b>Zscaler</b>, un filtre de sécurité installé par un service informatique : ' : x.relais ? 'Le <b>Relais privé iCloud</b> ou un VPN fait passer cet iPhone par un intermédiaire : ' : 'Un intermédiaire (filtre de sécurité, VPN, Relais privé iCloud) est entre cet appareil et internet : ')
+      + 'son adresse change souvent, d’où un pointage « hors centre » chaque jour. <b>N’utilisez pas cet appareil pour enregistrer le Wi-Fi ni pour pointer.</b> Faites-le depuis un téléphone connecté au Wi-Fi du centre'
+      + (x.relais ? ' (sur iPhone : Réglages › Wi-Fi › ⓘ › désactiver « Limiter le suivi de l’adresse IP », et couper le Relais privé dans iCloud)' : '') + '.</div>';
+  }
   function tuileInfosWifi(W, rs) {
     var I = S.wfInfo || { charge: true }, ua = navigator.userAgent || '', cn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     var app = /iPhone|iPad|iPod/.test(ua) ? 'iPhone ou iPad' : /Android/.test(ua) ? 'Téléphone ou tablette Android' : 'Ordinateur', nav = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) || /CriOS/.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'autre navigateur';
@@ -5766,7 +5782,7 @@
       + li('Type de connexion', esc(cx), '', cn && cn.type ? '' : 'un iPhone ne dit pas s’il est en Wi-Fi ou en 4G')
       + li('Appareil', app + ' · ' + nav, '')
       + li('Vérifié', I.le ? 'à ' + I.le.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '<span class="mu">en cours</span>', '')
-      + '</div><p class="mu wi-n">L’appli ne capte rien d’autre : ni le nom du Wi-Fi, ni son mot de passe, ni la position. Une adresse faite de chiffres séparés par des points est une IPv4 ; avec des « : », une IPv6.</p></section>';
+      + '</div>' + (wifiDetour(W, I) ? avisDetour(wifiDetour(W, I)) : '') + '<p class="mu wi-n">L’appli ne capte rien d’autre : ni le nom du Wi-Fi, ni son mot de passe, ni la position. Une adresse faite de chiffres séparés par des points est une IPv4 ; avec des « : », une IPv6.</p></section>';
   }
   var OPS_WIFI = ['Free', 'Orange', 'SFR', 'Bouygues Telecom', 'Autre'];
   function champsWifi(nom, op) {
@@ -7172,6 +7188,7 @@
     if (d.wifim) { var wm = d.wifim, go = function () { actionWifi('wifi_mode', { p_mode: wm }, wm === 'off' ? 'Contrôle du Wi-Fi désactivé' : 'Mode ' + wm + ' activé'); };
       if (wm === 'strict') { demander('Passer en mode strict ?', 'Hors du Wi-Fi du centre, plus personne ne pourra pointer. Vérifiez d’abord en mode souple que les pointages faits au centre sont bien reconnus.', 'Passer en strict').then(function (v) { if (v) go(); }); return; }
       go(); return; }
+    if (d.act === 'wifiadd' && wifiDetour(S.wifi, S.wfInfo)) { fenetre({ titre: 'Pas depuis cet appareil', html: avisDetour(wifiDetour(S.wifi, S.wfInfo)), ok: 'Compris' }); return; }
     if (d.act === 'wifiadd') { fenetre({ titre: 'Enregistrer ce Wi-Fi', texte: 'Le réseau auquel cet appareil est connecté sera reconnu comme le Wi-Fi du centre.', html: champsWifi('Wi-Fi du centre', ''), ok: 'Enregistrer', non: 'Annuler', lire: lireChampsWifi }).then(async function (v) {
         if (!v) return; var r = await sb.rpc('wifi_ajouter', { p_nom: S.wfNom || 'Wi-Fi du centre' }); if (r.error) { toast(msgErr(r.error)); return; }
         if (S.wfOp && r.data && r.data.actuel) { var r2 = await sb.rpc('wifi_modifier', { p_cle: r.data.actuel, p_nom: S.wfNom || 'Wi-Fi du centre', p_op: S.wfOp }); if (!r2.error) r = r2; }

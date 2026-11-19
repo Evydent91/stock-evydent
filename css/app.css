@@ -2671,3 +2671,4 @@ button.oc-c:hover,button.oc-c:focus-visible,.oc-c.on{border-color:var(--navy)}
 }
 .nd-ct{display:none}@media (max-width:700px){.nd-lg{display:none}.nd-ct{display:inline}}
 .nd-auj{font-size:15px}
+.wf-det{margin:12px 0 0;font-size:14px;line-height:1.45}.wf-det code{font-size:13px}
