@@ -2601,23 +2601,30 @@
     h += '<div class="pt-cats cg2-f" role="group" aria-label="Filtrer">' + filtres.map(function (f) { return '<button data-cgf="' + esc(f[0]) + '"' + (F === f[0] ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"') + '>' + esc(f[1]) + '</button>'; }).join('') + '</div>';
     // lignes à afficher : { r, petit, gr }
     var L = [], titreB = function (t, sous) { L.push({ gr: t, sous: sous }); };
-    var parDent = {}; ass.forEach(function (r) { var a = attitre(r.p); if (a) (parDent[a] = parDent[a] || []).push(r); });
+    // les apprenti(e)s suivent aussi leur dentiste référent (celui de leur semaine type) : rangé(e)s sous lui, comme les assistant(e)s
+    var appr = (autres.apprentie || { l: [] }).l.filter(function (r) { return attitre(r.p); }), sousDent = {};
+    var parDent = {}; ass.concat(appr).forEach(function (r) { var a = attitre(r.p); if (a) { (parDent[a] = parDent[a] || []).push(r); sousDent[r.p.id] = 1; } });
     if (F === 'tous' || F === 'couples') {
-      if (!refDe()) titreB('Dentistes et leur assistant(e)', 'la ligne fine sous chaque dentiste : son assistant(e) attitré(e)');
+      if (!refDe()) titreB('Dentistes et leur assistant(e)', 'la ligne fine sous chaque dentiste : son assistant(e) attitré(e)' + (appr.length ? ' et son apprenti(e)' : ''));
       de.forEach(function (r, ci) { L.push({ r: r, cp: ci }); (parDent[r.dent.id] || []).forEach(function (a) { L.push({ r: a, petit: true, cp: ci }); }); });
       var seuls = ass.filter(function (r) { return !attitre(r.p); });
       if (seuls.length) { titreB('Assistant(e)s sans dentiste attitré'); seuls.forEach(function (r) { L.push({ r: r }); }); }
     }
     if (F === 'dent') { titreB('Dentistes'); de.forEach(function (r) { L.push({ r: r }); }); }
     if (F === 'ass') { titreB('Assistant(e)s'); ass.forEach(function (r) { L.push({ r: r }); }); }
-    ordreAutres.forEach(function (c) { if (F === 'tous' || F === 'cat:' + c) { titreB(autres[c].n); autres[c].l.forEach(function (r) { L.push({ r: r }); }); } });
+    ordreAutres.forEach(function (c) {
+      if (!(F === 'tous' || F === 'cat:' + c)) return;
+      var lr = autres[c].l.filter(function (r) { return F !== 'tous' || !sousDent[r.p.id]; });   // déjà sous leur dentiste
+      if (!lr.length) return;
+      titreB(autres[c].n + (F === 'tous' && lr.length < autres[c].l.length ? ' sans dentiste référent' : '')); lr.forEach(function (r) { L.push({ r: r }); });
+    });
     // grille
     var rows = ['var(--cg2-rh,44px)'], g = '', row = 1;
     g += '<span class="cg2-coin" style="grid-row:1;grid-column:1"></span>' + jours.map(function (iso) { var j = jourSem(iso), f = ferie(iso); return '<span class="cg2-h' + (iso === auj ? ' auj' : '') + (f ? ' fe' : '') + '" style="grid-row:1;grid-column:' + col[iso] + '"><small>' + JC[j] + '</small><b>' + (+iso.slice(8)) + '</b></span>'; }).join('');
     var absLe = function (r, iso) { return r.l.some(function (c) { return c.du <= iso && c.au >= iso; }); };
     var ligne = function (r, petit, dentR) {
       row++; rows.push(petit ? 'var(--cg2-rp,24px)' : 'var(--cg2-r,34px)');
-      var n = nbJ(r), out = '<button class="cg2-n' + (petit ? ' pt' : '') + (enCouple ? ' bd' : '') + '" ' + r.ouv + ' style="grid-row:' + row + ';grid-column:1"><b>' + (petit ? '<i aria-hidden="true">↳</i>' : '') + esc(r.nom) + '</b>' + (n ? '<small>' + n + ' j</small>' : '') + '</button>';
+      var n = nbJ(r), out = '<button class="cg2-n' + (petit ? ' pt' : '') + (enCouple ? ' bd' : '') + '" ' + r.ouv + ' style="grid-row:' + row + ';grid-column:1"><b>' + (petit ? '<i aria-hidden="true">↳</i>' : '') + esc(r.nom) + (petit && r.p && catPt(r.p).k === 'apprentie' ? '<em class="cg2-ap" title="apprenti(e)">appr.</em>' : '') + '</b>' + (n ? '<small>' + n + ' j</small>' : '') + '</button>';
       jours.forEach(function (iso) {
         var j = jourSem(iso), f = ferie(iso), trav = r.dent ? (r.dent.jours && r.dent.jours[j]) || dentExtra(r.dent, iso) : (function () { var tr = trameDe(r.p, iso), t = tr[j] || {}; return heuresTrame(tr) < 0.01 || (t.am && t.am.a && t.am.a !== 'OFF') || (t.pm && t.pm.a && t.pm.a !== 'OFF'); })();
         var ens = petit && dentR && absLe(r, iso) && absLe(dentR, iso);
