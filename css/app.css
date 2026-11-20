@@ -2904,3 +2904,5 @@ body.rail-on .rail{overflow-x:hidden}
 .fe-pi.ec{background:#f1e9cf;color:#5c4c14}
 .rgl-l > span:nth-child(2){display:flex;flex-direction:column;line-height:1.2;min-width:0;flex:1}
 .rgl-g{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none}
+/* Logo du centre en haut du menu de gauche */
+img.rail-lo{width:48px;height:48px;border-radius:50%;object-fit:cover;clip-path:circle(42%);margin:-4px}
