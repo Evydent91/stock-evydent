@@ -2903,3 +2903,4 @@ body.rail-on .rail{overflow-x:hidden}
 .fe-c.fd-hd,.fe-c.fd-av{background:#f7f6f2;color:var(--mute)}
 .fe-pi.ec{background:#f1e9cf;color:#5c4c14}
 .rgl-l > span:nth-child(2){display:flex;flex-direction:column;line-height:1.2;min-width:0;flex:1}
+.rgl-g{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none}

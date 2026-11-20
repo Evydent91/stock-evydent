@@ -1410,7 +1410,9 @@
       var lf = feEtat().lf || 'tous';
       var lp = function (p) { var st = p.actif ? feStatut(p) : null, nb = p.actif ? feATraiter(p).length : 0, ff = lf === 'tous' || !p.actif ? true : lf === 'pres' ? st && st[1] === 'la' : nb > 0; return li('data-rglp', p.id, initiale(p.prenom), 'p' + coulPers(p), esc(p.prenom), st ? '<i class="fe-pt ' + st[1] + '" aria-hidden="true"></i>' + esc(st[0]) : 'ancienne fiche', nb, ff); };
       h += '<div class="rgl-f" role="group" aria-label="Afficher">' + [['tous', 'Tous'], ['pres', 'Présents'], ['trait', 'À traiter']].map(function (x) { return '<button data-rglf="' + x[0] + '" aria-pressed="' + (lf === x[0]) + '"' + (lf === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>'; }).join('') + '</div>';
-      h += groupesEquipe(act).map(function (g) { return '<span class="rgl-g">' + esc(g.n) + '</span>' + g.l.map(lp).join(''); }).join('') + (anc.length ? '<span class="rgl-g">Anciennes et anciens</span>' + anc.map(lp).join('') : '');
+      // Titres courts dans la liste étroite (une seule ligne)
+      var court = function (g) { return g.k === 'qualifiee' ? 'Assistance qualifiée' : g.k === 'apprentie' ? 'Apprentissage' : g.n.replace(' · hors planning', ''); };
+      h += groupesEquipe(act).map(function (g) { return '<span class="rgl-g" title="' + esc(g.n) + '">' + esc(court(g)) + '</span>' + g.l.map(lp).join(''); }).join('') + (anc.length ? '<span class="rgl-g">Anciennes fiches</span>' + anc.map(lp).join('') : '');
       var lies0 = {}; S.equipe.forEach(function (p) { if (p.profil_id) lies0[p.profil_id] = 1; }); var sf = (S.profils || []).filter(function (p) { return !lies0[p.id]; }).length;
       if (sf) h += '<button class="rgl-cs" data-tab="equipe">' + sf + ' ' + pl(sf, 'compte') + ' sans fiche planning' + ico('suiv', 16, 2.4) + '</button>';
     }
