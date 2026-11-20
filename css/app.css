@@ -2875,3 +2875,12 @@ button.fe-c:hover{filter:brightness(.94)}
 .fe-djt .fe-c{width:28px;height:24px;cursor:default}
 .fe-djb{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 .fi-corps{min-width:0}.fe-an{min-width:0;max-width:100%}
+/* Menu en icônes : il s'ouvre par-dessus la page quand la souris passe dessus */
+body.rail-on .rail{overflow-x:hidden}
+@media (hover:hover){
+  body.rail-mini .rail{transition:width .16s ease .1s,box-shadow .16s ease .1s}
+  body.rail-mini .rail:hover{width:232px;padding-left:10px;padding-right:10px;box-shadow:8px 0 28px rgba(15,23,30,.28)}
+  body.rail-mini .rail:hover .rail-t,body.rail-mini .rail:hover .rail-hd b{display:block}
+  body.rail-mini .rail:hover .rail-l{justify-content:flex-start;padding:0 10px}
+  body.rail-mini .rail:hover .rail-hd{justify-content:flex-start;padding:2px 6px 14px}
+}

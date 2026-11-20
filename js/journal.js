@@ -2,7 +2,8 @@
 // Types : Majeure (changement profond), Mineure (nouvelle fonction), Correctif (réparation).
 // c = changements visibles ; x = opérations sur les données (pour la responsable).
 window.JOURNAL = [{v:"2.4.10",t:"Mineure",n:"Fiche complète de chaque personne : aperçu, journal, année jour par jour",d:"20 novembre 2026",
-c:["Nouveau menu « Équipe » (à gauche, entre Congés et Occupation) : la liste des prénoms reste à gauche et la fiche de la personne s’ouvre à côté. Réglages › L’équipe ouvre la même page : il n’y a plus qu’une seule fiche par personne.",
+c:["Nouveau menu « Équipe » (à gauche, entre Congés et Occupation) : la liste des prénoms reste à gauche et la fiche de la personne s’ouvre à côté. « L’équipe » quitte les Réglages sur ordinateur (elle y reste sur téléphone, qui n’a pas le menu de gauche) : il n’y a plus qu’une seule fiche par personne.",
+"Menu de gauche réduit en icônes : il s’ouvre par-dessus la page quand la souris passe dessus, avec le nom des pages, et se referme quand elle s’en va.",
 "Liste des prénoms : sous chaque prénom, ce que fait la personne aujourd’hui (là depuis 8h52, en congés, à l’école, jour de repos, pas encore pointé…) et une pastille orange avec le nombre de points à traiter. Trois boutons pour filtrer : Tous, Présents, À traiter.",
 "Fiche : trois nouveaux onglets avant les réglages. « Aperçu » réunit six tuiles : cette semaine (poste, horaires et pointage de chaque jour), heures (reliquat, heures du mois, graphique des dernières semaines face au contrat), à surveiller (demandes de congés et oublis de pointage à traiter, pointages incomplets, hors centre, report de congés élevé, semaine type vide), congés et absences (solde, pris, arrêts de l’année, à venir), pointage du mois (jours pointés, oublis, retards, hors centre, derniers pointages) et profil, compte et note.",
 "Fiche : une note interne par personne (visible seulement par la référente et la responsable), dans la tuile « Profil, compte et note ».",

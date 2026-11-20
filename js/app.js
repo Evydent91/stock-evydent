@@ -341,7 +341,7 @@
     return '<nav class="rail" aria-label="Pages"><div class="rail-hd"><span class="rail-lo" aria-hidden="true">E</span><b class="rail-t">Evydent</b></div>'
       + it('hub', 'Accueil', 'maison') + it('planning', 'Planning', 'equipe') + it('heures', 'Heures', 'histo') + it('pointage', 'Pointage', 'qr', ou) + it('pconges', 'Congés', 'agenda', ca) + it('equipe', 'Équipe', 'moi').replace('data-tab="equipe"', 'data-act="rgeq"') + it('occup', 'Occupation', 'fauteuil') + it('accueil', 'Gestion de stock', 'boite')
       + '<span class="rail-sp"></span>' + it('reglages', 'Réglages', 'reglage')
-      + '<button class="rail-l rail-r" data-act="railmini" aria-label="' + (mini ? 'Afficher les noms des pages' : 'Réduire en icônes') + '" title="' + (mini ? 'Afficher les noms' : 'Réduire en icônes') + '"><span class="rail-i">' + ico(mini ? 'suiv' : 'prec', 20, 2.4) + '</span><span class="rail-t">Réduire en icônes</span></button></nav>';
+      + '<button class="rail-l rail-r" data-act="railmini" aria-label="' + (mini ? 'Afficher les noms des pages' : 'Réduire en icônes') + '" title="' + (mini ? 'Afficher les noms' : 'Réduire en icônes') + '"><span class="rail-i">' + ico(mini ? 'suiv' : 'prec', 20, 2.4) + '</span><span class="rail-t">' + (mini ? 'Afficher les noms' : 'Réduire en icônes') + '</span></button></nav>';
   }
   function poserRail(app) {
     var on = railOn();
@@ -374,7 +374,7 @@
       document.body.classList.toggle('hb-on', !!vBarTel());
       document.body.classList.remove('mode-a', 'ecran-ok', 'sans-nav'); document.body.classList.add('mode-h');
       // La fiche d'une personne est une page à part (menu « Équipe ») : la liste des prénoms à gauche, sans le menu des réglages
-      var rgOn = RG_TABS.indexOf(S.tab) >= 0 && S.tab !== 'pfiche' && !telephone();
+      var rgOn = RG_TABS.indexOf(S.tab) >= 0 && S.tab !== 'pfiche' && S.tab !== 'pequipe' && !telephone();
       document.body.classList.toggle('rg-on', rgOn);
       var rglOn = !telephone() && (S.tab === 'pfiche' || (rgOn && S.tab === 'dfiche'));
       document.body.classList.toggle('rgl-on', rglOn);
@@ -1381,7 +1381,7 @@
     };
     return '<nav class="rgn" aria-label="Rubriques des réglages">'
       + L('Tous les réglages', 'data-tab="reglages"', 'reglages')
-      + G('eq', 'Équipe', [['L’équipe', 'data-act="rgeq"', 'pequipe'], ['Les dentistes', 'data-act="rgde"', 'pdent'], ['Profils', 'data-tab="pprofils"', 'pprofils']])
+      + G('eq', 'Équipe', (railOn() ? [] : [['L’équipe', 'data-act="rgeq"', 'pequipe']]).concat([['Les dentistes', 'data-act="rgde"', 'pdent'], ['Profils', 'data-tab="pprofils"', 'pprofils']]))
       + G('pl', 'Planning', [['Postes', 'data-tab="ppostes"', 'ppostes'], ['Règles des heures', 'data-tab="pregles"', 'pregles']])
       + G('pt', 'Pointage', [['QR code', 'data-act="rgqr"', 'pqr'], ['Wi-Fi du centre', 'data-tab="pwifi"', 'pwifi'], ['Qui pointe', 'data-tab="pqui"', 'pqui']].concat(CONFIG.env === 'dev' ? [['Module de test', 'data-tab="ptest"', 'ptest']] : []))
       + G('cg', 'Congés', [['Demandes et planning', 'data-tab="pconges"']])
@@ -1461,7 +1461,7 @@
       h += '<div class="rgc-top"><label class="rg-cherche">' + ico('loupe', 18, 2) + '<input id="rgq" placeholder="Chercher un réglage" autocomplete="off"></label></div>';
       if (ca || sv) h += '<div class="rgc-faire">' + (ca ? '<button class="rgc-a" data-tab="pconges">' + ico('agenda', 20) + '<b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à traiter' + ico('suiv', 16, 2.4) + '</button>' : '') + (sv ? '<button class="rgc-a" data-tab="plus">' + ico('telecharger', 20) + '<b>Sauvegarde du mois</b> à télécharger' + ico('suiv', 16, 2.4) + '</button>' : '') + '</div>';
       h += '<div class="rg-grille rgc-g">'
-        + bc('Équipe', [li('L’équipe', planPret() ? n + ' ' + pl(n, 'personne') : '', 'data-act="rgeq"', 'fiches semaine type absences contrat'), li('Les dentistes', planPret() ? nd + ' ' + pl(nd, 'dentiste') : '', 'data-act="rgde"', 'jours de présence départs anticipés'), li('Profils', profilsListe().filter(function (x) { return !x.retire; }).length + ' profils', 'data-tab="pprofils"', 'planning contrat ce que chacun voit référente')])
+        + bc('Équipe', [railOn() ? '' : li('L’équipe', planPret() ? n + ' ' + pl(n, 'personne') : '', 'data-act="rgeq"', 'fiches semaine type absences contrat'), li('Les dentistes', planPret() ? nd + ' ' + pl(nd, 'dentiste') : '', 'data-act="rgde"', 'jours de présence départs anticipés'), li('Profils', profilsListe().filter(function (x) { return !x.retire; }).length + ' profils', 'data-tab="pprofils"', 'planning contrat ce que chacun voit référente')])
         + bc('Planning', [li('Postes', postes().filter(function (x) { return !x.retire; }).length + ' postes', 'data-tab="ppostes"', 'sté admin accueil plages horaires fixe variable couleur'), li('Règles des heures', 'congés, férié, reliquat', 'data-tab="pregles"', 'maladie école formation cp samedi')])
         + bc('Pointage', [li('QR code', 'afficher, imprimer', 'data-act="rgqr"', 'régénérer'), li('Wi-Fi du centre', S.wifi ? ({ off: 'désactivé', souple: 'souple', strict: 'strict' })[S.wifi.mode || 'off'] : 'contrôle du pointage', 'data-tab="pwifi"', 'wifi réseau box souple strict'), li('Calcul et alertes', 'retard ' + R.pt_tol + ' min', 'data-tab="pregles"', 'reliquat temps pointé départ'), li('Qui pointe', np + ' ' + pl(np, 'personne'), 'data-tab="pqui"', 'soumise compte')].concat(CONFIG.env === 'dev' ? [li('Module de test', 'site de test', 'data-tab="ptest"', 'essai simulation scénarios')] : []))
         + bc('Congés', [li('Demandes et planning', ca ? ca + ' à traiter' : 'congés du mois', 'data-tab="pconges"', 'valider soldes absences')])
