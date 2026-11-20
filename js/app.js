@@ -328,7 +328,7 @@
     var t = S.tab;
     if (t === 'hub') return 'hub';
     if (['planning', 'heures', 'pointage', 'pconges', 'occup'].indexOf(t) >= 0) return t;
-    if (t === 'pfiche' || t === 'pequipe') return 'equipe';
+    if (['pfiche', 'pequipe', 'dfiche', 'pdent'].indexOf(t) >= 0) return 'equipe';
     if (t === 'mconges' || t === 'mdemande') return 'mconges';
     if (STOCK_TABS.indexOf(t) >= 0) return 'accueil';
     return 'reglages';
@@ -374,9 +374,9 @@
       document.body.classList.toggle('hb-on', !!vBarTel());
       document.body.classList.remove('mode-a', 'ecran-ok', 'sans-nav'); document.body.classList.add('mode-h');
       // La fiche d'une personne est une page à part (menu « Équipe ») : la liste des prénoms à gauche, sans le menu des réglages
-      var rgOn = RG_TABS.indexOf(S.tab) >= 0 && S.tab !== 'pfiche' && S.tab !== 'pequipe' && !telephone();
+      var rgOn = RG_TABS.indexOf(S.tab) >= 0 && ['pfiche', 'pequipe', 'dfiche', 'pdent'].indexOf(S.tab) < 0 && !telephone();
       document.body.classList.toggle('rg-on', rgOn);
-      var rglOn = !telephone() && (S.tab === 'pfiche' || (rgOn && S.tab === 'dfiche'));
+      var rglOn = !telephone() && (S.tab === 'pfiche' || S.tab === 'dfiche');
       document.body.classList.toggle('rgl-on', rglOn);
       document.body.classList.toggle('rgl-seul', rglOn && !rgOn);
       if (rglOn) app.insertAdjacentHTML('beforeend', listeFiches());
@@ -1381,7 +1381,7 @@
     };
     return '<nav class="rgn" aria-label="Rubriques des réglages">'
       + L('Tous les réglages', 'data-tab="reglages"', 'reglages')
-      + G('eq', 'Équipe', (railOn() ? [] : [['L’équipe', 'data-act="rgeq"', 'pequipe']]).concat([['Les dentistes', 'data-act="rgde"', 'pdent'], ['Profils', 'data-tab="pprofils"', 'pprofils']]))
+      + G('eq', 'Équipe', (railOn() ? [] : [['L’équipe', 'data-act="rgeq"', 'pequipe'], ['Les dentistes', 'data-act="rgde"', 'pdent']]).concat([['Profils', 'data-tab="pprofils"', 'pprofils']]))
       + G('pl', 'Planning', [['Postes', 'data-tab="ppostes"', 'ppostes'], ['Règles des heures', 'data-tab="pregles"', 'pregles']])
       + G('pt', 'Pointage', [['QR code', 'data-act="rgqr"', 'pqr'], ['Wi-Fi du centre', 'data-tab="pwifi"', 'pwifi'], ['Qui pointe', 'data-tab="pqui"', 'pqui']].concat(CONFIG.env === 'dev' ? [['Module de test', 'data-tab="ptest"', 'ptest']] : []))
       + G('cg', 'Congés', [['Demandes et planning', 'data-tab="pconges"']])
@@ -1395,11 +1395,14 @@
     var tri = function (a, b) { return (a.ordre - b.ordre) || a.prenom.localeCompare(b.prenom); };
     var dent = S.tab === 'dfiche', F = dent ? S.df : S.pf, cur = F ? String(F.id) : '';
     var li = function (attr, id, ini, cl, nom, sous, nb, ff) { var on = String(id) === cur; return '<button class="rgl-l' + (on ? ' on' : '') + '" ' + attr + '="' + id + '"' + (on ? ' aria-current="true"' : '') + ' data-rgln="' + esc(norm(nom)) + '"' + (ff === false ? ' data-ff="0" hidden' : '') + '><span class="a-av ' + cl + '">' + ini + '</span><span><b>' + nom + '</b>' + (sous ? '<small>' + sous + '</small>' : '') + '</span>' + (nb ? '<em class="rgl-b" title="' + nb + ' à traiter">' + nb + '</em>' : '') + '</button>'; };
-    var h = '<nav class="rgl" aria-label="' + (dent ? 'Les dentistes' : 'L’équipe') + '"><div class="rgl-t"><b>' + (dent ? 'Les dentistes' : 'L’équipe') + '</b><button class="btn sm" data-rglnew="' + (dent ? 'd' : 'p') + '">+ Ajouter</button></div>'
+    var h = '<nav class="rgl" aria-label="' + (dent ? 'Les dentistes' : 'L’équipe') + '"><div class="rgl-sw" role="tablist" aria-label="Qui afficher"><button role="tab" data-act="rgeq" aria-selected="' + !dent + '"' + (dent ? '' : ' class="on"') + '>Équipe</button><button role="tab" data-act="rgde" aria-selected="' + dent + '"' + (dent ? ' class="on"' : '') + '>Dentistes</button></div>'
+      + '<div class="rgl-t"><b>' + (dent ? 'Les dentistes' : 'L’équipe') + '</b><button class="btn sm" data-rglnew="' + (dent ? 'd' : 'p') + '">+ Ajouter</button></div>'
       + '<input class="in rgl-q" type="search" data-rglq placeholder="Chercher un prénom…" aria-label="Chercher un prénom">';
     if (dent) {
       var da = S.dentistes.filter(function (d) { return d.actif; }).sort(tri), dn = S.dentistes.filter(function (d) { return !d.actif; }).sort(tri);
-      var ld = function (d) { var js = [1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j]; }); return li('data-rgld', d.id, initiale(d.prenom), 'd', 'Dr ' + esc(d.prenom), js.length ? js.map(function (j) { return JC[j].toLowerCase(); }).join(' ') : 'jours à renseigner'); };
+      var lfd = feEtat().lf || 'tous';
+      var ld = function (d) { var js = [1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j]; }), st = d.actif ? fdStatut(d) : null, nb = d.actif ? fdATraiter(d).length : 0, ff = lfd === 'tous' || !d.actif ? true : lfd === 'pres' ? st && st[1] === 'la' || (st && st[1] === 'at') : nb > 0; return li('data-rgld', d.id, initiale(d.prenom), 'd', 'Dr ' + esc(d.prenom), st ? '<i class="fe-pt ' + st[1] + '" aria-hidden="true"></i>' + esc(st[0]) : js.length ? js.map(function (j) { return JC[j].toLowerCase(); }).join(' ') : 'jours à renseigner', nb, ff); };
+      h += '<div class="rgl-f" role="group" aria-label="Afficher">' + [['tous', 'Tous'], ['pres', 'Présents'], ['trait', 'À traiter']].map(function (x) { return '<button data-rglf="' + x[0] + '" aria-pressed="' + (lfd === x[0]) + '"' + (lfd === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>'; }).join('') + '</div>';
       h += da.map(ld).join('') + (dn.length ? '<span class="rgl-g">Anciens</span>' + dn.map(ld).join('') : '');
     } else {
       var act = S.equipe.filter(function (p) { return p.actif; }).sort(tri), anc = S.equipe.filter(function (p) { return !p.actif; }).sort(tri);
@@ -1438,7 +1441,7 @@
   // Changer de fiche depuis la liste : on prévient si des changements ne sont pas enregistrés, et on garde la rubrique ouverte
   function changerFiche(sorte, id) {
     var F = sorte === 'd' ? S.df : S.pf, suite = function () {
-      if (sorte === 'd') return ouvrirDent(id);
+      if (sorte === 'd') { var ogd = S.df && S.df.onglet; ouvrirDent(id); if (S.df && id !== 'new' && ogd) { S.df.onglet = ogd; render(); } return; }
       var og = S.pf && S.pf.onglet, cel = S.pf && S.pf.cel; ouvrirPers(id);
       if (S.pf && id !== 'new' && (og || cel)) { S.pf.onglet = og; S.pf.cel = cel; render(); }
     };
@@ -1461,7 +1464,7 @@
       h += '<div class="rgc-top"><label class="rg-cherche">' + ico('loupe', 18, 2) + '<input id="rgq" placeholder="Chercher un réglage" autocomplete="off"></label></div>';
       if (ca || sv) h += '<div class="rgc-faire">' + (ca ? '<button class="rgc-a" data-tab="pconges">' + ico('agenda', 20) + '<b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à traiter' + ico('suiv', 16, 2.4) + '</button>' : '') + (sv ? '<button class="rgc-a" data-tab="plus">' + ico('telecharger', 20) + '<b>Sauvegarde du mois</b> à télécharger' + ico('suiv', 16, 2.4) + '</button>' : '') + '</div>';
       h += '<div class="rg-grille rgc-g">'
-        + bc('Équipe', [railOn() ? '' : li('L’équipe', planPret() ? n + ' ' + pl(n, 'personne') : '', 'data-act="rgeq"', 'fiches semaine type absences contrat'), li('Les dentistes', planPret() ? nd + ' ' + pl(nd, 'dentiste') : '', 'data-act="rgde"', 'jours de présence départs anticipés'), li('Profils', profilsListe().filter(function (x) { return !x.retire; }).length + ' profils', 'data-tab="pprofils"', 'planning contrat ce que chacun voit référente')])
+        + bc('Équipe', [railOn() ? '' : li('L’équipe', planPret() ? n + ' ' + pl(n, 'personne') : '', 'data-act="rgeq"', 'fiches semaine type absences contrat'), railOn() ? '' : li('Les dentistes', planPret() ? nd + ' ' + pl(nd, 'dentiste') : '', 'data-act="rgde"', 'jours de présence départs anticipés'), li('Profils', profilsListe().filter(function (x) { return !x.retire; }).length + ' profils', 'data-tab="pprofils"', 'planning contrat ce que chacun voit référente')])
         + bc('Planning', [li('Postes', postes().filter(function (x) { return !x.retire; }).length + ' postes', 'data-tab="ppostes"', 'sté admin accueil plages horaires fixe variable couleur'), li('Règles des heures', 'congés, férié, reliquat', 'data-tab="pregles"', 'maladie école formation cp samedi')])
         + bc('Pointage', [li('QR code', 'afficher, imprimer', 'data-act="rgqr"', 'régénérer'), li('Wi-Fi du centre', S.wifi ? ({ off: 'désactivé', souple: 'souple', strict: 'strict' })[S.wifi.mode || 'off'] : 'contrôle du pointage', 'data-tab="pwifi"', 'wifi réseau box souple strict'), li('Calcul et alertes', 'retard ' + R.pt_tol + ' min', 'data-tab="pregles"', 'reliquat temps pointé départ'), li('Qui pointe', np + ' ' + pl(np, 'personne'), 'data-tab="pqui"', 'soumise compte')].concat(CONFIG.env === 'dev' ? [li('Module de test', 'site de test', 'data-tab="ptest"', 'essai simulation scénarios')] : []))
         + bc('Congés', [li('Demandes et planning', ca ? ca + ' à traiter' : 'congés du mois', 'data-tab="pconges"', 'valider soldes absences')])
@@ -2137,6 +2140,8 @@
     if (d.rglf) { E.lf = d.rglf; render(); return true; }
     if (d.act === 'feplus') { E.jn += 60; render(); return true; }
     if (d.act === 'fenote') { sauverNote(); return true; }
+    if (d.act === 'fdnote') { sauverNoteDent(); return true; }
+    if (d.feoc) { var O = occInit(); O.mode = 'mois'; O.jour = occOuvre(d.feoc + '-01', 1); O.stats = null; S.tab = 'occup'; render(); window.scrollTo(0, 0); return true; }
     if (d.fevoir && F) { var x = d.fevoir.split(':'); F.onglet = x[0]; if (x[1]) E.jf = x[1]; render(); window.scrollTo(0, 0); return true; }
     if (d.fept) { var G = S.ptg = S.ptg || { mode: 'jour', jour: d.fept, rows: {} }; G.mode = 'jour'; G.jour = d.fept; if (G.bord) G.bord.sel = null; S.tab = 'pointage'; render(); window.scrollTo(0, 0); return true; }
     if (d.fehr && F) { var L = lundiDe(dIso(new Date())); S.hr = S.hr || { mode: 'mois', mois: addJ(L, 3).slice(0, 7), lundi: L, sel: null }; S.hr.sel = F.id; S.tab = 'heures'; render(); window.scrollTo(0, 0); return true; }
@@ -2380,27 +2385,270 @@
   function ouvrirDent(id) {
     var d = id === 'new' ? { prenom: '', jours: {}, note: '', actif: true } : S.dentistes.filter(function (x) { return String(x.id) === String(id); })[0];
     if (!d) return;
+    if (S.fdD) delete S.fdD[String(id)];
     S.df = { id: id, d: JSON.parse(JSON.stringify(d)) }; S.tab = 'dfiche'; if (id !== 'new') S.rgDerD = id; S.df.raz = true; render(); window.scrollTo(0, 0);
   }
+  function ogDFiche(F) { if (!F) return null; if (F.id === 'new') return 'infos'; return F.onglet || (telephone() ? null : 'apercu'); }
   function vDFiche() {
     var F = S.df; if (!F) { S.tab = 'pdent'; return vPDent(); }
-    var d = F.d, nouv = F.id === 'new', as = nouv ? {} : assistantesDe(F.id);
-    var h = '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" data-tab="' + (listeACote() ? 'reglages' : 'pdent') + '">' + ico('prec', 22, 2.4) + (listeACote() ? 'Réglages' : 'Dentistes') + '</button><h1>' + (nouv ? 'Nouveau' : 'Dr ' + esc(d.prenom || '…')) + '</h1><span class="a-cale"></span></div></header><div class="a-corps h-fiche">';
-    h += '<div class="card" style="display:flex;flex-direction:column;gap:12px">'
-      + '<label class="mu">Prénom (affiché « Dr … »)<input class="in" data-dff="prenom" value="' + esc(d.prenom) + '"></label>'
-      + '<div><span class="mu">Jours de présence habituels</span><div class="h-jours">' + [1, 2, 3, 4, 5].map(function (j) { return '<button type="button" class="h-jbtn' + (d.jours && d.jours[j] ? ' on' : '') + '" data-djour="' + j + '" aria-pressed="' + !!(d.jours && d.jours[j]) + '">' + JC[j] + '</button>'; }).join('') + '</div></div>'
-      + (occColonne() ? '<label class="mu">Cabinet habituel<select class="in" data-dff="cabinet"><option value="">Non renseigné</option>' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+d.cabinet === c ? ' selected' : '') + '>Cabinet ' + c + '</option>'; }).join('') + '</select></label>' : '')
-      + '<label class="mu">Spécificités<textarea class="in" rows="2" data-dff="note" placeholder="Ex. : + 1 mercredi par mois">' + esc(d.note || '') + '</textarea></label>'
-      + '<label class="row"><input type="checkbox" data-dff="actif"' + (d.actif ? ' checked' : '') + ' style="width:20px;height:20px;flex:none"><span>Travaille au centre <span class="mu">(décocher pour un ancien dentiste)</span></span></label>'
-      + (d.actif ? '<div class="h-g2"><label class="mu">Présent(e) à partir du<input class="in" type="date" data-dff="present_du" value="' + esc(String(d.present_du || '').slice(0, 10)) + '"></label><label class="mu">Jusqu’au<input class="in" type="date" data-dff="present_au" value="' + esc(String(d.present_au || '').slice(0, 10)) + '"></label></div><p class="mu" style="margin:-4px 0 0;font-size:13.5px">Laissez vide s’il n’y a pas de limite. Avant ou après ces dates, le dentiste ne compte pas dans le planning, les « dentistes seuls » ni les congés.</p>' : '') + '</div>';
-    if (!nouv) h += '<h2 class="a-jour">Jours de présence et assistantes</h2><div class="a-liste">' + [1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j] || as[j]; }).map(function (j) {
-      var pres = d.jours && d.jours[j], dep = typeof pres === 'string' ? pres : '';
-      return '<div class="a-li h-djl"><span class="a-it-n"><b>' + JOURS[j] + '</b>' + (as[j] ? '<span>' + as[j].map(esc).join(', ') + '</span>' : '<span class="warn">pas d’assistante</span>') + '</span>'
-        + (pres ? '<label class="h-dep"><span>Départ anticipé</span><input class="in" ' + HM + ' data-ddep="' + j + '" value="' + esc(dep) + '" aria-label="Départ anticipé le ' + JOURS[j].toLowerCase() + ' (vide = heure normale)"></label>' : '<span class="mu">pas présent</span>') + '</div>';
-    }).join('') + '</div><p class="a-aide">Départ anticipé : laissez vide s’il finit à l’heure habituelle. Il s’affiche dans le planning sur la case de son assistante, qui garde ses horaires. Pour changer les assistantes, modifiez leur semaine type (Réglages › L’équipe).</p>';
-    if (!nouv) h += blocExtra(d);
-    h += '<h2 class="a-jour">Congés</h2>' + (nouv ? '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>' : blocConges(true, F.id, d)) + '<h2 class="a-jour">Formations</h2>' + (nouv ? '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>' : blocConges(true, F.id, d, true));
+    var d = F.d, nouv = F.id === 'new', as = nouv ? {} : assistantesDe(F.id), tel = telephone();
+    var ONG = (nouv ? [] : [['apercu', 'Aperçu'], ['journal', 'Journal'], ['annee', 'Année']]).concat([['infos', 'Infos'], ['jours', 'Jours et assistantes'], ['absences', 'Absences']]);
+    var og = ogDFiche(F);
+    var h = '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" ' + (tel && og && !nouv ? 'data-dfong=""' : listeACote() ? 'data-tab="hub"' : 'data-tab="pdent"') + '>' + ico('prec', 22, 2.4) + (tel && og && !nouv ? 'Dr ' + esc(d.prenom || '') : listeACote() ? 'Accueil' : 'Dentistes') + '</button><h1>' + (nouv ? 'Nouveau' : tel && og ? ONG.filter(function (o) { return o[0] === og; })[0][1] : 'Dr ' + esc(d.prenom || '…')) + '</h1><span class="a-cale"></span></div></header><div class="a-corps h-fiche fi">';
+    // --- résumé
+    var js = [1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j]; }), deps = js.filter(function (j) { return typeof d.jours[j] === 'string' && d.jours[j]; });
+    var ap = nouv ? [] : (S.equipe || []).filter(function (p) { return p.actif && p.statut === 'apprentie' && String(attitre(p)) === String(F.id); });
+    var nAs = {}; Object.keys(as).forEach(function (j) { as[j].forEach(function (n) { nAs[n] = 1; }); });
+    var auj = dIso(new Date());
+    var resume = '<aside class="fi-g"><section class="fi-carte fi-res"><span class="fi-avt dz" aria-hidden="true">' + esc((d.prenom || '?').charAt(0).toUpperCase()) + '</span><b class="fi-nom">' + (nouv ? 'Nouveau dentiste' : 'Dr ' + esc(d.prenom)) + '</b>'
+      + '<span class="fi-badges">' + (+d.cabinet ? '<span class="pc">Cabinet ' + d.cabinet + '</span>' : '') + ap.map(function (p) { return '<span class="or">Référent de ' + esc(p.prenom) + '</span>'; }).join('')
+      + (!d.actif && !nouv ? '<span class="ko">Ancien</span>' : '') + (d.present_du && String(d.present_du).slice(0, 10) > auj ? '<span class="pc">à partir du ' + dateCourte(String(d.present_du).slice(0, 10)) + '</span>' : '') + (d.present_au ? '<span class="pc">jusqu’au ' + dateCourte(String(d.present_au).slice(0, 10)) + '</span>' : '') + '</span>'
+      + '<div class="fi-tuiles"><div><small>Jours habituels</small><b>' + (js.length ? js.map(function (j) { return JC[j].toLowerCase(); }).join(', ') : '—') + '</b></div>'
+      + '<div><small>Départ anticipé</small><b>' + (deps.length ? deps.map(function (j) { return JC[j].toLowerCase() + ' ' + ft(hm(d.jours[j])); }).join(', ') : '—') + '</b></div>'
+      + '<div><small>Assistantes</small><b>' + (Object.keys(nAs).length ? esc(Object.keys(nAs).join(', ')) : '—') + '</b></div></div></section></aside>';
+    // --- rubriques de réglage
+    var avant = '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>';
+    var R = {};
+    R.infos = function () {
+      return '<div class="card" style="display:flex;flex-direction:column;gap:12px">'
+        + '<label class="mu">Prénom (affiché « Dr … »)<input class="in" data-dff="prenom" value="' + esc(d.prenom) + '"></label>'
+        + '<div><span class="mu">Jours de présence habituels</span><div class="h-jours">' + [1, 2, 3, 4, 5].map(function (j) { return '<button type="button" class="h-jbtn' + (d.jours && d.jours[j] ? ' on' : '') + '" data-djour="' + j + '" aria-pressed="' + !!(d.jours && d.jours[j]) + '">' + JC[j] + '</button>'; }).join('') + '</div></div>'
+        + (occColonne() ? '<label class="mu">Cabinet habituel<select class="in" data-dff="cabinet"><option value="">Non renseigné</option>' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+d.cabinet === c ? ' selected' : '') + '>Cabinet ' + c + '</option>'; }).join('') + '</select></label>' : '')
+        + '<label class="mu">Spécificités et note<textarea class="in" rows="2" data-dff="note" placeholder="Ex. : + 1 mercredi par mois">' + esc(d.note || '') + '</textarea></label>'
+        + '<label class="row"><input type="checkbox" data-dff="actif"' + (d.actif ? ' checked' : '') + ' style="width:20px;height:20px;flex:none"><span>Travaille au centre <span class="mu">(décocher pour un ancien dentiste)</span></span></label>'
+        + (d.actif ? '<div class="h-g2"><label class="mu">Présent(e) à partir du<input class="in" type="date" data-dff="present_du" value="' + esc(String(d.present_du || '').slice(0, 10)) + '"></label><label class="mu">Jusqu’au<input class="in" type="date" data-dff="present_au" value="' + esc(String(d.present_au || '').slice(0, 10)) + '"></label></div><p class="mu" style="margin:-4px 0 0;font-size:13.5px">Laissez vide s’il n’y a pas de limite. Avant ou après ces dates, le dentiste ne compte pas dans le planning, les « dentistes seuls » ni les congés.</p>' : '') + '</div>';
+    };
+    R.jours = function () {
+      if (nouv) return avant;
+      var l = [1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j] || as[j]; });
+      return '<div class="a-liste">' + (l.length ? l.map(function (j) {
+        var pres = d.jours && d.jours[j], dep = typeof pres === 'string' ? pres : '';
+        return '<div class="a-li h-djl"><span class="a-it-n"><b>' + JOURS[j] + '</b>' + (as[j] ? '<span>' + as[j].map(esc).join(', ') + '</span>' : '<span class="warn">pas d’assistante</span>') + '</span>'
+          + (pres ? '<label class="h-dep"><span>Départ anticipé</span><input class="in" ' + HM + ' data-ddep="' + j + '" value="' + esc(dep) + '" aria-label="Départ anticipé le ' + JOURS[j].toLowerCase() + ' (vide = heure normale)"></label>' : '<span class="mu">pas présent</span>') + '</div>';
+      }).join('') : '<p class="a-vide">Choisissez ses jours de présence dans « Infos ».</p>') + '</div><p class="a-aide">Départ anticipé : laissez vide s’il finit à l’heure habituelle. Il s’affiche dans le planning sur la case de son assistante, qui garde ses horaires. Pour changer les assistantes, modifiez leur semaine type (menu Équipe, fiche de l’assistante).</p>' + blocExtra(d);
+    };
+    R.absences = function () { return nouv ? avant : '<h3 class="fi-h3">Congés</h3>' + blocConges(true, F.id, d) + '<h3 class="fi-h3">Formations</h3>' + blocConges(true, F.id, d, true); };
+    R.apercu = function () { return fdApercu(d, F); };
+    R.journal = function () { return fdJournal(d, F); };
+    R.annee = function () { return fdAnnee(d, F); };
+    var desc = { apercu: 'cette semaine, assistantes, congés, cabinet', journal: 'congés, formations, assistantes du planning', annee: 'l’année jour par jour', infos: 'prénom, jours, cabinet, dates', jours: 'assistantes, départs anticipés, jours en plus', absences: 'congés et formations' };
+    if (tel && !og) {
+      h += resume + '<div class="fi-liste">' + ONG.map(function (o) { return '<button class="fi-rub" data-dfong="' + o[0] + '"><span><b>' + o[1] + '</b><small>' + desc[o[0]] + '</small></span>' + ico('suiv', 18, 2.4) + '</button>'; }).join('') + '</div>';
+      return h + '</div>';
+    }
+    var corps = '<div class="fi-corps' + (FE_VUES.indexOf(og) >= 0 ? ' fe-corps' : '') + '">' + R[og]() + '</div>';
+    if (tel) return h + corps + '</div>';
+    h += resume + '<section class="fi-d"><nav class="fi-tabs" role="tablist" aria-label="Rubriques de la fiche">' + ONG.map(function (o) { return '<button role="tab" data-dfong="' + o[0] + '" aria-selected="' + (og === o[0]) + '"' + (og === o[0] ? ' class="on"' : '') + (nouv && o[0] !== 'infos' ? ' disabled' : '') + '>' + o[1] + '</button>'; }).join('') + '</nav>' + corps + '</section>';
     return h + '</div>';
+  }
+  // =====================================================================
+  // Fiche d'un dentiste : Aperçu, Journal, Année (même structure que la fiche d'équipe)
+  // =====================================================================
+  var FD_REF = null, FD_OJ = {};
+  function ojMemo(iso) { if (FD_REF !== JOUR_CACHE) { FD_REF = JOUR_CACHE; FD_OJ = {}; } return FD_OJ[iso] || (FD_OJ[iso] = occJour(iso)); }
+  // Ce que fait le dentiste un jour donné, d'après sa fiche et le planning de ses assistantes
+  function fdJour(d, iso) {
+    var J = ojMemo(iso), r = { pres: false, cab: null, AM: [], PM: [], on: {}, dep: null, hors: false }, id = String(d.id);
+    if (J.ferme) return r;
+    for (var c = 1; c <= 8; c++) ['AM', 'PM'].forEach(function (k) { J.cab[c][k].forEach(function (x) { if (String(x.d.id) === id) { r.pres = true; r.cab = c; r[k] = x.as; r.on[k] = 1; if (x.dep) r.dep = x.dep; if (x.hors) r.hors = true; } }); });
+    J.sans.forEach(function (x) { if (String(x.d.id) === id) { r.pres = true; r.AM = r.PM = x.as; r.on.AM = r.on.PM = 1; } });
+    r.sans = r.pres && ((r.on.AM && !r.AM.length) || (r.on.PM && !r.PM.length));
+    return r;
+  }
+  function fdCongeLe(cgs, iso) { return cgs.filter(function (c) { return c.statut === 'accepte' && c.du <= iso && c.au >= iso; })[0]; }
+  function fdConges(d) { var D = S.fdD && S.fdD[String(d.id)]; return D && D.cg ? D.cg : (S.conges || []).filter(function (c) { return String(c.dentiste_id) === String(d.id); }); }
+  function fdDonnees(id) {
+    var D = S.fdD = S.fdD || {}, k = String(id);
+    if (D[k]) return D[k];
+    var x = D[k] = { charge: true }, depuis = new Date(Date.now() - 400 * 864e5).toISOString();
+    Promise.all([
+      toutLire('conges', '*', function (q) { return q.eq('dentiste_id', id).order('du'); }),
+      toutLire('planning', 'equipe_id,jour,demi,aff,modifie_par,modifie_le', function (q) { return q.eq('aff', 'D:' + id).gte('modifie_le', depuis); }).then(function (r) { return r; }, function () { return null; })
+    ]).then(function (r) { x.cg = r[0] || []; x.plm = r[1]; x.charge = false; render(); })
+      .catch(function (e) { x.charge = false; x.err = msgErr(e); x.cg = null; render(); });
+    return x;
+  }
+  // Aujourd'hui : [texte, couleur] pour la liste
+  function fdStatut(d) {
+    var auj = dIso(new Date()), j = jourSem(auj);
+    if (!d.actif) return null;
+    if (d.present_du && String(d.present_du).slice(0, 10) > auj) return ['arrive le ' + dateCourte(String(d.present_du).slice(0, 10)), 're'];
+    if (d.present_au && String(d.present_au).slice(0, 10) < auj) return ['parti le ' + dateCourte(String(d.present_au).slice(0, 10)), 're'];
+    if (j === 0 || j === 6) return ['week-end', 're'];
+    var c = fdCongeLe(fdConges(d), auj);
+    if (c) return [(c.type === 'FORMATION' ? 'en formation' : 'en congés') + (c.au > auj ? ' jusqu’au ' + (+c.au.slice(8)) : ''), c.type === 'FORMATION' ? 'fo' : 'co'];
+    if (ferie(auj)) return ['férié', 're'];
+    var x = fdJour(d, auj);
+    if (x.pres) return [(x.hors ? 'au cabinet (planning)' : dentExtra(d, auj) ? 'jour en plus' : 'présent') + (x.cab ? ' · cabinet ' + x.cab : '') + (x.sans ? ' · sans assistante' : ''), x.sans ? 'at' : 'la'];
+    return ['ne vient pas le ' + JOURS[j].toLowerCase(), 're'];
+  }
+  // Points à surveiller dans les 3 semaines qui viennent : [titre, détail, bouton, attribut]
+  function fdATraiter(d, complet) {
+    var auj = dIso(new Date()), l = [], id = String(d.id);
+    if (!d.actif) return l;
+    for (var i = 0; i < 21; i++) {
+      var iso = addJ(auj, i), j = jourSem(iso); if (j < 1 || j > 5) continue;
+      var x = fdJour(d, iso); if (!x.sans) continue;
+      var dm = x.on.AM && !x.AM.length && x.on.PM && !x.PM.length ? '' : x.on.AM && !x.AM.length ? ' (matin)' : ' (après-midi)';
+      l.push(['Sans assistante ' + jourCourt(iso) + dm, 'présent au cabinet, personne avec lui', 'Planning', 'data-fepl="' + iso + '"']);
+    }
+    if (!complet) return l;
+    fdConges(d).filter(function (c) { return c.statut === 'accepte' && c.au >= auj && c.du <= addJ(auj, 30) && c.type !== 'FORMATION'; }).forEach(function (c) {
+      var lib = {}; for (var x2 = c.du < auj ? auj : c.du; x2 <= c.au; x2 = addJ(x2, 1)) { var as = assistantesDe(id)[jourSem(x2)] || []; as.forEach(function (n) { lib[n] = 1; }); }
+      var n2 = Object.keys(lib); if (n2.length) l.push(['Congés ' + periode(c.du, c.au), n2.join(', ') + (n2.length > 1 ? ' seront libres' : ' sera libre') + ' : à replacer si besoin', 'Planning', 'data-fepl="' + (c.du < auj ? auj : c.du) + '"']);
+    });
+    var ex = Array.isArray(d.extra) ? d.extra : [], mp = new Date(); mp = new Date(mp.getFullYear(), mp.getMonth() + 1, 1); var km = dIso(mp).slice(0, 7);
+    if (ex.some(function (x3) { return x3 < km; }) && !ex.some(function (x3) { return x3.slice(0, 7) === km; })) l.push(['Jours en plus de ' + MOIS[mp.getMonth()], 'aucun choisi pour l’instant', 'Choisir', 'data-dfong="jours"']);
+    if (d.present_au) { var fin = String(d.present_au).slice(0, 10); if (fin >= auj && fin <= addJ(auj, 60)) l.push(['Fin de présence le ' + dateCourte(fin), 'ses assistantes seront à replacer ensuite', 'Voir', 'data-dfong="infos"']); }
+    if (occColonne() && !+d.cabinet) l.push(['Cabinet habituel à renseigner', 'pour l’occupation des cabinets', 'Remplir', 'data-dfong="infos"']);
+    if (![1, 2, 3, 4, 5].some(function (j) { return d.jours && d.jours[j]; })) l.push(['Jours de présence à renseigner', 'sans eux, il n’apparaît pas au planning', 'Remplir', 'data-dfong="infos"']);
+    return l;
+  }
+  function fdApercu(d, F) {
+    var auj = dIso(new Date()), L = lundiDe(auj), m = auj.slice(0, 7), d1 = m + '-01', dN = dIso(new Date(+m.slice(0, 4), +m.slice(5, 7), 0)), W8 = [];
+    for (var i = 7; i >= 0; i--) { var Lw = addJ(L, -7 * i); if (addJ(Lw, 4) >= PL_DEBUT) W8.push(Lw); }
+    if (!W8.length) W8.push(L);
+    var D = fdDonnees(d.id);
+    if (feAssurer([W8[0], d1].sort()[0], [dN, addJ(auj, 21)].sort()[1]) || D.charge) return '<p class="a-vide">Chargement de la fiche…</p>';
+    var cgs = fdConges(d), h = '<div class="fe-g">';
+    // --- cette semaine
+    var sem = '', nP = 0;
+    for (var k = 0; k < 5; k++) {
+      var iso = addJ(L, k), x = fdJour(d, iso), c = fdCongeLe(cgs, iso), fe = ferie(iso), pi, cl, det = '';
+      if (fe) { pi = 'Férié'; cl = 'off'; }
+      else if (c) { pi = c.type === 'FORMATION' ? 'Formation' : 'Congés'; cl = 'ab'; var asH = assistantesDe(d.id)[k + 1] || []; det = asH.length ? asH.join(', ') + ' sans lui' : ''; }
+      else if (x.pres) { nP++; pi = x.cab ? 'Cabinet ' + x.cab : 'Présent'; cl = dentExtra(d, iso) ? 'ec' : 'de'; var nA = function (l2) { return l2.map(function (p) { return p.prenom; }).join(', '); }; det = x.sans ? '<span class="warn-t">sans assistante' + (x.AM.length || x.PM.length ? ' une demi-journée' : '') + '</span>' : nA(x.AM) === nA(x.PM) || !x.on.PM || !x.on.AM ? esc(nA(x.on.AM ? x.AM : x.PM)) : 'matin ' + esc(nA(x.AM)) + ' · a-m ' + esc(nA(x.PM)); if (x.dep) det += ' · départ ' + ft(x.dep); if (dentExtra(d, iso)) det = 'jour en plus · ' + det; }
+      else { pi = 'Ne vient pas'; cl = 'off'; }
+      sem += '<div class="fe-j' + (iso === auj ? ' auj' : '') + '"><b>' + JC[k + 1] + ' ' + dDe(iso).getDate() + '</b><span class="fe-pi ' + cl + '">' + pi + '</span><small>' + det + '</small></div>';
+    }
+    h += feTuile('Cette semaine', feLien('Planning', 'data-fepl="' + L + '"'), sem + '<div class="fe-pied"><span>Au cabinet cette semaine</span><b>' + nP + ' ' + pl(nP, 'jour') + '</b></div>');
+    // --- assistantes habituelles
+    var as = assistantesDe(d.id), ap = (S.equipe || []).filter(function (p) { return p.actif && p.statut === 'apprentie' && String(attitre(p)) === String(d.id); });
+    var la = [1, 2, 3, 4, 5].map(function (j) { var pres = d.jours && d.jours[j]; return '<div><span>' + JOURS[j] + '</span><b class="' + (pres && !as[j] ? 'warn-t' : '') + '">' + (pres ? (as[j] ? esc(as[j].join(', ')) : 'pas d’assistante') : '<span class="mu">ne vient pas' + (as[j] ? ' (' + esc(as[j].join(', ')) + ' prévue)' : '') + '</span>') + '</b></div>'; }).join('');
+    h += feTuile('Assistantes habituelles', feLien('Modifier', 'data-dfong="jours"'), '<div class="fe-pr fd-as">' + la + '</div>' + (ap.length ? '<div class="fe-k fd-ap"><small>Référent de</small><b>' + ap.map(function (p) { return esc(p.prenom) + (p.ecole_jour ? ' <span class="mu">· école le ' + JOURS[p.ecole_jour].toLowerCase() + '</span>' : ''); }).join(', ') + '</b></div>' : '') + '<small class="mu">D’après la semaine type des assistantes.</small>');
+    // --- à surveiller
+    var al = fdATraiter(d, true);
+    h += feTuile('À surveiller' + (al.length ? ' · ' + al.length : ''), '', al.length ? '<div class="fe-al">' + al.slice(0, 5).map(function (y) { return '<div class="fe-ali"><span class="fe-ali-i" aria-hidden="true">' + ico('attente', 17, 2.2) + '</span><span class="fe-ali-t"><b>' + esc(y[0]) + '</b><small>' + esc(y[1]) + '</small></span><button class="btn l sm" ' + y[3] + '>' + y[2] + '</button></div>'; }).join('') + (al.length > 5 ? '<small class="mu">+ ' + (al.length - 5) + ' autre' + (al.length > 6 ? 's' : '') + '</small>' : '') + '</div>' : '<p class="fe-rien">' + ico('ok', 20, 2.4) + 'Rien à signaler</p>', 'fe-sv' + (al.length ? '' : ' ok'));
+    // --- congés et absences
+    var an = auj.slice(0, 4), nbJ = function (t) { var n = 0; cgs.forEach(function (c2) { if (c2.statut !== 'accepte' || (t === 'FORMATION') !== (c2.type === 'FORMATION')) return; for (var z = c2.du < an + '-01-01' ? an + '-01-01' : c2.du; z <= c2.au && z <= an + '-12-31'; z = addJ(z, 1)) { var jz = jourSem(z); if (jz >= 1 && jz <= 5 && !ferie(z)) n++; } }); return n; };
+    var nEx = (Array.isArray(d.extra) ? d.extra : []).filter(function (z) { return z.slice(0, 4) === an; }).length;
+    var avenir = cgs.filter(function (c2) { return c2.au >= auj && c2.statut !== 'refuse' && c2.statut !== 'annule'; }).sort(function (a, b) { return a.du < b.du ? -1 : 1; }).slice(0, 3);
+    var exAv = (Array.isArray(d.extra) ? d.extra : []).filter(function (z) { return z >= auj; }).slice(0, 2);
+    h += feTuile('Congés et absences', feLien('Poser une absence', 'data-dfong="absences"'), '<div class="fe-ks k3">' + feChiffre('Congés ' + an, nbJ('CP') + ' j', '', 'jours ouvrés') + feChiffre('Formations', nbJ('FORMATION') + ' j') + feChiffre('Jours en plus', nEx + ' j', '', an) + '</div>'
+      + (avenir.length || exAv.length ? '<div class="fe-li">' + avenir.map(function (c2) { return '<div><span><i class="fe-pt ' + (c2.type === 'FORMATION' ? 'fo' : 'co') + '" aria-hidden="true"></i>' + (c2.type === 'FORMATION' ? 'Formation' : 'Congés') + ' ' + periode(c2.du, c2.au) + '</span><b class="' + (c2.statut === 'attente' ? 'warn-t' : 'ok-t') + '">' + (c2.statut === 'attente' ? 'en attente' : 'prévu') + '</b></div>'; }).join('')
+        + exAv.map(function (z) { return '<div><span><i class="fe-pt ec" aria-hidden="true"></i>Jour en plus ' + jourCourt(z) + '</span><b class="ok-t">prévu</b></div>'; }).join('') + '</div>' : '<p class="mu fe-p">Rien de prévu pour l’instant.</p>'));
+    // --- cabinet du mois
+    var cab = +d.cabinet, nM = 0, nMp = 0, nS = 0;
+    for (var z = d1; z <= dN; z = addJ(z, 1)) { var jz = jourSem(z); if (jz < 1 || jz > 5) continue; var y = fdJour(d, z); if (y.pres) { nMp++; if (z <= auj) nM++; if (y.sans && z >= auj) nS++; } }
+    var occ = null; if (cab) { var Rs = occStats(d1, dN); occ = occPct(Rs.c[cab]); }
+    var hs = W8.map(function (Lx) { var n = 0; for (var q = 0; q < 5; q++) if (fdJour(d, addJ(Lx, q)).pres) n++; return { L: Lx, n: n }; });
+    var gr = '<div class="fe-gr fd-gr" role="img" aria-label="Jours au cabinet par semaine">' + hs.map(function (x2) { return '<span class="fe-bar' + (x2.L === L ? ' cur' : ' plus') + '" style="height:' + Math.max(2, x2.n * 20) + '%" title="Semaine du ' + dateCourte(x2.L) + ' : ' + x2.n + ' ' + pl(x2.n, 'jour') + '"></span>'; }).join('') + '</div><div class="fe-grl">' + hs.map(function (x2) { var dd = dDe(x2.L); return '<span>' + dd.getDate() + '/' + (dd.getMonth() + 1) + '</span>'; }).join('') + '</div>';
+    h += feTuile((cab ? 'Cabinet ' + cab + ' · ' : 'Présence · ') + MOIS[+m.slice(5, 7) - 1], feLien('Occupation', 'data-feoc="' + m + '"'), '<div class="fe-ks k3">' + feChiffre('Jours au cabinet', nM + '/' + nMp, '', 'faits / prévus ce mois') + (cab ? feChiffre('Occupation', occ + ' %', '', 'du cabinet ' + cab) : '') + feChiffre('Sans assistante', nS + ' j', nS ? 'moins' : '', 'à venir ce mois') + '</div>' + gr + '<small class="mu fe-leg">Jours au cabinet par semaine · en or : cette semaine</small>');
+    // --- infos
+    var lg = function (k2, v) { return '<div><span>' + k2 + '</span><b>' + v + '</b></div>'; };
+    h += feTuile('Infos', feLien('Modifier', 'data-dfong="infos"'), '<div class="fe-pr">'
+      + lg('Présence', (d.present_du ? 'depuis le ' + dateCourte(String(d.present_du).slice(0, 10)) : 'sans date de début') + (d.present_au ? ' · jusqu’au ' + dateCourte(String(d.present_au).slice(0, 10)) : ''))
+      + lg('Cabinet', cab ? String(cab) : '<span class="mu">non renseigné</span>')
+      + lg('Jours', esc([1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j]; }).map(function (j) { return JOURS[j].toLowerCase() + (typeof d.jours[j] === 'string' && d.jours[j] ? ' (départ ' + ft(hm(d.jours[j])) + ')' : ''); }).join(', ') || '—'))
+      + '</div><label class="fe-note"><span>Spécificités et note <small>(visibles par la gestion)</small></span><textarea class="in" id="fdnote" rows="3" placeholder="Ex. : + 1 mercredi par mois, préfère les chirurgies le matin…">' + esc(d.note || '') + '</textarea></label><button class="btn l sm fe-nb" data-act="fdnote">Enregistrer</button>');
+    return h + '</div>';
+  }
+  async function sauverNoteDent() {
+    var F = S.df, el = document.getElementById('fdnote'); if (!F || !el || F.id === 'new') return;
+    var v = el.value.trim() || null, x = await sb.from('dentistes').update({ note: v }).eq('id', F.id);
+    if (x.error) { toast(msgErr(x.error)); return; }
+    var dd = dentById(F.id); if (dd) dd.note = v; F.d.note = v;
+    if (F.o) { try { var o = JSON.parse(F.o); o.note = v; F.o = JSON.stringify(o); } catch (e) {} }
+    toast('✔ Enregistré'); render();
+  }
+  function fdJournal(d, F) {
+    var D = fdDonnees(d.id), E = feEtat();
+    if (D.charge) return '<p class="a-vide">Chargement du journal…</p>';
+    if (D.err) return '<div class="ban warn">' + esc(D.err) + '</div>';
+    var ev = [], add = function (ts, cat, t, s) { if (!ts) return; var x = new Date(ts); if (isNaN(x)) return; ev.push({ ts: x.toISOString(), jour: dIso(x), h: fMin(x.getHours() * 60 + x.getMinutes()), cat: cat, t: t, s: s || '' }); };
+    var par = function (id) { var n = feQui(id); return n ? ' · par ' + n : ''; };
+    (D.cg || []).forEach(function (c) {
+      var fo = c.type === 'FORMATION';
+      add(c.cree_le, 'cg', fo ? 'Formation posée' : 'Congés posés', periode(c.du, c.au) + par(c.demande_par) + (c.mot ? ' · « ' + c.mot + ' »' : '') + (c.statut === 'annule' ? ' · annulé' + (fo ? 'e' : 's') : c.statut === 'attente' ? ' · en attente' : ''));
+    });
+    var G = {};
+    (D.plm || []).forEach(function (r) { if (!r.modifie_le) return; var k = (r.modifie_par || '') + '|' + r.equipe_id + '|' + String(r.modifie_le).slice(0, 16); (G[k] = G[k] || []).push(r); });
+    Object.keys(G).forEach(function (k) {
+      var l = G[k], p = persById(l[0].equipe_id), js = {}; l.forEach(function (r) { js[String(r.jour).slice(0, 10)] = 1; });
+      var j2 = Object.keys(js).sort(), qd = j2.length <= 3 ? j2.map(jourCourt).join(', ') : 'du ' + jourCourt(j2[0]) + ' au ' + jourCourt(j2[j2.length - 1]) + ' (' + j2.length + ' jours)';
+      add(l.map(function (r) { return r.modifie_le; }).sort()[0], 'pl', (p ? p.prenom : 'Une assistante') + ' placée avec lui', qd + par(l[0].modifie_par));
+    });
+    ev.sort(function (a, b) { return a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0; });
+    var depuis = addJ(dIso(new Date()), -E.jn), jf = ['tout', 'pl', 'cg'].indexOf(E.jf) >= 0 ? E.jf : 'tout', l = ev.filter(function (x) { return x.jour >= depuis && (jf === 'tout' || x.cat === jf); });
+    var FC = { pl: ['Planning', 'equipe'], cg: ['Congés et absences', 'agenda'] };
+    var h = '<div class="fe-jb"><div class="fe-jf" role="group" aria-label="Filtrer le journal">' + [['tout', 'Tout'], ['pl', 'Planning'], ['cg', 'Congés et absences']].map(function (x) { return '<button data-fejf="' + x[0] + '" aria-pressed="' + (jf === x[0]) + '"' + (jf === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>'; }).join('') + '</div>'
+      + '<label class="fe-jq">' + ico('loupe', 18, 2.2) + '<input type="search" data-fejq placeholder="Chercher…" aria-label="Chercher dans le journal" value="' + esc(E.jq || '') + '"></label></div>';
+    if (D.plm === null) h += '<p class="mu fe-p">Les changements du planning ne sont pas disponibles.</p>';
+    if (!l.length) h += '<p class="a-vide">Rien sur les ' + E.jn + ' derniers jours' + (jf !== 'tout' ? ' pour ce filtre' : '') + '.</p>';
+    var cur = null; if (l.length) h += '<div class="fe-jl">';
+    l.forEach(function (x) {
+      if (x.jour !== cur) { if (cur) h += '</div>'; cur = x.jour; h += '<div class="fe-jg"><b class="fe-jd">' + (x.jour === dIso(new Date()) ? 'Aujourd’hui · ' : x.jour === addJ(dIso(new Date()), -1) ? 'Hier · ' : '') + jourLong(x.jour) + '</b>'; }
+      var C = FC[x.cat];
+      h += '<div class="fe-e" data-fet="' + esc(norm(x.t + ' ' + x.s + ' ' + C[0])) + '"><span class="fe-eh">' + x.h + '</span><span class="fe-ei ' + x.cat + '" aria-hidden="true">' + ico(C[1], 17, 2.2) + '</span><span class="fe-et"><b>' + esc(x.t) + '</b>' + (x.s ? '<small>' + esc(x.s) + '</small>' : '') + '</span><span class="fe-tag ' + x.cat + '">' + C[0] + '</span></div>';
+    });
+    if (cur) h += '</div>'; if (l.length) h += '</div>';
+    if (ev.some(function (x) { return x.jour < depuis; }) && E.jn < 400) h += '<button class="btn l fe-plus" data-act="feplus">Voir plus ancien</button>';
+    h += '<p class="mu fe-p">Le journal se remplit tout seul : congés et formations posés, assistantes placées avec lui dans le planning. Les jours en plus et les changements de fiche n’y figurent pas.</p>';
+    if (E.jq) setTimeout(function () { feFiltrerJournal(norm(E.jq.trim())); }, 0);
+    return h;
+  }
+  var FD_TY = { pr: ['Au cabinet', ''], sa: ['Au cabinet sans assistante', '!'], pl: ['Jour en plus', '+'], nv: ['Ne vient pas', ''], we: ['Week-end', ''], fe: ['Férié', 'Fé'], ca: ['Congés', 'CA'], at: ['Congés en attente', 'CA'], fo: ['Formation', 'F'], hd: ['Hors de ses dates de présence', ''], av: ['Avant le planning dans l’appli', ''] };
+  function fdType(d, iso, cgs) {
+    var j = jourSem(iso);
+    if (j === 0 || j === 6) return 'we';
+    if (ferie(iso)) return 'fe';
+    var cs = cgs.filter(function (x) { return x.du <= iso && x.au >= iso && (x.statut === 'accepte' || x.statut === 'attente'); }), c = cs.filter(function (x) { return x.statut === 'accepte'; })[0];
+    if (c) return c.type === 'FORMATION' ? 'fo' : 'ca';
+    if (cs.length) return 'at';
+    if (iso < PL_DEBUT) return 'av';
+    if (!dentDansDates(d, iso)) return 'hd';
+    var x = fdJour(d, iso);
+    if (!x.pres) return 'nv';
+    if (x.sans) return 'sa';
+    return dentExtra(d, iso) ? 'pl' : 'pr';
+  }
+  function fdAnnee(d, F) {
+    var E = feEtat(), y = E.an, auj = dIso(new Date()), d1 = y + '-01-01', d2 = y + '-12-31', D = fdDonnees(d.id), de = [d1, PL_DEBUT].sort()[1];
+    var charge = D.charge; if (de <= d2 && feAssurer(de, d2)) charge = true;
+    var h = '<div class="fe-anh">' + navDate({ cle: 'fean', pas: 'an', titre: 'L’année ' + y + ' jour par jour', val: d1, auj: String(y) === auj.slice(0, 4) ? '' : 'Cette année' }) + '<span class="mu">Touchez un jour pour son détail · un mois pour le planning · estompé : à venir</span></div>';
+    if (charge) return h + '<p class="a-vide">Chargement de l’année…</p>';
+    var cgs = fdConges(d), tot = {}, vus = {}, NM = ['Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'];
+    var sel = E.jour && E.jour.slice(0, 4) === String(y) ? E.jour : auj.slice(0, 4) === String(y) ? auj : null;
+    var g = '<div class="fe-ang"><span></span>';
+    for (var n = 1; n <= 31; n++) g += '<span class="fe-n">' + n + '</span>';
+    for (var mo = 0; mo < 12; mo++) {
+      var mm = y + '-' + ('0' + (mo + 1)).slice(-2), nb = new Date(y, mo + 1, 0).getDate();
+      g += '<button class="fe-m" data-femois="' + mm + '" title="Ouvrir ' + MOIS[mo] + ' dans le planning">' + NM[mo] + '</button>';
+      for (var dd = 1; dd <= 31; dd++) {
+        if (dd > nb) { g += '<span class="fe-c x"></span>'; continue; }
+        var iso = mm + '-' + ('0' + dd).slice(-2), k = fdType(d, iso, cgs), fut = iso > auj;
+        vus[k] = 1; if (!fut) tot[k] = (tot[k] || 0) + 1;
+        g += '<button class="fe-c fd-' + k + (fut ? ' fut' : '') + (iso === auj ? ' auj' : '') + (iso === sel ? ' sel' : '') + '" data-fejour="' + iso + '" title="' + esc(jourLong(iso) + ' · ' + FD_TY[k][0]) + '" aria-label="' + esc(jourLong(iso) + ' · ' + FD_TY[k][0]) + '">' + FD_TY[k][1] + '</button>';
+      }
+    }
+    g += '</div>';
+    var leg = ['pr', 'sa', 'pl', 'nv', 'we', 'fe', 'ca', 'at', 'fo', 'hd', 'av'].filter(function (k2) { return vus[k2] || k2 === 'pr' || k2 === 'nv'; }).map(function (k2) { return '<span><i class="fe-c fd-' + k2 + '">' + FD_TY[k2][1] + '</i>' + FD_TY[k2][0] + '</span>'; }).join('') + '<span><i class="fe-c fd-pr auj"></i>Aujourd’hui</span>';
+    h += '<div class="fe-an">' + g + '</div><div class="fe-leg2">' + leg + '</div>';
+    var T = function (k2) { return tot[k2] || 0; };
+    var kt = [['Jours au cabinet', T('pr') + T('sa') + T('pl') + ' j'], ['Congés', T('ca') + ' j'], ['Formations', T('fo') + ' j'], ['Jours en plus', T('pl') + ' j'], ['Sans assistante', T('sa') + ' j']];
+    var tz = '<section class="fe-t"><div class="fe-th"><h3>Totaux ' + y + (String(y) === auj.slice(0, 4) ? ' · jusqu’à aujourd’hui' : '') + '</h3></div><div class="fe-ks k5">' + kt.map(function (x) { return feChiffre(x[0], x[1], x[0] === 'Sans assistante' && T('sa') ? 'moins' : ''); }).join('') + '</div>' + (y <= 2026 ? '<small class="mu">Avant le 1er novembre 2026, seules les absences saisies dans l’appli apparaissent.</small>' : '') + '</section>';
+    var dt = '';
+    if (sel) {
+      var k0 = fdType(d, sel, cgs), j0 = jourSem(sel), lg = [], c0 = cgs.filter(function (x) { return x.du <= sel && x.au >= sel && x.statut !== 'refuse' && x.statut !== 'annule'; })[0];
+      if (c0) lg.push((c0.type === 'FORMATION' ? 'Formation' : 'Congés') + ' ' + periode(c0.du, c0.au) + (c0.statut === 'attente' ? ' · en attente' : ''));
+      if (j0 >= 1 && j0 <= 5 && sel >= PL_DEBUT && !ferie(sel)) {
+        var x = fdJour(d, sel), nA = function (l2) { return l2.map(function (p) { return esc(p.prenom); }).join(', '); };
+        if (x.pres) { lg.push((x.cab ? 'Au cabinet ' + x.cab : 'Au cabinet') + (x.dep ? ' · départ ' + ft(x.dep) : '')); lg.push(x.on.AM && x.on.PM && nA(x.AM) !== nA(x.PM) ? 'Matin : <b>' + (nA(x.AM) || '<span class="warn-t">personne</span>') + '</b> · après-midi : <b>' + (nA(x.PM) || '<span class="warn-t">personne</span>') + '</b>' : 'Avec : <b>' + (nA(x.on.AM ? x.AM : x.PM) || '<span class="warn-t">aucune assistante</span>') + '</b>'); }
+      }
+      dt = '<section class="fe-t fe-dj"><div class="fe-th"><h3>' + jourLong(sel) + ' ' + sel.slice(0, 4) + '</h3></div><span class="fe-djt"><i class="fe-c fd-' + k0 + '">' + FD_TY[k0][1] + '</i>' + FD_TY[k0][0] + '</span>' + lg.map(function (z) { return '<span>' + z + '</span>'; }).join('')
+        + (j0 >= 1 && j0 <= 5 && sel >= PL_DEBUT ? '<div class="fe-djb"><button class="btn sm" data-fepl="' + sel + '">Ouvrir la semaine dans le planning</button></div>' : '') + '</section>';
+    }
+    return h + '<div class="fe-anb">' + tz + dt + '</div>';
   }
   // « Jours en plus » : les jours où le dentiste ne vient pas d'habitude, sur 3 mois ; une touche = il vient ce jour-là (enregistré tout de suite)
   function blocExtra(d) {
@@ -2437,7 +2685,7 @@
     }).catch(function (e) { F.exBusy = false; F.d.extra = (dentById(F.id) || {}).extra || []; toast(msgErr(e)); render(); });
   }
   function vBarDFiche() {
-    var F = S.df; if (!F) return '';
+    var F = S.df; if (!F || FE_VUES.indexOf(ogDFiche(F)) >= 0) return '';
     return '<div class="bar a-bar"><div class="bar-in"><button class="a-btn navy" data-act="dfsave"' + (F.busy ? ' disabled' : '') + '>' + (F.busy ? 'Enregistrement…' : 'Enregistrer') + '</button></div></div>';
   }
   function sauverDent() {
@@ -7647,6 +7895,7 @@
     if (d.plsem != null && S.pl) { S.pl.lundi = d.plsem === '0' ? lundiDe(dIso(new Date())) : addJ(S.pl.lundi, +d.plsem); S.pl.cas = null; if (gestion()) chargerSemaine(); else S.pl.de = null; render(); return; }
     if (d.plc) { if (!gestion() && !(refDe() && refDroit('planning_modif'))) return; return ouvrirCase(d.plc); }
     if (d.act === 'ptok') { S.ptRes = null; render(); return; }
+    if (d.dfong != null && S.df) { S.df.onglet = d.dfong || null; render(); window.scrollTo(0, 0); return; }
     if (d.pfong != null && S.pf) { S.pf.onglet = d.pfong || null; render(); window.scrollTo(0, 0); return; }
     if (d.pfcel && S.pf) { S.pf.cel = d.pfcel; render(); return; }
     if (d.plnew) return nouvellePlage(d.plnew);

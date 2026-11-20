@@ -2884,3 +2884,22 @@ body.rail-on .rail{overflow-x:hidden}
   body.rail-mini .rail:hover .rail-l{justify-content:flex-start;padding:0 10px}
   body.rail-mini .rail:hover .rail-hd{justify-content:flex-start;padding:2px 6px 14px}
 }
+/* Fiche dentiste dans la page Équipe */
+.rgl-sw{display:grid;grid-template-columns:1fr 1fr;gap:3px;background:var(--ivory);border-radius:12px;padding:3px;margin:0 2px 10px}
+.rgl-sw button{height:36px;border:none;border-radius:9px;background:none;font:inherit;font-size:14px;font-weight:700;color:var(--navy);cursor:pointer}
+.rgl-sw button.on{background:var(--navy);color:#fff}
+.fi-avt.dz{background:var(--navy);color:var(--gold)}
+.fd-as > div{grid-template-columns:86px minmax(0,1fr)}
+.fd-ap{margin-top:2px}.fd-ap b{font-size:15px;white-space:normal}
+.fe-c.fd-pr{background:var(--navy);color:#fff}
+.fe-c.fd-sa{background:var(--navy);color:#ffd8b8;box-shadow:inset 0 0 0 2px #d9822b}
+.fe-c.fd-pl{background:var(--gold);color:var(--navy)}
+.fe-c.fd-nv{background:#f1efe9;color:#6b747c}
+.fe-c.fd-we{background:repeating-linear-gradient(135deg,#dfe4ea 0 3px,#f7f8fa 3px 6px);color:var(--mute)}
+.fe-c.fd-fe{background:#f3d6dc;color:#7a1f33}
+.fe-c.fd-ca{background:#2f6ea8;color:#fff}
+.fe-c.fd-at{background:#fff;color:#2f6ea8;box-shadow:inset 0 0 0 2px #2f6ea8}
+.fe-c.fd-fo{background:#1f8a55;color:#fff}
+.fe-c.fd-hd,.fe-c.fd-av{background:#f7f6f2;color:var(--mute)}
+.fe-pi.ec{background:#f1e9cf;color:#5c4c14}
+.rgl-l > span:nth-child(2){display:flex;flex-direction:column;line-height:1.2;min-width:0;flex:1}
