@@ -1897,7 +1897,7 @@
     for (var i = 0; i < lib.length; i++) if (A.indexOf(lib[i][0]) >= 0) return [lib[i][1], lib[i][2]];
     if (A[0] === 'OFF' && A[1] === 'OFF') return [am.off || pm.off ? 'jour off' : 'jour de repos', 're'];
     var b = bornesPrevues(p, auj), mn = new Date().getHours() * 60 + new Date().getMinutes();
-    if (p.pointage && b.d != null) return mn > b.d + 10 ? ['pas encore pointé', 'at'] : ['arrive à ' + fMin(b.d), 're'];
+    if (p.pointage && b.d != null) return mn > b.d + 10 ? ['pas encore de pointage', 'at'] : ['arrive à ' + fMin(b.d), 're'];
     var a0 = am.a !== 'OFF' ? am.a : pm.a; return [nomAff(a0) + ' aujourd’hui', 'la'];
   }
   // Points à traiter : [titre, détail, bouton, attribut]
@@ -2368,7 +2368,7 @@
     var noms = {}; jours.forEach(function (j) { (as[j] || []).forEach(function (n) { noms[n] = 1; }); });
     var auj0 = dIso(new Date()), dates = d.present_du && String(d.present_du).slice(0, 10) > auj0 ? '<span class="pill info">à partir du ' + dateCourte(String(d.present_du).slice(0, 10)) + '</span> ' : d.present_au ? (String(d.present_au).slice(0, 10) < auj0 ? '<span class="pill">parti(e) le ' + dateCourte(String(d.present_au).slice(0, 10)) + '</span> ' : '<span class="pill warn">jusqu’au ' + dateCourte(String(d.present_au).slice(0, 10)) + '</span> ') : '';
     return '<button class="a-li" data-dent="' + d.id + '"><span class="a-av d">' + initiale(d.prenom) + '</span><span class="a-it-n"><b>Dr ' + esc(d.prenom) + ' ' + dates + '</b><span>' + (jours.length ? jours.map(function (j) { return JC[j].toLowerCase(); }).join(' ') : 'jours à renseigner') + (Object.keys(noms).length ? ' · avec ' + Object.keys(noms).map(esc).join(', ') : '') + '</span>'
-      + (seul.length ? '<span class="warn">Sans assistante le ' + seul.map(function (j) { return JOURS[j].toLowerCase(); }).join(', ') + ' (semaine type)</span>' : '') + '</span>' + ico('suiv', 20, 2.2) + '</button>';
+      + (seul.length ? '<span class="warn">Sans assistance le ' + seul.map(function (j) { return JOURS[j].toLowerCase(); }).join(', ') + ' (semaine type)</span>' : '') + '</span>' + ico('suiv', 20, 2.2) + '</button>';
   }
   function vPDent() {
     if (listeACote() && S.dentistes && S.dentistes.some(function (d) { return d.actif; })) { setTimeout(function () { if (S.tab === 'pdent') ouvrirDepuisMenu(true); }, 0); }
@@ -2392,7 +2392,7 @@
   function vDFiche() {
     var F = S.df; if (!F) { S.tab = 'pdent'; return vPDent(); }
     var d = F.d, nouv = F.id === 'new', as = nouv ? {} : assistantesDe(F.id), tel = telephone();
-    var ONG = (nouv ? [] : [['apercu', 'Aperçu'], ['journal', 'Journal'], ['annee', 'Année']]).concat([['infos', 'Infos'], ['jours', 'Jours et assistantes'], ['absences', 'Absences']]);
+    var ONG = (nouv ? [] : [['apercu', 'Aperçu'], ['journal', 'Journal'], ['annee', 'Année']]).concat([['infos', 'Infos'], ['jours', 'Jours et assistance'], ['absences', 'Absences']]);
     var og = ogDFiche(F);
     var h = '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" ' + (tel && og && !nouv ? 'data-dfong=""' : listeACote() ? 'data-tab="hub"' : 'data-tab="pdent"') + '>' + ico('prec', 22, 2.4) + (tel && og && !nouv ? 'Dr ' + esc(d.prenom || '') : listeACote() ? 'Accueil' : 'Dentistes') + '</button><h1>' + (nouv ? 'Nouveau' : tel && og ? ONG.filter(function (o) { return o[0] === og; })[0][1] : 'Dr ' + esc(d.prenom || '…')) + '</h1><span class="a-cale"></span></div></header><div class="a-corps h-fiche fi">';
     // --- résumé
@@ -2401,11 +2401,11 @@
     var nAs = {}; Object.keys(as).forEach(function (j) { as[j].forEach(function (n) { nAs[n] = 1; }); });
     var auj = dIso(new Date());
     var resume = '<aside class="fi-g"><section class="fi-carte fi-res"><span class="fi-avt dz" aria-hidden="true">' + esc((d.prenom || '?').charAt(0).toUpperCase()) + '</span><b class="fi-nom">' + (nouv ? 'Nouveau dentiste' : 'Dr ' + esc(d.prenom)) + '</b>'
-      + '<span class="fi-badges">' + (+d.cabinet ? '<span class="pc">Cabinet ' + d.cabinet + '</span>' : '') + ap.map(function (p) { return '<span class="or">Référent de ' + esc(p.prenom) + '</span>'; }).join('')
+      + '<span class="fi-badges">' + (+d.cabinet ? '<span class="pc">Cabinet ' + d.cabinet + '</span>' : '') + ap.map(function (p) { return '<span class="or">Suit ' + esc(p.prenom) + ' (apprentissage)' + '</span>'; }).join('')
       + (!d.actif && !nouv ? '<span class="ko">Ancien</span>' : '') + (d.present_du && String(d.present_du).slice(0, 10) > auj ? '<span class="pc">à partir du ' + dateCourte(String(d.present_du).slice(0, 10)) + '</span>' : '') + (d.present_au ? '<span class="pc">jusqu’au ' + dateCourte(String(d.present_au).slice(0, 10)) + '</span>' : '') + '</span>'
       + '<div class="fi-tuiles"><div><small>Jours habituels</small><b>' + (js.length ? js.map(function (j) { return JC[j].toLowerCase(); }).join(', ') : '—') + '</b></div>'
       + '<div><small>Départ anticipé</small><b>' + (deps.length ? deps.map(function (j) { return JC[j].toLowerCase() + ' ' + ft(hm(d.jours[j])); }).join(', ') : '—') + '</b></div>'
-      + '<div><small>Assistantes</small><b>' + (Object.keys(nAs).length ? esc(Object.keys(nAs).join(', ')) : '—') + '</b></div></div></section></aside>';
+      + '<div><small>Assistance</small><b>' + (Object.keys(nAs).length ? esc(Object.keys(nAs).join(', ')) : '—') + '</b></div></div></section></aside>';
     // --- rubriques de réglage
     var avant = '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>';
     var R = {};
@@ -2423,15 +2423,15 @@
       var l = [1, 2, 3, 4, 5].filter(function (j) { return d.jours && d.jours[j] || as[j]; });
       return '<div class="a-liste">' + (l.length ? l.map(function (j) {
         var pres = d.jours && d.jours[j], dep = typeof pres === 'string' ? pres : '';
-        return '<div class="a-li h-djl"><span class="a-it-n"><b>' + JOURS[j] + '</b>' + (as[j] ? '<span>' + as[j].map(esc).join(', ') + '</span>' : '<span class="warn">pas d’assistante</span>') + '</span>'
-          + (pres ? '<label class="h-dep"><span>Départ anticipé</span><input class="in" ' + HM + ' data-ddep="' + j + '" value="' + esc(dep) + '" aria-label="Départ anticipé le ' + JOURS[j].toLowerCase() + ' (vide = heure normale)"></label>' : '<span class="mu">pas présent</span>') + '</div>';
-      }).join('') : '<p class="a-vide">Choisissez ses jours de présence dans « Infos ».</p>') + '</div><p class="a-aide">Départ anticipé : laissez vide s’il finit à l’heure habituelle. Il s’affiche dans le planning sur la case de son assistante, qui garde ses horaires. Pour changer les assistantes, modifiez leur semaine type (menu Équipe, fiche de l’assistante).</p>' + blocExtra(d);
+        return '<div class="a-li h-djl"><span class="a-it-n"><b>' + JOURS[j] + '</b>' + (as[j] ? '<span>' + as[j].map(esc).join(', ') + '</span>' : '<span class="warn">personne pour l’assister</span>') + '</span>'
+          + (pres ? '<label class="h-dep"><span>Départ anticipé</span><input class="in" ' + HM + ' data-ddep="' + j + '" value="' + esc(dep) + '" aria-label="Départ anticipé le ' + JOURS[j].toLowerCase() + ' (vide = heure normale)"></label>' : '<span class="mu">ne vient pas</span>') + '</div>';
+      }).join('') : '<p class="a-vide">Choisissez ses jours de présence dans « Infos ».</p>') + '</div><p class="a-aide">Départ anticipé : laissez vide s’il finit à l’heure habituelle. Il s’affiche dans le planning sur la case de la personne qui l’assiste, qui garde ses horaires. Pour changer qui l’assiste, modifiez la semaine type de cette personne (menu Équipe, sa fiche).</p>' + blocExtra(d);
     };
     R.absences = function () { return nouv ? avant : '<h3 class="fi-h3">Congés</h3>' + blocConges(true, F.id, d) + '<h3 class="fi-h3">Formations</h3>' + blocConges(true, F.id, d, true); };
     R.apercu = function () { return fdApercu(d, F); };
     R.journal = function () { return fdJournal(d, F); };
     R.annee = function () { return fdAnnee(d, F); };
-    var desc = { apercu: 'cette semaine, assistantes, congés, cabinet', journal: 'congés, formations, assistantes du planning', annee: 'l’année jour par jour', infos: 'prénom, jours, cabinet, dates', jours: 'assistantes, départs anticipés, jours en plus', absences: 'congés et formations' };
+    var desc = { apercu: 'cette semaine, assistance, congés, cabinet', journal: 'congés, formations, qui l’assiste au planning', annee: 'l’année jour par jour', infos: 'prénom, jours, cabinet, dates', jours: 'qui l’assiste, départs anticipés, jours en plus', absences: 'congés et formations' };
     if (tel && !og) {
       h += resume + '<div class="fi-liste">' + ONG.map(function (o) { return '<button class="fi-rub" data-dfong="' + o[0] + '"><span><b>' + o[1] + '</b><small>' + desc[o[0]] + '</small></span>' + ico('suiv', 18, 2.4) + '</button>'; }).join('') + '</div>';
       return h + '</div>';
@@ -2446,7 +2446,7 @@
   // =====================================================================
   var FD_REF = null, FD_OJ = {};
   function ojMemo(iso) { if (FD_REF !== JOUR_CACHE) { FD_REF = JOUR_CACHE; FD_OJ = {}; } return FD_OJ[iso] || (FD_OJ[iso] = occJour(iso)); }
-  // Ce que fait le dentiste un jour donné, d'après sa fiche et le planning de ses assistantes
+  // Ce que fait le dentiste un jour donné, d'après sa fiche et le planning de l'équipe
   function fdJour(d, iso) {
     var J = ojMemo(iso), r = { pres: false, cab: null, AM: [], PM: [], on: {}, dep: null, hors: false }, id = String(d.id);
     if (J.ferme) return r;
@@ -2473,13 +2473,13 @@
     var auj = dIso(new Date()), j = jourSem(auj);
     if (!d.actif) return null;
     if (d.present_du && String(d.present_du).slice(0, 10) > auj) return ['arrive le ' + dateCourte(String(d.present_du).slice(0, 10)), 're'];
-    if (d.present_au && String(d.present_au).slice(0, 10) < auj) return ['parti le ' + dateCourte(String(d.present_au).slice(0, 10)), 're'];
+    if (d.present_au && String(d.present_au).slice(0, 10) < auj) return ['départ le ' + dateCourte(String(d.present_au).slice(0, 10)), 're'];
     if (j === 0 || j === 6) return ['week-end', 're'];
     var c = fdCongeLe(fdConges(d), auj);
     if (c) return [(c.type === 'FORMATION' ? 'en formation' : 'en congés') + (c.au > auj ? ' jusqu’au ' + (+c.au.slice(8)) : ''), c.type === 'FORMATION' ? 'fo' : 'co'];
     if (ferie(auj)) return ['férié', 're'];
     var x = fdJour(d, auj);
-    if (x.pres) return [(x.hors ? 'au cabinet (planning)' : dentExtra(d, auj) ? 'jour en plus' : 'présent') + (x.cab ? ' · cabinet ' + x.cab : '') + (x.sans ? ' · sans assistante' : ''), x.sans ? 'at' : 'la'];
+    if (x.pres) return [(dentExtra(d, auj) ? 'jour en plus · ' : '') + (x.cab ? 'au cabinet ' + x.cab : 'au cabinet') + (x.hors ? ' (planning)' : '') + (x.sans ? ' · sans assistance' : ''), x.sans ? 'at' : 'la'];
     return ['ne vient pas le ' + JOURS[j].toLowerCase(), 're'];
   }
   // Points à surveiller dans les 3 semaines qui viennent : [titre, détail, bouton, attribut]
@@ -2490,7 +2490,7 @@
       var iso = addJ(auj, i), j = jourSem(iso); if (j < 1 || j > 5) continue;
       var x = fdJour(d, iso); if (!x.sans) continue;
       var dm = x.on.AM && !x.AM.length && x.on.PM && !x.PM.length ? '' : x.on.AM && !x.AM.length ? ' (matin)' : ' (après-midi)';
-      l.push(['Sans assistante ' + jourCourt(iso) + dm, 'présent au cabinet, personne avec lui', 'Planning', 'data-fepl="' + iso + '"']);
+      l.push(['Sans assistance ' + jourCourt(iso) + dm, 'au cabinet, personne pour l’assister', 'Planning', 'data-fepl="' + iso + '"']);
     }
     if (!complet) return l;
     fdConges(d).filter(function (c) { return c.statut === 'accepte' && c.au >= auj && c.du <= addJ(auj, 30) && c.type !== 'FORMATION'; }).forEach(function (c) {
@@ -2499,7 +2499,7 @@
     });
     var ex = Array.isArray(d.extra) ? d.extra : [], mp = new Date(); mp = new Date(mp.getFullYear(), mp.getMonth() + 1, 1); var km = dIso(mp).slice(0, 7);
     if (ex.some(function (x3) { return x3 < km; }) && !ex.some(function (x3) { return x3.slice(0, 7) === km; })) l.push(['Jours en plus de ' + MOIS[mp.getMonth()], 'aucun choisi pour l’instant', 'Choisir', 'data-dfong="jours"']);
-    if (d.present_au) { var fin = String(d.present_au).slice(0, 10); if (fin >= auj && fin <= addJ(auj, 60)) l.push(['Fin de présence le ' + dateCourte(fin), 'ses assistantes seront à replacer ensuite', 'Voir', 'data-dfong="infos"']); }
+    if (d.present_au) { var fin = String(d.present_au).slice(0, 10); if (fin >= auj && fin <= addJ(auj, 60)) l.push(['Fin de présence le ' + dateCourte(fin), 'les personnes qui l’assistent seront à replacer ensuite', 'Voir', 'data-dfong="infos"']); }
     if (occColonne() && !+d.cabinet) l.push(['Cabinet habituel à renseigner', 'pour l’occupation des cabinets', 'Remplir', 'data-dfong="infos"']);
     if (![1, 2, 3, 4, 5].some(function (j) { return d.jours && d.jours[j]; })) l.push(['Jours de présence à renseigner', 'sans eux, il n’apparaît pas au planning', 'Remplir', 'data-dfong="infos"']);
     return l;
@@ -2516,16 +2516,16 @@
     for (var k = 0; k < 5; k++) {
       var iso = addJ(L, k), x = fdJour(d, iso), c = fdCongeLe(cgs, iso), fe = ferie(iso), pi, cl, det = '';
       if (fe) { pi = 'Férié'; cl = 'off'; }
-      else if (c) { pi = c.type === 'FORMATION' ? 'Formation' : 'Congés'; cl = 'ab'; var asH = assistantesDe(d.id)[k + 1] || []; det = asH.length ? asH.join(', ') + ' sans lui' : ''; }
-      else if (x.pres) { nP++; pi = x.cab ? 'Cabinet ' + x.cab : 'Présent'; cl = dentExtra(d, iso) ? 'ec' : 'de'; var nA = function (l2) { return l2.map(function (p) { return p.prenom; }).join(', '); }; det = x.sans ? '<span class="warn-t">sans assistante' + (x.AM.length || x.PM.length ? ' une demi-journée' : '') + '</span>' : nA(x.AM) === nA(x.PM) || !x.on.PM || !x.on.AM ? esc(nA(x.on.AM ? x.AM : x.PM)) : 'matin ' + esc(nA(x.AM)) + ' · a-m ' + esc(nA(x.PM)); if (x.dep) det += ' · départ ' + ft(x.dep); if (dentExtra(d, iso)) det = 'jour en plus · ' + det; }
+      else if (c) { pi = c.type === 'FORMATION' ? 'Formation' : 'Congés'; cl = 'ab'; var asH = assistantesDe(d.id)[k + 1] || []; det = asH.length ? asH.join(', ') + ' libre' + (asH.length > 1 ? 's' : '') : ''; }
+      else if (x.pres) { nP++; pi = x.cab ? 'Cabinet ' + x.cab : 'Au cabinet'; cl = dentExtra(d, iso) ? 'ec' : 'de'; var nA = function (l2) { return l2.map(function (p) { return p.prenom; }).join(', '); }; det = x.sans ? '<span class="warn-t">sans assistance' + (x.AM.length || x.PM.length ? ' une demi-journée' : '') + '</span>' : nA(x.AM) === nA(x.PM) || !x.on.PM || !x.on.AM ? esc(nA(x.on.AM ? x.AM : x.PM)) : 'matin ' + esc(nA(x.AM)) + ' · a-m ' + esc(nA(x.PM)); if (x.dep) det += ' · départ ' + ft(x.dep); if (dentExtra(d, iso)) det = 'jour en plus · ' + det; }
       else { pi = 'Ne vient pas'; cl = 'off'; }
       sem += '<div class="fe-j' + (iso === auj ? ' auj' : '') + '"><b>' + JC[k + 1] + ' ' + dDe(iso).getDate() + '</b><span class="fe-pi ' + cl + '">' + pi + '</span><small>' + det + '</small></div>';
     }
     h += feTuile('Cette semaine', feLien('Planning', 'data-fepl="' + L + '"'), sem + '<div class="fe-pied"><span>Au cabinet cette semaine</span><b>' + nP + ' ' + pl(nP, 'jour') + '</b></div>');
-    // --- assistantes habituelles
+    // --- qui l'assiste d'habitude
     var as = assistantesDe(d.id), ap = (S.equipe || []).filter(function (p) { return p.actif && p.statut === 'apprentie' && String(attitre(p)) === String(d.id); });
-    var la = [1, 2, 3, 4, 5].map(function (j) { var pres = d.jours && d.jours[j]; return '<div><span>' + JOURS[j] + '</span><b class="' + (pres && !as[j] ? 'warn-t' : '') + '">' + (pres ? (as[j] ? esc(as[j].join(', ')) : 'pas d’assistante') : '<span class="mu">ne vient pas' + (as[j] ? ' (' + esc(as[j].join(', ')) + ' prévue)' : '') + '</span>') + '</b></div>'; }).join('');
-    h += feTuile('Assistantes habituelles', feLien('Modifier', 'data-dfong="jours"'), '<div class="fe-pr fd-as">' + la + '</div>' + (ap.length ? '<div class="fe-k fd-ap"><small>Référent de</small><b>' + ap.map(function (p) { return esc(p.prenom) + (p.ecole_jour ? ' <span class="mu">· école le ' + JOURS[p.ecole_jour].toLowerCase() + '</span>' : ''); }).join(', ') + '</b></div>' : '') + '<small class="mu">D’après la semaine type des assistantes.</small>');
+    var la = [1, 2, 3, 4, 5].map(function (j) { var pres = d.jours && d.jours[j]; return '<div><span>' + JOURS[j] + '</span><b class="' + (pres && !as[j] ? 'warn-t' : '') + '">' + (pres ? (as[j] ? esc(as[j].join(', ')) : 'personne') : '<span class="mu">ne vient pas' + (as[j] ? ' (' + esc(as[j].join(', ')) + ' prévue)' : '') + '</span>') + '</b></div>'; }).join('');
+    h += feTuile('Qui l’assiste d’habitude', feLien('Modifier', 'data-dfong="jours"'), '<div class="fe-pr fd-as">' + la + '</div>' + (ap.length ? '<div class="fe-k fd-ap"><small>Apprentissage suivi</small><b>' + ap.map(function (p) { return esc(p.prenom) + (p.ecole_jour ? ' <span class="mu">· école le ' + JOURS[p.ecole_jour].toLowerCase() + '</span>' : ''); }).join(', ') + '</b></div>' : '') + '<small class="mu">D’après les semaines types de l’équipe.</small>');
     // --- à surveiller
     var al = fdATraiter(d, true);
     h += feTuile('À surveiller' + (al.length ? ' · ' + al.length : ''), '', al.length ? '<div class="fe-al">' + al.slice(0, 5).map(function (y) { return '<div class="fe-ali"><span class="fe-ali-i" aria-hidden="true">' + ico('attente', 17, 2.2) + '</span><span class="fe-ali-t"><b>' + esc(y[0]) + '</b><small>' + esc(y[1]) + '</small></span><button class="btn l sm" ' + y[3] + '>' + y[2] + '</button></div>'; }).join('') + (al.length > 5 ? '<small class="mu">+ ' + (al.length - 5) + ' autre' + (al.length > 6 ? 's' : '') + '</small>' : '') + '</div>' : '<p class="fe-rien">' + ico('ok', 20, 2.4) + 'Rien à signaler</p>', 'fe-sv' + (al.length ? '' : ' ok'));
@@ -2543,7 +2543,7 @@
     var occ = null; if (cab) { var Rs = occStats(d1, dN); occ = occPct(Rs.c[cab]); }
     var hs = W8.map(function (Lx) { var n = 0; for (var q = 0; q < 5; q++) if (fdJour(d, addJ(Lx, q)).pres) n++; return { L: Lx, n: n }; });
     var gr = '<div class="fe-gr fd-gr" role="img" aria-label="Jours au cabinet par semaine">' + hs.map(function (x2) { return '<span class="fe-bar' + (x2.L === L ? ' cur' : ' plus') + '" style="height:' + Math.max(2, x2.n * 20) + '%" title="Semaine du ' + dateCourte(x2.L) + ' : ' + x2.n + ' ' + pl(x2.n, 'jour') + '"></span>'; }).join('') + '</div><div class="fe-grl">' + hs.map(function (x2) { var dd = dDe(x2.L); return '<span>' + dd.getDate() + '/' + (dd.getMonth() + 1) + '</span>'; }).join('') + '</div>';
-    h += feTuile((cab ? 'Cabinet ' + cab + ' · ' : 'Présence · ') + MOIS[+m.slice(5, 7) - 1], feLien('Occupation', 'data-feoc="' + m + '"'), '<div class="fe-ks k3">' + feChiffre('Jours au cabinet', nM + '/' + nMp, '', 'faits / prévus ce mois') + (cab ? feChiffre('Occupation', occ + ' %', '', 'du cabinet ' + cab) : '') + feChiffre('Sans assistante', nS + ' j', nS ? 'moins' : '', 'à venir ce mois') + '</div>' + gr + '<small class="mu fe-leg">Jours au cabinet par semaine · en or : cette semaine</small>');
+    h += feTuile((cab ? 'Cabinet ' + cab + ' · ' : 'Présence · ') + MOIS[+m.slice(5, 7) - 1], feLien('Occupation', 'data-feoc="' + m + '"'), '<div class="fe-ks k3">' + feChiffre('Jours au cabinet', nM + '/' + nMp, '', 'faits / prévus ce mois') + (cab ? feChiffre('Occupation', occ + ' %', '', 'du cabinet ' + cab) : '') + feChiffre('Sans assistance', nS + ' j', nS ? 'moins' : '', 'à venir ce mois') + '</div>' + gr + '<small class="mu fe-leg">Jours au cabinet par semaine · en or : cette semaine</small>');
     // --- infos
     var lg = function (k2, v) { return '<div><span>' + k2 + '</span><b>' + v + '</b></div>'; };
     h += feTuile('Infos', feLien('Modifier', 'data-dfong="infos"'), '<div class="fe-pr">'
@@ -2576,7 +2576,7 @@
     Object.keys(G).forEach(function (k) {
       var l = G[k], p = persById(l[0].equipe_id), js = {}; l.forEach(function (r) { js[String(r.jour).slice(0, 10)] = 1; });
       var j2 = Object.keys(js).sort(), qd = j2.length <= 3 ? j2.map(jourCourt).join(', ') : 'du ' + jourCourt(j2[0]) + ' au ' + jourCourt(j2[j2.length - 1]) + ' (' + j2.length + ' jours)';
-      add(l.map(function (r) { return r.modifie_le; }).sort()[0], 'pl', (p ? p.prenom : 'Une assistante') + ' placée avec lui', qd + par(l[0].modifie_par));
+      add(l.map(function (r) { return r.modifie_le; }).sort()[0], 'pl', 'Planning : ' + (p ? p.prenom : 'quelqu’un') + ' pour l’assister', qd + par(l[0].modifie_par));
     });
     ev.sort(function (a, b) { return a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0; });
     var depuis = addJ(dIso(new Date()), -E.jn), jf = ['tout', 'pl', 'cg'].indexOf(E.jf) >= 0 ? E.jf : 'tout', l = ev.filter(function (x) { return x.jour >= depuis && (jf === 'tout' || x.cat === jf); });
@@ -2593,11 +2593,11 @@
     });
     if (cur) h += '</div>'; if (l.length) h += '</div>';
     if (ev.some(function (x) { return x.jour < depuis; }) && E.jn < 400) h += '<button class="btn l fe-plus" data-act="feplus">Voir plus ancien</button>';
-    h += '<p class="mu fe-p">Le journal se remplit tout seul : congés et formations posés, assistantes placées avec lui dans le planning. Les jours en plus et les changements de fiche n’y figurent pas.</p>';
+    h += '<p class="mu fe-p">Le journal se remplit tout seul : congés et formations posés, personnes placées dans le planning pour l’assister. Les jours en plus et les changements de fiche n’y figurent pas.</p>';
     if (E.jq) setTimeout(function () { feFiltrerJournal(norm(E.jq.trim())); }, 0);
     return h;
   }
-  var FD_TY = { pr: ['Au cabinet', ''], sa: ['Au cabinet sans assistante', '!'], pl: ['Jour en plus', '+'], nv: ['Ne vient pas', ''], we: ['Week-end', ''], fe: ['Férié', 'Fé'], ca: ['Congés', 'CA'], at: ['Congés en attente', 'CA'], fo: ['Formation', 'F'], hd: ['Hors de ses dates de présence', ''], av: ['Avant le planning dans l’appli', ''] };
+  var FD_TY = { pr: ['Au cabinet', ''], sa: ['Au cabinet sans assistance', '!'], pl: ['Jour en plus', '+'], nv: ['Ne vient pas', ''], we: ['Week-end', ''], fe: ['Férié', 'Fé'], ca: ['Congés', 'CA'], at: ['Congés en attente', 'CA'], fo: ['Formation', 'F'], hd: ['Hors de ses dates de présence', ''], av: ['Avant le planning dans l’appli', ''] };
   function fdType(d, iso, cgs) {
     var j = jourSem(iso);
     if (j === 0 || j === 6) return 'we';
@@ -2635,15 +2635,15 @@
     var leg = ['pr', 'sa', 'pl', 'nv', 'we', 'fe', 'ca', 'at', 'fo', 'hd', 'av'].filter(function (k2) { return vus[k2] || k2 === 'pr' || k2 === 'nv'; }).map(function (k2) { return '<span><i class="fe-c fd-' + k2 + '">' + FD_TY[k2][1] + '</i>' + FD_TY[k2][0] + '</span>'; }).join('') + '<span><i class="fe-c fd-pr auj"></i>Aujourd’hui</span>';
     h += '<div class="fe-an">' + g + '</div><div class="fe-leg2">' + leg + '</div>';
     var T = function (k2) { return tot[k2] || 0; };
-    var kt = [['Jours au cabinet', T('pr') + T('sa') + T('pl') + ' j'], ['Congés', T('ca') + ' j'], ['Formations', T('fo') + ' j'], ['Jours en plus', T('pl') + ' j'], ['Sans assistante', T('sa') + ' j']];
-    var tz = '<section class="fe-t"><div class="fe-th"><h3>Totaux ' + y + (String(y) === auj.slice(0, 4) ? ' · jusqu’à aujourd’hui' : '') + '</h3></div><div class="fe-ks k5">' + kt.map(function (x) { return feChiffre(x[0], x[1], x[0] === 'Sans assistante' && T('sa') ? 'moins' : ''); }).join('') + '</div>' + (y <= 2026 ? '<small class="mu">Avant le 1er novembre 2026, seules les absences saisies dans l’appli apparaissent.</small>' : '') + '</section>';
+    var kt = [['Jours au cabinet', T('pr') + T('sa') + T('pl') + ' j'], ['Congés', T('ca') + ' j'], ['Formations', T('fo') + ' j'], ['Jours en plus', T('pl') + ' j'], ['Sans assistance', T('sa') + ' j']];
+    var tz = '<section class="fe-t"><div class="fe-th"><h3>Totaux ' + y + (String(y) === auj.slice(0, 4) ? ' · jusqu’à aujourd’hui' : '') + '</h3></div><div class="fe-ks k5">' + kt.map(function (x) { return feChiffre(x[0], x[1], x[0] === 'Sans assistance' && T('sa') ? 'moins' : ''); }).join('') + '</div>' + (y <= 2026 ? '<small class="mu">Avant le 1er novembre 2026, seules les absences saisies dans l’appli apparaissent.</small>' : '') + '</section>';
     var dt = '';
     if (sel) {
       var k0 = fdType(d, sel, cgs), j0 = jourSem(sel), lg = [], c0 = cgs.filter(function (x) { return x.du <= sel && x.au >= sel && x.statut !== 'refuse' && x.statut !== 'annule'; })[0];
       if (c0) lg.push((c0.type === 'FORMATION' ? 'Formation' : 'Congés') + ' ' + periode(c0.du, c0.au) + (c0.statut === 'attente' ? ' · en attente' : ''));
       if (j0 >= 1 && j0 <= 5 && sel >= PL_DEBUT && !ferie(sel)) {
         var x = fdJour(d, sel), nA = function (l2) { return l2.map(function (p) { return esc(p.prenom); }).join(', '); };
-        if (x.pres) { lg.push((x.cab ? 'Au cabinet ' + x.cab : 'Au cabinet') + (x.dep ? ' · départ ' + ft(x.dep) : '')); lg.push(x.on.AM && x.on.PM && nA(x.AM) !== nA(x.PM) ? 'Matin : <b>' + (nA(x.AM) || '<span class="warn-t">personne</span>') + '</b> · après-midi : <b>' + (nA(x.PM) || '<span class="warn-t">personne</span>') + '</b>' : 'Avec : <b>' + (nA(x.on.AM ? x.AM : x.PM) || '<span class="warn-t">aucune assistante</span>') + '</b>'); }
+        if (x.pres) { lg.push((x.cab ? 'Au cabinet ' + x.cab : 'Au cabinet') + (x.dep ? ' · départ ' + ft(x.dep) : '')); lg.push(x.on.AM && x.on.PM && nA(x.AM) !== nA(x.PM) ? 'Matin : <b>' + (nA(x.AM) || '<span class="warn-t">personne</span>') + '</b> · après-midi : <b>' + (nA(x.PM) || '<span class="warn-t">personne</span>') + '</b>' : 'Avec : <b>' + (nA(x.on.AM ? x.AM : x.PM) || '<span class="warn-t">personne</span>') + '</b>'); }
       }
       dt = '<section class="fe-t fe-dj"><div class="fe-th"><h3>' + jourLong(sel) + ' ' + sel.slice(0, 4) + '</h3></div><span class="fe-djt"><i class="fe-c fd-' + k0 + '">' + FD_TY[k0][1] + '</i>' + FD_TY[k0][0] + '</span>' + lg.map(function (z) { return '<span>' + z + '</span>'; }).join('')
         + (j0 >= 1 && j0 <= 5 && sel >= PL_DEBUT ? '<div class="fe-djb"><button class="btn sm" data-fepl="' + sel + '">Ouvrir la semaine dans le planning</button></div>' : '') + '</section>';
@@ -2829,11 +2829,11 @@
     var mx = L[0].n;
     return '<section class="oc-pd"><h3 class="oc-st">Par dentiste · ' + quand + '</h3>' + L.map(function (D) {
       var cabs = Object.keys(D.cab).sort(function (a, b) { return D.cab[b] - D.cab[a]; });
-      return '<div class="oc-pdr"><b>Dr ' + esc(D.d.prenom) + '</b><span class="tdb-bb"><span style="width:' + (D.n / mx * 100).toFixed(1) + '%"></span></span><span class="oc-pdn">' + D.n + ' demi-journée' + (D.n > 1 ? 's' : '') + '</span><span class="mu">' + cabs.map(function (c) { return 'cab. ' + c + (cabs.length > 1 ? ' (' + D.cab[c] + ')' : ''); }).join(', ') + (D.seul ? ' · ' + D.seul + ' sans assistante' : '') + '</span></div>';
+      return '<div class="oc-pdr"><b>Dr ' + esc(D.d.prenom) + '</b><span class="tdb-bb"><span style="width:' + (D.n / mx * 100).toFixed(1) + '%"></span></span><span class="oc-pdn">' + D.n + ' demi-journée' + (D.n > 1 ? 's' : '') + '</span><span class="mu">' + cabs.map(function (c) { return 'cab. ' + c + (cabs.length > 1 ? ' (' + D.cab[c] + ')' : ''); }).join(', ') + (D.seul ? ' · ' + D.seul + ' sans assistance' : '') + '</span></div>';
     }).join('') + '</section>';
   }
   function occDemi(l) { return !l.length ? 'lib' : l.length > 1 ? 'ko' : l[0].as.length ? 'occ' : 'av'; }
-  function occTitreDemi(l) { return !l.length ? 'libre' : l.map(function (x) { return 'Dr ' + x.d.prenom + (x.as.length ? ' avec ' + x.as.map(function (p) { return p.prenom; }).join(', ') : ' sans assistante'); }).join(' + '); }
+  function occTitreDemi(l) { return !l.length ? 'libre' : l.map(function (x) { return 'Dr ' + x.d.prenom + (x.as.length ? ' avec ' + x.as.map(function (p) { return p.prenom; }).join(', ') : ' sans assistance'); }).join(' + '); }
   function vOccMois(O) {
     var m = O.jour.slice(0, 7), d1 = m + '-01', dN = dIso(new Date(+m.slice(0, 4), +m.slice(5, 7), 0)), R = occStats(d1, dN);
     var jours = []; for (var iso = d1; iso <= dN; iso = addJ(iso, 1)) { var j = jourSem(iso); if (j >= 1 && j <= 5) jours.push(iso); }
@@ -2851,7 +2851,7 @@
     }
     g += '</div>';
     return occCartes(T, 'Taux d’occupation · ' + nomM)
-      + '<section class="oc-w oc-ms"><div class="oc-sc">' + g + '</div><p class="oc-leg"><i class="occ"></i>occupé<i class="lib"></i>libre<i class="av"></i>dentiste sans assistante<i class="ko"></i>deux dentistes<span class="grow"></span>Chaque case : matin en haut, après-midi en bas. Touchez un jour pour le détail.</p></section>'
+      + '<section class="oc-w oc-ms"><div class="oc-sc">' + g + '</div><p class="oc-leg"><i class="occ"></i>occupé<i class="lib"></i>libre<i class="av"></i>dentiste sans assistance<i class="ko"></i>deux dentistes<span class="grow"></span>Chaque case : matin en haut, après-midi en bas. Touchez un jour pour le détail.</p></section>'
       + occParDent(R, nomM);
   }
   function vOccAn(O) {
@@ -2871,8 +2871,8 @@
     if (l.length > 1) return court ? '<div class="oc-c ko" title="' + esc(l.map(function (x) { return 'Dr ' + x.d.prenom; }).join(', ')) + '"><b>' + l.length + ' dent.</b></div>'
       : '<button class="oc-c ko' + (String(S.occ.ed) === String(l[l.length - 1].d.id) ? ' on' : '') + '" data-oced="' + l[l.length - 1].d.id + '"><b>' + l.map(function (x) { return 'Dr ' + esc(x.d.prenom); }).join(' + ') + '</b><span>même cabinet</span><small>toucher pour déplacer Dr ' + esc(l[l.length - 1].d.prenom) + '</small></button>';
     var x = l[0], seul = !x.as.length;
-    if (court) return '<div class="oc-c ' + (seul ? 'av' : 'occ') + '" title="Dr ' + esc(x.d.prenom) + (seul ? ' · sans assistante' : ' · ' + esc(x.as.map(function (p) { return p.prenom; }).join(', '))) + '"><b>' + esc(x.d.prenom) + '</b></div>';
-    return '<button class="oc-c ' + (seul ? 'av' : 'occ') + (String(S.occ.ed) === String(x.d.id) ? ' on' : '') + '" data-oced="' + x.d.id + '"><b>Dr ' + esc(x.d.prenom) + '</b><span>' + (seul ? 'sans assistante' : esc(x.as.map(function (p) { return p.prenom; }).join(', '))) + '</span>' + (x.dep ? '<small>part à ' + esc(x.dep.replace(':', 'h').replace(/h00$/, 'h')) + '</small>' : x.hors ? '<small>d’après le planning</small>' : x.src === 'jour' ? '<small>ce jour seulement</small>' : x.src === 'assistante' ? '<small>d’après l’assistante</small>' : '') + '</button>';
+    if (court) return '<div class="oc-c ' + (seul ? 'av' : 'occ') + '" title="Dr ' + esc(x.d.prenom) + (seul ? ' · sans assistance' : ' · ' + esc(x.as.map(function (p) { return p.prenom; }).join(', '))) + '"><b>' + esc(x.d.prenom) + '</b></div>';
+    return '<button class="oc-c ' + (seul ? 'av' : 'occ') + (String(S.occ.ed) === String(x.d.id) ? ' on' : '') + '" data-oced="' + x.d.id + '"><b>Dr ' + esc(x.d.prenom) + '</b><span>' + (seul ? 'sans assistance' : esc(x.as.map(function (p) { return p.prenom; }).join(', '))) + '</span>' + (x.dep ? '<small>part à ' + esc(x.dep.replace(':', 'h').replace(/h00$/, 'h')) + '</small>' : x.hors ? '<small>d’après le planning</small>' : x.src === 'jour' ? '<small>ce jour seulement</small>' : x.src === 'assistante' ? '<small>d’après l’assistante</small>' : '') + '</button>';
   }
   function vOccup() {
     var O = occInit(), lundi = lundiDe(O.jour), sem = O.mode === 'semaine', mo = O.mode === 'mois', an = O.mode === 'an', dJ = dDe(O.jour);
@@ -2895,7 +2895,7 @@
       var Js = [0, 1, 2, 3, 4].map(function (i) { var iso = addJ(lundi, i); return { iso: iso, J: occJour(iso) }; });
       h += '<section class="oc-w"><div class="oc-wr oc-wh"><span></span>' + Js.map(function (x) { return '<button class="oc-wd" data-ocjour="' + x.iso + '"><b>' + JOURS[jourSem(x.iso)] + ' ' + (+x.iso.slice(8)) + '</b><span>' + (x.J.ferme ? 'fermé' : 'matin · après-midi') + '</span></button>'; }).join('') + '</div>'
         + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<div class="oc-wr"><span class="oc-wn">Cab. ' + c + '</span>' + Js.map(function (x) { return x.J.ferme ? '<div class="oc-w2 fer"></div>' : '<div class="oc-w2">' + occCase(x.J.cab[c].AM, x.iso, true) + occCase(x.J.cab[c].PM, x.iso, true) + '</div>'; }).join('') + '</div>'; }).join('') + '</section>'
-        + '<p class="oc-leg"><i class="occ"></i>occupé<i class="lib"></i>libre<i class="av"></i>dentiste sans assistante<i class="ko"></i>deux dentistes dans le même cabinet<span class="grow"></span>Touchez un jour pour voir le détail.</p>';
+        + '<p class="oc-leg"><i class="occ"></i>occupé<i class="lib"></i>libre<i class="av"></i>dentiste sans assistance<i class="ko"></i>deux dentistes dans le même cabinet<span class="grow"></span>Touchez un jour pour voir le détail.</p>';
       return h + tx + '</div>';
     }
     var J = occJour(O.jour);
@@ -2905,8 +2905,8 @@
     var av = seuls + dbl + J.sans.length;
     h += '<div class="oc-ks"><div class="oc-k"><b>' + J.am + ' / 8</b><span>cabinets occupés le matin</span></div><div class="oc-k"><b>' + J.pm + ' / 8</b><span>cabinets occupés l’après-midi</span></div><div class="oc-k lib"><b>' + libres + '</b><span>' + (libres > 1 ? 'cabinets libres' : 'cabinet libre') + ' toute la journée</span></div><div class="oc-k ' + (av ? 'av' : 'lib') + '"><b>' + av + '</b><span>' + (av ? 'à vérifier' : 'rien à vérifier') + '</span></div></div>';
     h += '<section class="oc-g"><div class="oc-col oc-l"><div class="oc-h">&nbsp;</div><div class="oc-r">Matin</div><div class="oc-r">Après-midi</div></div>' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<div class="oc-col"><div class="oc-h">Cab. ' + c + '</div>' + occCase(J.cab[c].AM, O.jour) + occCase(J.cab[c].PM, O.jour) + '</div>'; }).join('') + '</section>';
-    h += '<p class="oc-leg"><i class="occ"></i>occupé<i class="lib"></i>libre<i class="av"></i>dentiste sans assistante<i class="ko"></i>deux dentistes dans le même cabinet' + (occColonne() ? '<span class="grow"></span>Touchez un dentiste pour changer son cabinet ce jour-là.' : '') + '</p>';
-    if (J.sans.length) h += '<div class="card oc-sans"><b>Cabinet à préciser</b>' + J.sans.map(function (x) { return '<div class="it"><div class="it-n"><b>Dr ' + esc(x.d.prenom) + '</b><span>présent ce jour' + (x.as.length ? ' · avec ' + esc(x.as.map(function (p) { return p.prenom; }).join(', ')) : ' · sans assistante') + ' · aucun cabinet connu</span></div>' + (occColonne() ? '<button class="btn l sm" data-oced="' + x.d.id + '">Choisir un cabinet</button>' : '') + '</div>'; }).join('') + '</div>';
+    h += '<p class="oc-leg"><i class="occ"></i>occupé<i class="lib"></i>libre<i class="av"></i>dentiste sans assistance<i class="ko"></i>deux dentistes dans le même cabinet' + (occColonne() ? '<span class="grow"></span>Touchez un dentiste pour changer son cabinet ce jour-là.' : '') + '</p>';
+    if (J.sans.length) h += '<div class="card oc-sans"><b>Cabinet à préciser</b>' + J.sans.map(function (x) { return '<div class="it"><div class="it-n"><b>Dr ' + esc(x.d.prenom) + '</b><span>présent ce jour' + (x.as.length ? ' · avec ' + esc(x.as.map(function (p) { return p.prenom; }).join(', ')) : ' · sans assistance') + ' · aucun cabinet connu</span></div>' + (occColonne() ? '<button class="btn l sm" data-oced="' + x.d.id + '">Choisir un cabinet</button>' : '') + '</div>'; }).join('') + '</div>';
     var ed = O.ed && dentById(O.ed);
     if (ed && occColonne()) {
       var cj = ed.cab_jours && +ed.cab_jours[O.jour], cur = cj || +ed.cabinet || 0;
@@ -3152,7 +3152,7 @@
             var out = '';
             if (p.id && typeDe(p.type).contrat !== false && (c.type === 'CP' || c.type === 'AUTRE')) { var so = soldeCP(p, S.conges, c.du), nj = joursCP(p, c.du, c.au); out += '<p class="cg-solde">Solde de congés : <b>' + txtJ(so.reste) + '</b> → <b class="' + (so.reste - nj < 0 ? 'ko-t' : '') + '">' + txtJ(so.reste - nj) + '</b> après acceptation <span class="mu">(' + txtJ(nj) + ' décomptés)</span></p>'; }
             var al = alerteConge(c);
-            out += al.length ? '<div class="cg-alerte">' + ico('attente', 18, 2.2) + '<span><b>Si vous acceptez, dentiste sans assistante :</b> ' + al.map(function (x) { return JC[jourSem(x.iso)].toLowerCase() + '. ' + dateCourte(x.iso) + ' : ' + x.l.map(function (y) { return 'Dr ' + esc(y.d.prenom) + (y.quand ? ' (' + y.quand + ')' : ''); }).join(', '); }).join(' · ') + '</span></div>'
+            out += al.length ? '<div class="cg-alerte">' + ico('attente', 18, 2.2) + '<span><b>Si vous acceptez, dentiste sans assistance :</b> ' + al.map(function (x) { return JC[jourSem(x.iso)].toLowerCase() + '. ' + dateCourte(x.iso) + ' : ' + x.l.map(function (y) { return 'Dr ' + esc(y.d.prenom) + (y.quand ? ' (' + y.quand + ')' : ''); }).join(', '); }).join(' · ') + '</span></div>'
               : '<p class="cg-ok">' + ico('ok', 16, 2.6) + 'Aucun dentiste ne se retrouve seul : le planning prévoit un remplacement.</p>';
             return out;
           })()
@@ -4786,7 +4786,7 @@
     var tetes = function (nom) { return tetesPlanning(L, nom); };
     h += '<div class="pl-scroll"><div class="pl-grille">' + tetes('Assistantes');
     ps.filter(function (p) { return p.type !== 'interimaire' || interimVisible(p, L); }).forEach(function (p) { h += lignePlanning(p, L); });
-    h += '<div class="pl-nom pl-seul-t"><span class="a-av d">' + ico('dent', 16) + '</span><span><b>Dentistes seuls</b><small>sans assistante</small></span></div>';
+    h += '<div class="pl-nom pl-seul-t"><span class="a-av d">' + ico('dent', 16) + '</span><span><b>Dentistes seuls</b><small>sans assistance</small></span></div>';
     for (var k3 = 0; k3 < 5; k3++) h += celluleSeuls(addJ(L, k3));
     h += '<div class="pl-h"></div>';
     h += '<div class="pl-nom pl-seul-t"><span class="a-av d">' + ico('refaire', 16) + '</span><span><b>La Sté</b><small>qui est en stérilisation</small></span></div>';
