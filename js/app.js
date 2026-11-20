@@ -328,6 +328,7 @@
     var t = S.tab;
     if (t === 'hub') return 'hub';
     if (['planning', 'heures', 'pointage', 'pconges', 'occup'].indexOf(t) >= 0) return t;
+    if (t === 'pfiche' || t === 'pequipe') return 'equipe';
     if (t === 'mconges' || t === 'mdemande') return 'mconges';
     if (STOCK_TABS.indexOf(t) >= 0) return 'accueil';
     return 'reglages';
@@ -338,7 +339,7 @@
     var cur = railPage(), ca = congesAttente().length + congesAnnul().length, ou = (S.oublis || []).length, mini = railMini();
     var it = function (tab, n, ic, b) { return '<button class="rail-l' + (cur === tab ? ' on' : '') + '" data-tab="' + tab + '"' + (cur === tab ? ' aria-current="page"' : '') + ' title="' + esc(n) + '">' + '<span class="rail-i">' + ico(ic, 21, 2.1) + (b && mini ? '<em class="rail-p">' + b + '</em>' : '') + '</span><span class="rail-t">' + n + '</span>' + (b && !mini ? '<em class="rail-b">' + b + '</em>' : '') + '</button>'; };
     return '<nav class="rail" aria-label="Pages"><div class="rail-hd"><span class="rail-lo" aria-hidden="true">E</span><b class="rail-t">Evydent</b></div>'
-      + it('hub', 'Accueil', 'maison') + it('planning', 'Planning', 'equipe') + it('heures', 'Heures', 'histo') + it('pointage', 'Pointage', 'qr', ou) + it('pconges', 'Congés', 'agenda', ca) + it('occup', 'Occupation', 'fauteuil') + it('accueil', 'Gestion de stock', 'boite')
+      + it('hub', 'Accueil', 'maison') + it('planning', 'Planning', 'equipe') + it('heures', 'Heures', 'histo') + it('pointage', 'Pointage', 'qr', ou) + it('pconges', 'Congés', 'agenda', ca) + it('equipe', 'Équipe', 'moi').replace('data-tab="equipe"', 'data-act="rgeq"') + it('occup', 'Occupation', 'fauteuil') + it('accueil', 'Gestion de stock', 'boite')
       + '<span class="rail-sp"></span>' + it('reglages', 'Réglages', 'reglage')
       + '<button class="rail-l rail-r" data-act="railmini" aria-label="' + (mini ? 'Afficher les noms des pages' : 'Réduire en icônes') + '" title="' + (mini ? 'Afficher les noms' : 'Réduire en icônes') + '"><span class="rail-i">' + ico(mini ? 'suiv' : 'prec', 20, 2.4) + '</span><span class="rail-t">Réduire en icônes</span></button></nav>';
   }
@@ -372,15 +373,18 @@
       poserRail(app);
       document.body.classList.toggle('hb-on', !!vBarTel());
       document.body.classList.remove('mode-a', 'ecran-ok', 'sans-nav'); document.body.classList.add('mode-h');
-      var rgOn = RG_TABS.indexOf(S.tab) >= 0 && !telephone();
+      // La fiche d'une personne est une page à part (menu « Équipe ») : la liste des prénoms à gauche, sans le menu des réglages
+      var rgOn = RG_TABS.indexOf(S.tab) >= 0 && S.tab !== 'pfiche' && !telephone();
       document.body.classList.toggle('rg-on', rgOn);
-      var rglOn = rgOn && (S.tab === 'pfiche' || S.tab === 'dfiche');
+      var rglOn = !telephone() && (S.tab === 'pfiche' || (rgOn && S.tab === 'dfiche'));
       document.body.classList.toggle('rgl-on', rglOn);
+      document.body.classList.toggle('rgl-seul', rglOn && !rgOn);
       if (rglOn) app.insertAdjacentHTML('beforeend', listeFiches());
-      if (rgOn) { app.insertAdjacentHTML('beforeend', navReglages()); var hdE = app.querySelector('.a-mh, header'); if (hdE) document.documentElement.style.setProperty('--hd-h', hdE.offsetHeight + 'px'); }
+      if (rgOn) app.insertAdjacentHTML('beforeend', navReglages());
+      if (rgOn || rglOn) { var hdE = app.querySelector('.a-mh, header'); if (hdE) document.documentElement.style.setProperty('--hd-h', hdE.offsetHeight + 'px'); }
       placerTour(); return;
     }
-    document.body.classList.remove('mode-h', 'rg-on', 'rgl-on', 'hb-on');
+    document.body.classList.remove('mode-h', 'rg-on', 'rgl-on', 'rgl-seul', 'hb-on');
     if (modeA()) { document.body.classList.remove('rail-on', 'rail-mini');
       poser(app, renderA());
       document.body.classList.add('mode-a');
@@ -1390,7 +1394,7 @@
   function listeFiches() {
     var tri = function (a, b) { return (a.ordre - b.ordre) || a.prenom.localeCompare(b.prenom); };
     var dent = S.tab === 'dfiche', F = dent ? S.df : S.pf, cur = F ? String(F.id) : '';
-    var li = function (attr, id, ini, cl, nom, sous) { var on = String(id) === cur; return '<button class="rgl-l' + (on ? ' on' : '') + '" ' + attr + '="' + id + '"' + (on ? ' aria-current="true"' : '') + ' data-rgln="' + esc(norm(nom)) + '"><span class="a-av ' + cl + '">' + ini + '</span><span><b>' + nom + '</b>' + (sous ? '<small>' + sous + '</small>' : '') + '</span></button>'; };
+    var li = function (attr, id, ini, cl, nom, sous, nb, ff) { var on = String(id) === cur; return '<button class="rgl-l' + (on ? ' on' : '') + '" ' + attr + '="' + id + '"' + (on ? ' aria-current="true"' : '') + ' data-rgln="' + esc(norm(nom)) + '"' + (ff === false ? ' data-ff="0" hidden' : '') + '><span class="a-av ' + cl + '">' + ini + '</span><span><b>' + nom + '</b>' + (sous ? '<small>' + sous + '</small>' : '') + '</span>' + (nb ? '<em class="rgl-b" title="' + nb + ' à traiter">' + nb + '</em>' : '') + '</button>'; };
     var h = '<nav class="rgl" aria-label="' + (dent ? 'Les dentistes' : 'L’équipe') + '"><div class="rgl-t"><b>' + (dent ? 'Les dentistes' : 'L’équipe') + '</b><button class="btn sm" data-rglnew="' + (dent ? 'd' : 'p') + '">+ Ajouter</button></div>'
       + '<input class="in rgl-q" type="search" data-rglq placeholder="Chercher un prénom…" aria-label="Chercher un prénom">';
     if (dent) {
@@ -1399,7 +1403,10 @@
       h += da.map(ld).join('') + (dn.length ? '<span class="rgl-g">Anciens</span>' + dn.map(ld).join('') : '');
     } else {
       var act = S.equipe.filter(function (p) { return p.actif; }).sort(tri), anc = S.equipe.filter(function (p) { return !p.actif; }).sort(tri);
-      var lp = function (p) { var ty = typeDe(p.type), c = +p.contrat_h || 0, sous = []; if (ty.contrat !== false && p.type !== 'interimaire' && c) sous.push(fh(c)); if (p.pointage) sous.push('pointe'); return li('data-rglp', p.id, initiale(p.prenom), 'p' + coulPers(p), esc(p.prenom), esc(sous.join(' · '))); };
+      // Sous chaque prénom : ce que fait la personne aujourd'hui, et le nombre de points à traiter
+      var lf = feEtat().lf || 'tous';
+      var lp = function (p) { var st = p.actif ? feStatut(p) : null, nb = p.actif ? feATraiter(p).length : 0, ff = lf === 'tous' || !p.actif ? true : lf === 'pres' ? st && st[1] === 'la' : nb > 0; return li('data-rglp', p.id, initiale(p.prenom), 'p' + coulPers(p), esc(p.prenom), st ? '<i class="fe-pt ' + st[1] + '" aria-hidden="true"></i>' + esc(st[0]) : 'ancienne fiche', nb, ff); };
+      h += '<div class="rgl-f" role="group" aria-label="Afficher">' + [['tous', 'Tous'], ['pres', 'Présents'], ['trait', 'À traiter']].map(function (x) { return '<button data-rglf="' + x[0] + '" aria-pressed="' + (lf === x[0]) + '"' + (lf === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>'; }).join('') + '</div>';
       h += groupesEquipe(act).map(function (g) { return '<span class="rgl-g">' + esc(g.n) + '</span>' + g.l.map(lp).join(''); }).join('') + (anc.length ? '<span class="rgl-g">Anciennes et anciens</span>' + anc.map(lp).join('') : '');
       var lies0 = {}; S.equipe.forEach(function (p) { if (p.profil_id) lies0[p.profil_id] = 1; }); var sf = (S.profils || []).filter(function (p) { return !lies0[p.id]; }).length;
       if (sf) h += '<button class="rgl-cs" data-tab="equipe">' + sf + ' ' + pl(sf, 'compte') + ' sans fiche planning' + ico('suiv', 16, 2.4) + '</button>';
@@ -1731,6 +1738,7 @@
   function ouvrirPers(id) {
     var p = id === 'new' ? nouvellePers() : S.equipe.filter(function (x) { return String(x.id) === String(id); })[0];
     if (!p) return;
+    if (S.feD) delete S.feD[String(id)];
     S.pf = { id: id, d: JSON.parse(JSON.stringify(p)) }; var vf = versionsTrame(p); if (vf.length) S.pf.d.trame = JSON.parse(JSON.stringify(vf[vf.length - 1].trame || {})); S.eqNew = null; S.eqEdit = null; S.tab = 'pfiche'; if (id !== 'new') S.rgDerP = id; S.pf.raz = true; render(); window.scrollTo(0, 0);
   }
   function optAff(cur, sansDent) {
@@ -1750,10 +1758,10 @@
     var F = S.pf; if (!F) { S.tab = 'pequipe'; return vPEquipe(); }
     var p = F.d, nouv = F.id === 'new', t = p.trame || {}, tot = heuresTrame(t), c = +p.contrat_h || 0, ty = typeDe(p.type), tel = telephone();
     var prof = p.profil_id ? S.profils.filter(function (x) { return x.id === p.profil_id; })[0] : null;
-    var horsPl = ty.planning === false, ONG = [['infos', 'Infos, profil et compte', 'Profil et compte'], ['semaine', horsPl ? 'Horaires habituels' : 'Semaine type'], ['absences', 'Absences'], ['regles', 'Règles et consigne']];
+    var horsPl = ty.planning === false, ONG = (nouv ? [] : [['apercu', 'Aperçu'], ['journal', 'Journal'], ['annee', 'Année']]).concat([['semaine', horsPl ? 'Horaires habituels' : 'Semaine type'], ['absences', 'Absences'], ['infos', 'Profil et compte', 'Profil et compte'], ['regles', 'Règles et consigne']]);
     if (F.onglet === 'compte') F.onglet = 'infos';
-    var og = nouv ? 'infos' : F.onglet || (tel ? null : 'semaine');
-    var h = '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" ' + (tel && og && !nouv ? 'data-pfong=""' : listeACote() ? 'data-tab="reglages"' : 'data-tab="pequipe"') + '>' + ico('prec', 22, 2.4) + (tel && og && !nouv ? esc(p.prenom || 'Fiche') : listeACote() ? 'Réglages' : 'L’équipe') + '</button><h1>' + (nouv ? 'Nouvelle fiche' : tel && og ? (function (o) { return o[2] || o[1]; })(ONG.filter(function (o) { return o[0] === og; })[0]) : esc(p.prenom || '…')) + '</h1><span class="a-cale"></span></div></header><div class="a-corps h-fiche fi">';
+    var og = ogFiche(F);
+    var h = '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" ' + (tel && og && !nouv ? 'data-pfong=""' : listeACote() ? 'data-tab="hub"' : 'data-tab="pequipe"') + '>' + ico('prec', 22, 2.4) + (tel && og && !nouv ? esc(p.prenom || 'Fiche') : listeACote() ? 'Accueil' : 'L’équipe') + '</button><h1>' + (nouv ? 'Nouvelle fiche' : tel && og ? (function (o) { return o[2] || o[1]; })(ONG.filter(function (o) { return o[0] === og; })[0]) : esc(p.prenom || '…')) + '</h1><span class="a-cale"></span></div></header><div class="a-corps h-fiche fi">';
     // --- résumé
     var at = attitre(p), da = at && dentById(at), auj = dIso(new Date());
     var avenir = (S.conges || []).filter(function (x) { return String(x.equipe_id) === String(F.id) && x.au >= auj && x.statut !== 'refuse'; }).sort(function (a, b) { return a.du < b.du ? -1 : 1; }).slice(0, 3).map(function (x) { return '<span class="fi-av"><i class="' + (x.type === 'FORMATION' ? 'fo' : x.type === 'ARRET' ? 'ar' : 'cp') + '"></i>' + esc(typeTxt(x.type)) + ' ' + periode(x.du, x.au) + (x.statut === 'attente' ? ' · en attente' : '') + '</span>'; });
@@ -1763,8 +1771,7 @@
       + '<span class="fi-badges"><span class="pc' + (nouv ? '' : coulPers(p)) + '">' + esc(nomType(p)) + (p.statut === 'apprentie' && p.type === 'assistante' ? '' : p.statut === 'apprentie' ? ' · apprentie' : '') + '</span>' + (p.pointage ? '<span class="or">Pointe</span>' : '') + (!p.actif && !nouv ? '<span class="ko">Ancienne</span>' : '') + '</span>'
       + '<div class="fi-tuiles">' + (ty.contrat !== false ? '<div><small>Contrat</small><b>' + (c ? fh(c) : '—') + '</b></div>' : '') + '<div><small>Semaine type</small><b>' + fh(tot) + '</b>' + (c ? '<em class="' + (ecT ? 'plus' : 'ok') + '">' + (ecT ? relTxt(tot - c) : '= contrat') + '</em>' : '') + '</div>'
       + (aDent(p.type) ? '<div><small>Dentiste attitré</small><b>' + (da ? 'Dr ' + esc(da.prenom) : '—') + '</b></div>' : '') + (p.statut === 'apprentie' && p.ecole_jour ? '<div><small>École</small><b>' + JOURS[p.ecole_jour] + '</b></div>' : '') + '</div></section>'
-      + (nouv ? '' : '<section class="fi-carte"><h3>À venir</h3>' + (avenir.length ? avenir.join('') : '<span class="mu">Rien de prévu</span>') + '</section>'
-        + '<section class="fi-carte"><h3>Compte</h3>' + (prof ? '<span>Se connecte avec <b>' + esc(prof.identifiant) + '</b></span><span class="mu">' + esc(nomRole(prof)) + (prof.cabinet ? ' · cabinet ' + prof.cabinet : '') + '</span>' : '<span class="mu">Pas de compte de connexion</span>') + '</section>') + '</aside>';
+      + '</aside>';
     // --- rubriques
     var avant = '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche.</p></div>';
     var R = {};
@@ -1821,18 +1828,322 @@
         + '<label class="mu">Consigne (affichée dans le planning)<textarea class="in" rows="3" data-pff="consigne" placeholder="Ex. : pas de samedi, finit à 17 h le mardi…">' + esc(p.consigne || '') + '</textarea></label>'
         + '<div class="fi-lien"><span><b>Heures comptées particulières</b><span class="mu">' + (k.length ? k.map(function (z) { return ABS_TXT[z] + ' ' + fh(+rg[z]); }).join(' · ') : 'règle générale') + '</span></span><button class="btn l sm" data-tab="pregles">Modifier</button></div>';
     };
-    var desc = { infos: (nouv ? 'Prénom, type, statut, contrat' : esc(nomType(p)) + (ty.contrat !== false && c ? ' · ' + fh(c) : '')), semaine: fh(tot) + (da ? ' · Dr ' + esc(da.prenom) : ''), absences: (avenir.length ? avenir.length + ' à venir' : 'congés, formations, jours off'), compte: (prof ? esc(prof.identifiant) : 'pas de compte') + (p.pointage ? ' · pointe' : ''), regles: (p.consigne ? '« ' + esc(String(p.consigne).slice(0, 40)) + (p.consigne.length > 40 ? '…' : '') + ' »' : aDent(p.type) ? 'repli : ' + esc(affTxt((p.regles || {}).repli || 'STE')) : 'consigne, heures particulières') };
+    var desc = { apercu: 'cette semaine, heures, congés, pointage', journal: 'tout ce qui s’est passé', annee: 'l’année jour par jour', infos: (nouv ? 'Prénom, type, statut, contrat' : esc(nomType(p)) + (ty.contrat !== false && c ? ' · ' + fh(c) : '')), semaine: fh(tot) + (da ? ' · Dr ' + esc(da.prenom) : ''), absences: (avenir.length ? avenir.length + ' à venir' : 'congés, formations, jours off'), compte: (prof ? esc(prof.identifiant) : 'pas de compte') + (p.pointage ? ' · pointe' : ''), regles: (p.consigne ? '« ' + esc(String(p.consigne).slice(0, 40)) + (p.consigne.length > 40 ? '…' : '') + ' »' : aDent(p.type) ? 'repli : ' + esc(affTxt((p.regles || {}).repli || 'STE')) : 'consigne, heures particulières') };
     if (tel && !og) {
       h += resume + '<div class="fi-liste">' + ONG.map(function (o) { return '<button class="fi-rub" data-pfong="' + o[0] + '"><span><b>' + o[1] + '</b><small>' + desc[o[0]] + '</small></span>' + ico('suiv', 18, 2.4) + '</button>'; }).join('') + '</div>';
       return h + '</div>';
     }
-    var corps = '<div class="fi-corps">' + R[og]() + '</div>';
+    R.apercu = function () { return feApercu(p, F); };
+    R.journal = function () { return feJournal(p, F); };
+    R.annee = function () { return feAnnee(p, F); };
+    var corps = '<div class="fi-corps' + (FE_VUES.indexOf(og) >= 0 ? ' fe-corps' : '') + '">' + R[og]() + '</div>';
     if (tel) return h + corps + '</div>';
     h += resume + '<section class="fi-d"><nav class="fi-tabs" role="tablist" aria-label="Rubriques de la fiche">' + ONG.map(function (o) { return '<button role="tab" data-pfong="' + o[0] + '" aria-selected="' + (og === o[0]) + '"' + (og === o[0] ? ' class="on"' : '') + (nouv && o[0] !== 'infos' ? ' disabled' : '') + '>' + o[1] + '</button>'; }).join('') + '</nav>' + corps + '</section>';
     return h + '</div>';
   }
+  // =====================================================================
+  // Fiche complète d'une personne : Aperçu, Journal et Année (lecture), puis les rubriques de réglage
+  // =====================================================================
+  var PL_DEBUT = '2026-11-01';   // mise en service du planning dans l'application : avant, il n'y a pas de planning à montrer
+  var FE_VUES = ['apercu', 'journal', 'annee'];
+  function ogFiche(F) { if (!F) return null; if (F.id === 'new') return 'infos'; var o = F.onglet === 'compte' ? 'infos' : F.onglet; return o || (telephone() ? null : 'apercu'); }
+  function feEtat() { return S.fe = S.fe || { an: new Date().getFullYear(), jour: null, jf: 'tout', jn: 45, lf: 'tous', jq: '' }; }
+  function hPt(ts) { return ts ? fMin(minLoc(ts)) : ''; }
+  function feQui(id) { var p = id && (S.profils || []).filter(function (x) { return x.id === id; })[0]; return p ? p.nom : ''; }
+  function jourRel(iso) { var a = dIso(new Date()); return iso === a ? 'Aujourd’hui' : iso === addJ(a, -1) ? 'Hier' : jourCourt(iso); }
+  // Lignes du planning (toute l'équipe : la répartition d'un jour dépend des autres) et pointages d'une période
+  function feAssurer(de, a) {
+    var enCours = assurerPointages(de, a), K = S.feCh;
+    if (K && K.charge) return true;
+    if (K && K.de <= de && K.a >= a) return enCours;
+    var d0 = K ? [K.de, de].sort()[0] : de, a0 = K ? [K.a, a].sort()[1] : a;
+    S.feCh = { de: d0, a: a0, charge: true };
+    toutLire('planning', '*', function (q) { return q.gte('jour', d0).lte('jour', a0); }).then(function (rows) {
+      var P = S.pl = S.pl || { lundi: lundiDe(dIso(new Date())), rows: {} }; P.rows = P.rows || {};
+      rows.forEach(function (r) { P.rows[cleCase(r.equipe_id, String(r.jour).slice(0, 10), r.demi)] = r; });
+      if (S.feCh) S.feCh.charge = false; JOUR_CACHE = {}; render();
+    }).catch(function (e) { S.feCh = { de: d0, a: a0, charge: false }; toast(msgErr(e)); render(); });
+    return true;
+  }
+  // Ce qui concerne seulement cette personne : toutes ses absences, son journal de pointage, ses oublis, les changements de son planning
+  function feDonnees(id) {
+    var D = S.feD = S.feD || {}, k = String(id);
+    if (D[k]) return D[k];
+    var x = D[k] = { charge: true }, depuis = new Date(Date.now() - 400 * 864e5).toISOString();
+    var sur = function (pr) { return pr.then(function (r) { return r; }, function () { return null; }); };
+    Promise.all([
+      toutLire('conges', '*', function (q) { return q.eq('equipe_id', id).order('du'); }),
+      sur(toutLire('pointage_journal', '*', function (q) { return q.eq('equipe_id', id).gte('quand', depuis); })),
+      sur(toutLire('pointage_oublis', '*', function (q) { return q.eq('equipe_id', id); })),
+      sur(toutLire('planning', 'jour,demi,aff,debut,fin,modifie_par,modifie_le', function (q) { return q.eq('equipe_id', id).gte('modifie_le', depuis); }))
+    ]).then(function (r) { x.cg = r[0] || []; x.pj = r[1]; x.ou = r[2]; x.plm = r[3]; x.charge = false; render(); })
+      .catch(function (e) { x.charge = false; x.err = msgErr(e); x.cg = null; render(); });
+    return x;
+  }
+  function feConges(p) { var D = S.feD && S.feD[String(p.id)]; return D && D.cg ? D.cg : (S.conges || []).filter(function (c) { return String(c.equipe_id) === String(p.id); }); }
+  // Premier jour pointé par la personne : avant, pas d'oubli à signaler
+  function feDebutPt(p) { var m = null, pre = p.id + '|'; Object.keys((S.ptg && S.ptg.rows) || {}).forEach(function (k) { if (k.indexOf(pre) === 0) { var d = k.slice(pre.length); if (!m || d < m) m = d; } }); return m; }
+  // Aujourd'hui : [texte, couleur] pour la liste des prénoms
+  function feStatut(p) {
+    var auj = dIso(new Date()), j = jourSem(auj), r = ptRow(p.id, auj);
+    if (r && r.arrivee && !r.sortie) return ['là depuis ' + hPt(r.arrivee), 'la'];
+    if (r && r.sortie) return ['sortie à ' + hPt(r.sortie), 're'];
+    if (j === 0 || j === 6) return ['week-end', 're'];
+    var am = caseEff(p, auj, 'AM'), pm = caseEff(p, auj, 'PM'), A = [am.a, pm.a];
+    var lib = [['ARRET', 'en arrêt', 'ar'], ['CP', 'en congés', 'co'], ['FORMATION', 'en formation', 'fo'], ['ECOLE', 'à l’école', 'ec'], ['FERIE', 'férié', 're']];
+    for (var i = 0; i < lib.length; i++) if (A.indexOf(lib[i][0]) >= 0) return [lib[i][1], lib[i][2]];
+    if (A[0] === 'OFF' && A[1] === 'OFF') return [am.off || pm.off ? 'jour off' : 'jour de repos', 're'];
+    var b = bornesPrevues(p, auj), mn = new Date().getHours() * 60 + new Date().getMinutes();
+    if (p.pointage && b.d != null) return mn > b.d + 10 ? ['pas encore pointé', 'at'] : ['arrive à ' + fMin(b.d), 're'];
+    var a0 = am.a !== 'OFF' ? am.a : pm.a; return [nomAff(a0) + ' aujourd’hui', 'la'];
+  }
+  // Points à traiter : [titre, détail, bouton, attribut]
+  function feATraiter(p, W) {
+    var id = String(p.id), l = [];
+    (S.oublis || []).filter(function (o) { return String(o.equipe_id) === id; }).forEach(function (o) { l.push(['Oubli de pointage signalé', jourCourt(o.jour) + ' · ' + (o.sens === 'arrivee' ? 'arrivée' : 'sortie') + ' à ' + ft(hm(o.heure)), 'Répondre', 'data-tab="pointage"']); });
+    congesAttente().filter(function (c) { return String(c.equipe_id) === id; }).forEach(function (c) { l.push(['Demande : ' + typeTxt(c.type).toLowerCase(), periode(c.du, c.au), 'Répondre', 'data-tab="pconges"']); });
+    congesAnnul().filter(function (c) { return String(c.equipe_id) === id; }).forEach(function (c) { l.push(['Demande d’annulation', periode(c.du, c.au), 'Répondre', 'data-tab="pconges"']); });
+    if (!W) return l;
+    var auj = dIso(new Date());
+    if (p.pointage && pointagePret()) {
+      var deb = feDebutPt(p), st = statsPt(p, W), ok = function (iso) { return deb && iso >= deb && iso < auj; };
+      var ou = st.sortieM.map(function (x) { return [x, 'sortie manquante']; }).concat(st.arriveeM.map(function (x) { return [x, 'arrivée manquante']; }), st.aucun.map(function (x) { return [x, 'aucun pointage']; })).filter(function (x) { return ok(x[0]); }).sort(function (a, b) { return a[0] < b[0] ? 1 : -1; });
+      ou.slice(0, 3).forEach(function (x) { l.push(['Pointage incomplet ' + jourCourt(x[0]), x[1], 'Voir', 'data-fept="' + x[0] + '"']); });
+      if (ou.length > 3) l.push(['Et ' + (ou.length - 3) + ' autre' + (ou.length > 4 ? 's' : '') + ' jour' + (ou.length > 4 ? 's' : '') + ' incomplet' + (ou.length > 4 ? 's' : ''), 'ce mois-ci', 'Voir', 'data-fevoir="annee"']);
+      W.forEach(function (L) { for (var k = 0; k < 5; k++) { var iso = addJ(L, k), r = ptRow(p.id, iso); if (ptHc(r)) l.push(['Pointage hors centre à vérifier', jourCourt(iso), 'Voir', 'data-fept="' + iso + '"']); } });
+    }
+    var c = +p.contrat_h || 0, L0 = lundiDe(auj);
+    if (c && !relAvantDebut(L0)) { var rel = relFin(p, L0); if (Math.abs(rel) >= 4) l.push([rel > 0 ? 'Heures en plus du contrat' : 'Heures à rattraper', relTxt(rel) + ' de reliquat en fin de semaine', 'Heures', 'data-fehr="1"']); }
+    if (typeDe(p.type).contrat !== false && p.type !== 'interimaire') { var s = soldeCP(p, feConges(p)); if (s.report > s.droits) l.push(['Report de congés élevé', txtJ(s.restRep) + ' de N-1 à faire poser', 'Voir', 'data-pfong="absences"']); }
+    if (sansHoraires(p)) l.push([typeDe(p.type).planning === false ? 'Horaires habituels à renseigner' : 'Semaine type à renseigner', 'sans eux : ni heures prévues, ni retards', 'Remplir', 'data-pfong="semaine"']);
+    return l;
+  }
+  function feTuile(titre, btn, corps, cl) { return '<section class="fe-t' + (cl ? ' ' + cl : '') + '"><div class="fe-th"><h3>' + titre + '</h3>' + (btn || '') + '</div>' + corps + '</section>'; }
+  function feLien(lib, attr) { return '<button class="fe-lk" ' + attr + '>' + lib + ico('suiv', 15, 2.6) + '</button>'; }
+  function feChiffre(lib, v, cl, sous) { return '<div class="fe-k"><small>' + lib + '</small><b' + (cl ? ' class="' + cl + '"' : '') + '>' + v + '</b>' + (sous ? '<span>' + sous + '</span>' : '') + '</div>'; }
+  function feApercu(p, F) {
+    var auj = dIso(new Date()), L = lundiDe(auj), c = +p.contrat_h || 0, ty = typeDe(p.type), prof = p.profil_id ? (S.profils || []).filter(function (x) { return x.id === p.profil_id; })[0] : null;
+    var mois = addJ(L, 3).slice(0, 7), W = hrSemaines({ mode: 'mois', mois: mois }), W8 = [];
+    for (var i = 7; i >= 0; i--) { var Lw = addJ(L, -7 * i); if (addJ(Lw, 4) >= PL_DEBUT) W8.push(Lw); }
+    if (!W8.length) W8.push(L);
+    var de = [W8[0], W[0], lundiDe(regles().depuis || L)].sort()[0], a = [addJ(W[W.length - 1], 6), addJ(L, 6)].sort()[1];
+    var D = feDonnees(p.id);
+    if (feAssurer(de, a) || D.charge) return '<p class="a-vide">Chargement de la fiche…</p>';
+    var h = '<div class="fe-g">';
+    // --- cette semaine
+    var cell = function (cz) { return cz.a === 'OFF' ? (cz.off ? 'Jour off' : 'Repos') : nomAff(cz.a); };
+    var cl = function (x) { return !x || x === 'OFF' ? 'off' : x === 'ECOLE' ? 'ec' : ABS.indexOf(x) >= 0 ? 'ab' : x.slice(0, 2) === 'D:' ? 'de' : 'po'; };
+    var sem = '';
+    for (var k = 0; k < 5; k++) {
+      var iso = addJ(L, k), am = caseEff(p, iso, 'AM'), pm = caseEff(p, iso, 'PM'), r = ptRow(p.id, iso), cj = calculJour(p, iso, r);
+      var lib = am.a === pm.a && !!am.off === !!pm.off ? cell(am) : cell(am) + ' · ' + cell(pm), a0 = am.a !== 'OFF' ? am.a : pm.a, k0 = cl(a0);
+      sem += '<div class="fe-j' + (iso === auj ? ' auj' : '') + '"><b>' + JC[k + 1] + ' ' + dDe(iso).getDate() + '</b><span class="fe-pi ' + k0 + '"' + (k0 === 'po' && pastelPoste(a0) ? ' style="' + pastelPoste(a0) + '"' : '') + ' title="' + esc(lib) + '">' + esc(lib) + '</span><small>' + esc(cj.travaille ? cj.hor : '') + (r && r.arrivee ? ' · pointé ' + hPt(r.arrivee) + (r.sortie ? '–' + hPt(r.sortie) : '') : '') + '</small></div>';
+    }
+    var sp = heuresSemPrevu(p, L);
+    h += feTuile('Cette semaine', feLien('Planning', 'data-fepl="' + L + '"'), sem + '<div class="fe-pied"><span>Prévu cette semaine</span><b>' + fh(sp) + (c ? ' <span class="mu">/ ' + fh(c) + '</span>' : '') + '</b></div>');
+    // --- heures
+    var avD = relAvantDebut(L), rel = c && !avD ? relFin(p, L) : null, fait = 0, prevu = 0;
+    W.forEach(function (Lx) { fait += heuresSem(p, Lx); prevu += heuresSemPrevu(p, Lx); });
+    var hs = W8.map(function (Lx) { return { L: Lx, h: heuresSem(p, Lx) }; }), mx = Math.max(c * 1.25, 1);
+    hs.forEach(function (x) { if (x.h > mx) mx = x.h; });
+    var gr = '<div class="fe-gr" role="img" aria-label="Heures des ' + hs.length + ' dernières semaines">' + (c ? '<i class="fe-ct" style="bottom:' + Math.round(c / mx * 100) + '%"></i>' : '') + hs.map(function (x) { var cur = x.L === L; return '<span class="fe-bar' + (cur ? ' cur' : c && x.h > c + 0.01 ? ' plus' : '') + '" style="height:' + Math.max(2, Math.round(x.h / mx * 100)) + '%" title="Semaine du ' + dateCourte(x.L) + ' : ' + fh(x.h) + (cur ? ' (en cours, prévu compris)' : '') + '"></span>'; }).join('') + '</div>'
+      + '<div class="fe-grl">' + hs.map(function (x) { var d = dDe(x.L); return '<span>' + d.getDate() + '/' + (d.getMonth() + 1) + '</span>'; }).join('') + '</div>';
+    h += feTuile('Heures', feLien('Détail', 'data-fehr="1"'), '<div class="fe-ks">' + (c ? feChiffre('Reliquat', avD ? '—' : relTxt(rel), avD ? '' : hrCouleur(rel), avD ? 'compté à partir du ' + dateCourte(regles().depuis) : 'en fin de semaine') : '') + feChiffre(MOIS[+mois.slice(5, 7) - 1].replace(/^./, function (x) { return x.toUpperCase(); }), fh(fait), '', 'sur ' + fh(prevu) + ' prévues') + '</div>'
+      + gr + '<small class="mu fe-leg">' + hs.length + ' dernière' + (hs.length > 1 ? 's' : '') + ' semaine' + (hs.length > 1 ? 's' : '') + (c ? ' · trait or : contrat ' + fh(c) : '') + ' · en or : semaine en cours</small>');
+    // --- à surveiller
+    var al = feATraiter(p, W);
+    h += feTuile('À surveiller' + (al.length ? ' · ' + al.length : ''), '', al.length ? '<div class="fe-al">' + al.slice(0, 5).map(function (x) { return '<div class="fe-ali"><span class="fe-ali-i" aria-hidden="true">' + ico('attente', 17, 2.2) + '</span><span class="fe-ali-t"><b>' + esc(x[0]) + '</b><small>' + esc(x[1]) + '</small></span><button class="btn l sm" ' + x[3] + '>' + x[2] + '</button></div>'; }).join('') + (al.length > 5 ? '<small class="mu">+ ' + (al.length - 5) + ' autre' + (al.length > 6 ? 's' : '') + '</small>' : '') + '</div>' : '<p class="fe-rien">' + ico('ok', 20, 2.4) + 'Rien à signaler</p>', 'fe-sv' + (al.length ? '' : ' ok'));
+    // --- congés et absences
+    var cgs = feConges(p), an = auj.slice(0, 4), cpOk = ty.contrat !== false && p.type !== 'interimaire', s = cpOk ? soldeCP(p, cgs) : null;
+    var nbJ = function (t) { var n = 0; cgs.forEach(function (x) { if (x.type !== t || x.statut !== 'accepte') return; for (var d = x.du < an + '-01-01' ? an + '-01-01' : x.du; d <= x.au && d <= an + '-12-31'; d = addJ(d, 1)) { var j = jourSem(d); if (j >= 1 && j <= 5 && !ferie(d)) n++; } }); return n; };
+    var arr = nbJ('ARRET'), avenir = cgs.filter(function (x) { return x.au >= auj && (x.statut === 'accepte' || x.statut === 'attente'); }).sort(function (x, y) { return x.du < y.du ? -1 : 1; }).slice(0, 3);
+    var ki = '<div class="fe-ks k3">' + (s ? feChiffre('Solde', txtJ(s.reste), s.reste < 0 ? 'moins' : '', s.restRep ? 'dont ' + txtJ(s.restRep) + ' de N-1' : 'disponible') + feChiffre('Pris', txtJ(s.pris), '', 'période ' + anP(s.P)) : '') + feChiffre('Arrêts ' + an, arr + ' j', '', arr ? 'jours ouvrés' : 'aucun') + '</div>';
+    h += feTuile('Congés et absences', feLien('Poser une absence', 'data-pfong="absences"'), ki + (avenir.length ? '<div class="fe-li">' + avenir.map(function (x) { return '<div><span><i class="fe-pt ' + (x.type === 'ARRET' ? 'ar' : x.type === 'FORMATION' ? 'fo' : 'co') + '" aria-hidden="true"></i>' + esc(typeTxt(x.type)) + ' ' + periode(x.du, x.au) + '</span><b class="' + (x.statut === 'attente' ? 'warn-t' : 'ok-t') + '">' + (x.statut === 'attente' ? 'en attente' : 'accepté') + '</b></div>'; }).join('') + '</div>' : '<p class="mu fe-p">Rien de prévu pour l’instant.</p>'));
+    // --- pointage du mois
+    var pt;
+    if (!p.pointage) pt = '<p class="mu fe-p">' + esc(p.prenom) + ' ne pointe pas. Le pointage s’active dans « Profil et compte ».</p>';
+    else if (!pointagePret()) pt = '<p class="mu fe-p">Le pointage n’est pas encore en service.</p>';
+    else {
+      var deb = feDebutPt(p), st = statsPt(p, W), ok = function (x) { return deb && x >= deb && x < auj; };
+      var nOu = st.sortieM.concat(st.arriveeM, st.aucun).filter(ok).length, nHc = 0, der = [];
+      W.forEach(function (Lx) { for (var q = 0; q < 5; q++) if (ptHc(ptRow(p.id, addJ(Lx, q)))) nHc++; });
+      for (var b = 0; b < 21 && der.length < 4; b++) { var dj = addJ(auj, -b), rr = ptRow(p.id, dj); if (rr && (rr.arrivee || rr.sortie)) der.push('<div><span>' + jourRel(dj) + '</span><b>' + (rr.arrivee ? hPt(rr.arrivee) : '?') + ' → ' + (rr.sortie ? hPt(rr.sortie) : dj === auj ? 'sur place' : '?') + '</b>' + (ptHc(rr) ? '<em class="warn-t">hors centre</em>' : '') + '</div>'); }
+      pt = '<div class="fe-ks k4">' + feChiffre('Jours pointés', st.jC + '/' + st.jT) + feChiffre('Oublis', String(nOu), nOu ? 'moins' : '') + feChiffre('Retards', String(st.ret.length), st.ret.length ? 'moins' : '') + feChiffre('Hors centre', String(nHc), nHc ? 'moins' : '') + '</div>'
+        + (der.length ? '<div class="fe-li fe-der">' + der.join('') + '</div>' : '<p class="mu fe-p">Aucun pointage ces trois dernières semaines.</p>');
+    }
+    h += feTuile('Pointage · ' + MOIS[+mois.slice(5, 7) - 1], p.pointage ? feLien('Journal', 'data-fevoir="journal:pt"') : '', pt);
+    // --- profil, compte et note
+    var offs = (p.offs || []).filter(function (o) { return offProchains(o, 1).length; }), rg = p.regles || {};
+    var lg = function (k2, v) { return '<div><span>' + k2 + '</span><b>' + v + '</b></div>'; };
+    h += feTuile('Profil, compte et note', feLien('Modifier', 'data-pfong="infos"'), '<div class="fe-pr">'
+      + lg('Profil', esc(nomType(p)) + (c ? ' · ' + fh(c) : ''))
+      + lg('Compte', prof ? esc(prof.identifiant) + ' · ' + esc(nomRole(prof)) + (prof.actif === false ? ' (désactivé)' : '') : '<span class="mu">pas de compte</span>')
+      + (p.statut === 'apprentie' && p.ecole_jour ? lg('École', JOURS[p.ecole_jour].toLowerCase()) : '')
+      + lg('Jours off', offs.length ? esc(offs.map(function (o) { return offTxt(o).split(' depuis')[0]; }).join(' ; ')) : '<span class="mu">aucun</span>')
+      + lg('Consigne', p.consigne ? esc(p.consigne) : '<span class="mu">aucune</span>') + '</div>'
+      + '<label class="fe-note"><span>Note interne <small>(visible par la gestion seulement)</small></span><textarea class="in" id="fenote" rows="2" placeholder="Ex. : formation à renouveler, à rappeler…">' + esc(rg.note || '') + '</textarea></label><button class="btn l sm fe-nb" data-act="fenote">Enregistrer la note</button>');
+    return h + '</div>';
+  }
+  async function sauverNote() {
+    var F = S.pf, el = document.getElementById('fenote'); if (!F || !el || F.id === 'new') return;
+    var p = persById(F.id); if (!p) return;
+    var v = el.value.trim(), r = Object.assign({}, p.regles || {}); if (v) r.note = v; else delete r.note;
+    var x = await sb.from('equipe').update({ regles: r }).eq('id', p.id);
+    if (x.error) { toast(msgErr(x.error)); return; }
+    p.regles = r; F.d.regles = Object.assign({}, F.d.regles || {}); if (v) F.d.regles.note = v; else delete F.d.regles.note;
+    if (F.o) { try { var o = JSON.parse(F.o); o.regles = Object.assign({}, o.regles || {}); if (v) o.regles.note = v; else delete o.regles.note; F.o = JSON.stringify(o); } catch (e) {} }
+    toast('✔ Note enregistrée'); render();
+  }
+  // --- Journal : tout ce qui s'est passé pour la personne, le plus récent en haut
+  var FE_CAT = { pt: ['Pointage', 'qr'], pl: ['Planning', 'equipe'], cg: ['Congés et absences', 'agenda'], fi: ['Fiche', 'crayon'] };
+  function feEvenements(p, D) {
+    var ev = [], add = function (ts, cat, t, s, al, jour) { if (!ts) return; var d = new Date(ts); if (isNaN(d)) return; ev.push({ ts: d.toISOString(), jour: jour || dIso(d), h: fMin(d.getHours() * 60 + d.getMinutes()), cat: cat, t: t, s: s || '', al: !!al }); };
+    var par = function (id) { var n = feQui(id); return n ? ' · par ' + n : ''; };
+    var PJ = {}, aujE = dIso(new Date());
+    (D.pj || []).forEach(function (x) {
+      var k = x.evenement, t = EVT_PT[k] || k;
+      if (k === 'ARRIVEE' || k === 'SORTIE') { var jx = x.jour ? String(x.jour).slice(0, 10) : dIso(new Date(x.quand)), o = PJ[jx] = PJ[jx] || {}, hx = x.heure_pt || x.quand; if (k === 'ARRIVEE') { if (!o.a || hx < o.a) o.a = hx; } else if (!o.s || hx > o.s) o.s = hx; if (x.simule) o.sim = 1; }
+      else if (k === 'CORRECTION' || k === 'EFFACEMENT') add(x.quand, 'pt', t + (x.jour ? ' du pointage du ' + jourCourt(String(x.jour).slice(0, 10)) : ''), (x.detail || '') + par(x.profil_id));
+      else add(x.quand, 'pt', t, x.detail || '', true);
+    });
+    // une ligne par jour pointé : arrivée → sortie
+    Object.keys(PJ).forEach(function (jx) { var o = PJ[jx]; add(o.a || o.s, 'pt', 'Pointage ' + (o.a ? hPt(o.a) : '?') + ' → ' + (o.s ? hPt(o.s) : jx === aujE ? 'sur place' : '?'), (o.sim ? 'simulé · ' : '') + (o.a && o.s ? 'arrivée et sortie au QR code' : !o.a ? 'arrivée manquante' : jx === aujE ? 'arrivée au QR code' : 'sortie manquante'), !(o.a && (o.s || jx === aujE)), jx); });
+    (D.ou || []).forEach(function (o) {
+      var q = (o.sens === 'arrivee' ? 'arrivée' : 'sortie') + ' à ' + ft(hm(o.heure)) + ' le ' + jourCourt(String(o.jour).slice(0, 10)) + (o.mot ? ' · « ' + o.mot + ' »' : '');
+      add(o.cree_le, 'pt', 'Oubli de pointage signalé', q, true);
+      if (o.repondu_le) add(o.repondu_le, 'pt', 'Oubli de pointage ' + (o.statut === 'accepte' ? 'accepté' : o.statut === 'refuse' ? 'refusé' : 'annulé'), q + par(o.repondu_par));
+    });
+    (D.cg || []).forEach(function (c) {
+      var lui = p.profil_id && c.demande_par === p.profil_id, per = periode(c.du, c.au), ty = typeTxt(c.type);
+      add(c.cree_le, 'cg', lui ? 'Demande : ' + ty.toLowerCase() : ty + ' posé' + (c.type === 'FORMATION' ? 'e' : ''), per + (lui ? '' : par(c.demande_par)) + (c.mot ? ' · « ' + c.mot + ' »' : ''));
+      if (c.traite_le && lui) add(c.traite_le, 'cg', 'Demande ' + (c.statut === 'accepte' ? 'acceptée' : c.statut === 'refuse' ? 'refusée' : 'annulée'), per + par(c.traite_par) + (c.reponse ? ' · « ' + c.reponse + ' »' : ''));
+      if (c.annul_demande) add(c.annul_demande, 'cg', 'Demande d’annulation', per + (c.annul_mot ? ' · « ' + c.annul_mot + ' »' : ''), true);
+    });
+    var G = {};
+    (D.plm || []).forEach(function (r) { if (!r.modifie_le) return; var k = (r.modifie_par || '') + '|' + String(r.modifie_le).slice(0, 16); (G[k] = G[k] || []).push(r); });
+    Object.keys(G).forEach(function (k) {
+      var l = G[k], js = {}, aff = {}; l.forEach(function (r) { js[String(r.jour).slice(0, 10)] = 1; aff[r.aff] = (aff[r.aff] || 0) + 1; });
+      var d = Object.keys(js).sort(), top = Object.keys(aff).sort(function (a, b) { return aff[b] - aff[a]; })[0];
+      var qd = d.length <= 3 ? d.map(jourCourt).join(', ') : 'du ' + jourCourt(d[0]) + ' au ' + jourCourt(d[d.length - 1]) + ' (' + d.length + ' jours)';
+      add(l.map(function (r) { return r.modifie_le; }).sort()[0], 'pl', 'Planning modifié', qd + ' · ' + nomAff(top) + par(l[0].modifie_par));
+    });
+    versionsTrame(p).forEach(function (v) { add(v.cree_le, 'fi', horsPlanning(p) ? 'Horaires habituels modifiés' : 'Semaine type modifiée', 'à partir du ' + jourCourt(String(v.depuis).slice(0, 10)) + par(v.cree_par)); });
+    return ev.sort(function (a, b) { return a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0; });
+  }
+  function horsPlanning(p) { return typeDe(p.type).planning === false; }
+  function feJournal(p, F) {
+    var D = feDonnees(p.id), E = feEtat();
+    if (D.charge) return '<p class="a-vide">Chargement du journal…</p>';
+    if (D.err) return '<div class="ban warn">' + esc(D.err) + '</div>';
+    var tous = feEvenements(p, D), depuis = addJ(dIso(new Date()), -E.jn), l = tous.filter(function (x) { return x.jour >= depuis && (E.jf === 'tout' || x.cat === E.jf || (E.jf === 'pt' && x.cat === 'pt')); });
+    var h = '<div class="fe-jb"><div class="fe-jf" role="group" aria-label="Filtrer le journal">' + [['tout', 'Tout'], ['pt', 'Pointage'], ['pl', 'Planning'], ['cg', 'Congés et absences'], ['fi', 'Fiche']].map(function (x) { return '<button data-fejf="' + x[0] + '" aria-pressed="' + (E.jf === x[0]) + '"' + (E.jf === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>'; }).join('') + '</div>'
+      + '<label class="fe-jq">' + ico('loupe', 18, 2.2) + '<input type="search" data-fejq placeholder="Chercher…" aria-label="Chercher dans le journal" value="' + esc(E.jq || '') + '"></label></div>';
+    if (D.pj === null) h += '<p class="mu fe-p">Le journal du pointage n’est pas disponible (mise à jour 018).</p>';
+    if (!l.length) h += '<p class="a-vide">Rien sur les ' + E.jn + ' derniers jours' + (E.jf !== 'tout' ? ' pour ce filtre' : '') + '.</p>';
+    var cur = null;
+    if (l.length) h += '<div class="fe-jl">';
+    l.forEach(function (x) {
+      if (x.jour !== cur) { if (cur) h += '</div>'; cur = x.jour; h += '<div class="fe-jg"><b class="fe-jd">' + (x.jour === dIso(new Date()) ? 'Aujourd’hui · ' : x.jour === addJ(dIso(new Date()), -1) ? 'Hier · ' : '') + jourLong(x.jour) + '</b>'; }
+      var C = FE_CAT[x.cat];
+      h += '<div class="fe-e" data-fet="' + esc(norm(x.t + ' ' + x.s + ' ' + C[0])) + '"><span class="fe-eh">' + x.h + '</span><span class="fe-ei ' + (x.al ? 'al' : x.cat) + '" aria-hidden="true">' + ico(x.al ? 'attente' : C[1], 17, 2.2) + '</span><span class="fe-et"><b>' + esc(x.t) + '</b>' + (x.s ? '<small>' + esc(x.s) + '</small>' : '') + '</span><span class="fe-tag ' + x.cat + '">' + C[0] + '</span></div>';
+    });
+    if (cur) h += '</div>';
+    if (l.length) h += '</div>';
+    if (tous.some(function (x) { return x.jour < depuis; }) && E.jn < 400) h += '<button class="btn l fe-plus" data-act="feplus">Voir plus ancien</button>';
+    h += '<p class="mu fe-p">Le journal se remplit tout seul : pointages, oublis signalés, congés et absences, changements du planning et de la semaine type.</p>';
+    if (E.jq) setTimeout(function () { feFiltrerJournal(norm(E.jq.trim())); }, 0);
+    return h;
+  }
+  function feFiltrerJournal(q) {
+    [].forEach.call(document.querySelectorAll('.fe-jg'), function (g) {
+      var vu = 0; [].forEach.call(g.querySelectorAll('.fe-e'), function (e) { var ok = !q || e.dataset.fet.indexOf(q) >= 0; e.hidden = !ok; if (ok) vu++; });
+      g.hidden = !vu;
+    });
+  }
+  // --- Année : une case par jour, couleur selon ce qui s'est passé (ou ce qui est prévu)
+  var FE_TY = {
+    tr: ['Travaillé', ''], we: ['Week-end', ''], re: ['Repos ou jour off', 'R'], fe: ['Férié', 'Fé'], ca: ['Congés', 'CA'], at: ['Congés en attente', 'CA'],
+    ar: ['Arrêt', 'AR'], fo: ['Formation', 'F'], ec: ['École', 'É'], ou: ['Pointage incomplet', '!'], hc: ['Hors centre à vérifier', '?'], av: ['Avant le planning dans l’appli', '']
+  };
+  function feType(p, iso, cgs, deb, auj) {
+    var j = jourSem(iso);
+    if (j === 0 || j === 6) return 'we';
+    if (ferie(iso)) return 'fe';
+    var cs = cgs.filter(function (x) { return x.du <= iso && x.au >= iso && (x.statut === 'accepte' || x.statut === 'attente'); }), c = cs.filter(function (x) { return x.statut === 'accepte'; })[0];
+    if (c) return c.type === 'ARRET' ? 'ar' : c.type === 'FORMATION' ? 'fo' : 'ca';
+    if (iso < PL_DEBUT) return cs.length ? 'at' : 'av';
+    var am = caseEff(p, iso, 'AM'), pm = caseEff(p, iso, 'PM'), A = [am.a, pm.a], a = function (x) { return A.indexOf(x) >= 0; };
+    if (a('ARRET')) return 'ar'; if (a('CP')) return 'ca'; if (a('FORMATION')) return 'fo'; if (a('ECOLE')) return 'ec'; if (a('FERIE')) return 'fe';
+    if (cs.length) return 'at';
+    if (A[0] === 'OFF' && A[1] === 'OFF') return 're';
+    if (p.pointage && deb && iso >= deb && iso < auj) { var r = ptRow(p.id, iso); if (!r || !r.arrivee || !r.sortie) return 'ou'; if (ptHc(r)) return 'hc'; }
+    return 'tr';
+  }
+  function feAnnee(p, F) {
+    var E = feEtat(), y = E.an, auj = dIso(new Date()), d1 = y + '-01-01', d2 = y + '-12-31', D = feDonnees(p.id), de = [d1, PL_DEBUT].sort()[1];
+    var charge = D.charge; if (de <= d2 && feAssurer(de, d2)) charge = true;
+    var nav = navDate({ cle: 'fean', pas: 'an', titre: 'L’année ' + y + ' jour par jour', val: d1, auj: String(y) === auj.slice(0, 4) ? '' : 'Cette année' });
+    var h = '<div class="fe-anh">' + nav + '<span class="mu">Touchez un jour pour son détail · estompé : à venir</span></div>';
+    if (charge) return h + '<p class="a-vide">Chargement de l’année…</p>';
+    var cgs = feConges(p), deb = feDebutPt(p), tot = {}, vus = {}, NM = ['Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'];
+    var sel = E.jour && E.jour.slice(0, 4) === String(y) ? E.jour : auj.slice(0, 4) === String(y) ? auj : null;
+    var g = '<div class="fe-ang"><span></span>';
+    for (var n = 1; n <= 31; n++) g += '<span class="fe-n">' + n + '</span>';
+    for (var m = 0; m < 12; m++) {
+      var mm = y + '-' + ('0' + (m + 1)).slice(-2), nb = new Date(y, m + 1, 0).getDate();
+      g += '<button class="fe-m" data-femois="' + mm + '" title="Ouvrir ' + MOIS[m] + ' dans le planning">' + NM[m] + '</button>';
+      for (var d = 1; d <= 31; d++) {
+        if (d > nb) { g += '<span class="fe-c x"></span>'; continue; }
+        var iso = mm + '-' + ('0' + d).slice(-2), k = feType(p, iso, cgs, deb, auj), fut = iso > auj;
+        vus[k] = 1; if (!fut) tot[k] = (tot[k] || 0) + 1;
+        g += '<button class="fe-c ' + k + (fut ? ' fut' : '') + (iso === auj ? ' auj' : '') + (iso === sel ? ' sel' : '') + '" data-fejour="' + iso + '" title="' + esc(jourLong(iso) + ' · ' + FE_TY[k][0]) + '" aria-label="' + esc(jourLong(iso) + ' · ' + FE_TY[k][0]) + '">' + FE_TY[k][1] + '</button>';
+      }
+    }
+    g += '</div>';
+    var leg = ['tr', 'we', 're', 'fe', 'ca', 'at', 'ar', 'fo', 'ec', 'ou', 'hc', 'av'].filter(function (k) { return vus[k] || k === 'tr' || k === 'we'; }).map(function (k) { return '<span><i class="fe-c ' + k + '">' + FE_TY[k][1] + '</i>' + FE_TY[k][0] + '</span>'; }).join('') + '<span><i class="fe-c tr auj"></i>Aujourd’hui</span>';
+    h += '<div class="fe-an">' + g + '</div><div class="fe-leg2">' + leg + '</div>';
+    // totaux jusqu'à aujourd'hui
+    var T = function (k) { return tot[k] || 0; };
+    var kt = [['Jours travaillés', T('tr') + T('ou') + T('hc') + ' j'], ['Congés', T('ca') + ' j'], ['Arrêts', T('ar') + ' j'], ['Formations', T('fo') + ' j']];
+    if (p.statut === 'apprentie' || T('ec')) kt.push(['École', T('ec') + ' j']);
+    if (p.pointage) kt.push(['Pointages incomplets', String(T('ou'))]);
+    var tz = '<section class="fe-t"><div class="fe-th"><h3>Totaux ' + y + (String(y) === auj.slice(0, 4) ? ' · jusqu’à aujourd’hui' : '') + '</h3></div><div class="fe-ks k' + kt.length + '">' + kt.map(function (x) { return feChiffre(x[0], x[1]); }).join('') + '</div>' + (y <= 2026 ? '<small class="mu">Avant le 1er novembre 2026, seules les absences saisies dans l’appli apparaissent.</small>' : '') + '</section>';
+    // détail du jour choisi
+    var dt = '';
+    if (sel) {
+      var k0 = feType(p, sel, cgs, deb, auj), r = ptRow(p.id, sel), j0 = jourSem(sel), lg = [];
+      var cg = cgs.filter(function (x) { return x.du <= sel && x.au >= sel && x.statut !== 'refuse' && x.statut !== 'annule'; })[0];
+      if (cg) lg.push(esc(typeTxt(cg.type)) + ' ' + periode(cg.du, cg.au) + (cg.statut === 'attente' ? ' · en attente' : ''));
+      if (j0 >= 1 && j0 <= 5 && sel >= PL_DEBUT && !ferie(sel)) { var cj = calculJour(p, sel, r); lg.push('Prévu : ' + esc(cj.hor) + (cj.prevu ? ' (' + fh(cj.prevu) + ')' : '')); }
+      if (r && (r.arrivee || r.sortie)) { var cj2 = calculJour(p, sel, r); lg.push('Pointé : ' + (r.arrivee ? hPt(r.arrivee) : '?') + ' → ' + (r.sortie ? hPt(r.sortie) : sel === auj ? 'sur place' : '?') + (cj2.effMin != null && r.arrivee && r.sortie ? ' · <b>' + fh(cj2.effMin / 60) + '</b>' : '') + (ptHc(r) ? ' · <span class="warn-t">hors centre</span>' : '')); }
+      else if (p.pointage && k0 === 'ou') lg.push('<span class="warn-t">Pointage incomplet</span>');
+      dt = '<section class="fe-t fe-dj"><div class="fe-th"><h3>' + jourLong(sel) + ' ' + sel.slice(0, 4) + '</h3></div><span class="fe-djt"><i class="fe-c ' + k0 + '">' + FE_TY[k0][1] + '</i>' + FE_TY[k0][0] + '</span>' + lg.map(function (x) { return '<span>' + x + '</span>'; }).join('')
+        + (j0 >= 1 && j0 <= 5 && sel >= PL_DEBUT ? '<div class="fe-djb">' + (r || k0 === 'ou' ? '<button class="btn l sm" data-fept="' + sel + '">Voir le pointage</button>' : '') + '<button class="btn sm" data-fepl="' + sel + '">Ouvrir la semaine dans le planning</button></div>' : '') + '</section>';
+    }
+    return h + '<div class="fe-anb">' + tz + dt + '</div>';
+  }
+  // Aller du planning, des heures ou du pointage à la page qui va bien
+  function feAllerPlanning(iso) {
+    var x = iso; while (jourSem(x) === 0 || jourSem(x) === 6) x = addJ(x, 1);
+    S.pl = S.pl || { lundi: lundiDe(x), rows: {} }; S.pl.lundi = lundiDe(x); S.pl.cas = null; S.tab = 'planning'; chargerSemaine(); render(); window.scrollTo(0, 0);
+  }
+  function feAction(d) {
+    var E = feEtat(), F = S.pf;
+    if (d.fean != null) { var v = +d.fean; E.an = v ? E.an + v : new Date().getFullYear(); E.jour = null; render(); return true; }
+    if (d.fejour) { E.jour = d.fejour; render(); return true; }
+    if (d.femois) { feAllerPlanning(d.femois + '-01'); return true; }
+    if (d.fepl) { feAllerPlanning(d.fepl); return true; }
+    if (d.fejf) { E.jf = d.fejf; render(); return true; }
+    if (d.rglf) { E.lf = d.rglf; render(); return true; }
+    if (d.act === 'feplus') { E.jn += 60; render(); return true; }
+    if (d.act === 'fenote') { sauverNote(); return true; }
+    if (d.fevoir && F) { var x = d.fevoir.split(':'); F.onglet = x[0]; if (x[1]) E.jf = x[1]; render(); window.scrollTo(0, 0); return true; }
+    if (d.fept) { var G = S.ptg = S.ptg || { mode: 'jour', jour: d.fept, rows: {} }; G.mode = 'jour'; G.jour = d.fept; if (G.bord) G.bord.sel = null; S.tab = 'pointage'; render(); window.scrollTo(0, 0); return true; }
+    if (d.fehr && F) { var L = lundiDe(dIso(new Date())); S.hr = S.hr || { mode: 'mois', mois: addJ(L, 3).slice(0, 7), lundi: L, sel: null }; S.hr.sel = F.id; S.tab = 'heures'; render(); window.scrollTo(0, 0); return true; }
+    return false;
+  }
   function vBarPFiche() {
-    var F = S.pf; if (!F) return '';
+    var F = S.pf; if (!F || FE_VUES.indexOf(ogFiche(F)) >= 0) return '';
     return '<div class="bar a-bar"><div class="bar-in"><button class="a-btn navy" data-act="pfsave"' + (F.busy ? ' disabled' : '') + '>' + (F.busy ? 'Enregistrement…' : 'Enregistrer') + '</button></div></div>';
   }
   function majPers(el) {
@@ -1880,7 +2191,7 @@
     for (var i = 0; i < 800 && l.length < n; i++, d = addJ(d, 1)) { if (o.au && d > o.au) break; if (offMatch(o, d) && !ferie(d)) l.push(d); }
     return l;
   }
-  function jourCourt(iso) { var d = dDe(iso); return JC[jourSem(iso)].toLowerCase() + '. ' + d.getDate() + ' ' + ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'][d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : ''); }
+  function jourCourt(iso) { var d = dDe(iso); return ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'][jourSem(iso)].toLowerCase() + '. ' + d.getDate() + ' ' + ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'][d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : ''); }
   function offTxt(o) {
     var dm = o.demi === 'AM' ? 'matin' : o.demi === 'PM' ? 'après-midi' : 'journée';
     if (o.rec === 'une') return JOURS[jourSem(o.du)] + ' ' + dateCourte(o.du) + ', ' + dm + ' · une fois';
@@ -3134,6 +3445,7 @@
     else if (cle === 'ocj' && S.occ) { S.occ.jour = S.occ.mode === 'semaine' ? lundiDe(v) : occOuvre(v, 1); S.occ.ed = null; }
     else if (cle === 'ptnav' && S.ptg) S.ptg.jour = S.ptg.mode === 'semaine' ? lundiDe(v) : v;
     else if (cle === 'ptbnav' && S.ptg && S.ptg.bord) { var B = S.ptg.bord; if (B.per === 'semaine') B.lundi = lundiDe(v); else B.mois = v.slice(0, 7); }
+    else if (cle === 'fean') { feEtat().an = +v.slice(0, 4); feEtat().jour = null; }
     else if (cle === 'hrnav' && S.hr) { if (S.hr.mode === 'semaine') S.hr.lundi = lundiDe(v); else S.hr.mois = v.slice(0, 7); }
     render();
   }
@@ -3147,7 +3459,7 @@
     P.charge = true;
     return toutLire('planning', '*', function (q) { return q.gte('jour', de).lte('jour', a).order('jour'); }).then(function (rows) {
       var o = {}; rows.forEach(function (r) { o[cleCase(r.equipe_id, String(r.jour).slice(0, 10), r.demi)] = r; });
-      P.rows = o; P.de = de; P.a = a; P.charge = false; P.err = false; render();
+      P.rows = o; P.de = de; P.a = a; P.charge = false; P.err = false; S.feCh = null; render();
     }).catch(function (e) { P.charge = false; P.err = true; toast(msgErr(e)); render(); });
   }
 
@@ -7305,6 +7617,7 @@
     if (d.rgso) { var cs = document.getElementById(d.rgso); if (cs) cs.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
     if (d.rgnc) { var pli = rgnPlie(); pli[d.rgnc] = !pli[d.rgnc]; lsSet('evy-rgn-plie', JSON.stringify(pli)); render(); return; }
     if (d.act === 'rgeq' || d.act === 'rgde') { var dfi = d.act === 'rgde' ? S.df : S.pf; if (dfi && (S.tab === 'pfiche' || S.tab === 'dfiche') && dfi.o && dfi.o !== JSON.stringify(dfi.d)) { fenetre({ titre: 'Changements non enregistrés', texte: 'La fiche ouverte a été modifiée sans être enregistrée.\n\nSi vous changez de page maintenant, ces changements seront perdus.', ok: 'Changer sans enregistrer', non: 'Rester sur la fiche' }).then(function (v) { if (v) ouvrirDepuisMenu(d.act === 'rgde'); }); return; } return ouvrirDepuisMenu(d.act === 'rgde'); }
+    if (feAction(d)) return;
     if (d.rglp) return changerFiche('p', d.rglp);
     if (d.rgld) return changerFiche('d', d.rgld);
     if (d.rglnew) return changerFiche(d.rglnew, 'new');
@@ -7469,7 +7782,8 @@
     if (d.act === 'cmok') return changerMonMdp();
   });
   document.addEventListener('input', function (e) {
-    if (e.target.dataset && e.target.dataset.rglq != null) { var q = norm(e.target.value.trim()); [].forEach.call(document.querySelectorAll('.rgl-l'), function (b) { b.hidden = !!q && b.dataset.rgln.indexOf(q) < 0; }); return; }
+    if (e.target.dataset && e.target.dataset.rglq != null) { var q = norm(e.target.value.trim()); [].forEach.call(document.querySelectorAll('.rgl-l'), function (b) { b.hidden = (!!q && b.dataset.rgln.indexOf(q) < 0) || b.dataset.ff === '0'; }); return; }
+    if (e.target.dataset && e.target.dataset.fejq != null) { var q2 = norm(e.target.value.trim()); feEtat().jq = e.target.value; feFiltrerJournal(q2); return; }
     var t = e.target; if (!S.me) return;
     if (t.id === 'rgq') {   // recherche dans les réglages : on masque sans redessiner (le curseur reste dans le champ)
       var qq = norm(t.value).trim(), vus = 0;
