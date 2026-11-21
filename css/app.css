@@ -3133,3 +3133,8 @@ img.rail-lo{width:48px;height:48px;border-radius:50%;object-fit:cover;clip-path:
 .es-act{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.es-act .btn{display:inline-flex;align-items:center;gap:8px}
 .es-c.es-off .es-g{opacity:.55}
 .btn.ar-rel{display:inline-flex;align-items:center;gap:8px;margin-left:8px}
+.pf-g.sc{min-width:990px}
+.pf-g.sc .pf-l{grid-template-columns:minmax(200px,1.4fr) repeat(4,82px) 12px repeat(5,82px) 96px}
+@media (max-width:640px){.pf-g.sc{min-width:0}.pf-g.sc .pf-l{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.pf-g.sc .pf-t1 .pf-gr.bl{grid-column:span 5}
+.btn.es-btn{display:inline-flex;flex-direction:row;align-items:center;gap:8px;flex:none}

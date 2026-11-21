@@ -22,7 +22,7 @@
   // (pointage, stock, planning, congés). Stocké dans parametres « profils » ; à défaut, repris des anciens
   // « types_personnel » et « roles ». La fiche garde type + statut (apprentie = assistante + statut apprentie).
   var ORG = [['planning', 'Planning'], ['dentiste', 'Dentiste'], ['contrat', 'Contrat'], ['cab', 'Cabinet']];
-  var APP = [['pointage', 'Pointage'], ['stock', 'Stock'], ['voirPlanning', 'Planning'], ['conges', 'Congés']];
+  var APP = [['pointage', 'Pointage'], ['stock', 'Stock'], ['voirPlanning', 'Planning'], ['conges', 'Congés']], APP0 = APP;
   var PROFILS_BASE = [
     { code: 'assistante', n: 'Assistante / assistant', d: 'Au fauteuil, stock de son cabinet', planning: true, dentiste: true, contrat: true, cab: true, pointage: true, stock: true, voirPlanning: true, conges: true },
     { code: 'apprentie', n: 'Apprentie / apprenti', d: 'Comme une assistante, avec un jour d’école', planning: true, dentiste: true, contrat: true, cab: true, pointage: true, stock: true, voirPlanning: true, conges: true, ecole: true },
@@ -54,7 +54,7 @@
   function profilCode(p) { return !p ? 'assistante' : (!p.type || p.type === 'assistante') ? (p.statut === 'apprentie' ? 'apprentie' : 'assistante') : p.type; }
   function profilDe(code) { var l = profilsListe(true); return l.filter(function (x) { return x.code === code; })[0] || null; }
   var DROITS = [['cab', 'Affecté à un cabinet'], ['pointage', 'Pointage'], ['stock', 'Stock'], ['planning', 'Planning'], ['conges', 'Congés']];
-  function enRole(x) { return { code: x.code, n: x.n, d: x.d, base: x.base, retire: x.retire, cab: !!x.cab, pointage: !!x.pointage, stock: !!x.stock, planning: !!x.voirPlanning, conges: !!x.conges }; }
+  function enRole(x) { return { code: x.code, n: x.n, d: x.d, base: x.base, retire: x.retire, cab: !!x.cab, pointage: !!x.pointage, stock: !!x.stock, planning: !!x.voirPlanning, conges: !!x.conges, scan: !!x.scan }; }
   function rolesEq() { return profilsListe().map(enRole); }
   function roleEqDe(code) {
     var x = profilDe(code || 'assistante');
@@ -1492,7 +1492,7 @@
       { k: 'ap', t: 'Application', ic: 'app', d: 'Données et nouveautés', l: [
         I('Sauvegarde et journal', 'data-tab="plus"', '', 'sauve', sv ? 'à télécharger' : 'à jour', 'versions données', '', sv),
         I('Transfert vers la prod', 'data-tab="ptransfert"', 'ptransfert', 'transfert', 'test → site réel', 'exporter importer équipe dentistes réglages congés'),
-        S.me && S.me.role === 'referente' ? I('Fonctions en essai', 'data-tab="pessai"', 'pessai', 'etoile', (scanOn() ? (S.scan.equipe ? 'scan : toute l’équipe' : 'codes : gestion') : 'scan : éteint'), 'scan code barre codes-barres douchette datamatrix lot', 'Essai') : null] },
+        S.me && S.me.role === 'referente' ? I('Fonctions en essai', 'data-tab="pessai"', 'pessai', 'etoile', (scanOn() ? (profilsListe().some(function (x) { return x.scan && !x.retire; }) ? 'scan : allumé' : 'codes : gestion') : 'scan : éteint'), 'scan code barre codes-barres douchette datamatrix lot', 'Essai') : null] },
       { k: 'mo', t: 'Mon compte', ic: 'moi', d: 'Pour vous seulement', l: [
         I('Mon mot de passe', 'data-tab="compte"', '', 'cadenas', 'changer', 'code')] }
     ];
@@ -1584,12 +1584,12 @@
   }
   // ---------- Réglages › Profils ----------
   function vPProfils() {
-    var E = S.profEd = S.profEd || JSON.parse(JSON.stringify(profilsListe()));
+    var E = S.profEd = S.profEd || JSON.parse(JSON.stringify(profilsListe())), APP = APP0.concat(scanOn() ? [['scan', 'Scan']] : []);
     var nbP = function (code) { return (S.equipe || []).filter(function (p) { return p.actif && profilCode(p) === code; }).length; };
     var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'Profils', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
     h += '<p class="a-aide" style="margin-top:0">Un profil dit en une fois <b>où la personne apparaît</b> (planning, dentiste, contrat, cabinet) et <b>ce qu’elle voit dans son appli</b> (une tuile par case). Dans chaque fiche, on choisit seulement le profil.</p>';
     var cb = function (i, k, on, lab) { return '<label class="pf-c"><input type="checkbox" data-pfx="' + i + '.' + k + '"' + (on ? ' checked' : '') + ' aria-label="' + esc(lab) + '"><span class="pf-cl">' + esc(lab.split(' : ')[1]) + '</span></label>'; };
-    h += '<section class="ro-carte"><div class="ro-scroll"><div class="pf-g"><div class="pf-l pf-t1"><span></span><span class="pf-gr or">Dans l’organisation</span><span></span><span class="pf-gr bl">Dans son appli (tuiles)</span><span></span></div>'
+    h += '<section class="ro-carte"><div class="ro-scroll"><div class="pf-g' + (scanOn() ? ' sc' : '') + '"><div class="pf-l pf-t1"><span></span><span class="pf-gr or">Dans l’organisation</span><span></span><span class="pf-gr bl">Dans son appli (tuiles)</span><span></span></div>'
       + '<div class="pf-l ro-tete"><span>Profil</span>' + ORG.map(function (o) { return '<span>' + o[1] + '</span>'; }).join('') + '<span></span>' + APP.map(function (o) { return '<span>' + o[1] + '</span>'; }).join('') + '<span></span></div>'
       + E.map(function (x, i) {
         var n = nbP(x.code);
@@ -1603,6 +1603,7 @@
     h += carteReferent();
     var V = S.visible || {};
     h += '<div class="a-liste"><label class="a-li"><span class="a-it-n"><b>Avec le planning, leur reliquat d’heures</b><span>pour les profils qui ont la tuile Planning</span></span><input type="checkbox" role="switch" class="h-sw" data-vis="reliquat"' + (V.reliquat ? ' checked' : '') + ' aria-label="Afficher aussi le reliquat"><span class="pill' + (V.reliquat ? ' ok' : '') + '">' + (V.reliquat ? 'Activé' : 'Coupé') + '</span></label></div>';
+    if (scanOn()) h += '<p class="a-aide"><b>Scan</b> (fonction en essai) : le bouton « Scanner un code » apparaît dans la Sortie de ce profil. La référente et la responsable l’ont toujours.</p>';
     h += '<p class="a-aide">Planning, Dentiste et Contrat : la personne apparaît dans le planning des dentistes, peut être placée au fauteuil, a un reliquat d’heures. Cabinet : un cabinet est choisi pour son compte. Les tuiles s’appliquent à la prochaine ouverture de son appli ; la tuile Pointage apparaît aussi seulement si la fiche est « soumise au pointage ».</p>';
     return h + '<button class="a-btn navy" data-act="pfsavep">Enregistrer les profils</button></div>';
   }
@@ -1616,7 +1617,7 @@
       E.push({ code: c, n: n, planning: false, dentiste: false, contrat: true, cab: false, pointage: true, stock: false, voirPlanning: false, conges: true }); render(); return true;
     }
     if (d.act === 'pfsavep') {
-      var l = E.map(function (x) { var o = { code: x.code, n: x.n }; ORG.concat(APP).forEach(function (k) { o[k[0]] = !!x[k[0]]; }); if (x.retire) o.retire = true; return o; });
+      var l = E.map(function (x) { var o = { code: x.code, n: x.n }; ORG.concat(APP).forEach(function (k) { o[k[0]] = !!x[k[0]]; }); o.scan = !!x.scan; if (x.retire) o.retire = true; return o; });
       var vis = Object.assign({ planning: false, reliquat: false }, S.visible || {}); vis.planning = l.some(function (x) { return x.voirPlanning && !x.retire; }); if (!vis.planning) vis.reliquat = false;
       sb.from('parametres').upsert([{ cle: 'profils', valeur: l }, { cle: 'planning_visible', valeur: vis }], { onConflict: 'cle' }).then(function (r) {
         if (r.error) throw r.error; S.profilsP = l; S.visible = vis; S.profEd = null; JOUR_CACHE = {}; toast('✔ Profils enregistrés'); render();
@@ -3051,9 +3052,9 @@
       if (!av || av.manque || av.actif !== S.scan.actif || av.equipe !== S.scan.equipe || av.codes.length !== S.scan.codes.length) render();
     }).catch(function () { S.scan = { manque: true, actif: false, codes: [] }; });
   }
-  // 1er interrupteur : les codes-barres des articles (référente et responsable) ; 2e : la sortie par scan pour toute l'équipe
+  // Interrupteur : les codes-barres des articles (référente et responsable) ; la sortie par scan s'ouvre ensuite profil par profil
   function scanOn() { return !!(S.scan && !S.scan.manque && S.scan.actif); }
-  function scanSortieOn() { return scanOn() && (gestion() || !!S.scan.equipe); }
+  function scanSortieOn() { return scanOn() && (gestion() || droit('scan')); }   // l'équipe : selon son profil (Réglages › Profils, colonne « Scan »)
   function scanPeutAssocier() { return gestion() || !!(S.scan && S.scan.qui === 'equipe'); }
   function codeDe(code) { return ((S.scan && S.scan.codes) || []).filter(function (c) { return c.code === code; })[0] || null; }
   function codeAff(c) { return /^0\d{13}$/.test(c) ? c.slice(1) : c; }
@@ -3300,7 +3301,8 @@
       + '<span class="pill ' + (prod ? 'warn' : 'info') + '">Base : ' + (prod ? 'Prod (réelle)' : 'Dev (test)') + '</span>' + sw('scactif', Z.actif, Z.manque) + '</div>';
     if (Z.manque) return h + '<div class="ban warn">Mise à jour <b>034</b> à faire sur cette base : tant qu’elle n’est pas passée, les codes-barres restent invisibles pour tout le monde et ne peuvent pas être allumés.</div></section></div>';
     if (Z.actif) h += '<div class="es-act"><button class="btn" data-act="screlier">' + ico('scan', 18, 2.2) + 'Relier des codes maintenant</button><span class="mu">' + nrel + ' ' + pl(nrel, 'code') + ' ' + pl(nrel, 'relié') + ' à un article</span></div>';
-    h += '</section><section class="card es-c' + (Z.actif ? '' : ' es-off') + '"><div class="es-hd"><span class="es-ti"><b>2 · Sortie par scan pour l’équipe</b><small>Le bouton « Scanner un code » apparaît dans Sortie sur les téléphones de toute l’équipe. ' + (Z.actif ? 'À allumer quand la plupart des boîtes sont reliées.' : 'Allumez d’abord le n° 1.') + '</small></span>' + sw('scequipe', Z.actif && Z.equipe, !Z.actif) + '</div>';
+    var avec = profilsListe().filter(function (x) { return x.scan && !x.retire; }).map(function (x) { return x.n; });
+    h += '</section><section class="card es-c' + (Z.actif ? '' : ' es-off') + '"><div class="es-hd"><span class="es-ti"><b>2 · Sortie par scan pour l’équipe</b><small>Elle s’ouvre profil par profil, dans Réglages › Profils, colonne « Scan ». ' + (Z.actif ? (avec.length ? 'Ouverte pour : ' + avec.map(esc).join(', ') + '.' : 'Aucun profil pour l’instant : l’équipe ne voit rien.') : 'Allumez d’abord le n° 1.') + '</small></span>' + (Z.actif ? '<button class="btn l es-btn" data-tab="pprofils">' + ico('carte', 18, 2) + 'Ouvrir les profils</button>' : '') + '</div>';
     h += '<div class="es-g"><fieldset class="es-f"><legend>Qui peut associer un code inconnu ?</legend>'
       + opt('data-scqui', 'equipe', Z.qui, 'Toute l’équipe', 'Plus rapide. Les nouvelles associations arrivent ci-dessous « à vérifier ».')
       + opt('data-scqui', 'gestion', Z.qui, 'Seulement la référente et la responsable', 'Les autres choisissent l’article à la main ; le code est mis de côté ci-dessous.') + '</fieldset>'
@@ -3329,13 +3331,7 @@
     if (d.act === 'scactif') {
       var Z = S.scan; if (!Z || Z.manque) return true;
       var on = !Z.actif, go = function () { scParam('scan_actif', on, function () { Z.actif = on; toast(on ? '✔ Codes-barres allumés' : 'Codes-barres éteints'); }); };
-      if (on && CONFIG.env !== 'dev') fenetre({ titre: 'Allumer les codes-barres sur le site réel ?', texte: 'Seules la référente et la responsable les verront. L’équipe ne verra rien tant que le n° 2 reste éteint.', ok: 'Allumer' }).then(function (o) { if (o) go(); }); else go();
-      return true;
-    }
-    if (d.act === 'scequipe') {
-      var Z2 = S.scan; if (!Z2 || Z2.manque || !Z2.actif) return true;
-      var on2 = !Z2.equipe, go2 = function () { scParam('scan_sortie_equipe', on2, function () { Z2.equipe = on2; toast(on2 ? '✔ Sortie par scan ouverte à l’équipe' : 'Sortie par scan fermée à l’équipe'); }); };
-      if (on2 && CONFIG.env !== 'dev') fenetre({ titre: 'Ouvrir la sortie par scan à l’équipe ?', texte: 'Toute l’équipe verra le bouton « Scanner un code » dans Sortie, sur le site réel.', ok: 'Ouvrir à l’équipe' }).then(function (o) { if (o) go2(); }); else go2();
+      if (on && CONFIG.env !== 'dev') fenetre({ titre: 'Allumer les codes-barres sur le site réel ?', texte: 'Seules la référente et la responsable les verront. L’équipe ne verra rien tant qu’aucun profil n’a la case « Scan ».', ok: 'Allumer' }).then(function (o) { if (o) go(); }); else go();
       return true;
     }
     if (d.scqui) { scParam('scan_qui', d.scqui, function () { S.scan.qui = d.scqui; }); return true; }
