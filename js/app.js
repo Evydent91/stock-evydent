@@ -2788,9 +2788,9 @@
   // =====================================================================
   var INS_T = [
     { k: 'turbine', n: 'Turbine', s: 'COXO · grande vitesse' },
-    { k: 'ca20', n: 'Contre-angle 20:1', s: 'Point vert · implantologie' },
-    { k: 'ca11', n: 'Contre-angle 1:1', s: 'Bague bleue' },
-    { k: 'ca15', n: 'Contre-angle 1:5', s: 'Bague rouge · multiplicateur' }
+    { k: 'ca20', n: 'Contre-angle bague verte', s: '20:1 · implantologie' },
+    { k: 'ca11', n: 'Contre-angle bague bleue', s: '1:1' },
+    { k: 'ca15', n: 'Contre-angle bague rouge', s: '1:5 · multiplicateur' }
   ];
   var INS_MOTIFS = ['Bruit', 'Perte de puissance', 'Spray', 'Lumière', 'Chauffe', 'Fraise qui tient mal', 'Autre'];
   function insEtat() { return S.ins = S.ins || { l: null, env: [], q: '', qc: {}, f: 'tous', sel: null, form: null, fd: {} }; }
