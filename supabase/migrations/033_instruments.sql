@@ -33,6 +33,9 @@ alter table public.instruments add constraint instruments_statut_check check (st
 alter table public.instruments add column if not exists panne_le date;
 alter table public.instruments add column if not exists panne_motif text;
 alter table public.instruments add column if not exists panne_detail text;
+-- référence du fabricant (ex. COXO 1040077) et modèle (ex. CX235C7-5), lus sur la facture (ajoutés après coup, rejouable)
+alter table public.instruments add column if not exists reference text;
+alter table public.instruments add column if not exists modele text;
 
 create table if not exists public.instrument_envois (
   id bigserial primary key,

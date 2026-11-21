@@ -3029,7 +3029,7 @@
   function insCarte(x) {
     var g = insGarantie(x), ec = insEnCours(x.id), dr = insDerRep(x.id);
     var pn = x.statut === 'panne' && !ec;
-    return '<button class="ins-c' + (ec ? ' out' : '') + (pn ? ' pan' : '') + (x.statut === 'rebut' ? ' reb' : '') + '" data-ins="' + x.id + '" data-sn="' + esc(norm(x.sn)) + '"><span class="ins-c1"><b>' + esc(x.sn) + '</b>' + (x.cabinet && !ec ? '<small>cab. ' + x.cabinet + '</small>' : '') + '</span>'
+    return '<button class="ins-c' + (ec ? ' out' : '') + (pn ? ' pan' : '') + (x.statut === 'rebut' ? ' reb' : '') + '" data-ins="' + x.id + '" data-sn="' + esc(norm(x.sn + ' ' + (x.reference || '') + ' ' + (x.modele || ''))) + '"><span class="ins-c1"><b>' + esc(x.sn) + '</b>' + (x.cabinet && !ec ? '<small>cab. ' + x.cabinet + '</small>' : '') + '</span>' + (x.reference || x.modele ? '<span class="ins-ref">' + esc([x.reference ? 'réf. ' + x.reference : '', x.modele].filter(Boolean).join(' · ')) + '</span>' : '')
       + '<span class="ins-c2">' + (x.statut === 'rebut' ? '<span class="ins-p non">Au rebut</span>' : '<span class="ins-p ' + g.k + '">' + g.court + '</span>') + (dr ? '<small>réparé le ' + insDateC(dr.retour_le) + '</small>' : '') + '</span>'
       + (pn ? '<span class="ins-pout">' + ico('panne', 15, 2.4) + 'En panne' + (x.panne_le ? ' depuis le ' + insDateC(x.panne_le) : '') + ' · à réparer</span>' : '')
       + (ec ? '<span class="ins-out">' + ico('camion', 15, 2.4) + (ec.en_garantie ? 'En garantie' : 'En réparation') + (ec.chez ? ' chez ' + esc(ec.chez) : '') + ' depuis le ' + insDateC(ec.envoye_le) + '</span>' : '') + '</button>';
@@ -3076,7 +3076,7 @@
     var I = insEtat(), nouv = !x;
     if (nouv || I.form === 'edit') return vInstrForm(x);
     var t = insTy(x.type), g = insGarantie(x), ec = insEnCours(x.id), dr = insDerRep(x.id), env = insEnvois(x.id), auj = dIso(new Date());
-    var h = '<div class="ins-f"><section class="card ins-fc"><div class="ins-fh"><img src="assets/instruments/' + t.k + '.jpg" alt="' + esc(t.n) + '"><div><small>' + esc(t.n) + ' · ' + esc(t.s) + '</small><b class="ins-sn">SN ' + esc(x.sn) + '</b><span class="mu">' + (x.statut === 'rebut' ? 'Au rebut' : ec ? 'Parti ' + (ec.en_garantie ? 'en garantie' : 'en réparation') : x.statut === 'panne' ? 'Au centre · en panne, à réparer' : 'Au centre') + (x.cabinet && !ec && x.statut !== 'rebut' ? ' · cabinet ' + x.cabinet : '') + '</span></div></div>';
+    var h = '<div class="ins-f"><section class="card ins-fc"><div class="ins-fh"><img src="assets/instruments/' + t.k + '.jpg" alt="' + esc(t.n) + '"><div><small>' + esc(t.n) + ' · ' + esc(t.s) + '</small><b class="ins-sn">SN ' + esc(x.sn) + '</b>' + (x.reference || x.modele ? '<span class="ins-fref">' + (x.reference ? 'Référence <b>' + esc(x.reference) + '</b>' : '') + (x.reference && x.modele ? ' · ' : '') + (x.modele ? 'modèle <b>' + esc(x.modele) + '</b>' : '') + '</span>' : '') + '<span class="mu">' + (x.statut === 'rebut' ? 'Au rebut' : ec ? 'Parti ' + (ec.en_garantie ? 'en garantie' : 'en réparation') : x.statut === 'panne' ? 'Au centre · en panne, à réparer' : 'Au centre') + (x.cabinet && !ec && x.statut !== 'rebut' ? ' · cabinet ' + x.cabinet : '') + '</span></div></div>';
     h += '<div class="ins-gar ' + g.k + '"><span class="ins-gi" aria-hidden="true">' + ico(g.k === 'ok' || g.k === 'fin' ? 'ok' : 'attente', 22, 2.6) + '</span><span><b>' + g.long + '</b><small>' + g.sous + '</small></span></div>';
     if (x.statut === 'panne' && !ec) h += '<div class="ins-pn">' + ico('panne', 22, 2.2) + '<span><b>En panne' + (x.panne_le ? ' depuis le ' + insDate(x.panne_le) : '') + ' · à réparer</b><small>' + esc([x.panne_motif, x.panne_detail].filter(Boolean).join(' · ') || 'problème non précisé') + (x.panne_le ? ' · signalé ' + (nbJours(x.panne_le, auj) > 0 ? 'il y a ' + nbJours(x.panne_le, auj) + ' j' : 'aujourd’hui') : '') + '. Ne plus l’utiliser : il attend de partir en réparation.</small></span></div>';
     if (ec) h += '<div class="ins-ec">' + ico('camion', 20, 2.2) + '<span><b>Parti le ' + insDate(ec.envoye_le) + (ec.chez ? ' chez ' + esc(ec.chez) : '') + ' · ' + (ec.en_garantie ? 'en garantie' : 'hors garantie') + '</b><small>' + esc([ec.motif, ec.detail].filter(Boolean).join(' · ') || 'problème non précisé') + (ec.bon ? ' · bon ' + esc(ec.bon) : '') + ' · absent depuis ' + nbJours(ec.envoye_le, auj) + ' j</small></span></div>';
@@ -3139,6 +3139,8 @@
     return '<div class="ins-f1"><section class="card ins-form"><h3>' + (x ? 'Modifier la fiche' : 'Nouvel instrument') + '</h3><div class="ins-fg">'
       + '<label class="pl">Type<select class="in" id="ins-ty">' + INS_T.map(function (t) { return '<option value="' + t.k + '"' + (d.type === t.k ? ' selected' : '') + '>' + t.n + ' · ' + t.s + '</option>'; }).join('') + '</select></label>'
       + '<label class="pl">Numéro de série (SN)<input class="in" id="ins-sn" value="' + esc(d.sn || '') + '" autocomplete="off" placeholder="Tel qu’il est gravé sur l’instrument"></label>'
+      + '<label>Référence<input class="in" id="ins-ref" value="' + esc(d.reference || '') + '" autocomplete="off" placeholder="Ex. : 1040077"></label>'
+      + '<label>Modèle<input class="in" id="ins-mod" value="' + esc(d.modele || '') + '" autocomplete="off" placeholder="Ex. : CX235C7-5"></label>'
       + '<label>Date d’achat<input class="in" type="date" id="ins-ach" value="' + esc(String(d.achat || '').slice(0, 10)) + '"></label>'
       + '<label>Garantie d’achat (mois)<input class="in" type="number" min="0" max="120" id="ins-gm" value="' + (d.garantie_mois != null ? d.garantie_mois : 12) + '"></label>'
       + '<label>Valeur (prix d’achat TTC)<input class="in" id="ins-va" inputmode="decimal" value="' + (d.valeur != null ? String(d.valeur).replace('.', ',') : '') + '" placeholder="Ex. : 690,00"></label>'
@@ -3183,10 +3185,11 @@
     var I = insEtat(), M = I.imp; if (!M || M.busy) return;
     var cab = +insVal('insimpcab') || null, rows = [];
     M.f.forEach(function (R) { R.instruments.forEach(function (x) { if (x.deja || !M.sel[x.sn.toUpperCase()]) return;
-      rows.push({ type: x.type, sn: x.sn.toUpperCase(), achat: R.date, garantie_mois: x.garantie_mois || 12, fournisseur: R.fournisseur, valeur: x.valeur, cabinet: cab, statut: 'service', note: 'Facture ' + R.facture + (x.modele ? ' · ' + x.modele : '') + (x.ref ? ' · réf. ' + x.ref : '') }); }); });
+      rows.push({ type: x.type, sn: x.sn.toUpperCase(), achat: R.date, garantie_mois: x.garantie_mois || 12, fournisseur: R.fournisseur, valeur: x.valeur, cabinet: cab, statut: 'service', reference: x.ref || null, modele: x.modele || null, note: 'Facture ' + R.facture }); }); });
     if (!rows.length) return;
     M.busy = true; render();
     var r = await sb.from('instruments').insert(rows).select();
+    if (r.error && /reference|modele/.test(String(r.error.message))) { rows.forEach(function (o) { o.note += [o.modele, o.reference ? 'réf. ' + o.reference : ''].filter(Boolean).map(function (v) { return ' · ' + v; }).join(''); delete o.reference; delete o.modele; }); r = await sb.from('instruments').insert(rows).select(); }
     if (r.error) { M.busy = false; toast(/duplicate|unique|23505/i.test(String(r.error.message || r.error.code)) ? 'Un de ces numéros de série existe déjà : rechargez la page et recommencez' : msgErr(r.error)); render(); return; }
     I.l = (I.l || []).concat(r.data || []); I.imp = null; toast('✔ ' + rows.length + ' fiche' + (rows.length > 1 ? 's' : '') + ' créée' + (rows.length > 1 ? 's' : '')); render(); window.scrollTo(0, 0);
   }
@@ -3196,9 +3199,10 @@
     if (!sn) { toast('Le numéro de série est obligatoire'); return; }
     var va = insVal('ins-va').replace(/\s|€/g, '').replace(',', '.');
     if (va !== '' && !(+va >= 0)) { toast('La valeur doit être un montant, par exemple 690,00'); return; }
-    var o = { type: insVal('ins-ty') || 'turbine', sn: sn, valeur: va === '' ? null : nb(va), achat: insVal('ins-ach') || null, garantie_mois: Math.max(0, Math.min(120, parseInt(insVal('ins-gm'), 10) || 0)), fournisseur: insVal('ins-fo') || null, cabinet: +insVal('ins-cb') || null, note: insVal('ins-no') || null, modifie_le: new Date().toISOString() };
+    var o = { type: insVal('ins-ty') || 'turbine', sn: sn, reference: insVal('ins-ref') || null, modele: insVal('ins-mod').toUpperCase() || null, valeur: va === '' ? null : nb(va), achat: insVal('ins-ach') || null, garantie_mois: Math.max(0, Math.min(120, parseInt(insVal('ins-gm'), 10) || 0)), fournisseur: insVal('ins-fo') || null, cabinet: +insVal('ins-cb') || null, note: insVal('ins-no') || null, modifie_le: new Date().toISOString() };
     var ecrire = function () { return x ? sb.from('instruments').update(o).eq('id', x.id).select().single() : sb.from('instruments').insert(o).select().single(); };
     var r = await ecrire();
+    if (r.error && /reference|modele/.test(String(r.error.message))) { delete o.reference; delete o.modele; r = await ecrire(); if (!r.error) toast('Référence et modèle non enregistrés : relancez la mise à jour 033 dans Supabase'); }
     if (r.error && /valeur/.test(String(r.error.message))) { delete o.valeur; r = await ecrire(); if (!r.error) toast('Valeur non enregistrée : relancez la mise à jour 033 dans Supabase'); }
     if (r.error) { toast(/duplicate|unique|23505/i.test(String(r.error.message || r.error.code)) ? 'Ce numéro de série existe déjà' : msgErr(r.error)); return; }
     if (x) Object.assign(x, r.data); else I.l.push(r.data);
