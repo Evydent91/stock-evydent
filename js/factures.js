@@ -1,7 +1,7 @@
 // Lecture des factures PDF des fournisseurs (dans le navigateur, sans envoi à l'extérieur).
 // 1. extraireLignes(fichier) : texte du PDF reconstitué ligne par ligne (cellules séparées par « | »).
 // 2. lireFacture(lignes) : reconnaît le fournisseur et renvoie les lignes d'articles.
-// Pour ajouter un fournisseur : écrire un nouveau modèle dans MODELES (voir GACD, MEGADENTAL et Embout.fr).
+// Pour ajouter un fournisseur : écrire un nouveau modèle dans MODELES (voir GACD, MEGADENTAL, Embout.fr et Dentalclick).
 (function () {
   var PDFJS = 'js/vendor/pdf.min.mjs', WORKER = 'js/vendor/pdf.worker.min.mjs';
 
@@ -126,15 +126,50 @@
           cible.forEach(function (x) { x.ht -= r.v * x.ht / base; });
         });
         var t = lignes.join('\n'), tot = t.match(/(?:^|\| )Total \| ([\d\s.]*\d,\d\d) €$/m), fr = t.match(/Frais de livraison \| ([\d\s.]*\d,\d\d) €/);
-        var somme = items.reduce(function (s0, x) { return s0 + x.ht * (1 + x.tva / 100); }, 0), cible = tot ? num(tot[1]) - (fr ? num(fr[1]) * 1.2 : 0) : null;
-        var k = cible && somme && Math.abs(cible - somme) < 1 ? cible / somme : 1;
-        items.forEach(function (x) {
-          var ttc = Math.round(x.ht * (1 + x.tva / 100) * k * 100) / 100;
-          F.lignes.push({ ref: x.ref, nom: x.nom, qte: x.qte, prix: x.qte ? Math.round(ttc / x.qte * 10000) / 10000 : 0, total: ttc, commande: F.commandes[0] || null });
+        enTTC(items, F, tot ? num(tot[1]) - (fr ? num(fr[1]) * 1.2 : 0) : null);
+      }
+    },
+    {
+      // Dentalclick (Centrale de Facturation Dentaire) : prix HT après remise, une ligne par article (marque parfois en dessous, puis « Lot: »),
+      // titres de famille entre les articles, gratuités en bas (« RÉDUCTIONS ET GRATUITÉS PROMOTIONNELLES ») déduites de l'article concerné.
+      nom: 'Dentalclick', reconnait: /dentalclick/i,
+      entete: function (t, F) {
+        var f = t.match(/FACTURE \| (\d+)/), d = t.match(/Date facture: (\d\d)\.(\d\d)\.(\d{4})/), c = t.match(/Notre référence (\d+)/);
+        if (f) F.facture = f[1]; if (d) F.date = d[3] + '-' + d[2] + '-' + d[1]; if (c) F.commandes.push(c[1]);
+      },
+      lire: function (lignes, F) {
+        var items = [], cur = null, grat = false, frais = 0, grats = [];
+        lignes.forEach(function (l, i) {
+          var c = l.split(' | '), n = c.length, suiv = lignes[i + 1] || '';
+          if (/^RÉDUCTIONS ET GRATUITÉS/i.test(l)) { grat = true; cur = null; return; }
+          if (/^BASE IMPOSABLE/.test(l)) { grat = false; cur = null; return; }
+          if (/^Frais de port \|/.test(l) && n >= 3) { frais += num(c[n - 2]) || 0; return; }
+          if (/^[A-Z0-9][A-Z0-9-]{1,11}$/.test(c[0]) && n >= 4 && /%$/.test(c[n - 1])) {
+            if (grat) { var v = num(c[n - 2]); if (v < 0) grats.push({ ref: c[0], v: v }); return; }   // gratuité : déduite plus bas de l'article de même référence
+            if (n >= 7 && /^\d+$/.test(c[2])) { cur = { ref: c[0], nom: c[1], qte: +c[2], ht: num(c[n - 2]), tva: num(c[n - 1]) || 20 }; if (cur.ht > 0) items.push(cur); return; }
+          }
+          // marque écrite sous la désignation (suivie du lot) ; les titres de famille, eux, sont suivis d'un article
+          if (cur && n === 1 && !/^Lot:/.test(l) && /^Lot:/.test(suiv) && l.length < 40) { cur.nom += ' ' + l; return; }
+          if (!/^Lot:/.test(l)) cur = null;
         });
+        // deux lignes du même article au même prix : une seule ligne
+        var vus = {}; items = items.filter(function (x) { var k = x.ref + '|' + (x.ht / x.qte).toFixed(4); if (vus[k]) { vus[k].qte += x.qte; vus[k].ht += x.ht; return false; } vus[k] = x; return true; });
+        grats.forEach(function (g) { var x = items.filter(function (y) { return y.ref === g.ref && y.ht > 0; })[0]; if (x) x.ht = Math.max(0, x.ht + g.v); });
+        var tot = lignes.join('\n').match(/TOTAL FACTURE \| ([\d\s.]*\d,\d\d) €/);
+        enTTC(items, F, tot ? num(tot[1]) - frais * 1.2 : null);
       }
     }
   ];
+  // Prix HT → TTC ; la somme est calée sur le total payé de la facture (arrondis de TVA), hors frais de port
+  function enTTC(items, F, cible) {
+    var somme = items.reduce(function (s0, x) { return s0 + x.ht * (1 + x.tva / 100); }, 0);
+    var k = cible && somme && Math.abs(cible - somme) < 1 ? cible / somme : 1;
+    var L = items.map(function (x) { return { ref: x.ref, nom: x.nom, qte: x.qte, total: Math.round(x.ht * (1 + x.tva / 100) * k * 100) / 100, commande: F.commandes[0] || null }; });
+    // les centimes d'arrondi restants vont sur la plus grosse ligne
+    var r = cible && k !== 1 ? Math.round((cible - L.reduce(function (s0, x) { return s0 + x.total; }, 0)) * 100) / 100 : 0;
+    if (r && Math.abs(r) <= 0.1 && L.length) { var g = L.reduce(function (a, b) { return b.total > a.total ? b : a; }); g.total = Math.round((g.total + r) * 100) / 100; }
+    L.forEach(function (x) { x.prix = x.qte ? Math.round(x.total / x.qte * 10000) / 10000 : 0; F.lignes.push(x); });
+  }
   function norm(s) { return String(s).toLowerCase().replace(/[^a-z0-9]/g, ''); }
 
   function lireFacture(lignes) {
