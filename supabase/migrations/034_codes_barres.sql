@@ -8,7 +8,8 @@
 --     ou « en attente » (sans article) quand seule la gestion peut associer ;
 --  2. mouvements.lot_fab : le n° de lot du fabricant lu au scan (facultatif) ;
 --  3. faire_sortie garde ce n° de lot quand l'appli l'envoie ;
---  4. réglages de la fonction (éteinte par défaut) : scan_actif, scan_qui, scan_lot.
+--  4. réglages (tout éteint par défaut) : scan_actif (codes-barres des articles, gestion seulement),
+--     scan_sortie_equipe (sortie par scan pour toute l'équipe), scan_qui, scan_lot.
 -- Tant que cette migration n'est pas passée sur une base, la fonction y reste invisible.
 -- Rejouable : oui. Non destructive. Ne rallume jamais la fonction si elle a été éteinte.
 -- =====================================================================
@@ -105,7 +106,7 @@ grant execute on function public.faire_sortie(smallint, jsonb) to authenticated;
 
 -- Réglages : la fonction démarre ÉTEINTE ; « on conflict do nothing » garde le choix déjà fait
 insert into public.parametres(cle, valeur) values
-  ('scan_actif', 'false'), ('scan_qui', '"equipe"'), ('scan_lot', 'false')
+  ('scan_actif', 'false'), ('scan_sortie_equipe', 'false'), ('scan_qui', '"equipe"'), ('scan_lot', 'false')
   on conflict (cle) do nothing;
 
 insert into public.parametres(cle, valeur) values ('schema_version', '"034"')

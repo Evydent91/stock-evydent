@@ -936,7 +936,7 @@
     var ids = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; });
     if (s.voir && ids.length) return vSortieVerifA(ids, hors);
     var tri = s.tri || 'usage', q = norm(s.q), max = s.max || 30, l;
-    var h = hdA({ back: ACC, t: 'Sortie', cab: cabA('scab', s.cab, '', 'Cabinet ou Sté', true), extra: (scanOn() ? '<button class="a-scan" data-act="scanner">' + ico('scan', 26, 2) + 'Scanner un code</button>' : '') + chercheA('sq', s.q), fixe: true }) + '<div class="a-corps">';
+    var h = hdA({ back: ACC, t: 'Sortie', cab: cabA('scab', s.cab, '', 'Cabinet ou Sté', true), extra: (scanSortieOn() ? '<button class="a-scan" data-act="scanner">' + ico('scan', 26, 2) + 'Scanner un code</button>' : '') + chercheA('sq', s.q), fixe: true }) + '<div class="a-corps">';
     if (!q) h += '<div class="a-chips">' + [['usage', 'Les plus sortis'], ['fav', 'Mes favoris'], ['az', 'A → Z']].map(function (c) { return '<button class="a-ch' + (tri === c[0] ? ' on' : '') + '" data-stri="' + c[0] + '">' + c[1] + '</button>'; }).join('') + '</div>';
     if (hors) h += '<p class="a-note warn">Ce n’est pas votre cabinet : la sortie sera notée « hors cabinet » (remplacement).</p>';
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
@@ -954,7 +954,7 @@
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
     h += '<div class="a-pour">' + ico('cabinet', 26) + '<span>Pour ' + pourTxt(s.cab) + (hors ? ' · <span class="warn-t">remplacement (hors cabinet)</span>' : S.me.cabinet && +s.cab === +S.me.cabinet ? ' (le mien)' : '') + '</span></div>';
     h += '<div class="a-liste">' + ids.map(function (k) { return S.byId[k]; }).filter(Boolean).map(function (a) { return ligneSortieA(a, s, true); }).join('') + '</div>';
-    return h + '<button class="a-ajout" data-act="svoir">+ Ajouter un article</button>' + (scanOn() ? '<button class="a-ajout" data-act="scanner">' + ico('scan', 20, 2) + ' Scanner un autre code</button>' : '') + '<p class="a-aide">Si la réserve n’en a pas assez, la quantité en trop part en demande à confirmer par la référente.</p></div>';
+    return h + '<button class="a-ajout" data-act="svoir">+ Ajouter un article</button>' + (scanSortieOn() ? '<button class="a-ajout" data-act="scanner">' + ico('scan', 20, 2) + ' Scanner un autre code</button>' : '') + '<p class="a-aide">Si la réserve n’en a pas assez, la quantité en trop part en demande à confirmer par la référente.</p></div>';
   }
   function vSortieOkA() {
     var o = S.sortie.ok;
@@ -1492,7 +1492,7 @@
       { k: 'ap', t: 'Application', ic: 'app', d: 'Données et nouveautés', l: [
         I('Sauvegarde et journal', 'data-tab="plus"', '', 'sauve', sv ? 'à télécharger' : 'à jour', 'versions données', '', sv),
         I('Transfert vers la prod', 'data-tab="ptransfert"', 'ptransfert', 'transfert', 'test → site réel', 'exporter importer équipe dentistes réglages congés'),
-        S.me && S.me.role === 'referente' ? I('Fonctions en essai', 'data-tab="pessai"', 'pessai', 'etoile', 'scan : ' + (scanOn() ? 'allumé' : 'éteint'), 'scan code barre codes-barres douchette datamatrix lot', 'Essai') : null] },
+        S.me && S.me.role === 'referente' ? I('Fonctions en essai', 'data-tab="pessai"', 'pessai', 'etoile', (scanOn() ? (S.scan.equipe ? 'scan : toute l’équipe' : 'codes : gestion') : 'scan : éteint'), 'scan code barre codes-barres douchette datamatrix lot', 'Essai') : null] },
       { k: 'mo', t: 'Mon compte', ic: 'moi', d: 'Pour vous seulement', l: [
         I('Mon mot de passe', 'data-tab="compte"', '', 'cadenas', 'changer', 'code')] }
     ];
@@ -3042,16 +3042,18 @@
   // ou que l'interrupteur « scan_actif » est éteint (Réglages › Fonctions en essai, référente seulement).
   function chargerScan() {
     return Promise.all([
-      sb.from('parametres').select('cle,valeur').in('cle', ['scan_actif', 'scan_qui', 'scan_lot']).then(function (r) { if (r.error) throw r.error; return r.data || []; }),
+      sb.from('parametres').select('cle,valeur').in('cle', ['scan_actif', 'scan_sortie_equipe', 'scan_qui', 'scan_lot']).then(function (r) { if (r.error) throw r.error; return r.data || []; }),
       toutLire('article_codes', '*')
     ]).then(function (r) {
       var p = {}; r[0].forEach(function (x) { p[x.cle] = x.valeur; });
       var av = S.scan;
-      S.scan = { actif: p.scan_actif === true, qui: p.scan_qui === 'gestion' ? 'gestion' : 'equipe', lot: p.scan_lot === true, codes: r[1] || [] };
-      if (!av || av.manque || av.actif !== S.scan.actif || av.codes.length !== S.scan.codes.length) render();
+      S.scan = { actif: p.scan_actif === true, equipe: p.scan_sortie_equipe === true, qui: p.scan_qui === 'gestion' ? 'gestion' : 'equipe', lot: p.scan_lot === true, codes: r[1] || [] };
+      if (!av || av.manque || av.actif !== S.scan.actif || av.equipe !== S.scan.equipe || av.codes.length !== S.scan.codes.length) render();
     }).catch(function () { S.scan = { manque: true, actif: false, codes: [] }; });
   }
+  // 1er interrupteur : les codes-barres des articles (référente et responsable) ; 2e : la sortie par scan pour toute l'équipe
   function scanOn() { return !!(S.scan && !S.scan.manque && S.scan.actif); }
+  function scanSortieOn() { return scanOn() && (gestion() || !!S.scan.equipe); }
   function scanPeutAssocier() { return gestion() || !!(S.scan && S.scan.qui === 'equipe'); }
   function codeDe(code) { return ((S.scan && S.scan.codes) || []).filter(function (c) { return c.code === code; })[0] || null; }
   function codeAff(c) { return /^0\d{13}$/.test(c) ? c.slice(1) : c; }
@@ -3106,10 +3108,10 @@
     var a = artId ? S.byId[artId] : null;
     var el = document.createElement('div'); el.className = 'scs'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Scanner un code-barres');
     el.innerHTML = '<div class="scs-cam"><video playsinline muted autoplay></video><span class="scs-cadre" aria-hidden="true"></span>'
-      + '<div class="scs-hd"><button class="scs-r" data-sc="x" aria-label="Fermer le scanner">' + ico('croix', 22, 2.4) + '</button><span class="scs-pour">' + (mode === 'sortie' ? 'Pour ' + pourTxt(S.sortie.cab) : 'Code pour « ' + esc(a ? a.nom : '') + ' »') + '</span>'
+      + '<div class="scs-hd"><button class="scs-r" data-sc="x" aria-label="Fermer le scanner">' + ico('croix', 22, 2.4) + '</button><span class="scs-pour">' + (mode === 'sortie' ? 'Pour ' + pourTxt(S.sortie.cab) : mode === 'relier' ? 'Relier des codes' : 'Code pour « ' + esc(a ? a.nom : '') + ' »') + '</span>'
       + '<button class="scs-r" data-sc="lampe" aria-label="Allumer la lampe" aria-pressed="false" hidden>' + ico('lampe', 22, 2) + '</button></div></div><section class="scs-f" aria-live="polite"></section>';
     document.body.appendChild(el); document.body.classList.add('scan-ouvert');
-    var Z = SCS = { el: el, video: el.querySelector('video'), f: el.querySelector('.scs-f'), mode: mode, art: artId || null, etat: 'vise', pause: false, vus: [], dernier: null };
+    var Z = SCS = { el: el, video: el.querySelector('video'), f: el.querySelector('.scs-f'), mode: mode, art: artId || null, etat: 'vise', pause: false, vus: [], dernier: null, nRel: 0, nDeja: 0 };
     el.addEventListener('click', scsClic); el.addEventListener('input', scsSaisie); document.addEventListener('keydown', scsTouche, true);
     scsRendre();
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { Z.camKo = 'Pas d’appareil photo utilisable ici : utilisez la douchette, ou tapez le code.'; el.classList.add('sans-cam'); scsRendre(); return; }
@@ -3157,18 +3159,21 @@
       h = '<div class="scs-t"><span class="scs-ic q" aria-hidden="true">?</span><span><b>Code pas encore connu</b><small>' + (peut ? 'C’est la première fois qu’on scanne cette boîte' : 'Choisissez l’article à la main : la référente reliera ce code plus tard') + '</small></span></div>' + codeB
         + '<b class="scs-qq">C’est quel article ?</b><label class="scs-rech">' + ico('loupe', 20, 2.2) + '<input id="scs-q" value="' + esc(Z.q || '') + '" placeholder="Chercher l’article" autocomplete="off" aria-label="Chercher l’article"></label>'
         + '<div class="scs-res" role="radiogroup" aria-label="Articles">' + scsResultats() + '</div>'
-        + '<button class="scs-b navy" data-sc="' + (peut ? 'associer' : 'sansassoc') + '"' + (ch ? '' : ' disabled') + '>' + (ch ? (peut ? 'Associer à « ' + esc(ch.nom) + ' » et ajouter' : 'Ajouter « ' + esc(ch.nom) + ' » à la sortie') : 'Choisissez l’article') + '</button>'
-        + (peut ? '<p class="scs-n">La prochaine fois, cette boîte sera reconnue tout de suite, pour toute l’équipe.</p>' : '')
-        + '<button class="scs-lien" data-sc="pastrouve">Je ne trouve pas l’article</button>';
+        + (Z.mode === 'relier' ? '<button class="scs-b navy" data-sc="relie"' + (ch ? '' : ' disabled') + '>' + (ch ? 'Relier à « ' + esc(ch.nom) + ' »' : 'Choisissez l’article') + '</button>'
+          + '<button class="scs-lien" data-sc="passe">Passer cette boîte</button>'
+        : '<button class="scs-b navy" data-sc="' + (peut ? 'associer' : 'sansassoc') + '"' + (ch ? '' : ' disabled') + '>' + (ch ? (peut ? 'Associer à « ' + esc(ch.nom) + ' » et ajouter' : 'Ajouter « ' + esc(ch.nom) + ' » à la sortie') : 'Choisissez l’article') + '</button>'
+          + (peut ? '<p class="scs-n">La prochaine fois, cette boîte sera reconnue tout de suite, pour toute l’équipe.</p>' : '')
+          + '<button class="scs-lien" data-sc="pastrouve">Je ne trouve pas l’article</button>');
     } else if (Z.etat === 'deja') {
       var b0 = S.byId[Z.autre], a0 = S.byId[Z.art];
       h = '<div class="scs-t"><span class="scs-ic q" aria-hidden="true">!</span><span><b>Code déjà relié</b><small>à « ' + esc(b0 ? b0.nom : 'un autre article') + ' »</small></span></div>' + codeB
         + '<button class="scs-b navy" data-sc="relier">Le relier plutôt à « ' + esc(a0 ? a0.nom : '') + ' »</button><button class="scs-lien" data-sc="reprendre">Annuler : scanner un autre code</button>';
     } else {
       var n = scsNb();
-      h = (Z.camKo ? '<p class="scs-ko">' + esc(Z.camKo) + '</p>' : '<p class="scs-m">' + (Z.mode === 'sortie' ? 'Visez le code-barres ou le petit carré de la boîte' : 'Visez le code de la boîte à relier à cet article') + '</p>')
+      h = (Z.camKo ? '<p class="scs-ko">' + esc(Z.camKo) + '</p>' : '<p class="scs-m">' + (Z.mode === 'sortie' ? 'Visez le code-barres ou le petit carré de la boîte' : Z.mode === 'relier' ? 'Scannez les boîtes une par une' : 'Visez le code de la boîte à relier à cet article') + '</p>')
         + (Z.msg ? '<p class="scs-info">' + Z.msg + '</p>' : '')
         + '<div class="scs-man"><input class="in" id="scs-code" autocomplete="off" placeholder="Taper le code, ou douchette" aria-label="Code-barres tapé ou lu à la douchette"><button class="btn" data-sc="tape">OK</button></div>'
+        + (Z.mode === 'relier' && (Z.nRel || Z.nDeja) ? '<p class="scs-vus">' + Z.nRel + ' ' + pl(Z.nRel, 'code') + ' ' + pl(Z.nRel, 'relié') + ' · ' + Z.nDeja + ' déjà ' + (Z.nDeja > 1 ? 'connus' : 'connu') + '</p>' : '')
         + (Z.mode === 'sortie' && Z.vus.length ? '<p class="scs-vus">Scannés : ' + Z.vus.slice(-4).map(function (v) { var x = S.byId[v.a]; return esc(x ? x.nom : '?') + ' × ' + fr(v.q); }).join(' · ') + (Z.vus.length > 4 ? '…' : '') + '</p>' : '')
         + (Z.mode === 'sortie' ? (n ? '<button class="scs-b or" data-sc="fin">Terminer : vérifier ma sortie · ' + n + ' ' + pl(n, 'article') + '</button>' : '<button class="scs-b gris" data-sc="x">Fermer</button>') : '<button class="scs-b gris" data-sc="x">Fermer</button>');
     }
@@ -3183,6 +3188,10 @@
     Z.dernier = { code: L.code, t: mt }; Z.lu = L; Z.msg = null; Z.q = ''; Z.choix = null;
     if (navigator.vibrate) try { navigator.vibrate(50); } catch (e) {}
     var c = codeDe(L.code);
+    if (Z.mode === 'relier') {
+      if (c && c.article_id && S.byId[c.article_id]) { Z.nDeja++; Z.msg = '✔ Déjà relié : <b>' + esc(S.byId[c.article_id].nom) + '</b>'; scsRendre(); return; }
+      Z.pause = true; Z.etat = 'inconnu'; scsRendre(); return;
+    }
     if (Z.mode === 'associer') {
       if (c && String(c.article_id) === String(Z.art)) { Z.msg = '« ' + esc(codeAff(L.code)) + ' » est déjà relié à cet article.'; scsRendre(); return; }
       if (c && c.article_id) { Z.pause = true; Z.etat = 'deja'; Z.autre = c.article_id; scsRendre(); return; }
@@ -3220,14 +3229,16 @@
     e.stopPropagation();
     var b = e.target.closest('[data-sc]'); if (!b || b.disabled) return;
     var Z = SCS, k = b.dataset.sc; if (!Z) return;
-    if (k === 'x') { var n = scsNb(); fermerScanStock(); if (Z.mode === 'sortie' && n) { S.sortie.voir = false; render(); } return; }
+    if (k === 'x') { var n = scsNb(); fermerScanStock(); if ((Z.mode === 'sortie' && n) || Z.mode === 'relier') { S.sortie.voir = false; render(); } return; }
     if (k === 'lampe' && Z.piste) { var on = b.getAttribute('aria-pressed') !== 'true'; Z.piste.applyConstraints({ advanced: [{ torch: on }] }).then(function () { b.setAttribute('aria-pressed', on); b.classList.toggle('on', on); }).catch(function () {}); return; }
     if (k === 'tape') { var inp = $('scs-code'); if (inp && inp.value.trim()) { Z.dernier = null; scsLu(inp.value); } return; }
     if (k === 'fin') { fermerScanStock(); S.sortie.voir = true; S.tab = 'sortie'; render(); window.scrollTo(0, 0); return; }
     if (k === 'reprendre') { Z.etat = 'vise'; Z.pause = false; Z.msg = null; scsRendre(); return; }
     if (k === 'moins' || k === 'plus') { var iv = $('scs-qv'), cur = nb(String(iv.value).replace(',', '.')) || 0; cur = k === 'plus' ? cur + 1 : Math.max(1, cur - 1); Z.qte = cur; iv.value = fr(cur); return; }
     if (k === 'ajout' || k === 'ajoutfin') { scsAjouter(k === 'ajoutfin'); return; }
-    if (k === 'choix') { Z.choix = b.dataset.id; var res = Z.f.querySelector('.scs-res'); if (res) res.innerHTML = scsResultats(); var bb = Z.f.querySelector('[data-sc="associer"],[data-sc="sansassoc"]'), ch = S.byId[Z.choix]; if (bb && ch) { bb.disabled = false; bb.textContent = bb.dataset.sc === 'associer' ? 'Associer à « ' + ch.nom + ' » et ajouter' : 'Ajouter « ' + ch.nom + ' » à la sortie'; } return; }
+    if (k === 'choix') { Z.choix = b.dataset.id; var res = Z.f.querySelector('.scs-res'); if (res) res.innerHTML = scsResultats(); var bb = Z.f.querySelector('[data-sc="associer"],[data-sc="sansassoc"],[data-sc="relie"]'), ch = S.byId[Z.choix]; if (bb && ch) { bb.disabled = false; bb.textContent = bb.dataset.sc === 'associer' ? 'Associer à « ' + ch.nom + ' » et ajouter' : bb.dataset.sc === 'relie' ? 'Relier à « ' + ch.nom + ' »' : 'Ajouter « ' + ch.nom + ' » à la sortie'; } return; }
+    if (k === 'relie' && Z.choix) { b.disabled = true; var nomR = S.byId[Z.choix].nom; scEnregistrerCode(Z.lu.code, +Z.choix, 'scan', codeDe(Z.lu.code)).then(function (ok) { if (!SCS) return; if (!ok) { b.disabled = false; return; } Z.nRel++; Z.etat = 'vise'; Z.pause = false; Z.msg = '✔ Relié à <b>' + esc(nomR) + '</b>'; scsRendre(); }); return; }
+    if (k === 'passe') { Z.etat = 'vise'; Z.pause = false; Z.msg = 'Boîte passée.'; scsRendre(); return; }
     if (k === 'associer' && Z.choix) { b.disabled = true; scEnregistrerCode(Z.lu.code, +Z.choix, 'scan', codeDe(Z.lu.code)).then(function (ok) { if (!SCS) return; if (!ok) { b.disabled = false; return; } Z.etat = 'ok'; Z.a = +Z.choix; Z.qte = 1; scsRendre(); }); return; }
     if (k === 'sansassoc' && Z.choix) { if (!codeDe(Z.lu.code)) scEnregistrerCode(Z.lu.code, null, 'scan', null); Z.etat = 'ok'; Z.a = +Z.choix; Z.qte = 1; scsRendre(); return; }
     if (k === 'pastrouve') {
@@ -3283,10 +3294,13 @@
     if (!Z) { chargerScan(); return h + '<p class="a-vide">Chargement…</p></div>'; }
     var opt = function (attr, v, cur, t, d) { var on = v === cur; return '<button type="button" class="es-o' + (on ? ' on' : '') + '" ' + attr + '="' + v + '" role="radio" aria-checked="' + on + '"><span class="es-rd" aria-hidden="true"></span><span><b>' + t + '</b><small>' + d + '</small></span></button>'; };
     h += '<p class="es-intro">Des fonctions qu’on peut essayer avant de les ouvrir à toute l’équipe. Chaque base a ses propres interrupteurs : allumer ici ne change rien sur ' + (prod ? 'le site de test' : 'le site réel') + '.</p>';
-    h += '<section class="card es-c"><div class="es-hd"><span class="es-ti"><b>Sortie par scan</b><small>Bouton « Scanner un code » dans Sortie, et codes-barres dans les fiches articles. Éteinte : rien n’apparaît, pour personne.</small></span>'
-      + '<span class="pill ' + (prod ? 'warn' : 'info') + '">Base : ' + (prod ? 'Prod (réelle)' : 'Dev (test)') + '</span>'
-      + '<button type="button" class="es-sw' + (Z.actif ? ' on' : '') + '" role="switch" aria-checked="' + !!Z.actif + '" data-act="scactif"' + (Z.manque ? ' disabled' : '') + '><span aria-hidden="true"></span>' + (Z.actif ? 'Allumée' : 'Éteinte') + '</button></div>';
-    if (Z.manque) return h + '<div class="ban warn">Mise à jour <b>034</b> à faire sur cette base : tant qu’elle n’est pas passée, la sortie par scan reste invisible pour tout le monde et ne peut pas être allumée.</div></section></div>';
+    var sw = function (act, on, dis) { return '<button type="button" class="es-sw' + (on ? ' on' : '') + '" role="switch" aria-checked="' + !!on + '" data-act="' + act + '"' + (dis ? ' disabled' : '') + '><span aria-hidden="true"></span>' + (on ? 'Allumé' : 'Éteint') + '</button>'; };
+    var nrel = Z.codes.filter(function (c) { return c.article_id; }).length;
+    h += '<section class="card es-c"><div class="es-hd"><span class="es-ti"><b>1 · Codes-barres des articles</b><small>Pour la référente et la responsable seulement : l’encadré « Codes-barres » des fiches articles, « Relier des codes » dans Articles, et le bouton « Scanner un code » dans vos propres sorties. L’équipe ne voit rien.</small></span>'
+      + '<span class="pill ' + (prod ? 'warn' : 'info') + '">Base : ' + (prod ? 'Prod (réelle)' : 'Dev (test)') + '</span>' + sw('scactif', Z.actif, Z.manque) + '</div>';
+    if (Z.manque) return h + '<div class="ban warn">Mise à jour <b>034</b> à faire sur cette base : tant qu’elle n’est pas passée, les codes-barres restent invisibles pour tout le monde et ne peuvent pas être allumés.</div></section></div>';
+    if (Z.actif) h += '<div class="es-act"><button class="btn" data-act="screlier">' + ico('scan', 18, 2.2) + 'Relier des codes maintenant</button><span class="mu">' + nrel + ' ' + pl(nrel, 'code') + ' ' + pl(nrel, 'relié') + ' à un article</span></div>';
+    h += '</section><section class="card es-c' + (Z.actif ? '' : ' es-off') + '"><div class="es-hd"><span class="es-ti"><b>2 · Sortie par scan pour l’équipe</b><small>Le bouton « Scanner un code » apparaît dans Sortie sur les téléphones de toute l’équipe. ' + (Z.actif ? 'À allumer quand la plupart des boîtes sont reliées.' : 'Allumez d’abord le n° 1.') + '</small></span>' + sw('scequipe', Z.actif && Z.equipe, !Z.actif) + '</div>';
     h += '<div class="es-g"><fieldset class="es-f"><legend>Qui peut associer un code inconnu ?</legend>'
       + opt('data-scqui', 'equipe', Z.qui, 'Toute l’équipe', 'Plus rapide. Les nouvelles associations arrivent ci-dessous « à vérifier ».')
       + opt('data-scqui', 'gestion', Z.qui, 'Seulement la référente et la responsable', 'Les autres choisissent l’article à la main ; le code est mis de côté ci-dessous.') + '</fieldset>'
@@ -3305,7 +3319,8 @@
     return sb.from('parametres').upsert({ cle: cle, valeur: val, modifie_le: new Date().toISOString() }, { onConflict: 'cle' }).then(function (r) { if (r.error) throw r.error; if (apres) apres(); render(); }).catch(function (e) { toast(msgErr(e)); });
   }
   function scAction(d) {
-    if (d.act === 'scanner') { if (scanOn()) ouvrirScanStock('sortie'); return true; }
+    if (d.act === 'scanner') { if (scanSortieOn()) ouvrirScanStock('sortie'); return true; }
+    if (d.act === 'screlier') { if (scanOn() && gestion()) ouvrirScanStock('relier'); return true; }
     if (d.act === 'scanart') { if (scanOn() && S.fiche && S.fiche.d) ouvrirScanStock('associer', S.fiche.d.id); return true; }
     if (d.act === 'scadd') { scAjouterMain(); return true; }
     if (d.scok) { scValider(d.scok); return true; }
@@ -3313,8 +3328,14 @@
     if (d.screl) { var sel = $('scr-' + d.screl), c = S.scan.codes.filter(function (x) { return String(x.id) === String(d.screl); })[0]; if (!sel || !sel.value) { toast('Choisissez l’article'); return true; } scEnregistrerCode(c.code, +sel.value, c.source, c).then(function (ok) { if (ok) { toast('✔ Code relié'); render(); } }); return true; }
     if (d.act === 'scactif') {
       var Z = S.scan; if (!Z || Z.manque) return true;
-      var on = !Z.actif, go = function () { scParam('scan_actif', on, function () { Z.actif = on; toast(on ? '✔ Sortie par scan allumée' : 'Sortie par scan éteinte'); }); };
-      if (on && CONFIG.env !== 'dev') fenetre({ titre: 'Allumer sur le site réel ?', texte: 'Toute l’équipe verra le bouton « Scanner un code » dans Sortie.', ok: 'Allumer' }).then(function (o) { if (o) go(); }); else go();
+      var on = !Z.actif, go = function () { scParam('scan_actif', on, function () { Z.actif = on; toast(on ? '✔ Codes-barres allumés' : 'Codes-barres éteints'); }); };
+      if (on && CONFIG.env !== 'dev') fenetre({ titre: 'Allumer les codes-barres sur le site réel ?', texte: 'Seules la référente et la responsable les verront. L’équipe ne verra rien tant que le n° 2 reste éteint.', ok: 'Allumer' }).then(function (o) { if (o) go(); }); else go();
+      return true;
+    }
+    if (d.act === 'scequipe') {
+      var Z2 = S.scan; if (!Z2 || Z2.manque || !Z2.actif) return true;
+      var on2 = !Z2.equipe, go2 = function () { scParam('scan_sortie_equipe', on2, function () { Z2.equipe = on2; toast(on2 ? '✔ Sortie par scan ouverte à l’équipe' : 'Sortie par scan fermée à l’équipe'); }); };
+      if (on2 && CONFIG.env !== 'dev') fenetre({ titre: 'Ouvrir la sortie par scan à l’équipe ?', texte: 'Toute l’équipe verra le bouton « Scanner un code » dans Sortie, sur le site réel.', ok: 'Ouvrir à l’équipe' }).then(function (o) { if (o) go2(); }); else go2();
       return true;
     }
     if (d.scqui) { scParam('scan_qui', d.scqui, function () { S.scan.qui = d.scqui; }); return true; }
@@ -5961,7 +5982,7 @@
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
     h += '<p class="st-lab">Pour quel emplacement ?</p>' + tuilesCab([1, 2, 3, 4, 5, 6, 7, 8, 9], s.cab, 'scab', 'Cabinet')
       + (hors ? '<p class="ban warn">Ce n’est pas votre cabinet : la sortie sera enregistrée « hors cabinet » (remplacement).</p>' : '')
-      + (scanOn() ? '<button class="btn st-scan" data-act="scanner">' + ico('scan', 22, 2) + 'Scanner un code</button>' : '')
+      + (scanSortieOn() ? '<button class="btn st-scan" data-act="scanner">' + ico('scan', 22, 2) + 'Scanner un code</button>' : '')
       + '<div class="st-f">' + barreRech('sq', s.q, 'Rechercher un article') + '</div>';
     var q = norm(s.q), ids = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; }), tri = parUsage(+s.cab);
     if (q) {
@@ -5980,7 +6001,7 @@
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
     h += '<div class="card pour">' + ico('cabinet', 24) + '<span>Pour ' + pourTxt(s.cab) + (hors ? ' <span class="pill warn">hors cabinet · remplacement</span>' : S.me.cabinet && +s.cab === +S.me.cabinet ? ' (le mien)' : '') + '</span></div>';
     h += '<div class="card liste">' + ids.map(function (k) { return S.byId[k]; }).filter(Boolean).map(function (a) { return ligneSortie(a, s); }).join('') + '</div>';
-    h += '<button class="btn l ajout" data-act="svoir">+ Ajouter un article</button>' + (scanOn() ? '<button class="btn l ajout" data-act="scanner">' + ico('scan', 18, 2) + ' Scanner un autre code</button>' : '');
+    h += '<button class="btn l ajout" data-act="svoir">+ Ajouter un article</button>' + (scanSortieOn() ? '<button class="btn l ajout" data-act="scanner">' + ico('scan', 18, 2) + ' Scanner un autre code</button>' : '');
     if (ids.some(function (k) { var a = S.byId[k]; return a && s.panier[k] > dispoUnites(a); })) h += '<p class="ban warn">Certaines quantités dépassent la réserve : la partie en trop partira en demande à confirmer par la référente.</p>';
     return h + '<button class="lnk annul" data-act="vider">Annuler et vider</button>';
   }
@@ -6369,7 +6390,7 @@
       + k('commander', nb('commander'), 'à commander', 'au seuil ou en dessous', 'cmd') + k('rupture', nb('rupture'), 'en rupture', 'réserve à 0', 'rup') + '</div>';
     h += '<section class="stk-l"><div class="stk-f"><label class="stk-q">' + ico('loupe', 18, 2.2) + '<input id="stq" type="search" placeholder="Article, référence, fournisseur" value="' + esc(S.stockQ) + '" aria-label="Rechercher"></label>'
       + '<span class="stk-fl"><span class="mu">À compléter :</span>' + ['sr', 'sf', 'seuil', 'nolieu', 'archive'].map(function (f) { return (f === 'archive' ? '<span class="stk-fs" aria-hidden="true"></span>' : '') + '<button class="chip' + (F === f ? ' on' : '') + '" data-stf="' + (F === f ? '' : f) + '" aria-pressed="' + (F === f) + '">' + (STF[f] || STFX[f]) + ' · ' + nb(f) + '</button>'; }).join('') + '</span></div>'
-      + '<div class="stk-x"><button class="btn ar-new" data-act="anew">+ Nouvel article</button><span class="grow"></span><span class="ar-x"><span class="mu">Modifier en masse :</span><button class="iv-b" data-act="aexp">' + ico('telecharger', 17, 2.2) + 'Exporter Excel</button><label class="iv-b">' + ico('haut', 17, 2.2) + 'Importer Excel<input type="file" id="aimpf" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label></span></div>'
+      + '<div class="stk-x"><button class="btn ar-new" data-act="anew">+ Nouvel article</button>' + (scanOn() ? '<button class="btn l ar-rel" data-act="screlier">' + ico('scan', 18, 2.2) + 'Relier des codes</button>' : '') + '<span class="grow"></span><span class="ar-x"><span class="mu">Modifier en masse :</span><button class="iv-b" data-act="aexp">' + ico('telecharger', 17, 2.2) + 'Exporter Excel</button><label class="iv-b">' + ico('haut', 17, 2.2) + 'Importer Excel<input type="file" id="aimpf" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label></span></div>'
       + (F || q ? '<p class="stk-n">' + l.length + ' article' + (l.length > 1 ? 's' : '') + (F ? ' · ' + (STF[F] || STFX[F]) : '') + (F ? ' <button class="lien" data-stf="">tout afficher</button>' : '') + '</p>' : '')
       + '<div class="stk-h" aria-hidden="true"><span>Article</span><span>Réserve / seuil</span><span>Dans les cabinets</span><span>État</span></div>';
     h += l.slice(0, 300).map(function (a) {
