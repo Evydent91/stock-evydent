@@ -1,7 +1,7 @@
 // Lecture des factures PDF des fournisseurs (dans le navigateur, sans envoi à l'extérieur).
 // 1. extraireLignes(fichier) : texte du PDF reconstitué ligne par ligne (cellules séparées par « | »).
 // 2. lireFacture(lignes) : reconnaît le fournisseur et renvoie les lignes d'articles.
-// Pour ajouter un fournisseur : écrire un nouveau modèle dans MODELES (voir GACD et MEGADENTAL).
+// Pour ajouter un fournisseur : écrire un nouveau modèle dans MODELES (voir GACD, MEGADENTAL et Embout.fr).
 (function () {
   var PDFJS = 'js/vendor/pdf.min.mjs', WORKER = 'js/vendor/pdf.worker.min.mjs';
 
@@ -14,6 +14,7 @@
   }
   function lignesDuDoc(doc) {
     var out = [], p = 1;
+    out.pos = [];   // pour chaque ligne : ses cellules avec leur position horizontale (colonnes des factures sans séparateurs)
     function page() {
       if (p > doc.numPages) return Promise.resolve(out);
       return doc.getPage(p++).then(function (pg) { return pg.getTextContent(); }).then(function (tc) {
@@ -27,9 +28,14 @@
         });
         rows.sort(function (a, b) { return b.y - a.y; }).forEach(function (r) {
           r.it.sort(function (a, b) { return a.x - b.x; });
-          var s = '', e = null;
-          r.it.forEach(function (i) { if (e != null) s += (i.x - e > 4 ? ' | ' : (i.x - e > 0.5 ? ' ' : '')); s += i.s; e = i.x + i.w; });
+          var s = '', e = null, cel = [], cc = null;
+          r.it.forEach(function (i) {
+            if (e != null) s += (i.x - e > 4 ? ' | ' : (i.x - e > 0.5 ? ' ' : ''));
+            if (e == null || i.x - e > 4) cel.push(cc = { x: i.x, s: '' }); else if (i.x - e > 0.5) cc.s += ' ';
+            s += i.s; cc.s += i.s; e = i.x + i.w;
+          });
           out.push(s.replace(/\s+/g, ' ').trim());
+          out.pos.push(cel.map(function (c) { return { x: c.x, s: c.s.replace(/\s+/g, ' ').trim() }; }));
         });
         return page();
       });
@@ -82,8 +88,54 @@
         return { nom: c.slice(1, k).join(' '), qte: num(q[1]), prix: num(c[n - 3]), total: num(c[n - 2]) };
       },
       suite: false
+    },
+    {
+      // Embout.fr : prix HT, colonnes sans séparateurs (référence et désignation sur plusieurs lignes),
+      // remises globales en bas (« -20% sur la gamme Embout.fr », « 5% de remise dès 500€ ») réparties sur les articles concernés.
+      nom: 'Embout.fr', reconnait: /Embout\.fr/i, cleNom: true,
+      entete: function (t, F) {
+        var m = t.match(/#FA(\d+) \| (\d\d)\/(\d\d)\/(\d{4}) \| ([A-Z0-9]+) \|/);
+        if (m) { F.facture = 'FA' + m[1]; F.date = m[4] + '-' + m[3] + '-' + m[2]; F.commandes.push(m[5]); }
+      },
+      lire: function (lignes, F) {
+        var pos = lignes.pos || [], col = null, zone = false, red = false, items = [], cur = null, reds = [];
+        var eur = function (c) { return /^-?\s*[\d\s.]*\d,\d\d €$/.test(c.trim()); };
+        for (var i = 0; i < lignes.length; i++) {
+          var l = lignes[i], cel = pos[i] || l.split(' | ').map(function (x) { return { x: 0, s: x }; });
+          if (/^Référence \| Produit \| Taux de/.test(l)) { col = { prod: cel[0].x + 45, taxe: cel[2].x }; zone = true; continue; }   // « Produit » est centré : la désignation commence juste après la colonne des références
+          if (!zone) continue;
+          if (/^Réductions$/.test(l)) { red = true; cur = null; continue; }
+          if (/^Détail des/.test(l)) break;
+          if (red) { var mr = l.match(/^(.*) \| - ([\d\s.]*\d,\d\d) €$/); if (mr && !/^Total/.test(mr[1])) reds.push({ lib: mr[1], v: num(mr[2]) }); continue; }
+          if (/^(FACTURE|\d\d\/\d\d\/\d{4}|#FA\d+|\d+ \/ \d+|taxe \|.*|\(HT\).*)$/.test(l)) continue;
+          var refP = cel.filter(function (c) { return c.x < col.prod; }).map(function (c) { return c.s; }).join('');
+          var desP = cel.filter(function (c) { return c.x >= col.prod && c.x < col.taxe - 6; }).map(function (c) { return c.s; }).join(' ');
+          var reste = cel.filter(function (c) { return c.x >= col.taxe - 6; }).map(function (c) { return c.s; });
+          var n = reste.length;
+          if (n >= 5 && eur(reste[n - 1]) && /^\d+$/.test(reste[n - 2]) && eur(reste[n - 3])) {
+            cur = { ref: '', nom: '', qte: +reste[n - 2], ht: num(reste[n - 1]), tva: num(reste[0]) || 20 }; items.push(cur);
+          }
+          if (!cur) continue;
+          if (refP) cur.ref += refP;
+          if (desP) cur.nom += (cur.nom ? ' ' : '') + desP;
+        }
+        // remises : d'abord celles d'une gamme, puis les remises sur tout, au prorata des montants
+        reds.forEach(function (r) {
+          var g = /gamme (.+)$/i.exec(r.lib), cible = items.filter(function (x) { return !g || norm(x.nom).indexOf(norm(g[1])) >= 0; });
+          var base = cible.reduce(function (t, x) { return t + x.ht; }, 0); if (!base) return;
+          cible.forEach(function (x) { x.ht -= r.v * x.ht / base; });
+        });
+        var t = lignes.join('\n'), tot = t.match(/(?:^|\| )Total \| ([\d\s.]*\d,\d\d) €$/m), fr = t.match(/Frais de livraison \| ([\d\s.]*\d,\d\d) €/);
+        var somme = items.reduce(function (s0, x) { return s0 + x.ht * (1 + x.tva / 100); }, 0), cible = tot ? num(tot[1]) - (fr ? num(fr[1]) * 1.2 : 0) : null;
+        var k = cible && somme && Math.abs(cible - somme) < 1 ? cible / somme : 1;
+        items.forEach(function (x) {
+          var ttc = Math.round(x.ht * (1 + x.tva / 100) * k * 100) / 100;
+          F.lignes.push({ ref: x.ref, nom: x.nom, qte: x.qte, prix: x.qte ? Math.round(ttc / x.qte * 10000) / 10000 : 0, total: ttc, commande: F.commandes[0] || null });
+        });
+      }
     }
   ];
+  function norm(s) { return String(s).toLowerCase().replace(/[^a-z0-9]/g, ''); }
 
   function lireFacture(lignes) {
     var t = lignes.join('\n'), mod = null;
@@ -91,6 +143,7 @@
     var F = { fournisseur: mod ? mod.nom : null, facture: null, date: null, commandes: [], lignes: [] };
     if (!mod) return F;
     mod.entete(t, F);
+    if (mod.lire) mod.lire(lignes, F); else {
     var cmd = F.commandes[0] || null, der = null;
     lignes.forEach(function (l) {
       var k = mod.commande(l);
@@ -106,10 +159,11 @@
       if (mod.suite && der && c.length === 1 && l.length < 45 && !/Page|Facture|Total|Commande/i.test(l)) { der.nom += ' ' + l; der = null; return; }
       der = null;
     });
+    }
     // un même article facturé deux fois : on additionne
     var vus = {};
     F.lignes = F.lignes.filter(function (x) {
-      var k = x.commande + '|' + x.ref + '|' + x.prix;
+      var k = x.commande + '|' + x.ref + '|' + x.prix + (mod.cleNom ? '|' + x.nom : '');
       if (vus[k]) { vus[k].qte += x.qte; vus[k].total = (vus[k].total || 0) + (x.total || 0); return false; }
       vus[k] = x; return true;
     });

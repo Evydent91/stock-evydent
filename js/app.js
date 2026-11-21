@@ -2900,6 +2900,9 @@
     else if (lundiDe(P.jourTel) !== P.lundi) P.jourTel = P.lundi;
     return P.jourTel;
   }
+  // Fournisseur de l'appli qui correspond au modèle de facture (« Embout » ou « Embout.fr » pour Embout.fr)
+  function memeFo(nom, modele) { var c = function (x) { return norm(x || '').replace(/[^a-z0-9]/g, ''); }, a = c(nom), b = c(modele); return !!a && !!b && (a.indexOf(b) >= 0 || (a.length >= 4 && b.indexOf(a) >= 0)); }
+  function listeModeles() { var m = FACTURES.modeles; return m.length > 1 ? m.slice(0, -1).join(', ') + ' et ' + m[m.length - 1] : m.join(''); }
   function vPlanningTel() {
     if (!S.pl) S.pl = { lundi: lundiDe(dIso(new Date())), rows: {} };
     var iso = plJourTel(), P = S.pl, L = P.lundi, auj = dIso(new Date());
@@ -7884,9 +7887,9 @@
     toast('Lecture de la facture…');
     file.arrayBuffer().then(FACTURES.extraireLignes).then(async function (lignes) {
       var R = FACTURES.lireFacture(lignes);
-      if (!R.fournisseur) { await fenetre({ titre: 'Fournisseur pas encore reconnu', texte: 'L’import sait lire les factures ' + FACTURES.modeles.join(' et ') + '.\n\nPour une autre facture, créez la commande à la main (« + Nouvelle commande ») et ajoutez les articles.', ok: 'Compris', seul: true }); return; }
+      if (!R.fournisseur) { await fenetre({ titre: 'Fournisseur pas encore reconnu', texte: 'L’import sait lire les factures ' + listeModeles() + '.\n\nPour une autre facture, créez la commande à la main (« + Nouvelle commande ») et ajoutez les articles.', ok: 'Compris', seul: true }); return; }
       var cle0 = function (x) { return norm(x).replace(/[^a-z0-9]/g, ''); }, fid = null;
-      Object.keys(S.fournisseurs || {}).forEach(function (id) { if (!fid && cle0(S.fournisseurs[id]).indexOf(cle0(R.fournisseur)) >= 0) fid = +id; });
+      Object.keys(S.fournisseurs || {}).forEach(function (id) { if (!fid && memeFo(S.fournisseurs[id], R.fournisseur)) fid = +id; });
       if (!fid) { await fenetre({ titre: 'Fournisseur ' + R.fournisseur + ' introuvable', texte: 'Aucun fournisseur « ' + R.fournisseur + ' » dans l’appli.\n\nCréez-le dans Fournisseurs, puis importez à nouveau la facture.', ok: 'Compris', seul: true }); return; }
       var ouv = S.commandes.filter(function (c) { return c.fournisseur_id === fid && (c.statut === 'attente' || c.statut === 'partielle'); });
       var c = ouv.filter(function (x) { return x.numero && R.commandes.indexOf(String(x.numero).trim()) >= 0; })[0], id = c ? c.id : null;
@@ -7914,7 +7917,7 @@
       var R = FACTURES.lireFacture(lignes), nomFo = S.fournisseurs[c.fournisseur_id] || '';
       if (!R.fournisseur) { F.imp = { inconnu: true }; render(); return; }
       if (!R.lignes.length) { F.imp = null; toast('Aucune ligne d’article trouvée dans cette facture'); render(); return; }
-      if (norm(nomFo).replace(/\s/g, '').indexOf(norm(R.fournisseur).replace(/\s/g, '')) < 0 && !(await demander('Facture d’un autre fournisseur', 'Cette facture est une facture ' + R.fournisseur + ', mais la commande est chez ' + nomFo + '.\n\nContinuer quand même ?', 'Continuer'))) { F.imp = null; render(); return; }
+      if (!memeFo(nomFo, R.fournisseur) && !(await demander('Facture d’un autre fournisseur', 'Cette facture est une facture ' + R.fournisseur + ', mais la commande est chez ' + nomFo + '.\n\nContinuer quand même ?', 'Continuer'))) { F.imp = null; render(); return; }
       var lignesF = R.lignes, num = (c.numero || '').trim();
       if (num) {
         if (R.commandes.length && R.commandes.indexOf(num) < 0) {
@@ -7938,7 +7941,7 @@
   function vImport(c) {
     var I = S.fiche.imp, li = S.lignes[c.id] || [];
     if (I.lecture) return '<div class="card"><b>📄 Lecture de la facture…</b></div>';
-    if (I.inconnu) return '<div class="ban warn"><b>Fournisseur pas encore reconnu.</b> L’import sait lire les factures ' + FACTURES.modeles.join(' et ') + '. Ajoutez les articles à la main avec « + Ajouter un article » et envoyez une facture de ce fournisseur à Claude pour qu’il l’ajoute. <button class="lnk" data-act="impno">Fermer</button></div>';
+    if (I.inconnu) return '<div class="ban warn"><b>Fournisseur pas encore reconnu.</b> L’import sait lire les factures ' + listeModeles() + '. Ajoutez les articles à la main avec « + Ajouter un article » et envoyez une facture de ce fournisseur à Claude pour qu’il l’ajoute. <button class="lnk" data-act="impno">Fermer</button></div>';
     var R = I.R, parL = {}; li.forEach(function (l) { parL[l.article_id] = l; });
     var h = '<div class="card" style="border:2px solid var(--gold)"><b>📄 Facture ' + esc(R.fournisseur) + (R.facture ? ' n° ' + esc(R.facture) : '') + (R.date ? ' du ' + R.date.split('-').reverse().join('/') : '') + '</b>'
       + '<p class="mu" style="margin:4px 0 8px">Commande sur la facture : ' + (R.commandes.length ? esc(R.commandes.join(', ')) : 'non indiquée') + (!I.num && R.commandes.length ? ' · sera enregistrée comme référence de la commande' : '') + '. Vérifiez puis appliquez : rien n’entre en stock avant « Réceptionner ».</p>';
