@@ -3053,38 +3053,68 @@
     var x = I.sel ? insById(I.sel) : null; if (I.sel && I.l && !x && I.sel !== 'new') I.sel = null;
     var enRep = (I.l || []).filter(function (y) { return y.statut === 'reparation'; }).length;
     var btns = telephone() ? '<span class="hr-vide"></span>' : '<span class="pl-hbtns"><button class="pl-imp" data-insf="rep">' + ico('camion', 18, 2.2) + '<span class="m-hide">Envois en cours · ' + enRep + '</span></button><label class="pl-imp" title="Créer les fiches depuis des factures PDF (DFC Instruments)">' + ico('haut', 18, 2.2) + '<span class="m-hide">Importer</span><input type="file" id="insfac" accept="application/pdf,.pdf" multiple hidden></label><button class="pl-imp" data-act="insnew">' + ico('plus', 18, 2.4) + '<span class="m-hide">Ajouter un instrument</span></button></span>';
-    var fil = '<div class="hr-seg" role="group" aria-label="Afficher">' + [['tous', 'Tous'], ['centre', 'Au centre'], ['panne', 'En panne'], ['rep', 'En réparation'], ['fin', 'Garantie bientôt finie'], ['rebut', 'Au rebut']].map(function (f) { return '<button data-insf="' + f[0] + '" aria-pressed="' + (I.f === f[0]) + '"' + (I.f === f[0] ? ' class="on"' : '') + '>' + f[1] + '</button>'; }).join('') + '</div>';
+    var fil = '<div class="hr-seg" role="group" aria-label="Afficher">' + [['tous', 'Tous'], ['act', 'À surveiller'], ['centre', 'Au centre'], ['panne', 'En panne'], ['rep', 'En réparation'], ['fin', 'Garantie bientôt finie'], ['rebut', 'Au rebut']].map(function (f) { return '<button data-insf="' + f[0] + '" aria-pressed="' + (I.f === f[0]) + '"' + (I.f === f[0] ? ' class="on"' : '') + '>' + f[1] + '</button>'; }).join('') + '</div>';
     var rech = '<label class="ins-q">' + ico('loupe', 20, 2.2) + '<input type="search" data-insq="tout" placeholder="Chercher un numéro de série (SN)…" aria-label="Chercher un numéro de série dans tous les instruments" value="' + esc(I.q || '') + '" autocomplete="off"></label>';
     var fiche = !!(I.sel || I.form === 'new');
     var h = '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" ' + (fiche ? 'data-act="insback"' : telephone() ? 'data-tab="pplus"' : 'data-tab="hub"') + '>' + ico('prec', 22, 2.4) + (fiche ? 'Instruments' : telephone() ? 'Plus' : 'Accueil') + '</button><h1>' + (fiche && x ? esc(x.sn) : I.form === 'new' ? 'Nouvel instrument' : telephone() ? 'Instruments' : 'Instruments rotatifs') + '</h1>' + (fiche ? '<span class="a-cale"></span>' : btns) + '</div>'
-      + (fiche ? '' : bandeDate(rech, telephone() ? '' : fil, I.q ? '<span id="insn"></span>' : telephone() ? null : '')) + (!fiche && telephone() ? '<div class="tl-segs ins-ty" role="tablist">' + INS_T.map(function (t) { var on = (I.ty || 'turbine') === t.k; return '<button role="tab" aria-selected="' + on + '" class="' + (on ? 'on' : '') + '" data-insty="' + t.k + '">' + (t.k === 'turbine' ? 'Turbine' : t.n.replace('Contre-angle bague ', '').replace(/^./, function (c) { return c.toUpperCase(); })) + '</button>'; }).join('') + '</div>' : '') + '</header><div class="a-corps ins-corps">';
+      + (fiche ? '' : bandeDate(rech, telephone() ? '' : fil, I.q ? '<span id="insn"></span>' : telephone() ? null : '')) + (!fiche && telephone() ? '<div class="tl-segs ins-ty" role="tablist">' + [{ k: '', n: 'Tous' }].concat(['turbine', 'ca15', 'ca11', 'ca20'].map(insTy)).map(function (t) { var on = (I.ty || '') === t.k; return '<button role="tab" aria-selected="' + on + '" class="' + (on ? 'on' : '') + '" data-insty="' + t.k + '">' + (t.k ? '<span class="ins-dot ' + t.k + '"></span>' : '') + (!t.k ? 'Tous' : t.k === 'turbine' ? 'Turbine' : t.n.replace('Contre-angle bague ', '').replace(/^./, function (c) { return c.toUpperCase(); })) + '</button>'; }).join('') + '</div>' : '') + '</header><div class="a-corps ins-corps">';
     if (I.manque) return h + '<div class="ban warn">La mise à jour <b>033</b> de la base n’est pas encore faite : les instruments ne peuvent pas être enregistrés. Lancez <code>033_instruments.sql</code> dans Supabase.</div></div>';
     if (I.err) return h + '<div class="ban warn">' + esc(I.err) + '</div></div>';
     if (!I.l) return h + '<p class="a-vide">Chargement…</p></div>';
     if (fiche) return h + vInstrFiche(x) + '</div>';
     if (I.imp) return h + vInsImport() + '</div>';
     if (telephone()) h += '<div class="ins-ft">' + fil + '</div><div class="ins-tb"><button class="btn" data-act="insnew">' + ico('plus', 18, 2.4) + 'Ajouter</button><label class="btn l">' + ico('haut', 18, 2.2) + 'Importer des factures<input type="file" id="insfac" accept="application/pdf,.pdf" multiple hidden></label><button class="btn l" data-insf="rep">' + ico('camion', 18, 2.2) + 'Envois · ' + enRep + '</button></div>';
-    var ok = function (y) { var g = I.f === 'fin' ? insGarantie(y) : null; return I.f === 'rebut' ? y.statut === 'rebut' : y.statut !== 'rebut' && (I.f === 'tous' || (I.f === 'centre' && y.statut === 'service') || (I.f === 'panne' && y.statut === 'panne') || (I.f === 'rep' && y.statut === 'reparation') || (I.f === 'fin' && y.statut === 'service' && g.k === 'fin')); };
-    h += '<div class="ins-g' + (telephone() ? ' tel' : '') + '">' + INS_T.map(function (t) {
-      var tous = I.l.filter(function (y) { return y.type === t.k; }), l = tous.filter(ok).sort(function (a, b) { var RG = { panne: 0, reparation: 1 }, ra = RG[a.statut] != null ? RG[a.statut] : 2, rb = RG[b.statut] != null ? RG[b.statut] : 2; return ra - rb || String(a.sn).localeCompare(String(b.sn)); });
-      var nc = tous.filter(function (y) { return y.statut === 'service'; }).length, nr = tous.filter(function (y) { return y.statut === 'reparation'; }).length, np = tous.filter(function (y) { return y.statut === 'panne'; }).length;
-      return '<section class="ins-col' + ((I.ty || 'turbine') === t.k ? ' on' : '') + '" data-inscol="' + t.k + '"><div class="ins-h"><img src="assets/instruments/' + t.k + '.jpg" alt="' + esc(t.n) + '" loading="lazy"><b>' + t.n + '</b><small>' + t.s + '</small>'
-        + '<span class="ins-k"><span>' + nc + ' au centre</span>' + (np ? '<span class="p">' + np + ' en panne</span>' : '') + (nr ? '<span class="w">' + nr + ' en réparation</span>' : '') + (function () { var v = 0, n = 0; tous.forEach(function (y) { if (y.statut !== 'rebut' && y.valeur != null) { v += +y.valeur; n++; } }); return n ? '<span class="v" title="Valeur des instruments renseignés (hors rebut)">Valeur ' + eur(v) + '</span>' : ''; })() + '</span>'
-        + '<label class="ins-qc">' + ico('loupe', 18, 2.2) + '<input type="search" data-insq="' + t.k + '" placeholder="SN…" aria-label="Chercher un SN parmi : ' + esc(t.n) + '" value="' + esc(I.qc[t.k] || '') + '" autocomplete="off"></label></div>'
-        + '<div class="ins-l">' + (l.length ? l.map(insCarte).join('') : '<p class="mu ins-vide">' + (tous.length ? 'Aucun pour ce filtre.' : 'Aucun instrument enregistré.') + '</p>') + '<p class="mu ins-vide ins-rien" hidden>Aucun SN ne correspond.</p></div></section>';
-    }).join('') + '</div>';
-    if (I.q || Object.keys(I.qc).some(function (k) { return I.qc[k]; })) setTimeout(insFiltrer, 0);
+    var tri = function (y) { var g = insGarantie(y); return y.statut === 'panne' ? 0 : y.statut === 'reparation' ? 1 : y.statut === 'service' && g.k === 'fin' ? 2 : 3; };
+    var ok = function (y) { return I.f === 'rebut' ? y.statut === 'rebut' : y.statut !== 'rebut' && (I.f === 'tous' || (I.f === 'act' && tri(y) < 3) || (I.f === 'centre' && y.statut === 'service') || (I.f === 'panne' && y.statut === 'panne') || (I.f === 'rep' && y.statut === 'reparation') || (I.f === 'fin' && tri(y) === 2)); };
+    var ty = I.ty || '', OT = { turbine: 0, ca15: 1, ca11: 2, ca20: 3 }, TYO = ['turbine', 'ca15', 'ca11', 'ca20'].map(insTy);
+    var l = I.l.filter(function (y) { return (!ty || y.type === ty) && ok(y); }).sort(function (a, b) { return tri(a) - tri(b) || OT[a.type] - OT[b.type] || String(a.sn).localeCompare(String(b.sn)); });
+    var val = 0; l.forEach(function (y) { if (y.statut !== 'rebut' && y.valeur != null) val += +y.valeur; });
+    if (!telephone()) {
+      var nb = function (k) { return I.l.filter(function (y) { return y.statut !== 'rebut' && (!k || y.type === k); }).length; };
+      h += '<div class="ins-tys" role="tablist">' + [{ k: '', n: 'Tous' }].concat(TYO.map(function (t) { return { k: t.k, n: t.k === 'turbine' ? 'Turbines' : 'Bague ' + t.n.replace('Contre-angle bague ', '') }; })).map(function (t) { var on = ty === t.k; return '<button role="tab" aria-selected="' + on + '" class="' + (on ? 'on' : '') + '" data-insty="' + t.k + '">' + (t.k ? '<span class="ins-dot ' + t.k + '"></span>' : '') + t.n + '<b>' + nb(t.k) + '</b></button>'; }).join('')
+        + '<span class="ins-res">' + l.length + ' ' + pl(l.length, 'instrument') + (val ? ' · valeur ' + eur(val) : '') + '</span></div>';
+      h += '<section class="ins-tab"><div class="ins-r ins-rh" aria-hidden="true"><span>Type</span><span>N° de série</span><span>Référence · modèle</span><span>Cabinet</span><span>Garantie</span><span>État</span><span class="d">Valeur</span><span></span></div>'
+        + l.map(insLigne).join('') + (l.length ? '' : '<p class="mu ins-vide">' + (I.l.length ? 'Aucun instrument pour ce choix.' : 'Aucun instrument enregistré : « Ajouter un instrument » ou « Importer ».') + '</p>') + '<p class="mu ins-vide ins-rien" hidden>Aucun numéro ne correspond.</p></section>'
+        + (l.length ? '<p class="ins-pied">Ce qui demande une action est toujours en haut : en panne, en réparation, garantie qui se termine. Touchez une ligne pour ouvrir la fiche.</p>' : '');
+    } else {
+      var a = l.filter(function (y) { return tri(y) < 3; }), b = l.filter(function (y) { return tri(y) === 3; });
+      h += '<section class="ins-tab tel">' + (a.length && b.length ? '<h2 class="tl-sec warn">À surveiller · ' + a.length + '</h2>' : '') + (a.length ? '<div class="tl-liste">' + a.map(insLigneTel).join('') + '</div>' : '')
+        + (a.length && b.length ? '<h2 class="tl-sec">' + (I.f === 'rebut' ? 'Au rebut' : 'Au centre') + ' · ' + b.length + '</h2>' : '') + (b.length ? '<div class="tl-liste">' + b.map(insLigneTel).join('') + '</div>' : '')
+        + (l.length ? '' : '<p class="a-vide">' + (I.l.length ? 'Aucun instrument pour ce choix.' : 'Aucun instrument enregistré.') + '</p>') + '<p class="mu ins-vide ins-rien" hidden>Aucun numéro ne correspond.</p></section>';
+    }
+    if (I.q) setTimeout(insFiltrer, 0);
     return h + '</div>';
+  }
+  // Une ligne du tableau des instruments (ordinateur) et sa version téléphone
+  function insEtatTxt(x) {
+    var ec = insEnCours(x.id);
+    if (x.statut === 'rebut') return ['Au rebut', ''];
+    if (ec) return [(ec.en_garantie ? 'En garantie' : 'En réparation') + (ec.chez ? ' · ' + ec.chez : '') + ' depuis le ' + insDateC(ec.envoye_le), 'w'];
+    if (x.statut === 'panne') return ['En panne' + (x.panne_le ? ' depuis le ' + insDateC(x.panne_le) : '') + ' · à réparer', 'k'];
+    return ['Au centre', ''];
+  }
+  function insLigne(x) {
+    var g = insGarantie(x), e = insEtatTxt(x), ec = insEnCours(x.id), t = insTy(x.type);
+    return '<button class="ins-r' + (x.statut === 'panne' && !ec ? ' pan' : ec ? ' out' : '') + '" data-ins="' + x.id + '" data-sn="' + esc(norm(x.sn + ' ' + (x.reference || '') + ' ' + (x.modele || ''))) + '">'
+      + '<span class="ins-rt"><span class="ins-dot ' + x.type + '"></span>' + (t.k === 'turbine' ? 'Turbine' : 'Bague ' + t.n.replace('Contre-angle bague ', '')) + '</span>'
+      + '<b class="ins-rsn">' + esc(x.sn) + '</b><span class="ins-rr">' + esc([x.reference, x.modele].filter(Boolean).join(' · ') || '—') + '</span>'
+      + '<span>' + (ec ? '—' : x.cabinet ? 'Cab. ' + x.cabinet : '<span class="mu">—</span>') + '</span>'
+      + '<span>' + (x.statut === 'rebut' ? '' : '<span class="ins-p ' + g.k + '">' + g.court + '</span>') + '</span>'
+      + '<span class="ins-re ' + e[1] + '">' + esc(e[0]) + '</span><span class="d">' + (x.valeur != null ? eur(x.valeur) : '<span class="mu">—</span>') + '</span><span class="ins-rc">' + ico('suiv', 16, 2.4) + '</span></button>';
+  }
+  function insLigneTel(x) {
+    var g = insGarantie(x), e = insEtatTxt(x), ec = insEnCours(x.id);
+    var pill = x.statut === 'rebut' ? '' : e[1] === 'k' ? '<span class="ins-p ko">En panne</span>' : e[1] === 'w' ? '<span class="ins-p fin">En réparation</span>' : '<span class="ins-p ' + g.k + '">' + g.court.replace('Fin de garantie dans', 'Fin dans') + '</span>';
+    return '<button class="tl-l ins-r tel" data-ins="' + x.id + '" data-sn="' + esc(norm(x.sn + ' ' + (x.reference || '') + ' ' + (x.modele || ''))) + '"><span class="ins-dot ' + x.type + '"></span><span class="tl-n"><b class="ins-rsn">' + esc(x.sn) + '</b><span>' + esc([ec ? (ec.chez || 'en réparation') : x.cabinet ? 'cab. ' + x.cabinet : '', x.modele].filter(Boolean).join(' · ')) + '</span></span>' + pill + '</button>';
   }
   // Recherche par SN, sans redessiner la page : la saisie garde le curseur
   function insFiltrer() {
-    var I = insEtat(), q = norm(I.q || '').replace(/\s+/g, ''), n = 0;
-    [].forEach.call(document.querySelectorAll('.ins-col'), function (col) {
-      var qc = norm(I.qc[col.dataset.inscol] || '').replace(/\s+/g, ''), vu = 0, cartes = col.querySelectorAll('.ins-c');
-      [].forEach.call(cartes, function (c) { var sn = c.dataset.sn.replace(/\s+/g, ''), ok = (!q || sn.indexOf(q) >= 0) && (!qc || sn.indexOf(qc) >= 0); c.hidden = !ok; if (ok) { vu++; n++; } });
-      var r = col.querySelector('.ins-rien'); if (r) r.hidden = !(cartes.length && !vu);
-    });
-    var el = document.getElementById('insn'); if (el) el.textContent = q ? (n ? n + ' instrument' + (n > 1 ? 's' : '') + ' trouvé' + (n > 1 ? 's' : '') : 'Aucun numéro de série ne correspond') : '';
+    var I = insEtat(), q = norm(I.q || '').replace(/\s+/g, ''), n = 0, tab = document.querySelector('.ins-tab');
+    if (!tab) return;
+    var ls = tab.querySelectorAll('.ins-r[data-ins]');
+    [].forEach.call(ls, function (c) { var ok = !q || c.dataset.sn.replace(/\s+/g, '').indexOf(q) >= 0; c.hidden = !ok; if (ok) n++; });
+    var r = tab.querySelector('.ins-rien'); if (r) r.hidden = !(ls.length && !n);
+    var el = document.getElementById('insn'); if (el) el.textContent = q ? (n ? n + ' instrument' + (n > 1 ? 's' : '') + ' trouvé' + (n > 1 ? 's' : '') : 'Aucun numéro ne correspond') : '';
   }
   function vInstrFiche(x) {
     var I = insEtat(), nouv = !x;
@@ -8775,7 +8805,7 @@
     if (d.act === 'pfdelier' && S.pf) { var pfD = S.pf.id; demander('Détacher le compte de connexion ?', 'Le compte reste actif, il n’est simplement plus relié au planning.', 'Détacher').then(function (ok) { if (ok) lierCompte(pfD, null); }); return; }
     if (d.ndcal) { var ni = document.getElementById('nd-' + d.ndcal); if (ni) { try { if (ni.showPicker) ni.showPicker(); else { ni.focus(); ni.click(); } } catch (er) { ni.focus(); ni.click(); } } return; }
     if (d.act === 'plcal') { var ci = document.getElementById('plcal'); if (ci) { try { if (ci.showPicker) ci.showPicker(); else { ci.focus(); ci.click(); } } catch (er) { ci.focus(); ci.click(); } } return; }
-    if (d.insty) { insEtat().ty = d.insty; render(); window.scrollTo(0, 0); return; }
+    if (d.insty != null) { insEtat().ty = d.insty; render(); window.scrollTo(0, 0); return; }
     if (d.cgseg) { S.cgSeg = d.cgseg; render(); window.scrollTo(0, 0); return; }
     if (d.pljt != null && S.pl) { var jt0 = S.pl.jourTel || dIso(new Date()), jt = d.pljt === '0' ? occOuvre(dIso(new Date()), 1) : occOuvre(addJ(jt0, +d.pljt), +d.pljt); S.pl.jourTel = jt; S.pl.cas = null; if (lundiDe(jt) !== S.pl.lundi) { S.pl.lundi = lundiDe(jt); chargerSemaine(); } render(); return; }
     if (d.plsem != null && S.pl) { S.pl.lundi = d.plsem === '0' ? lundiDe(dIso(new Date())) : addJ(S.pl.lundi, +d.plsem); S.pl.cas = null; if (gestion()) chargerSemaine(); else S.pl.de = null; render(); return; }
