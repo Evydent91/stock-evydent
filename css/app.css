@@ -3353,3 +3353,18 @@ body.tablette .a-hd label.a-rech,body.tablette .a-hd .ins-q{height:40px}
   .ins-r:not(.tel) > .d{display:none}
 }
 @media (max-width:960px){ .ins-r:not(.tel){grid-template-columns:110px 140px 64px 180px minmax(120px,1fr) 18px} .ins-r:not(.tel) .ins-p{white-space:nowrap;font-size:12px} }
+/* Tablette, encore plus compact : titre plus petit, flèches de date et outils sur la même ligne, en-tête qui défile avec la page quand l'écran est bas */
+body.tablette .a-hd{flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px 12px;padding-bottom:8px}
+body.tablette .a-hd > *{flex:1 1 100%}
+body.tablette .a-hd > .nd-bande{flex:0 1 auto;margin-top:0}
+body.tablette .a-hd > .pl-outils,body.tablette .a-hd > .hr-seg,body.tablette .a-hd > .tl-segs{flex:1 1 auto;margin-top:0}
+body.tablette .a-hd > .nd-sous{flex:1 1 100%}
+body.tablette .a-hd-row{min-height:36px}
+body.tablette .a-hd-row h1{font-size:20px}
+body.tablette .a-back{min-height:36px;font-size:15px}
+body.tablette .pl-imp{height:32px}
+body.tablette .nd .h-rond,body.tablette .h-hd .h-rond{width:34px;height:34px}
+body.tablette .nd-t{font-size:15px}
+body.tablette .a-maison h1{font-size:22px}
+body.tablette .a-maison p{font-size:13.5px}
+@media (max-height:900px){ body.tablette .a-hd.fixe{position:relative;box-shadow:none} }
