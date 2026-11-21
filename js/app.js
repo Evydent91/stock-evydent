@@ -1311,6 +1311,7 @@
     if (att) sous.push(att + ' ' + pl(att, 'demande') + ' à valider');
     if (cmd) sous.push(cmd + ' à commander');
     var h = '<header class="a-hd a-maison h-hd"><div class="a-mh-top"><img src="assets/logo-evydent.jpg" alt="Evydent"><span class="grow">Espace dentaire Val d’Yerres</span>'
+      + (tablette() && document.documentElement.requestFullscreen ? '<button class="h-rond clair" data-act="pleinecran" aria-label="' + (document.fullscreenElement ? 'Quitter le plein écran' : 'Plein écran') + '" title="' + (document.fullscreenElement ? 'Quitter le plein écran' : 'Plein écran : cache la barre de l’heure et de la batterie') + '">' + ico('plein', 20) + '</button>' : '')
       + '<button class="h-rond clair" data-tab="compte" aria-label="Changer mon mot de passe" title="Changer mon mot de passe">' + ico('cadenas', 20) + '</button>'
       + '<button class="h-rond" data-tab="reglages" aria-label="Réglages" title="Réglages">' + ico('reglage', 22) + '</button>'
       + '<button class="h-moi" data-act="out" aria-label="Changer de personne (' + esc(S.me.nom) + ')" title="Changer de personne"><span class="h-av" aria-hidden="true">' + esc((S.me.nom || '?').charAt(0).toUpperCase()) + '</span><span class="h-moi-t">' + esc(S.me.nom) + ' · changer</span></button></div>'
@@ -2895,6 +2896,16 @@
 
   // Téléphone : le plus petit côté de l'écran fait moins de 600 px (quelle que soit l'orientation)
   function telephone() { try { return Math.min(screen.width, screen.height) < 600; } catch (e) { return false; } }
+  // Plein écran sur tablette : cache la barre du système (heure, batterie). Le choix est gardé : l'appli y revient au premier toucher.
+  function pleinEcran(on) {
+    try { localStorage.setItem('evy-plein', on ? '1' : '0'); } catch (e) {}
+    try { if (on) document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(render, function () { toast('Le plein écran n’est pas possible sur cet appareil'); }); else if (document.fullscreenElement) document.exitFullscreen().then(render, render); } catch (e) {}
+  }
+  document.addEventListener('pointerdown', function () {
+    var v; try { v = localStorage.getItem('evy-plein'); } catch (e) {}
+    if (v === '1' && tablette() && !document.fullscreenElement && document.documentElement.requestFullscreen) { try { document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(function () {}); } catch (e) {} }
+  }, true);
+  document.addEventListener('fullscreenchange', function () { if (S && S.me) render(); });
   // Tablette : écran tactile qui n'est pas un téléphone (iPad, tablette Android) : mêmes pages que l'ordinateur, en-têtes plus compacts
   function tablette() { try { return !telephone() && window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(pointer: fine)').matches; } catch (e) { return false; } }
   function vSurPC() {
@@ -8667,6 +8678,7 @@
     if (d.act === 'menu') { S.menu = !S.menu; render(); return; }
     if (d.tab) { if (d.tab === 'pointage' && S.tab !== 'pointage') { S.ptg = S.ptg || { rows: {} }; S.ptg.mode = 'semaine'; S.ptg.jour = dIso(new Date()); if (S.ptg.bord) S.ptg.bord.sel = null; }   // le pointage s'ouvre toujours sur la semaine en cours
     if (d.tab === 'ppostes') S.postesEd = null; if (d.tab === 'ptypes') S.typesEd = null; if (d.tab === 'proles') S.rolesEd = null; if (d.tab === 'pprofils' || d.tab === 'ptypes' || d.tab === 'proles' || d.tab === 'pvisible') S.profEd = null; S.menu = false; S.fiche = null; S.retours = []; S.gq = ''; if (d.tab === 'sortie') S.sortie.ok = null; S.tab = d.tab === 'articles' && gestion() ? 'stock' : d.tab; S.tabChoisi = true; if (d.tab === 'histo') chargerHisto(); if (d.tab === 'ecarts') chargerEcarts(); render(); window.scrollTo(0, 0); return; }
+    if (d.act === 'pleinecran') { pleinEcran(!document.fullscreenElement); return; }
     if (d.act === 'out') { demander('Changer de personne ?', 'La personne suivante devra se connecter avec son identifiant et son code.', 'Changer de personne').then(function (ok) { if (ok) deconnexion(); }); return; }
     if (d.act === 'maj') return mettreAJour();
     if (d.ecp) { S.ecarts = S.ecarts || {}; S.ecarts.p = d.ecp; chargerEcarts(); render(); return; }

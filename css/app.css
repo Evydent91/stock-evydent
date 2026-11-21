@@ -3368,3 +3368,7 @@ body.tablette .nd-t{font-size:15px}
 body.tablette .a-maison h1{font-size:22px}
 body.tablette .a-maison p{font-size:13.5px}
 @media (max-height:900px){ body.tablette .a-hd.fixe{position:relative;box-shadow:none} }
+/* Tablette : accueil sans la ligne « Espace dentaire Val d'Yerres » ; « Bonjour » et les boutons sur une seule ligne */
+body.tablette .h-hd > .a-mh-top{flex:0 0 auto;order:2}
+body.tablette .h-hd > .a-mh-top img,body.tablette .h-hd > .a-mh-top .grow{display:none}
+body.tablette .h-hd > div:not(.a-mh-top){flex:1 1 auto;order:1;min-width:0}
