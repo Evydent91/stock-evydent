@@ -351,10 +351,15 @@
   }
   // Téléphone de la référente / responsable : les pages qu'elle ouvre sur téléphone (le reste se fait sur ordinateur)
   function vBarTel() {
-    if (!gestion() || !telephone() || ['hub', 'mconges', 'reglages'].indexOf(S.tab) < 0) return '';
-    var cur = railPage(), ca = congesAttente().length + congesAnnul().length;
+    if (!gestion() || !telephone() || ['pfiche', 'dfiche', 'mdemande'].indexOf(S.tab) >= 0) return '';
+    return vNavG();
+  }
+  // Une seule barre du bas sur le téléphone de la référente / responsable, dans toute l'appli
+  function vNavG() {
+    var t = S.tab, cur = t === 'hub' ? 'hub' : HUB.indexOf(t) < 0 && t !== 'compte' ? 'accueil' : t === 'planning' ? 'planning' : ['pconges', 'mconges', 'mdemande'].indexOf(t) >= 0 ? 'pconges' : 'pplus';
+    var ca = congesAttente().length + congesAnnul().length, att = (S.attente || []).length;
     var it = function (tab, n, ic, b) { return '<button data-tab="' + tab + '" class="' + (cur === tab ? 'on' : '') + '"' + (cur === tab ? ' aria-current="page"' : '') + '><span class="bi">' + ico(ic, 24) + (b ? '<span class="badge">' + b + '</span>' : '') + '</span><span>' + n + '</span></button>'; };
-    return '<nav class="bnav hb4" aria-label="Pages">' + it('hub', 'Accueil', 'maison', ca) + it('mconges', 'Mes congés', 'valise') + it('accueil', 'Stock', 'boite', S.attente && S.attente.length) + it('reglages', 'Réglages', 'reglage') + '</nav>';
+    return '<nav class="bnav tg" aria-label="Pages">' + it('hub', 'Accueil', 'maison') + it('accueil', 'Stock', 'boite', att) + it('planning', 'Planning', 'calendrier') + it('pconges', 'Congés', 'valise', ca) + it('pplus', 'Plus', 'menu') + '</nav>';
   }
   function render() {
     JOUR_CACHE = {};
@@ -372,7 +377,7 @@
       poser(app, renderH() + vBarTel());
       poserRail(app);
       document.body.classList.toggle('hb-on', !!vBarTel());
-      document.body.classList.remove('mode-a', 'ecran-ok', 'sans-nav'); document.body.classList.add('mode-h');
+      document.body.classList.remove('mode-a', 'ecran-ok', 'sans-nav', 'g-stock'); document.body.classList.add('mode-h');
       // La fiche d'une personne est une page à part (menu « Équipe ») : la liste des prénoms à gauche, sans le menu des réglages
       var rgOn = RG_TABS.indexOf(S.tab) >= 0 && ['pfiche', 'pequipe', 'dfiche', 'pdent'].indexOf(S.tab) < 0 && !telephone();
       document.body.classList.toggle('rg-on', rgOn);
@@ -384,7 +389,7 @@
       if (rgOn || rglOn) { var hdE = app.querySelector('.a-mh, header'); if (hdE) document.documentElement.style.setProperty('--hd-h', hdE.offsetHeight + 'px'); }
       placerTour(); return;
     }
-    document.body.classList.remove('mode-h', 'rg-on', 'rgl-on', 'rgl-seul', 'hb-on');
+    document.body.classList.remove('mode-h', 'rg-on', 'rgl-on', 'rgl-seul', 'hb-on', 'g-stock');
     if (modeA()) { document.body.classList.remove('rail-on', 'rail-mini');
       poser(app, renderA());
       document.body.classList.add('mode-a');
@@ -393,6 +398,7 @@
       placerTour(); return;
     }
     document.body.classList.remove('mode-a', 'ecran-ok');
+    document.body.classList.toggle('g-stock', gestion());
     document.body.classList.toggle('tdb-l', S.tab === 'tdb');
     var h = vTopStock();
     if (S.nouvelleVersion) h += '<div class="ban ok" style="max-width:1100px;margin:10px auto 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1">Une nouvelle version de l’application est disponible (' + esc(S.nouvelleVersion) + ').</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>';
@@ -633,6 +639,23 @@
     if (t === 'rpointage') return !!refDe() && refDroit('pointage');
     return true;
   }
+  // ---------- Modèle commun des écrans de téléphone : sections, listes à icône teintée, alertes ----------
+  // o = { at: 'data-tab="x"', ic, te (eq pl pt cg st ap mo oc warn ok ko), lettre, t, s, sw (warn ok ko), droite, ton, gros, chev }
+  function tlL(o) {
+    var g = o.lettre ? '<span class="tl-av" aria-hidden="true">' + esc(o.lettre) + '</span>' : o.ic ? '<span class="tl-i te-' + (o.te || 'eq') + '">' + ico(o.ic, 22, 2) + '</span>' : '';
+    var tag = o.at ? 'button' : 'div';
+    return '<' + tag + ' class="tl-l' + (o.cls ? ' ' + o.cls : '') + '"' + (o.at ? ' ' + o.at : '') + '>' + g + '<span class="tl-n"><b>' + o.t + '</b>' + (o.s ? '<span' + (o.sw ? ' class="' + o.sw + '"' : '') + '>' + o.s + '</span>' : '') + '</span>'
+      + (o.droite != null && o.droite !== '' ? '<span class="tl-d' + (o.gros ? ' gros' : '') + (o.ton ? ' ' + o.ton : '') + '">' + o.droite + '</span>' : '')
+      + (o.at && o.chev !== false ? '<span class="tl-ch">' + ico('suiv', 16, 2.6) + '</span>' : '') + '</' + tag + '>';
+  }
+  function tlListe(l) { l = l.filter(Boolean); return l.length ? '<div class="tl-liste">' + l.map(function (o) { return typeof o === 'string' ? o : tlL(o); }).join('') + '</div>' : ''; }
+  function tlSec(t) { return '<h2 class="tl-sec">' + t + '</h2>'; }
+  function tlAl(at, ic, ton, t, s) { return '<button class="tl-al ' + (ton || 'warn') + '" ' + at + '>' + ico(ic, 20, 2) + '<span><b>' + t + '</b>' + (s ? '<span>' + s + '</span>' : '') + '</span>' + ico('suiv', 16, 2.6) + '</button>'; }
+  function tlStat(items) { return '<div class="tl-stat" style="grid-template-columns:repeat(' + items.length + ',minmax(0,1fr))">' + items.map(function (i) { return '<div><b' + (i.ton ? ' class="' + i.ton + '"' : '') + '>' + i.v + '</b><span>' + i.t + '</span></div>'; }).join('') + '</div>'; }
+  // En-tête « Bonjour » des accueils : prénom, rôle et date, initiale dorée (ouvre Moi / Plus)
+  function tlBonjour(sous, at) {
+    return '<header class="a-hd tl-hb"><div class="tl-hb-r"><div><h1>Bonjour ' + esc(S.me.nom) + '</h1><p>' + sous + '</p></div><button class="tl-moi" ' + at + ' aria-label="Mon compte">' + esc((S.me.nom || '?').charAt(0).toUpperCase()) + '</button></div></header>';
+  }
   function tuileA(tab, cls, ic, titre, sous, em) {
     return '<button class="tuile ' + cls + '" data-tab="' + tab + '"><span class="ti">' + ico(ic, 32) + '</span><span class="tt"><b>' + titre + '</b><span>' + sous + '</span>' + (em ? '<em>' + em + '</em>' : '') + '</span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>';
   }
@@ -658,6 +681,20 @@
         if (refDroit('conges_voir')) t.push(tuileA('rconges', 'tc2', 'valise', 'Congés · ' + esc(rn), ratt ? ratt + ' ' + pl(ratt, 'demande') + ' en attente' : 'Absences du mois, soldes'));
         if (refDroit('pointage')) t.push(tuileA('rpointage', 'tp', 'qr', 'Pointage · ' + esc(rn), 'Arrivées et sorties de la semaine'));
       }
+    }
+    if (telephone()) {
+      var sousT = esc(nomRole(S.me)) + (S.me.cabinet && droit('cab') ? ' · cabinet ' + S.me.cabinet : '') + ' · ' + j, lo = [];
+      if (!hl && droit('stock')) lo.push({ at: 'data-tab="mstock"', ic: 'boite', te: 'st', t: 'Stock', s: inventaireAFaire() ? 'Inventaire à faire ce mois-ci' : 'Sortie, inventaire, retour', sw: inventaireAFaire() ? 'warn' : '' });
+      if (!hl && (droit('conges') || refDe())) { var at2 = (S.mesConges || []).filter(function (c) { return c.statut === 'attente'; }).length; lo.push({ at: 'data-tab="mconges"', ic: 'valise', te: 'cg', t: 'Mes congés', s: at2 ? at2 + ' ' + pl(at2, 'demande') + ' en attente' : 'Demander, suivre la réponse' }); }
+      if (!hl && droit('planning') && S.visible && S.visible.planning && S.moiEq) lo.push({ at: 'data-tab="mplanning"', ic: 'calendrier', te: 'pl', t: 'Mon planning', s: 'Mes jours, mon dentiste, mes horaires' });
+      var lr = [];
+      if (!hl && refDe()) { var rn2 = refNom(), ratt2 = (S.conges || []).filter(function (c) { return c.statut === 'attente'; }).length;
+        if (refDroit('planning_voir')) lr.push({ at: 'data-tab="rplanning"', ic: 'calendrier', te: 'pl', t: 'Planning ' + esc(rn2), s: 'Postes, horaires, qui ferme le soir' });
+        if (refDroit('conges_voir')) lr.push({ at: 'data-tab="rconges"', ic: 'valise', te: 'cg', t: 'Congés · ' + esc(rn2), s: ratt2 ? ratt2 + ' ' + pl(ratt2, 'demande') + ' en attente' : 'Absences du mois, soldes', sw: ratt2 ? 'warn' : '' });
+        if (refDroit('pointage')) lr.push({ at: 'data-tab="rpointage"', ic: 'qr', te: 'pt', t: 'Pointage · ' + esc(rn2), s: 'Arrivées et sorties de la semaine' }); }
+      h = tlBonjour(sousT, 'data-tab="moi"') + '<div class="a-corps tl-c">' + vBienvenue() + pt + (lo.length ? tlSec('Mes outils') + tlListe(lo) : '') + (lr.length ? tlSec('Mon équipe · ' + esc(refNom())) + tlListe(lr) : '');
+      if (!pt && !lo.length && !lr.length) h += '<div class="card"><b>Rien à afficher pour l’instant.</b><p class="mu" style="margin:6px 0 0">' + (droit('pointage') ? 'Votre fiche n’est pas encore soumise au pointage, ou votre compte n’est pas relié à votre fiche.' : 'Votre rôle n’a encore aucun outil. Voyez avec la référente.') + '</p></div>';
+      return h + '</div>';
     }
     var seule = !t.length && pt;
     h += '<div class="a-corps' + (seule ? ' a-seule' : '') + '">' + vBienvenue() + pt + (t.length ? '<div class="tuiles a-tuiles">' + t.join('') + '</div>' : '') + (typeof pcRef === 'string' ? pcRef : '');
@@ -905,6 +942,18 @@
 
   function vStockA() {
     var ds = derniereSortie(), mesAtt = (S.recents || []).filter(function (x) { return x.type === 'demande' && x.statut === 'attente' && x.auteur === S.me.id; });
+    if (telephone()) {
+      var ht = hdA({ back: ['data-tab="maison"', 'Accueil'], t: 'Stock', cab: S.me.cabinet ? '<span class="tl-chip">Cab. ' + S.me.cabinet + '</span>' : '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps tl-c">'
+        + '<button class="tl-grand navy" data-tab="sortie"><span class="tl-gi">' + ico('sortie', 30, 1.9) + '</span><span class="tl-n"><b>Faire une sortie</b><span>Prendre dans la réserve</span></span>' + ico('suiv', 20, 2.4) + '</button>'
+        + tlListe([
+          { at: 'data-tab="inventaire"', ic: 'inventaire', te: 'st', t: 'Inventaire', s: inventaireAFaire() ? 'À faire ce mois-ci' : 'Compter mon cabinet', sw: inventaireAFaire() ? 'warn' : '' },
+          { at: 'data-tab="retour"', ic: 'retour', te: 'st', t: 'Retour', s: 'Rendre des boîtes fermées' },
+          ds ? { at: 'data-act="refaire"', ic: 'refaire', te: 'ap', t: 'Refaire ma dernière sortie', s: ds.l.slice(0, 2).map(function (x) { return esc(S.byId[x.article_id].nom) + ' × ' + fr(x.quantite); }).join(' · ') + (ds.l.length > 2 ? '…' : '') } : null
+        ]);
+      if (mesAtt.length) ht += tlAl('data-tab="histo"', 'attente', 'warn', mesAtt.length + ' ' + pl(mesAtt.length, 'demande') + ' en attente', 'de validation par la référente');
+      ht += tlSec('Mon historique') + tlListe([{ at: 'data-tab="histo"', ic: 'histo', te: 'ap', t: 'Ce que j’ai sorti, rendu et compté', s: 'Les derniers mouvements' }]);
+      return ht + '</div>';
+    }
     var h = hdA({ back: ['data-tab="maison"', 'Accueil'], t: 'Stock', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">'
       + (S.me.cabinet ? '<p class="a-aide" style="margin:0">Cabinet ' + S.me.cabinet + '</p>' : '') + '<div class="tuiles">'
       + '<button class="tuile t1" data-tab="sortie"><span class="ti">' + ico('sortie', 34) + '</span><span class="tt"><b>Sortie</b><span>Prendre dans la réserve</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
@@ -1080,7 +1129,7 @@
     return '<div class="a-ev"><span class="a-evi' + cls + '">' + ico(ic, 20, 2.2) + '</span><div class="a-it-n"><b>' + t + '</b><span' + (warn ? ' class="warn"' : '') + '>' + sous + '</span></div>' + (q ? '<b>' + q + '</b>' : '') + '</div>';
   }
   function vHistoA() {
-    var h = hdA({ cls: 'a-simple', extra: '<h1 class="a-t-g">Mon historique</h1><p class="a-sous">Ce que j’ai sorti, rendu et compté</p>' }) + '<div class="a-corps">';
+    var h = (telephone() ? hdA({ back: ['data-tab="mstock"', 'Stock'], t: 'Mon historique', cab: '<span class="a-cale"></span>', fixe: true }) : hdA({ cls: 'a-simple', extra: '<h1 class="a-t-g">Mon historique</h1><p class="a-sous">Ce que j’ai sorti, rendu et compté</p>' })) + '<div class="a-corps">';
     if (!S.histo.length) return h + '<p class="a-vide">Aucun mouvement pour l’instant.</p></div>';
     var ev = [], invs = {};
     S.histo.forEach(function (m) {
@@ -1098,6 +1147,21 @@
 
   // Moi, mon code, aide
   function vMoiA() {
+    if (telephone()) {
+      var pv = droit('planning') && S.visible && S.visible.planning && S.moiEq;
+      return '<header class="a-hd tl-hb"><div class="tl-hb-r"><div><h1>' + esc(S.me.nom) + '</h1><p>' + esc(nomRole(S.me)) + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + ' · identifiant ' + esc(S.me.identifiant) + '</p></div><span class="tl-moi" aria-hidden="true">' + esc((S.me.nom || '?').charAt(0).toUpperCase()) + '</span></div></header>'
+        + '<div class="a-corps tl-c">' + tlSec('Moi') + tlListe([
+          pv ? { at: 'data-tab="mplanning"', ic: 'calendrier', te: 'pl', t: 'Mon planning', s: 'Mes jours, mes horaires, mon dentiste' } : null,
+          droit('pointage') ? { at: 'data-tab="moubli"', ic: 'qr', te: 'pt', t: 'J’ai oublié de pointer', s: 'Signaler un oubli à la référente' } : null,
+          { at: 'data-tab="compte"', ic: 'cadenas', te: 'mo', t: 'Changer mon code', s: '6 chiffres' }
+        ]) + tlSec('Aide') + tlListe([
+          { at: 'data-tab="aide"', ic: 'aide', te: 'ap', t: 'Aide et visite guidée', s: GUIDES.length + ' fiches pas à pas' },
+          { at: 'data-essai="aide" data-gid="iphone"', ic: 'tel', te: 'ap', t: 'Mettre l’appli sur mon téléphone', s: 'Icône sur l’écran d’accueil' }
+        ])
+        + '<button class="a-btn navy a-moi-out" data-act="out">' + ico('changer', 22, 2.2) + 'Changer de personne</button>'
+        + '<p class="a-aide" style="text-align:center;margin:0">Avant de passer le téléphone à une collègue : l’appli se vide pour elle.</p>'
+        + '<p class="tl-ver">Version ' + esc(C.version || '') + (C.env === 'dev' ? ' · site de test' : '') + '</p></div>';
+    }
     return '<header class="a-hd a-moi"><span class="a-av">' + esc((S.me.nom || '?').charAt(0).toUpperCase()) + '</span><div><h1>' + esc(S.me.nom) + '</h1><p>' + nomRole(S.me) + (S.me.cabinet ? ' · cabinet ' + S.me.cabinet : '') + ' · identifiant ' + esc(S.me.identifiant) + '</p></div></header>'
       + '<div class="a-corps"><div class="a-liste">'
       + '<button class="a-li" data-tab="aide"><span class="a-lii">' + ico('aide', 20) + '</span><span class="a-it-n"><b>Aide et visite guidée</b><span>' + GUIDES.length + ' fiches pas à pas</span></span></button>'
@@ -1125,7 +1189,7 @@
 
   // ---------- Accueil de la référente et de la responsable (2 tuiles), Réglages, Équipe, Dentistes ----------
   // Écrans de la maquette « Accueil référente et responsable ». Chaque écran a son en-tête bleu.
-  var HUB = ['pessai', 'instr', 'occup', 'ptest', 'pwifi', 'mconges', 'mdemande', 'ptransfert', 'hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
+  var HUB = ['pplus', 'pessai', 'instr', 'occup', 'ptest', 'pwifi', 'mconges', 'mdemande', 'ptransfert', 'hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
   var JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'], JC = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
   // Affectations possibles d'une demi-journée (en plus des dentistes)
   // Postes (modifiables dans Réglages › Postes) ; École et « Ne travaille pas » sont fixes
@@ -1219,6 +1283,7 @@
   function nbACommander() { try { return S.articles.filter(function (a) { return filtreStock(a, 'commander'); }).length; } catch (e) { return 0; } }
 
   function vHub() {
+    if (telephone()) return vHubTel();
     var j = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     var att = S.attente.length, cmd = nbACommander(), sous = [];
     if (att) sous.push(att + ' ' + pl(att, 'demande') + ' à valider');
@@ -1244,6 +1309,66 @@
       + (telephone() ? '<div class="h-pc"><span class="h-pc-l">À ouvrir sur ordinateur</span><div class="h-pc-g"><span>' + ico('calendrier', 20) + '<b>Planning</b></span><span>' + ico('qr', 20) + '<b>Pointage</b></span><span>' + ico('fauteuil', 20) + '<b>Occupation des cabinets</b></span></div></div>' : '')
       + '</div>';
     return h;
+  }
+
+  // Sous-titres partagés (accueil et Plus du téléphone)
+  function sousPointage() {
+    var P = S.ptg && S.ptg.rows, auj = dIso(new Date()), n = 0, soum = (S.equipe || []).filter(function (e) { return e.actif && e.pointage; });
+    if (P) soum.forEach(function (e) { var r = P[e.id + '|' + auj]; if (r && r.arrivee) n++; });
+    return soum.length && P ? n + ' ' + pl(n, 'arrivée') + ' sur ' + soum.length + ' aujourd’hui' : 'Arrivées, sorties et temps effectif';
+  }
+  function sousOccup() {
+    if (!S.dentistes) return 'Qui est dans quel cabinet';
+    var auj = dIso(new Date()), J = occJour(auj); occInit(); occAssurer(lundiDe(auj));
+    return J.ferme ? 'Centre fermé aujourd’hui' : J.am + ' sur 8 le matin · ' + J.pm + ' l’après-midi';
+  }
+  function sousInstr() {
+    var I = insEtat(); if (!I.l && !I.charge) chargerInstr();
+    var l = (I.l || []).filter(function (x) { return x.statut !== 'rebut'; }), np = l.filter(function (x) { return x.statut === 'panne'; }).length, nr = l.filter(function (x) { return x.statut === 'reparation'; }).length, s = [];
+    if (np) s.push(np + ' en panne'); if (nr) s.push(nr + ' en réparation');
+    return { s: I.manque ? 'Mise à jour 033 de la base à faire' : s.length ? s.join(' · ') : 'Réparations et garanties', w: !!np };
+  }
+  function vHubTel() {
+    var j = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    var att = (S.attente || []).length, cmd = nbACommander(), ca = congesAttente().length + congesAnnul().length, ob = (S.oublis || []).length;
+    var h = tlBonjour(esc(LABEL[S.me.role] || '') + ' · ' + j, 'data-tab="pplus"');
+    moiG(); var ptIci = S.moiEq && S.moiEq.pointage;
+    if (ptIci && !S.monPtVu) { S.monPtVu = true; chargerMonPointage(); }
+    h += '<div class="a-corps tl-c">' + vBienvenue() + (ptIci ? tuilePointer() : '');
+    var af = [];
+    if (ca) af.push(tlAl('data-tab="pconges"', 'valise', 'warn', ca + ' ' + pl(ca, 'demande') + ' de congés', 'à valider'));
+    if (att) af.push(tlAl('data-tab="demandes"', 'boite', 'warn', att + ' ' + pl(att, 'sortie') + ' à confirmer', 'au-delà de la réserve'));
+    if (ob) af.push(tlAl('data-tab="pointage"', 'qr', 'warn', ob + ' ' + pl(ob, 'oubli') + ' de pointage', 'à valider'));
+    if (af.length) h += tlSec('À faire') + af.join('');
+    var ins = sousInstr();
+    h += tlSec('Aujourd’hui') + tlListe([
+      { at: 'data-tab="accueil"', ic: 'boite', te: 'st', t: 'Gestion de stock', s: cmd ? cmd + ' à commander' : 'Sorties, inventaires, commandes', sw: cmd ? 'warn' : '' },
+      { at: 'data-tab="planning"', ic: 'calendrier', te: 'pl', t: 'Planning', s: 'Qui travaille, avec quel dentiste' },
+      { at: 'data-tab="pointage"', ic: 'qr', te: 'pt', t: 'Pointage', s: sousPointage() },
+      { at: 'data-tab="occup"', ic: 'fauteuil', te: 'oc', t: 'Occupation des cabinets', s: sousOccup() },
+      { at: 'data-tab="instr"', ic: 'rotatif', te: 'eq', t: 'Instruments rotatifs', s: ins.s, sw: ins.w ? 'warn' : '' }
+    ]);
+    return h + '</div>';
+  }
+  // Plus (téléphone de la référente / responsable) : les autres outils et mon compte
+  function vPPlus() {
+    var ins = sousInstr(), ob = (S.oublis || []).length;
+    var mcA = (S.conges || []).filter(function (c) { return c.statut === 'attente' && S.moiEq && c.equipe_id === S.moiEq.id; }).length; moiG();
+    return hdA({ t: 'Plus', fixe: true, cab: '<span class="hr-vide"></span>' }) + '<div class="a-corps tl-c">'
+      + tlSec('Les autres outils') + tlListe([
+        { at: 'data-tab="pointage"', ic: 'qr', te: 'pt', t: 'Pointage', s: ob ? ob + ' ' + pl(ob, 'oubli') + ' à valider' : sousPointage(), sw: ob ? 'warn' : '' },
+        { at: 'data-tab="heures"', ic: 'histo', te: 'pl', t: 'Heures', s: 'Tableau des heures de la semaine' },
+        { at: 'data-tab="occup"', ic: 'fauteuil', te: 'oc', t: 'Occupation des cabinets', s: sousOccup() },
+        { at: 'data-tab="instr"', ic: 'rotatif', te: 'eq', t: 'Instruments rotatifs', s: ins.s, sw: ins.w ? 'warn' : '' },
+        { at: 'data-tab="pequipe"', ic: 'equipe', te: 'eq', t: 'L’équipe et les dentistes', s: 'Fiches, absences, semaine type' },
+        { at: 'data-tab="reglages"', ic: 'reglage', te: 'ap', t: 'Réglages', s: 'Profils, postes, pointage…' }
+      ])
+      + tlSec('Mon compte') + tlListe([
+        { at: 'data-tab="mconges"', ic: 'valise', te: 'cg', t: 'Mes congés', s: mcA ? mcA + ' ' + pl(mcA, 'demande') + ' en attente' : 'Demander, suivre mes demandes, mon solde' },
+        { at: 'data-tab="compte"', ic: 'cadenas', te: 'mo', t: 'Changer mon mot de passe' },
+        { at: 'data-act="out"', ic: 'changer', te: 'mo', t: 'Changer de personne', s: 'Avant de prêter le téléphone' }
+      ])
+      + '<p class="tl-ver">Version ' + esc(C.version || '') + (C.env === 'dev' ? ' · site de test' : '') + '</p></div>';
   }
 
   // =====================================================================
@@ -2748,12 +2873,13 @@
   // Téléphone : le plus petit côté de l'écran fait moins de 600 px (quelle que soit l'orientation)
   function telephone() { try { return Math.min(screen.width, screen.height) < 600; } catch (e) { return false; } }
   function vSurPC() {
-    return '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" data-tab="hub">' + ico('prec', 22, 2.4) + 'Accueil</button><h1>Planning</h1><span class="hr-vide"></span></div></header>'
+    var tt = { planning: 'Planning', heures: 'Heures', pointage: 'Pointage', occup: 'Occupation' }[S.tab] || 'Planning';
+    return '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" data-tab="' + (S.tab === 'planning' ? 'hub' : 'pplus') + '">' + ico('prec', 22, 2.4) + (S.tab === 'planning' ? 'Accueil' : 'Plus') + '</button><h1>' + tt + '</h1><span class="hr-vide"></span></div></header>'
       + '<div class="a-corps"><div class="card pc-msg">' + ico('calendrier', 34) + '<b>À ouvrir sur ordinateur</b><p class="mu">Le planning et le tableau des heures se gèrent sur un écran de PC. Sur téléphone, vous pouvez gérer les congés et les réglages.</p><button class="btn" data-tab="hub">Retour à l’accueil</button></div></div>';
   }
   function renderH() {
     S.coulCat = null;
-    var ecr = { mconges: function () { moiG(); return vMesCongesA(); }, mdemande: function () { moiG(); return vDemandeA(); }, hub: vHub, occup: vOccup, instr: vInstr, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pwifi: vPWifi, ptest: vPTest, pprofils: vPProfils, ptransfert: vPTransfert, pessai: vPEssai }[S.tab] || vHub;
+    var ecr = { mconges: function () { moiG(); return vMesCongesA(); }, mdemande: function () { moiG(); return vDemandeA(); }, hub: vHub, occup: vOccup, instr: vInstr, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pwifi: vPWifi, ptest: vPTest, pprofils: vPProfils, ptransfert: vPTransfert, pessai: vPEssai, pplus: vPPlus }[S.tab] || vHub;
     if ((S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || S.tab === 'occup') && telephone()) ecr = vSurPC;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
     h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr' || S.tab === 'pequipe') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'occup' || S.tab === 'instr' || S.tab === 'heures' || S.tab === 'pointage' || ((S.tab === 'pconges' || S.tab === 'ppostes' || S.tab === 'pregles' || S.tab === 'pprofils' || S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible') && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
@@ -4049,7 +4175,7 @@
     }, function () { S.moiEq = null; S.mesConges = []; render(); });
   }
   function vMesCongesA() {
-    var h = hdA({ back: gestion() ? ['data-tab="hub"', 'Accueil'] : ['data-tab="moi"', 'Moi'], t: 'Mes congés', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    var h = hdA({ back: gestion() ? (telephone() ? ['data-tab="pplus"', 'Plus'] : ['data-tab="hub"', 'Accueil']) : telephone() ? ['data-tab="maison"', 'Accueil'] : ['data-tab="moi"', 'Moi'], t: 'Mes congés', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
     if (S.mesConges == null) return h + '<p class="a-vide">Chargement…</p></div>';
     if (!S.moiEq) return h + '<p class="a-note warn">Votre compte n’est pas encore relié à une fiche du planning : demandez à la référente de le faire (Réglages › L’équipe).</p></div>';
     if (typeDe(S.moiEq.type).contrat !== false && S.moiEq.type !== 'interimaire') { var so = soldeCP(S.moiEq, S.mesConges); h += '<div class="card cp-moi"><span class="mu">Il me reste</span><b class="' + (so.reste < 0 ? 'ko-t' : '') + '">' + txtJ(so.reste) + '</b><span class="mu">de congés payés acquis à ce jour' + (so.restRep ? ', dont <b>' + txtJ(so.restRep) + '</b> de N-1 (pris en premier)' : '') + ' · prévu au ' + dateCourte(so.P.au) + ' : <b>' + txtJ(so.restePrevu) + '</b>' + (so.att ? ' · ' + txtJ(so.att) + ' en attente' : '') + '<br>période jusqu’au ' + dateCourte(so.P.au) + ' ' + so.P.au.slice(0, 4) + '</span></div>'; }
@@ -5924,13 +6050,15 @@
   function vNavMobile() {
     if (!gestion()) {
       if (enTache()) return '';
-      var cur = ['compte', 'mconges', 'mdemande', 'mplanning'].indexOf(S.tab) >= 0 ? 'moi' : S.tab === 'moubli' ? 'maison' : S.tab;
-      var nv = ['maison', 'histo', 'aide', 'moi'].filter(function (t) { return t !== 'histo' || droit('stock'); });
-      if (S.tab === 'mstock') cur = 'maison';
-      return '<nav class="bnav a4' + (nv.length === 3 ? ' a3' : '') + '" aria-label="Menu principal">' + nv.map(function (t) {
-        return '<button data-tab="' + t + '" class="' + (cur === t ? 'on' : '') + '"><span class="bi">' + ico(t, 24) + '</span><span>' + NOMS[t] + '</span></button>';
+      var t0 = S.tab, cur = ['sortie', 'retour', 'inventaire', 'histo', 'mstock'].indexOf(t0) >= 0 ? 'mstock' : ['mconges', 'mdemande'].indexOf(t0) >= 0 ? 'mconges' : ['compte', 'aide', 'mplanning', 'moi'].indexOf(t0) >= 0 ? 'moi' : 'maison';
+      var NV = { maison: ['maison', 'Accueil'], mstock: ['boite', 'Stock'], mconges: ['valise', 'Congés'], moi: ['moi', 'Moi'] };
+      var nv = ['maison', 'mstock', 'mconges', 'moi'].filter(function (t) { return t === 'mstock' ? droit('stock') : t === 'mconges' ? droit('conges') || !!refDe() : true; });
+      var mcA = (S.mesConges || []).filter(function (c) { return c.statut === 'attente'; }).length;
+      return '<nav class="bnav a4' + (nv.length === 3 ? ' a3' : nv.length === 2 ? ' a2' : '') + '" aria-label="Menu principal">' + nv.map(function (t) {
+        return '<button data-tab="' + t + '" class="' + (cur === t ? 'on' : '') + '"' + (cur === t ? ' aria-current="page"' : '') + '><span class="bi">' + ico(NV[t][0], 24) + '</span><span>' + NV[t][1] + '</span></button>';
       }).join('') + '</nav>';
     }
+    if (telephone()) return vNavG();
     var bas = ['accueil', 'stock', 'sortie', 'inventaire'], NOMB = { accueil: 'À faire', stock: 'Articles', sortie: 'Mouvements', inventaire: 'Inventaires' };
     var quot = ['commandes', 'fournisseurs'], cat = ['tdb', 'ecarts', 'invfin', 'plus', 'journal', 'compte', 'aide'], menu = quot.concat(cat, ['hub']);
     var att = S.attente.length, dansMenu = menu.indexOf(S.tab) >= 0;
