@@ -4472,7 +4472,7 @@
     if (j >= 1 && j <= 5 && !ferie(iso)) ['AM', 'PM'].forEach(function (demi) {
       var k = demi === 'AM' ? 'am' : 'pm', pris = {}, trameA = {};
       ps.forEach(function (p) {
-        var r = rows[cleCase(p.id, iso, demi)], a = r ? r.aff : out[p.id][demi].a;
+        var r = caseRow(p, iso, demi), a = r ? r.aff : out[p.id][demi].a;
         if (a && a.slice(0, 2) === 'D:') pris[a] = 1;
         var t = ((trameDe(p, iso) || {})[j] || {})[k]; if (t && t.a && t.a.slice(0, 2) === 'D:') trameA[t.a] = 1;
       });
@@ -4480,7 +4480,7 @@
         .sort(function (a, b) { return (trameA['D:' + a.id] ? 1 : 0) - (trameA['D:' + b.id] ? 1 : 0) || (a.ordre - b.ordre); });
       // Les apprenties couvrent d'abord les dentistes seuls ; sinon chacune va à son poste de repli (fiche, Sté par défaut)
       ps.slice().sort(function (a, b) { return (a.statut === 'apprentie' ? 0 : 1) - (b.statut === 'apprentie' ? 0 : 1); }).forEach(function (p) {
-        if (rows[cleCase(p.id, iso, demi)]) return;
+        if (caseRow(p, iso, demi)) return;
         var c = out[p.id][demi]; if (!c.a || c.a.slice(0, 2) !== 'D:' || dentPresent(dentById(c.a.slice(2)), iso)) return;
         var n = libres.shift();
         out[p.id][demi] = { a: n ? 'D:' + n.id : ((p.regles || {}).repli || 'STE'), de: c.de, fi: c.fi, v: 1, r: c.a };
@@ -4490,7 +4490,14 @@
     return (JOUR_CACHE[iso] = out);
   }
   function caseCalc(p, iso, demi) { var o = jourCalc(iso)[p.id]; return o ? o[demi] : caseBase(p, iso, demi); }
-  function caseEff(p, iso, demi) { var r = (S.pl && S.pl.rows || {})[cleCase(p.id, iso, demi)]; if (r && r.aff === 'OFF' && ferie(iso)) return { a: 'FERIE', h: r.heures != null ? +r.heures : null };   // férié importé « OFF » : compté comme férié
+  // Case enregistrée du planning, sauf si des congés acceptés APRÈS son enregistrement la recouvrent (planning importé ou saisi
+  // avant la demande) : les congés l'emportent. Une case changée à la main après l'acceptation reste prioritaire (choix délibéré).
+  function caseRow(p, iso, demi) {
+    var r = (S.pl && S.pl.rows || {})[cleCase(p.id, iso, demi)];
+    if (r && r.aff !== 'OFF' && ABS.indexOf(r.aff) < 0) { var cg = congeLe(p.id, iso), tc = cg && Date.parse(cg.traite_le || cg.cree_le || ''), tr = Date.parse(r.modifie_le || ''); if (cg && (!tr || !tc || tr < tc)) return null; }
+    return r;
+  }
+  function caseEff(p, iso, demi) { var r = caseRow(p, iso, demi); if (r && r.aff === 'OFF' && ferie(iso)) return { a: 'FERIE', h: r.heures != null ? +r.heures : null };   // férié importé « OFF » : compté comme férié
     return r ? { a: r.aff, de: hm(r.debut), fi: hm(r.fin), h: r.heures != null ? +r.heures : null } : caseCalc(p, iso, demi); }
   function travailleHabituellement(p, iso, demi) { var t = ((trameDe(p, iso) || {})[jourSem(iso)] || {})[demi === 'AM' ? 'am' : 'pm']; return !!(t && t.a && t.a !== 'OFF'); }
   function heuresDemi(p, iso, demi, c) {
@@ -6065,7 +6072,7 @@
       + (R.busy ? '<p><b>Import en cours… ' + (R.fait || 0) + ' / ' + R.liste.length + '</b></p>' : '<div class="row"><button class="btn l" data-act="plimpno">Annuler</button><button class="btn" data-act="plimpok">Importer ' + R.liste.length + ' demi-journées</button></div>') + '</div>';
   }
   function appliquerImportPlanning() {
-    var R = S.plImp, l = R.liste.map(function (x) { return { equipe_id: x.equipe_id, jour: x.jour, demi: x.demi, aff: x.aff, debut: x.debut, fin: x.fin, modifie_par: S.me.id }; }), i = 0;
+    var R = S.plImp, l = R.liste.map(function (x) { return { equipe_id: x.equipe_id, jour: x.jour, demi: x.demi, aff: x.aff, debut: x.debut, fin: x.fin, modifie_par: S.me.id, modifie_le: new Date().toISOString() }; }), i = 0;
     R.busy = true; R.fait = 0; render();
     function suite() {
       if (i >= l.length) return Promise.resolve();
