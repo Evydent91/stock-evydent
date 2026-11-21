@@ -528,6 +528,18 @@
   // ---------- Icônes dessinées (les mêmes que la maquette) ----------
   var SVGI = {
     calendrier: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M7.5 14h.01M12 14h.01M16.5 14h.01M7.5 17.5h.01M12 17.5h.01" stroke-width="2.6"/>',
+    grille: '<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>',
+    carte: '<path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM10.5 10.5a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM5 16c.6-1.6 2-2.4 3.5-2.4s2.9.8 3.5 2.4M14.5 9.5h4.5M14.5 13h3"/>',
+    cle: '<path d="M12 11a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0zM12 11h9M18 11v3M21 11v2.5"/>',
+    couches: '<path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/>',
+    wifi: '<path d="M2 8.5a15 15 0 0 1 20 0M5 12a10 10 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0M12 19h.01"/>',
+    cloche: '<path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0"/>',
+    quipointe: '<path d="M15 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM3 20c0-3.5 3-6 8-6 1.2 0 2.3.1 3.2.4M15.5 18l2 2 4-4.5"/>',
+    fiole: '<path d="M9 3h6M10 3v6l-5.5 9.5A1.6 1.6 0 0 0 5.9 21h12.2a1.6 1.6 0 0 0 1.4-2.5L14 9V3M7.5 15h9"/>',
+    sauve: '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M4 19h16"/>',
+    transfert: '<path d="M4 8h13M13.5 4.5L17 8l-3.5 3.5M20 16H7M10.5 12.5L7 16l3.5 3.5"/>',
+    etoile: '<path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8zM18.5 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
+    app: '<path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM11 18h2"/>',
     scan: '<path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3M7 8v8M10 8v8M13 8v8M16.5 8v8"/>',
     lampe: '<path d="M8 2h8l-1 6H9zM9 8v12a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V8M12 12v3"/>',
     panne: '<path d="M12 3.5L2.5 20h19z"/><path d="M12 10v4.5M12 17.5h.01"/>',
@@ -1377,25 +1389,19 @@
   var RG_TABS = ['pessai', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pregles', 'ppostes', 'pqui', 'pqr', 'pwifi', 'ptest', 'pprofils', 'ptypes', 'proles', 'pvisible', 'ptransfert'];
   function navReglages() {
     var cur = S.tab === 'pfiche' ? 'pequipe' : S.tab === 'dfiche' ? 'pdent' : S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible' ? 'pprofils' : S.tab;
-    var L = function (t, attr, tab) { return '<button class="rgn-l' + (tab && tab === cur ? ' on' : '') + '" ' + attr + (tab && tab === cur ? ' aria-current="page"' : '') + '>' + t + '</button>'; };
-    var plie = rgnPlie();
-    // Catégorie repliable : la flèche ouvre ou ferme ; celle de la page ouverte reste toujours dépliée
-    var G = function (k, t, items, cl) {
-      var ici = items.some(function (x) { return x[2] && x[2] === cur; }), ferme = plie[k] && !ici;
-      return '<div class="rgn-cat' + (cl ? ' ' + cl : '') + (ferme ? ' ferme' : '') + '"><button class="rgn-g" data-rgnc="' + k + '" aria-expanded="' + !ferme + '"' + (ici ? ' disabled' : '') + '><span>' + t + '</span>' + ico('bas', 14, 2.6) + '</button>'
-        + '<div class="rgn-in">' + items.map(function (x) { return L(x[0], x[1], x[2]); }).join('') + '</div></div>';
-    };
-    return '<nav class="rgn" aria-label="Rubriques des réglages">'
-      + L('Tous les réglages', 'data-tab="reglages"', 'reglages')
-      + G('eq', 'Équipe', (railOn() ? [] : [['L’équipe', 'data-act="rgeq"', 'pequipe'], ['Les dentistes', 'data-act="rgde"', 'pdent']]).concat([['Profils', 'data-tab="pprofils"', 'pprofils']]))
-      + G('pl', 'Planning', [['Postes', 'data-tab="ppostes"', 'ppostes'], ['Règles des heures', 'data-tab="pregles"', 'pregles']])
-      + G('pt', 'Pointage', [['QR code', 'data-act="rgqr"', 'pqr'], ['Wi-Fi du centre', 'data-tab="pwifi"', 'pwifi'], ['Qui pointe', 'data-tab="pqui"', 'pqui']].concat(CONFIG.env === 'dev' ? [['Module de test', 'data-tab="ptest"', 'ptest']] : []))
-      + G('cg', 'Congés', [['Demandes et planning', 'data-tab="pconges"']])
-      + G('ap', 'Application', [['Transfert vers la prod', 'data-tab="ptransfert"', 'ptransfert']].concat(S.me && S.me.role === 'referente' ? [['Fonctions en essai', 'data-tab="pessai"', 'pessai']] : []))
-      + G('st', 'Gestion de stock', [['Comptes de connexion', 'data-tab="equipe"'], ['Articles', 'data-tab="articles"'], ['Fournisseurs', 'data-tab="fournisseurs"'], ['Sauvegarde et journal', 'data-tab="plus"'], ['Mon mot de passe', 'data-tab="compte"']], 'stk')
+    var ouv = rgnOuv();
+    // Rubriques repliées par défaut ; celle de la page ouverte reste dépliée ; un badge rappelle ce qui attend quand c'est replié
+    return '<nav class="rgn rgn2" aria-label="Rubriques des réglages">'
+      + '<label class="rgn-q">' + ico('loupe', 17, 2.2) + '<input id="rgq" placeholder="Chercher un réglage" autocomplete="off" aria-label="Chercher un réglage"></label>'
+      + '<button class="rgn-l rgn-tout' + (cur === 'reglages' ? ' on' : '') + '" data-tab="reglages"' + (cur === 'reglages' ? ' aria-current="page"' : '') + '>' + ico('grille', 19, 2) + '<span>Vue d’ensemble</span></button>'
+      + rgCats().map(function (c) {
+        var ici = c.l.some(function (i) { return i.tab && i.tab === cur; }), ouvert = ici || !!ouv[c.k], nb = c.l.reduce(function (t, i) { return t + (+i.b || 0); }, 0);
+        return '<div class="rgn-cat t-' + c.k + (ouvert ? '' : ' ferme') + (ici ? ' ici' : '') + '"><button class="rgn-g" data-rgnc="' + c.k + '" aria-expanded="' + ouvert + '"' + (ici ? ' disabled' : '') + '><span class="rgn-pi" aria-hidden="true">' + ico(c.ic, 16, 2.2) + '</span><span class="rgn-gt">' + c.t + '</span>' + (nb && !ouvert ? '<span class="rgn-b">' + nb + '</span>' : '') + ico('suiv', 15, 2.6) + '</button>'
+          + '<div class="rgn-in">' + c.l.map(function (i) { var on = i.tab && i.tab === cur; return '<button class="rgn-l' + (on ? ' on' : '') + '" ' + i.attr + (on ? ' aria-current="page"' : '') + ' data-rgnk="' + esc((i.t + ' ' + c.t + ' ' + i.mots).toLowerCase()) + '">' + ico(i.ic, 18, 2) + '<span>' + i.t + '</span>' + (i.b ? '<span class="rgn-b' + (i.b === 'Essai' ? ' e' : '') + '">' + i.b + '</span>' : '') + '</button>'; }).join('') + '</div></div>';
+      }).join('')
       + '</nav>';
   }
-  function rgnPlie() { if (!S.rgnPlie) { try { S.rgnPlie = JSON.parse(lsGet('evy-rgn-plie') || '{}') || {}; } catch (e) { S.rgnPlie = {}; } } return S.rgnPlie; }
+  function rgnOuv() { if (!S.rgnOuv) { try { S.rgnOuv = JSON.parse(lsGet('evy-rgn-ouv') || '{}') || {}; } catch (e) { S.rgnOuv = {}; } } return S.rgnOuv; }
   // Sur ordinateur : la liste des prénoms reste à côté de la fiche ouverte
   function listeFiches() {
     var tri = function (a, b) { return (a.ordre - b.ordre) || a.prenom.localeCompare(b.prenom); };
@@ -1457,57 +1463,59 @@
     if (!F || !F.o || F.o === JSON.stringify(F.d)) return suite();
     fenetre({ titre: 'Changements non enregistrés', texte: 'La fiche de ' + (F.d.prenom || 'cette personne') + ' a été modifiée sans être enregistrée.\n\nSi vous changez de fiche maintenant, ces changements seront perdus.', ok: 'Changer sans enregistrer', non: 'Rester sur la fiche' }).then(function (v) { if (v) suite(); });
   }
-  function vReglages() {
+  // Rubriques des réglages : une seule liste pour le menu de gauche, la vue d'ensemble (ordinateur) et la page du téléphone
+  function rgCats() {
     var n = (S.equipe || []).filter(function (p) { return p.actif; }).length, nd = (S.dentistes || []).filter(function (d) { return d.actif; }).length;
     var np = (S.equipe || []).filter(function (p) { return p.actif && p.pointage; }).length, R = regles();
-    var it = function (t, d, attr, nouveau) { return '<button class="rg-it" ' + attr + ' data-rgi="' + esc((t + ' ' + d).toLowerCase()) + '"><span><b>' + t + '</b><small>' + d + '</small></span>' + (nouveau ? '<em>Nouveau</em>' : '') + ico('suiv', 18, 2.4) + '</button>'; };
-    var bloc = function (lettre, cl, t, d, items) { return '<section class="rg-bloc"><div class="rg-bt"><span class="rg-ic ' + cl + '" aria-hidden="true">' + lettre + '</span><span><h2>' + t + '</h2><small>' + d + '</small></span></div>' + items.join('') + '</section>'; };
-    var h = hdA({ back: ACC_H, t: 'Réglages', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps rg-corps">';
+    var ca = typeof congesAttente === 'function' ? congesAttente().length + congesAnnul().length : 0, sv = sauvegardeEnRetard();
+    var I = function (t, attr, tab, ic, st, mots, b, warn) { return { t: t, attr: attr, tab: tab || '', ic: ic, s: st || '', mots: mots || '', b: b || '', warn: !!warn }; };
+    var L = [
+      { k: 'eq', t: 'Équipe et accès', ic: 'equipe', d: 'Qui voit quoi, qui se connecte', l: [
+        railOn() ? null : I('L’équipe', 'data-act="rgeq"', 'pequipe', 'equipe', planPret() ? n + ' ' + pl(n, 'personne') : '', 'fiches semaine type absences contrat'),
+        railOn() ? null : I('Les dentistes', 'data-act="rgde"', 'pdent', 'dent', planPret() ? nd + ' ' + pl(nd, 'dentiste') : '', 'jours de présence départs anticipés'),
+        I('Profils', 'data-tab="pprofils"', 'pprofils', 'carte', profilsListe().filter(function (x) { return !x.retire; }).length + ' profils', 'planning contrat ce que chacun voit référente'),
+        I('Comptes de connexion', 'data-tab="equipe"', '', 'cle', 'identifiants, codes', 'rôles cabinet par défaut mot de passe')] },
+      { k: 'pl', t: 'Planning', ic: 'calendrier', d: 'Organisation des journées', l: [
+        I('Postes', 'data-tab="ppostes"', 'ppostes', 'couches', postes().filter(function (x) { return !x.retire; }).length + ' postes', 'sté admin accueil plages horaires fixe variable couleur'),
+        I('Règles des heures', 'data-tab="pregles"', 'pregles', 'histo', 'congés, férié, reliquat', 'maladie école formation cp samedi')] },
+      { k: 'pt', t: 'Pointage', ic: 'qr', d: 'Arrivées, sorties, temps effectif', l: [
+        I('QR code', 'data-act="rgqr"', 'pqr', 'qr', 'afficher, imprimer', 'régénérer'),
+        I('Wi-Fi du centre', 'data-tab="pwifi"', 'pwifi', 'wifi', S.wifi ? ({ off: 'désactivé', souple: 'souple', strict: 'strict' })[S.wifi.mode || 'off'] : 'contrôle du pointage', 'wifi réseau box souple strict'),
+        I('Calcul et alertes', 'data-tab="pregles"', '', 'cloche', 'retard ' + R.pt_tol + ' min', 'reliquat temps pointé départ'),
+        I('Qui pointe', 'data-tab="pqui"', 'pqui', 'quipointe', np + ' ' + pl(np, 'personne'), 'soumise compte'),
+        CONFIG.env === 'dev' ? I('Module de test', 'data-tab="ptest"', 'ptest', 'fiole', 'site de test', 'essai simulation scénarios') : null] },
+      { k: 'cg', t: 'Congés', ic: 'valise', d: 'Demandes et absences', l: [
+        I('Demandes et planning', 'data-tab="pconges"', 'pconges', 'valise', ca ? ca + ' à traiter' : 'congés du mois', 'valider soldes absences', ca ? String(ca) : '', ca > 0)] },
+      { k: 'st', t: 'Stock', ic: 'boite', d: 'Articles et fournisseurs', l: [
+        I('Articles', 'data-tab="articles"', '', 'boite', 'seuils, lieux', 'types de soins'),
+        I('Fournisseurs', 'data-tab="fournisseurs"', '', 'camion', 'coordonnées, comptes', 'comptes')] },
+      { k: 'ap', t: 'Application', ic: 'app', d: 'Données et nouveautés', l: [
+        I('Sauvegarde et journal', 'data-tab="plus"', '', 'sauve', sv ? 'à télécharger' : 'à jour', 'versions données', '', sv),
+        I('Transfert vers la prod', 'data-tab="ptransfert"', 'ptransfert', 'transfert', 'test → site réel', 'exporter importer équipe dentistes réglages congés'),
+        S.me && S.me.role === 'referente' ? I('Fonctions en essai', 'data-tab="pessai"', 'pessai', 'etoile', 'scan : ' + (scanOn() ? 'allumé' : 'éteint'), 'scan code barre codes-barres douchette datamatrix lot', 'Essai') : null] },
+      { k: 'mo', t: 'Mon compte', ic: 'moi', d: 'Pour vous seulement', l: [
+        I('Mon mot de passe', 'data-tab="compte"', '', 'cadenas', 'changer', 'code')] }
+    ];
+    L.forEach(function (c) { c.l = c.l.filter(Boolean); });
+    return L;
+  }
+  function vReglages() {
+    var h = hdA({ back: ACC_H, t: 'Réglages', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps rg-corps rgv">';
     if (!planPret()) h += '<div class="ban warn">La mise à jour 009 de la base n’est pas encore faite : l’équipe et les dentistes ne peuvent pas s’afficher.</div>';
+    var ca = typeof congesAttente === 'function' ? congesAttente().length + congesAnnul().length : 0, sv = sauvegardeEnRetard();
+    var faire = ca || sv ? '<div class="rgc-faire">' + (ca ? '<button class="rgc-a" data-tab="pconges">' + ico('valise', 20) + '<b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à traiter' + ico('suiv', 16, 2.4) + '</button>' : '') + (sv ? '<button class="rgc-a" data-tab="plus">' + ico('telecharger', 20) + '<b>Sauvegarde du mois</b> à télécharger' + ico('suiv', 16, 2.4) + '</button>' : '') + '</div>' : '';
+    var carte = function (c) {
+      return '<section class="rg-bloc rgv-c t-' + c.k + '"><div class="rgv-ct"><span class="rgv-ic" aria-hidden="true">' + ico(c.ic, 24, 2) + '</span><span><h2>' + c.t + '</h2><small>' + c.d + '</small></span></div>'
+        + c.l.map(function (i) { return '<button class="rgv-l" ' + i.attr + ' data-rgi="' + esc((i.t + ' ' + i.s + ' ' + i.mots).toLowerCase()) + '"><span class="rgv-li" aria-hidden="true">' + ico(i.ic, 20, 2) + '</span><b>' + i.t + '</b>' + (i.b === 'Essai' ? '<em class="rg-essai">Essai</em>' : '') + '<small' + (i.warn ? ' class="w"' : '') + '>' + esc(i.s) + '</small>' + ico('suiv', 16, 2.4) + '</button>'; }).join('') + '</section>';
+    };
+    var C = rgCats();
     if (!telephone()) {
-      // Sur ordinateur : la page suit le menu de gauche (mêmes rubriques, même ordre), une ligne courte par réglage, et ce qui demande une action en haut
-      var ca = typeof congesAttente === 'function' ? congesAttente().length + congesAnnul().length : 0, sv = sauvegardeEnRetard();
-      var li = function (t, fait, attr, mots) { return '<button class="rg-it rgc" ' + attr + ' data-rgi="' + esc((t + ' ' + fait + ' ' + (mots || '')).toLowerCase()) + '"><b>' + t + '</b><small>' + fait + '</small>' + ico('suiv', 16, 2.4) + '</button>'; };
-      var bc = function (t, items, cl) { return '<section class="rg-bloc rgc' + (cl ? ' ' + cl : '') + '"><h2 class="rgc-t">' + t + '</h2>' + items.join('') + '</section>'; };
-      h += '<div class="rgc-top"><label class="rg-cherche">' + ico('loupe', 18, 2) + '<input id="rgq" placeholder="Chercher un réglage" autocomplete="off"></label></div>';
-      if (ca || sv) h += '<div class="rgc-faire">' + (ca ? '<button class="rgc-a" data-tab="pconges">' + ico('valise', 20) + '<b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à traiter' + ico('suiv', 16, 2.4) + '</button>' : '') + (sv ? '<button class="rgc-a" data-tab="plus">' + ico('telecharger', 20) + '<b>Sauvegarde du mois</b> à télécharger' + ico('suiv', 16, 2.4) + '</button>' : '') + '</div>';
-      h += '<div class="rg-grille rgc-g">'
-        + bc('Équipe', [railOn() ? '' : li('L’équipe', planPret() ? n + ' ' + pl(n, 'personne') : '', 'data-act="rgeq"', 'fiches semaine type absences contrat'), railOn() ? '' : li('Les dentistes', planPret() ? nd + ' ' + pl(nd, 'dentiste') : '', 'data-act="rgde"', 'jours de présence départs anticipés'), li('Profils', profilsListe().filter(function (x) { return !x.retire; }).length + ' profils', 'data-tab="pprofils"', 'planning contrat ce que chacun voit référente')])
-        + bc('Planning', [li('Postes', postes().filter(function (x) { return !x.retire; }).length + ' postes', 'data-tab="ppostes"', 'sté admin accueil plages horaires fixe variable couleur'), li('Règles des heures', 'congés, férié, reliquat', 'data-tab="pregles"', 'maladie école formation cp samedi')])
-        + bc('Pointage', [li('QR code', 'afficher, imprimer', 'data-act="rgqr"', 'régénérer'), li('Wi-Fi du centre', S.wifi ? ({ off: 'désactivé', souple: 'souple', strict: 'strict' })[S.wifi.mode || 'off'] : 'contrôle du pointage', 'data-tab="pwifi"', 'wifi réseau box souple strict'), li('Calcul et alertes', 'retard ' + R.pt_tol + ' min', 'data-tab="pregles"', 'reliquat temps pointé départ'), li('Qui pointe', np + ' ' + pl(np, 'personne'), 'data-tab="pqui"', 'soumise compte')].concat(CONFIG.env === 'dev' ? [li('Module de test', 'site de test', 'data-tab="ptest"', 'essai simulation scénarios')] : []))
-        + bc('Congés', [li('Demandes et planning', ca ? ca + ' à traiter' : 'congés du mois', 'data-tab="pconges"', 'valider soldes absences')])
-        + bc('Application', [li('Transfert vers la prod', 'test → site réel', 'data-tab="ptransfert"', 'exporter importer équipe dentistes réglages congés')].concat(S.me.role === 'referente' ? [li('Fonctions en essai', 'sortie par scan : ' + (scanOn() ? 'allumée' : 'éteinte'), 'data-tab="pessai"', 'scan code barre codes-barres douchette datamatrix lot')] : []))
-        + bc('Gestion de stock', [li('Comptes de connexion', 'identifiants, codes', 'data-tab="equipe"', 'rôles cabinet par défaut'), li('Articles', 'seuils, lieux', 'data-tab="articles"', 'types de soins'), li('Fournisseurs', 'coordonnées', 'data-tab="fournisseurs"', 'comptes'), li('Sauvegarde et journal', sv ? 'à télécharger' : 'à jour', 'data-tab="plus"', 'versions données'), li('Mon mot de passe', 'changer', 'data-tab="compte"', '')], 'stk')
-        + '</div><p class="rg-vide" hidden>Aucun réglage ne correspond.</p>';
-      return h + '</div>';
+      // Sur ordinateur : la recherche est dans le menu de gauche ; ici, les rubriques en cartes et ce qui demande une action en haut
+      h += '<div class="rgv-hd"><div><h2>Vue d’ensemble</h2><span>Tout ce qui se règle dans l’appli, rangé par sujet.</span></div>' + faire + '</div>';
+      return h + '<div class="rg-grille rgv-g">' + C.map(carte).join('') + '</div><p class="rg-vide" hidden>Aucun réglage ne correspond.</p></div>';
     }
-    h += '<label class="rg-cherche">' + ico('loupe', 18, 2) + '<input id="rgq" placeholder="Chercher un réglage" autocomplete="off"></label>';
-    h += '<div class="rg-grille">'
-      + bloc('É', 'b1', 'Équipe et comptes', 'Commun à tous les outils', [
-        it('L’équipe', (planPret() ? n + ' ' + pl(n, 'personne') + ' · ' : '') + 'fiches, semaine type, absences', 'data-act="rgeq"'),
-        it('Les dentistes', (planPret() ? nd + ' ' + pl(nd, 'dentiste') + ' · ' : '') + 'jours de présence, départs anticipés', 'data-act="rgde"'),
-        it('Comptes de connexion', 'Identifiants, codes, rôles, cabinet par défaut', 'data-tab="equipe"'),
-        it('Profils', profilsListe().filter(function (x) { return !x.retire; }).length + ' profils · planning, contrat, ce que chacun voit dans son appli', 'data-tab="pprofils"', true)])
-      + bloc('P', 'b2', 'Planning', 'Organisation des journées', [
-        it('Postes', 'Sté, Admin, Accueil… ajouter, renommer, couleur', 'data-tab="ppostes"', true),
-        it('Règles des heures', 'Congés, maladie, école, formation, férié, reliquat', 'data-tab="pregles"')])
-      + bloc('Q', 'b3', 'Pointage', 'Arrivées, sorties, temps effectif', [
-        it('QR code', 'Afficher, imprimer, régénérer', 'data-act="rgqr"'),
-        it('Wi-Fi du centre', 'Pointage accepté seulement depuis le Wi-Fi du centre', 'data-tab="pwifi"'),
-        it('Calcul et alertes', (R.pt_reliquat !== false ? 'Reliquat sur le temps pointé' : 'Reliquat sur le planning') + ' · retard ' + R.pt_tol + ' min · départ ' + R.pt_tol_dep + ' min', 'data-tab="pregles"'),
-        it('Qui pointe', np + ' ' + pl(np, 'personne') + ' soumise' + (np > 1 ? 's' : '') + ', avec ou sans compte', 'data-tab="pqui"')].concat(CONFIG.env === 'dev' ? [it('Module de test', 'Site de test : pointer à la place de quelqu’un, scénarios automatiques', 'data-tab="ptest"')] : []))
-      + bloc('C', 'b4', 'Congés', 'Demandes et absences', [
-        it('Demandes et planning des congés', 'À valider, congés du mois', 'data-tab="pconges"')])
-      + bloc('S', 'b5', 'Gestion de stock', 'Articles, commandes, inventaire', [
-        it('Articles', 'Lieux d’utilisation, types de soins, seuils', 'data-tab="articles"'),
-        it('Fournisseurs', 'Coordonnées, comptes', 'data-tab="fournisseurs"')])
-      + bloc('A', 'b1', 'Application', 'Données et versions', [
-        it('Sauvegarde et journal des versions', 'Télécharger les données, ce qui a changé', 'data-tab="plus"'),
-        it('Transfert vers la prod', 'Exporter l’équipe, les dentistes, les réglages et les congés du site de test, puis les importer sur le site réel', 'data-tab="ptransfert"', true),
-        S.me.role === 'referente' ? it('Fonctions en essai', 'Sortie par scan : ' + (scanOn() ? 'allumée' : 'éteinte'), 'data-tab="pessai"') : '',
-        it('Mon mot de passe', 'Changer mon mot de passe', 'data-tab="compte"')])
-      + '</div><p class="rg-vide" hidden>Aucun réglage ne correspond.</p>';
-    return h + '</div>';
+    h += '<label class="rg-cherche">' + ico('loupe', 18, 2) + '<input id="rgq" placeholder="Chercher un réglage" autocomplete="off"></label>' + faire;
+    return h + '<div class="rg-grille rgv-g">' + C.map(carte).join('') + '</div><p class="rg-vide" hidden>Aucun réglage ne correspond.</p></div>';
   }
   // ---------- Réglages › Postes ----------
   function vPPostes() {
@@ -8406,7 +8414,7 @@
     if (d.esave) return sauverProfil(d.esave);
     if (d.ereinit) return reinitMdp(d.ereinit);
     if (d.rgso) { var cs = document.getElementById(d.rgso); if (cs) cs.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
-    if (d.rgnc) { var pli = rgnPlie(); pli[d.rgnc] = !pli[d.rgnc]; lsSet('evy-rgn-plie', JSON.stringify(pli)); render(); return; }
+    if (d.rgnc) { var ouv = rgnOuv(); ouv[d.rgnc] = !ouv[d.rgnc]; lsSet('evy-rgn-ouv', JSON.stringify(ouv)); render(); return; }
     if (d.act === 'rgeq' || d.act === 'rgde') { var dfi = d.act === 'rgde' ? S.df : S.pf; if (dfi && (S.tab === 'pfiche' || S.tab === 'dfiche') && dfi.o && dfi.o !== JSON.stringify(dfi.d)) { fenetre({ titre: 'Changements non enregistrés', texte: 'La fiche ouverte a été modifiée sans être enregistrée.\n\nSi vous changez de page maintenant, ces changements seront perdus.', ok: 'Changer sans enregistrer', non: 'Rester sur la fiche' }).then(function (v) { if (v) ouvrirDepuisMenu(d.act === 'rgde'); }); return; } return ouvrirDepuisMenu(d.act === 'rgde'); }
     if (feAction(d)) return;
     if (S.tab === 'instr' && insAction(d)) return;
@@ -8584,7 +8592,8 @@
     if (t.id === 'rgq') {   // recherche dans les réglages : on masque sans redessiner (le curseur reste dans le champ)
       var qq = norm(t.value).trim(), vus = 0;
       document.querySelectorAll('.rg-bloc').forEach(function (b) { var n = 0; b.querySelectorAll('[data-rgi]').forEach(function (x) { var ok = !qq || norm(x.dataset.rgi).indexOf(qq) >= 0 || norm(b.querySelector('h2').textContent).indexOf(qq) >= 0; x.hidden = !ok; if (ok) n++; }); b.hidden = !n; vus += n; });
-      var v0 = document.querySelector('.rg-vide'); if (v0) v0.hidden = !!vus; return;
+      document.querySelectorAll('.rgn-cat').forEach(function (c) { var n = 0; c.querySelectorAll('.rgn-l').forEach(function (x) { var ok = !qq || norm(x.dataset.rgnk || '').indexOf(qq) >= 0; x.hidden = !ok; if (ok) n++; }); c.hidden = !!qq && !n; c.classList.toggle('q', !!qq); });
+      var v0 = document.querySelector('.rg-vide'); if (v0) v0.hidden = !!vus || !document.querySelector('.rg-bloc'); return;
     }
     if (t.dataset && t.dataset.cpdm) { S.cpDepMois = String(t.value || '').slice(0, 7) || null; personnesCP().forEach(function (pp) { var cel = document.querySelector('[data-cpdv="' + pp.id + '"]'); if (cel) cel.innerHTML = dispoDep(pp, (S.cpDepV || {})[pp.id]); }); return; }
     if (t.dataset && t.dataset.cpd) { var cq = t.dataset.cpd.split('|'), V = S.cpDepV = S.cpDepV || {}; (V[cq[0]] = V[cq[0]] || {})[cq[1]] = t.value; var pp = persById(cq[0]), cel = document.querySelector('[data-cpdv="' + cq[0] + '"]'); if (pp && cel) cel.innerHTML = dispoDep(pp, V[cq[0]]); return; }
