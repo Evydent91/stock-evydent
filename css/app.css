@@ -3250,3 +3250,19 @@ button.tl-chip{cursor:pointer;font-family:inherit}
   .oc-g .oc-c.lib b{font-weight:600}
   .oc-ks{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
 }
+/* Pastilles de choix dans l'en-tête bleu (téléphone) */
+.tl-segs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -14px;padding:0 14px}
+.tl-segs::-webkit-scrollbar{display:none}
+.tl-segs button{flex:none;height:36px;padding:0 14px;border-radius:18px;border:none;background:rgba(255,255,255,.1);color:#fff;font:inherit;font-size:14.5px;font-weight:700;white-space:nowrap;cursor:pointer}
+.tl-segs button.on{background:var(--gold);color:var(--navy)}
+/* Instruments (téléphone) : un type à la fois */
+.ins-g.tel .ins-col:not(.on){display:none}
+.ins-g.tel{display:block}
+@media (max-width:700px){ .ins-g.tel .ins-h img{max-height:90px;object-fit:contain} .a-hd .ins-ty{margin-top:2px} }
+@media (max-width:700px){
+  .ins-g.tel .ins-qc{display:none}
+  .ins-ft .hr-seg{display:flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .ins-ft .hr-seg::-webkit-scrollbar{display:none}
+  .ins-ft .hr-seg button{flex:none;white-space:nowrap;padding:0 14px}
+  .a-hd-row h1{min-width:0;overflow:hidden;text-overflow:ellipsis}
+}

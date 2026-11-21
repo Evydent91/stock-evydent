@@ -3038,18 +3038,18 @@
     var fil = '<div class="hr-seg" role="group" aria-label="Afficher">' + [['tous', 'Tous'], ['centre', 'Au centre'], ['panne', 'En panne'], ['rep', 'En réparation'], ['fin', 'Garantie bientôt finie'], ['rebut', 'Au rebut']].map(function (f) { return '<button data-insf="' + f[0] + '" aria-pressed="' + (I.f === f[0]) + '"' + (I.f === f[0] ? ' class="on"' : '') + '>' + f[1] + '</button>'; }).join('') + '</div>';
     var rech = '<label class="ins-q">' + ico('loupe', 20, 2.2) + '<input type="search" data-insq="tout" placeholder="Chercher un numéro de série (SN)…" aria-label="Chercher un numéro de série dans tous les instruments" value="' + esc(I.q || '') + '" autocomplete="off"></label>';
     var fiche = !!(I.sel || I.form === 'new');
-    var h = '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" ' + (fiche ? 'data-act="insback"' : 'data-tab="hub"') + '>' + ico('prec', 22, 2.4) + (fiche ? 'Instruments' : 'Accueil') + '</button><h1>' + (fiche && x ? esc(x.sn) : I.form === 'new' ? 'Nouvel instrument' : 'Instruments rotatifs') + '</h1>' + (fiche ? '<span class="a-cale"></span>' : btns) + '</div>'
-      + (fiche ? '' : bandeDate(rech, telephone() ? '' : fil, I.q ? '<span id="insn"></span>' : '')) + '</header><div class="a-corps ins-corps">';
+    var h = '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" ' + (fiche ? 'data-act="insback"' : telephone() ? 'data-tab="pplus"' : 'data-tab="hub"') + '>' + ico('prec', 22, 2.4) + (fiche ? 'Instruments' : telephone() ? 'Plus' : 'Accueil') + '</button><h1>' + (fiche && x ? esc(x.sn) : I.form === 'new' ? 'Nouvel instrument' : telephone() ? 'Instruments' : 'Instruments rotatifs') + '</h1>' + (fiche ? '<span class="a-cale"></span>' : btns) + '</div>'
+      + (fiche ? '' : bandeDate(rech, telephone() ? '' : fil, I.q ? '<span id="insn"></span>' : '')) + (!fiche && telephone() ? '<div class="tl-segs ins-ty" role="tablist">' + INS_T.map(function (t) { var on = (I.ty || 'turbine') === t.k; return '<button role="tab" aria-selected="' + on + '" class="' + (on ? 'on' : '') + '" data-insty="' + t.k + '">' + (t.k === 'turbine' ? 'Turbine' : t.n.replace('Contre-angle bague ', '').replace(/^./, function (c) { return c.toUpperCase(); })) + '</button>'; }).join('') + '</div>' : '') + '</header><div class="a-corps ins-corps">';
     if (I.manque) return h + '<div class="ban warn">La mise à jour <b>033</b> de la base n’est pas encore faite : les instruments ne peuvent pas être enregistrés. Lancez <code>033_instruments.sql</code> dans Supabase.</div></div>';
     if (I.err) return h + '<div class="ban warn">' + esc(I.err) + '</div></div>';
     if (!I.l) return h + '<p class="a-vide">Chargement…</p></div>';
     if (fiche) return h + vInstrFiche(x) + '</div>';
     if (telephone()) h += '<div class="ins-ft">' + fil + '</div>';
     var ok = function (y) { var g = I.f === 'fin' ? insGarantie(y) : null; return I.f === 'rebut' ? y.statut === 'rebut' : y.statut !== 'rebut' && (I.f === 'tous' || (I.f === 'centre' && y.statut === 'service') || (I.f === 'panne' && y.statut === 'panne') || (I.f === 'rep' && y.statut === 'reparation') || (I.f === 'fin' && y.statut === 'service' && g.k === 'fin')); };
-    h += '<div class="ins-g">' + INS_T.map(function (t) {
+    h += '<div class="ins-g' + (telephone() ? ' tel' : '') + '">' + INS_T.map(function (t) {
       var tous = I.l.filter(function (y) { return y.type === t.k; }), l = tous.filter(ok).sort(function (a, b) { var RG = { panne: 0, reparation: 1 }, ra = RG[a.statut] != null ? RG[a.statut] : 2, rb = RG[b.statut] != null ? RG[b.statut] : 2; return ra - rb || String(a.sn).localeCompare(String(b.sn)); });
       var nc = tous.filter(function (y) { return y.statut === 'service'; }).length, nr = tous.filter(function (y) { return y.statut === 'reparation'; }).length, np = tous.filter(function (y) { return y.statut === 'panne'; }).length;
-      return '<section class="ins-col" data-inscol="' + t.k + '"><div class="ins-h"><img src="assets/instruments/' + t.k + '.jpg" alt="' + esc(t.n) + '" loading="lazy"><b>' + t.n + '</b><small>' + t.s + '</small>'
+      return '<section class="ins-col' + ((I.ty || 'turbine') === t.k ? ' on' : '') + '" data-inscol="' + t.k + '"><div class="ins-h"><img src="assets/instruments/' + t.k + '.jpg" alt="' + esc(t.n) + '" loading="lazy"><b>' + t.n + '</b><small>' + t.s + '</small>'
         + '<span class="ins-k"><span>' + nc + ' au centre</span>' + (np ? '<span class="p">' + np + ' en panne</span>' : '') + (nr ? '<span class="w">' + nr + ' en réparation</span>' : '') + (function () { var v = 0, n = 0; tous.forEach(function (y) { if (y.statut !== 'rebut' && y.valeur != null) { v += +y.valeur; n++; } }); return n ? '<span class="v" title="Valeur des instruments renseignés (hors rebut)">Valeur ' + eur(v) + '</span>' : ''; })() + '</span>'
         + '<label class="ins-qc">' + ico('loupe', 18, 2.2) + '<input type="search" data-insq="' + t.k + '" placeholder="SN…" aria-label="Chercher un SN parmi : ' + esc(t.n) + '" value="' + esc(I.qc[t.k] || '') + '" autocomplete="off"></label></div>'
         + '<div class="ins-l">' + (l.length ? l.map(insCarte).join('') : '<p class="mu ins-vide">' + (tous.length ? 'Aucun pour ce filtre.' : 'Aucun instrument enregistré.') + '</p>') + '<p class="mu ins-vide ins-rien" hidden>Aucun SN ne correspond.</p></div></section>';
@@ -3876,9 +3876,9 @@
   }
 
   // Référente / responsable : congés à valider
-  function vPConges() {
-    var cgM = S.cgMois || dIso(new Date()).slice(0, 7), cgX = cgM.split('-');
-    var h = hdA({ back: ACC_H, t: 'Congés', cab: '<span class="a-cale"></span>', fixe: true, extra: bandeDate(navDate({ cle: 'cgm', pas: 'mois', cl: 'cg2-nd', titre: MOIS[+cgX[1] - 1].replace(/^./, function (c) { return c.toUpperCase(); }) + ' ' + cgX[0], val: cgM + '-01', auj: cgM === dIso(new Date()).slice(0, 7) ? '' : 'Ce mois-ci', aujAttr: 'data-cgm0="1"' })) }) + '<div class="a-corps cg2' + (S.cpDep ? '' : ' cg2-2c') + '"><div class="cg2-cd">';
+  // Demandes de congés et d'annulation à traiter (page Congés)
+  function vCgAttente() {
+    var h = '';
     var att = congesAttente().sort(function (a, b) { return a.du < b.du ? -1 : 1; });
     if (att.length) {
       h += '<section class="cg2-att"><h2 class="cg2-t">À valider <span>' + att.length + '</span></h2>' + att.map(function (c) {
@@ -3905,6 +3905,35 @@
         + '<p class="mu" style="margin:0;font-size:14px">Si vous acceptez, les congés sont retirés du planning et la personne travaille selon sa semaine type.</p>'
         + '<div class="h-cg-b"><button class="a-btn blanc" data-canko="' + c.id + '">Garder les congés</button><button class="a-btn vert" data-canok="' + c.id + '">Accepter l’annulation</button></div></div>';
     }).join('') + '</section>';
+    return h;
+  }
+  // Congés sur téléphone : absences du mois en liste, soldes
+  function vMoisTel(cgM) {
+    var de = cgM + '-01', d0 = dDe(de), fin = dIso(new Date(d0.getFullYear(), d0.getMonth() + 1, 0));
+    var l = (S.conges || []).filter(function (c) { return (c.statut === 'accepte' || c.statut === 'attente') && c.du <= fin && c.au >= de; }).sort(function (a, b) { return a.du < b.du ? -1 : a.du > b.du ? 1 : 0; });
+    var tl = l.map(function (c) {
+      var n = nomConge(c), att = c.statut === 'attente';
+      return { at: c.dentiste_id ? 'data-dent="' + c.dentiste_id + '"' : 'data-pf="' + c.equipe_id + '"', lettre: n.replace(/^Dr\s+/, '').charAt(0).toUpperCase(), t: esc(n), s: esc(typeTxt(c.type)) + ' · ' + periode(c.du, c.au) + (att ? ' · en attente' : c.annul_demande ? ' · annulation demandée' : ''), sw: att || c.annul_demande ? 'warn' : '' };
+    });
+    return (tl.length ? '<p class="tl-sous">' + tl.length + ' ' + pl(tl.length, 'absence') + ' ce mois-ci</p>' + tlListe(tl) : '<p class="a-vide">Aucune absence ce mois-ci.</p>')
+      + '<p class="tl-txt">Pour poser une absence, touchez la personne ou ouvrez sa fiche (Plus › L’équipe et les dentistes). Le calendrier du mois est sur ordinateur.</p>';
+  }
+  function vSoldesTel() {
+    var ps = personnesCP();
+    if (!ps.length) return '<p class="a-vide">Personne n’a de solde de congés à suivre.</p>';
+    return tlSec('Congés payés restants') + tlListe(ps.map(function (p) {
+      var so = soldeCP(p, S.conges), att = (S.conges || []).filter(function (c) { return c.statut === 'attente' && String(c.equipe_id) === String(p.id) && (c.type === 'CP' || c.type === 'AUTRE'); }), nj = att.reduce(function (t, c) { return t + joursCP(p, c.du, c.au); }, 0);
+      return { at: 'data-pf="' + p.id + '"', lettre: (p.prenom || '?').charAt(0).toUpperCase(), t: esc(p.prenom), s: nj ? 'après acceptation : ' + txtJ(so.reste - nj) : '', sw: nj ? 'warn' : '', droite: txtJ(so.reste), gros: true, ton: so.reste < 0 ? 'ko' : '' };
+    }));
+  }
+  function vPConges() {
+    var cgM = S.cgMois || dIso(new Date()).slice(0, 7), cgX = cgM.split('-'), tel = telephone();
+    var nAtt = congesAttente().length + congesAnnul().length, seg = tel ? (S.cgSeg || (nAtt ? 'att' : 'mois')) : '';
+    var segH = tel ? '<div class="tl-segs" role="tablist">' + [['att', 'À valider' + (nAtt ? ' · ' + nAtt : '')], ['mois', 'Le mois'], ['soldes', 'Soldes'], ['miens', 'Les miens']].map(function (x) { return '<button role="tab" aria-selected="' + (seg === x[0]) + '" class="' + (seg === x[0] ? 'on' : '') + '" ' + (x[0] === 'miens' ? 'data-tab="mconges"' : 'data-cgseg="' + x[0] + '"') + '>' + x[1] + '</button>'; }).join('') + '</div>' : '';
+    if (tel && seg !== 'mois') { var h0 = hdA({ t: 'Congés', fixe: true, cab: '<span class="hr-vide"></span>', extra: segH }) + '<div class="a-corps tl-c">'; return h0 + (seg === 'soldes' ? vSoldesTel() : vCgAttente()) + '</div>'; }
+    if (tel) return hdA({ t: 'Congés', fixe: true, cab: '<span class="hr-vide"></span>', extra: segH + bandeDate(navDate({ cle: 'cgm', pas: 'mois', cl: 'cg2-nd', titre: MOIS[+cgX[1] - 1].replace(/^./, function (c) { return c.toUpperCase(); }) + ' ' + cgX[0], val: cgM + '-01', auj: cgM === dIso(new Date()).slice(0, 7) ? '' : 'Ce mois-ci', aujAttr: 'data-cgm0="1"' })) }) + '<div class="a-corps tl-c">' + vMoisTel(cgM) + '</div>';
+    var h = hdA({ back: ACC_H, t: 'Congés', cab: '<span class="a-cale"></span>', fixe: true, extra: bandeDate(navDate({ cle: 'cgm', pas: 'mois', cl: 'cg2-nd', titre: MOIS[+cgX[1] - 1].replace(/^./, function (c) { return c.toUpperCase(); }) + ' ' + cgX[0], val: cgM + '-01', auj: cgM === dIso(new Date()).slice(0, 7) ? '' : 'Ce mois-ci', aujAttr: 'data-cgm0="1"' })) }) + '<div class="a-corps cg2' + (S.cpDep ? '' : ' cg2-2c') + '"><div class="cg2-cd">';
+    h += vCgAttente();
     h += vSoldesCP() + '</div><div class="cg2-cg">' + vMoisConges() + '</div>';
     return h + '<p class="a-aide">Pour saisir des congés, un arrêt ou une formation : touchez le nom de la personne ou du dentiste, ou ouvrez sa fiche dans Réglages.</p></div>';
   }
@@ -4224,7 +4253,7 @@
     }, function () { S.moiEq = null; S.mesConges = []; render(); });
   }
   function vMesCongesA() {
-    var h = hdA({ back: gestion() ? (telephone() ? ['data-tab="pplus"', 'Plus'] : ['data-tab="hub"', 'Accueil']) : telephone() ? ['data-tab="maison"', 'Accueil'] : ['data-tab="moi"', 'Moi'], t: 'Mes congés', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    var h = hdA({ back: gestion() ? (telephone() ? ['data-tab="pconges"', 'Congés'] : ['data-tab="hub"', 'Accueil']) : telephone() ? ['data-tab="maison"', 'Accueil'] : ['data-tab="moi"', 'Moi'], t: 'Mes congés', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
     if (S.mesConges == null) return h + '<p class="a-vide">Chargement…</p></div>';
     if (!S.moiEq) return h + '<p class="a-note warn">Votre compte n’est pas encore relié à une fiche du planning : demandez à la référente de le faire (Réglages › L’équipe).</p></div>';
     if (typeDe(S.moiEq.type).contrat !== false && S.moiEq.type !== 'interimaire') { var so = soldeCP(S.moiEq, S.mesConges); h += '<div class="card cp-moi"><span class="mu">Il me reste</span><b class="' + (so.reste < 0 ? 'ko-t' : '') + '">' + txtJ(so.reste) + '</b><span class="mu">de congés payés acquis à ce jour' + (so.restRep ? ', dont <b>' + txtJ(so.restRep) + '</b> de N-1 (pris en premier)' : '') + ' · prévu au ' + dateCourte(so.P.au) + ' : <b>' + txtJ(so.restePrevu) + '</b>' + (so.att ? ' · ' + txtJ(so.att) + ' en attente' : '') + '<br>période jusqu’au ' + dateCourte(so.P.au) + ' ' + so.P.au.slice(0, 4) + '</span></div>'; }
@@ -8678,6 +8707,8 @@
     if (d.act === 'pfdelier' && S.pf) { var pfD = S.pf.id; demander('Détacher le compte de connexion ?', 'Le compte reste actif, il n’est simplement plus relié au planning.', 'Détacher').then(function (ok) { if (ok) lierCompte(pfD, null); }); return; }
     if (d.ndcal) { var ni = document.getElementById('nd-' + d.ndcal); if (ni) { try { if (ni.showPicker) ni.showPicker(); else { ni.focus(); ni.click(); } } catch (er) { ni.focus(); ni.click(); } } return; }
     if (d.act === 'plcal') { var ci = document.getElementById('plcal'); if (ci) { try { if (ci.showPicker) ci.showPicker(); else { ci.focus(); ci.click(); } } catch (er) { ci.focus(); ci.click(); } } return; }
+    if (d.insty) { insEtat().ty = d.insty; render(); window.scrollTo(0, 0); return; }
+    if (d.cgseg) { S.cgSeg = d.cgseg; render(); window.scrollTo(0, 0); return; }
     if (d.pljt != null && S.pl) { var jt0 = S.pl.jourTel || dIso(new Date()), jt = d.pljt === '0' ? occOuvre(dIso(new Date()), 1) : occOuvre(addJ(jt0, +d.pljt), +d.pljt); S.pl.jourTel = jt; S.pl.cas = null; if (lundiDe(jt) !== S.pl.lundi) { S.pl.lundi = lundiDe(jt); chargerSemaine(); } render(); return; }
     if (d.plsem != null && S.pl) { S.pl.lundi = d.plsem === '0' ? lundiDe(dIso(new Date())) : addJ(S.pl.lundi, +d.plsem); S.pl.cas = null; if (gestion()) chargerSemaine(); else S.pl.de = null; render(); return; }
     if (d.plc) { if (!gestion() && !(refDe() && refDroit('planning_modif'))) return; return ouvrirCase(d.plc); }
