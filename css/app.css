@@ -2994,3 +2994,5 @@ img.rail-lo{width:48px;height:48px;border-radius:50%;object-fit:cover;clip-path:
 .ins-fb{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;align-items:center}.ins-fb .grow{flex:1}
 .ins-act .btn{display:inline-flex;flex-direction:row;align-items:center;gap:8px}
 .ins-k span.v{background:#f1e9cf;color:#5c4c14}
+/* Accueil : toutes les tuiles ont la même hauteur, quelle que soit la longueur du texte */
+@media (min-width:701px){.h-tuiles{grid-auto-rows:1fr}}
