@@ -285,7 +285,7 @@
   function chargerHisto() {
     var q = sb.from('mouvements').select('*').order('cree_le', { ascending: false }).limit(150);
     if (!gestion() || !S.histTous) q = q.eq('auteur', S.me.id);
-    q.then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } S.histo = r.data; if (S.tab === 'histo') render(); });
+    q.then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } S.histo = r.data; S.histoVu = true; if (S.tab === 'histo' || S.tab === 'mstock') render(); });
   }
 
   // ---------- Rendu général ----------
@@ -615,7 +615,7 @@
   }
   // ---------- Appli des assistantes : chaque écran a son propre en-tête bleu, comme la maquette ----------
   function modeA() { return !!S.me && !gestion(); }
-  var ACC = ['data-act="accueil"', 'Accueil'];
+  var ACC = ['data-act="accueil"', 'Stock'];
   function hdA(o) {
     return '<header class="a-hd' + (o.fixe ? ' fixe' : '') + (o.cls ? ' ' + o.cls : '') + '">'
       + (o.t ? '<div class="a-hd-row">' + (o.back ? '<button class="a-back" ' + o.back[0] + '>' + ico('prec', 22, 2.4) + o.back[1] + '</button>' : '<span></span>') + '<h1>' + o.t + '</h1>' + (o.cab || '<span></span>') + '</div>' : '')
@@ -951,7 +951,9 @@
           ds ? { at: 'data-act="refaire"', ic: 'refaire', te: 'ap', t: 'Refaire ma dernière sortie', s: ds.l.slice(0, 2).map(function (x) { return esc(S.byId[x.article_id].nom) + ' × ' + fr(x.quantite); }).join(' · ') + (ds.l.length > 2 ? '…' : '') } : null
         ]);
       if (mesAtt.length) ht += tlAl('data-tab="histo"', 'attente', 'warn', mesAtt.length + ' ' + pl(mesAtt.length, 'demande') + ' en attente', 'de validation par la référente');
-      ht += tlSec('Mon historique') + tlListe([{ at: 'data-tab="histo"', ic: 'histo', te: 'ap', t: 'Ce que j’ai sorti, rendu et compté', s: 'Les derniers mouvements' }]);
+      if (!S.histoVu && !S.histoCh) { S.histoCh = true; chargerHisto(); }
+      var ev3 = evenementsA().slice(0, 3);
+      ht += tlSec('Mes derniers mouvements') + '<div class="a-liste">' + ev3.map(function (e) { return evA(e).replace(/(<div class="a-it-n"><b>[^<]*<\/b><span[^>]*>)/, '$1' + jourA(e.m.cree_le).replace(/^\S+ /, '') + ' · '); }).join('') + tlL({ at: 'data-tab="histo"', ic: 'histo', te: 'ap', t: ev3.length ? 'Tout mon historique' : 'Mon historique', s: ev3.length ? '' : 'Aucun mouvement pour l’instant' }) + '</div>';
       return ht + '</div>';
     }
     var h = hdA({ back: ['data-tab="maison"', 'Accueil'], t: 'Stock', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">'
@@ -1131,8 +1133,15 @@
   function vHistoA() {
     var h = (telephone() ? hdA({ back: ['data-tab="mstock"', 'Stock'], t: 'Mon historique', cab: '<span class="a-cale"></span>', fixe: true }) : hdA({ cls: 'a-simple', extra: '<h1 class="a-t-g">Mon historique</h1><p class="a-sous">Ce que j’ai sorti, rendu et compté</p>' })) + '<div class="a-corps">';
     if (!S.histo.length) return h + '<p class="a-vide">Aucun mouvement pour l’instant.</p></div>';
+    var ev = evenementsA();
+    var jours = [], par = {};
+    ev.forEach(function (e) { var j = jourA(e.m.cree_le); if (!par[j]) { par[j] = []; jours.push(j); } par[j].push(e); });
+    return h + jours.map(function (j) { return '<h2 class="a-jour">' + j + '</h2><div class="a-liste">' + par[j].map(evA).join('') + '</div>'; }).join('') + '</div>';
+  }
+  // Mouvements de la personne, un inventaire = une seule ligne
+  function evenementsA() {
     var ev = [], invs = {};
-    S.histo.forEach(function (m) {
+    (S.histo || []).forEach(function (m) {
       if (m.type === 'inventaire') {
         var k = (m.lot || '') + '|' + m.emplacement_de + '|' + String(m.cree_le).slice(0, 16), e = invs[k];
         if (!e) { e = invs[k] = { inv: true, m: m, n: 0, u: 0, p: 0 }; ev.push(e); }
@@ -1140,9 +1149,7 @@
       }
       ev.push({ m: m });
     });
-    var jours = [], par = {};
-    ev.forEach(function (e) { var j = jourA(e.m.cree_le); if (!par[j]) { par[j] = []; jours.push(j); } par[j].push(e); });
-    return h + jours.map(function (j) { return '<h2 class="a-jour">' + j + '</h2><div class="a-liste">' + par[j].map(evA).join('') + '</div>'; }).join('') + '</div>';
+    return ev;
   }
 
   // Moi, mon code, aide
