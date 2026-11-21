@@ -2896,14 +2896,15 @@
 
   // Téléphone : le plus petit côté de l'écran fait moins de 600 px (quelle que soit l'orientation)
   function telephone() { try { return Math.min(screen.width, screen.height) < 600; } catch (e) { return false; } }
-  // Plein écran sur tablette : cache la barre du système (heure, batterie). Le choix est gardé : l'appli y revient au premier toucher.
+  // Plein écran sur tablette : cache la barre du système (heure, batterie). Par défaut sur tablette (au premier toucher, le navigateur
+  // n'autorise pas avant) ; « Quitter le plein écran » est retenu et l'appli n'y revient plus.
   function pleinEcran(on) {
     try { localStorage.setItem('evy-plein', on ? '1' : '0'); } catch (e) {}
     try { if (on) document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(render, function () { toast('Le plein écran n’est pas possible sur cet appareil'); }); else if (document.fullscreenElement) document.exitFullscreen().then(render, render); } catch (e) {}
   }
   document.addEventListener('pointerdown', function () {
     var v; try { v = localStorage.getItem('evy-plein'); } catch (e) {}
-    if (v === '1' && tablette() && !document.fullscreenElement && document.documentElement.requestFullscreen) { try { document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(function () {}); } catch (e) {} }
+    if (v !== '0' && tablette() && !document.fullscreenElement && document.documentElement.requestFullscreen) { try { document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(function () {}); } catch (e) {} }
   }, true);
   document.addEventListener('fullscreenchange', function () { if (S && S.me) render(); });
   // Tablette : écran tactile qui n'est pas un téléphone (iPad, tablette Android) : mêmes pages que l'ordinateur, en-têtes plus compacts
