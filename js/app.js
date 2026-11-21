@@ -899,7 +899,7 @@
     h += '<section class="cg2-carte cp-s"><div class="cp-t"><h2>Demandes en attente</h2>' + (att.length ? '<span class="pill or">' + att.length + '</span>' : '') + '</div>'
       + (att.length ? att.map(function (c) { var p = persById(c.equipe_id); return '<div class="rf-dem"><b>' + esc(p ? p.prenom : '?') + ' · ' + periode(c.du, c.au) + '</b><span class="mu">' + (c.mot ? '« ' + esc(c.mot) + ' » · ' : '') + (val ? 'à valider' : 'en attente de la référente ou de la responsable') + '</span>'
           + (val ? '<div class="h-cg-b"><button class="a-btn blanc" data-refcg="' + c.id + '|0">Refuser</button><button class="a-btn vert" data-refcg="' + c.id + '|1">Accepter</button></div>' : '') + '</div>'; }).join('') : '<p class="mu" style="margin:0">Aucune demande en attente.</p>') + '</section>';
-    h += vSoldesCP() + '</div><div class="cg2-cg">' + vMoisConges() + '</div>';
+    h += telephone() ? vSoldesTel(true) + '</div><div class="cg2-cg">' + tlSec('Absences du mois') + vMoisTel(dIso(new Date()).slice(0, 7), true) + '</div>' : vSoldesCP() + '</div><div class="cg2-cg">' + vMoisConges() + '</div>';
     return h + '<p class="a-aide">Vous voyez les congés des personnes au profil « ' + esc(nom) + ' ». ' + (val ? '' : 'La validation reste à la référente et à la responsable. ') + 'Pour poser ou corriger une absence, voyez avec elles.</p></div>';
   }
   async function refRepondreConge(v) {
@@ -1367,7 +1367,8 @@
         { at: 'data-tab="heures"', ic: 'histo', te: 'pl', t: 'Heures', s: 'Tableau des heures de la semaine' },
         { at: 'data-tab="occup"', ic: 'fauteuil', te: 'oc', t: 'Occupation des cabinets', s: sousOccup() },
         { at: 'data-tab="instr"', ic: 'rotatif', te: 'eq', t: 'Instruments rotatifs', s: ins.s, sw: ins.w ? 'warn' : '' },
-        { at: 'data-tab="pequipe"', ic: 'equipe', te: 'eq', t: 'L’équipe et les dentistes', s: 'Fiches, absences, semaine type' },
+        { at: 'data-tab="pequipe"', ic: 'equipe', te: 'eq', t: 'L’équipe', s: 'Fiches, absences, semaine type' },
+        { at: 'data-tab="pdent"', ic: 'moi', te: 'eq', t: 'Les dentistes', s: 'Jours, cabinet, absences' },
         { at: 'data-tab="reglages"', ic: 'reglage', te: 'ap', t: 'Réglages', s: 'Profils, postes, pointage…' }
       ])
       + tlSec('Mon compte') + tlListe([
@@ -1632,7 +1633,7 @@
     return L;
   }
   function vReglages() {
-    var h = hdA({ back: ACC_H, t: 'Réglages', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps rg-corps rgv">';
+    var h = hdA({ back: telephone() ? ['data-tab="pplus"', 'Plus'] : ACC_H, t: 'Réglages', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps rg-corps rgv">';
     if (!planPret()) h += '<div class="ban warn">La mise à jour 009 de la base n’est pas encore faite : l’équipe et les dentistes ne peuvent pas s’afficher.</div>';
     var ca = typeof congesAttente === 'function' ? congesAttente().length + congesAnnul().length : 0, sv = sauvegardeEnRetard();
     var faire = ca || sv ? '<div class="rgc-faire">' + (ca ? '<button class="rgc-a" data-tab="pconges">' + ico('valise', 20) + '<b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à traiter' + ico('suiv', 16, 2.4) + '</button>' : '') + (sv ? '<button class="rgc-a" data-tab="plus">' + ico('telecharger', 20) + '<b>Sauvegarde du mois</b> à télécharger' + ico('suiv', 16, 2.4) + '</button>' : '') + '</div>' : '';
@@ -1869,7 +1870,7 @@
   }
   function vPEquipe() {
     if (listeACote() && S.equipe && S.equipe.some(function (p) { return p.actif; })) { setTimeout(function () { if (S.tab === 'pequipe') ouvrirDepuisMenu(false); }, 0); }
-    var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'L’équipe', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    var h = hdA({ back: telephone() ? ['data-tab="pplus"', 'Plus'] : ['data-tab="reglages"', 'Réglages'], t: 'L’équipe', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
     if (!planPret()) return h + '<div class="ban warn">La mise à jour 009 de la base n’est pas encore faite.</div></div>';
     var tri = function (a, b) { return (a.ordre - b.ordre) || a.prenom.localeCompare(b.prenom); };
     var act = S.equipe.filter(function (p) { return p.actif; }).sort(tri), anc = S.equipe.filter(function (p) { return !p.actif; }).sort(tri);
@@ -2527,7 +2528,7 @@
   }
   function vPDent() {
     if (listeACote() && S.dentistes && S.dentistes.some(function (d) { return d.actif; })) { setTimeout(function () { if (S.tab === 'pdent') ouvrirDepuisMenu(true); }, 0); }
-    var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'Les dentistes', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
+    var h = hdA({ back: telephone() ? ['data-tab="pplus"', 'Plus'] : ['data-tab="reglages"', 'Réglages'], t: 'Les dentistes', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps">';
     if (!planPret()) return h + '<div class="ban warn">La mise à jour 009 de la base n’est pas encore faite.</div></div>';
     var tri = function (a, b) { return (a.ordre - b.ordre) || a.prenom.localeCompare(b.prenom); };
     var act = S.dentistes.filter(function (d) { return d.actif; }).sort(tri), anc = S.dentistes.filter(function (d) { return !d.actif; }).sort(tri);
@@ -3908,22 +3909,22 @@
     return h;
   }
   // Congés sur téléphone : absences du mois en liste, soldes
-  function vMoisTel(cgM) {
+  function vMoisTel(cgM, ro) {
     var de = cgM + '-01', d0 = dDe(de), fin = dIso(new Date(d0.getFullYear(), d0.getMonth() + 1, 0));
     var l = (S.conges || []).filter(function (c) { return (c.statut === 'accepte' || c.statut === 'attente') && c.du <= fin && c.au >= de; }).sort(function (a, b) { return a.du < b.du ? -1 : a.du > b.du ? 1 : 0; });
     var tl = l.map(function (c) {
       var n = nomConge(c), att = c.statut === 'attente';
-      return { at: c.dentiste_id ? 'data-dent="' + c.dentiste_id + '"' : 'data-pf="' + c.equipe_id + '"', lettre: n.replace(/^Dr\s+/, '').charAt(0).toUpperCase(), t: esc(n), s: esc(typeTxt(c.type)) + ' · ' + periode(c.du, c.au) + (att ? ' · en attente' : c.annul_demande ? ' · annulation demandée' : ''), sw: att || c.annul_demande ? 'warn' : '' };
+      return { at: ro ? '' : c.dentiste_id ? 'data-dent="' + c.dentiste_id + '"' : 'data-pf="' + c.equipe_id + '"', lettre: n.replace(/^Dr\s+/, '').charAt(0).toUpperCase(), t: esc(n), s: esc(typeTxt(c.type)) + ' · ' + periode(c.du, c.au) + (att ? ' · en attente' : c.annul_demande ? ' · annulation demandée' : ''), sw: att || c.annul_demande ? 'warn' : '' };
     });
     return (tl.length ? '<p class="tl-sous">' + tl.length + ' ' + pl(tl.length, 'absence') + ' ce mois-ci</p>' + tlListe(tl) : '<p class="a-vide">Aucune absence ce mois-ci.</p>')
-      + '<p class="tl-txt">Pour poser une absence, touchez la personne ou ouvrez sa fiche (Plus › L’équipe et les dentistes). Le calendrier du mois est sur ordinateur.</p>';
+      + (ro ? '' : '<p class="tl-txt">Pour poser une absence, touchez la personne ou ouvrez sa fiche (Plus › L’équipe ou Les dentistes). Le calendrier du mois est sur ordinateur.</p>');
   }
-  function vSoldesTel() {
+  function vSoldesTel(ro) {
     var ps = personnesCP();
     if (!ps.length) return '<p class="a-vide">Personne n’a de solde de congés à suivre.</p>';
     return tlSec('Congés payés restants') + tlListe(ps.map(function (p) {
       var so = soldeCP(p, S.conges), att = (S.conges || []).filter(function (c) { return c.statut === 'attente' && String(c.equipe_id) === String(p.id) && (c.type === 'CP' || c.type === 'AUTRE'); }), nj = att.reduce(function (t, c) { return t + joursCP(p, c.du, c.au); }, 0);
-      return { at: 'data-pf="' + p.id + '"', lettre: (p.prenom || '?').charAt(0).toUpperCase(), t: esc(p.prenom), s: nj ? 'après acceptation : ' + txtJ(so.reste - nj) : '', sw: nj ? 'warn' : '', droite: txtJ(so.reste), gros: true, ton: so.reste < 0 ? 'ko' : '' };
+      return { at: ro ? '' : 'data-pf="' + p.id + '"', lettre: (p.prenom || '?').charAt(0).toUpperCase(), t: esc(p.prenom), s: nj ? 'après acceptation : ' + txtJ(so.reste - nj) : '', sw: nj ? 'warn' : '', droite: txtJ(so.reste), gros: true, ton: so.reste < 0 ? 'ko' : '' };
     }));
   }
   function vPConges() {
@@ -6148,7 +6149,7 @@
     if (g) g1.push(['demandes', 'Demandes' + (att ? '<span class="badge">' + att + '</span>' : '')]);
     var g2 = g ? [['stock', 'Stock'], ['tdb', 'Analyses'], ['commandes', 'Commandes'], ['articles', 'Articles'], ['fournisseurs', 'Fournisseurs'], ['histo', 'Historique'], ['plus', 'Plus']] : [['histo', 'Historique']];
     var bt = function (t) { return '<button data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; };
-    var titreTel = S.gq ? 'Recherche' : S.tab === 'accueil' ? 'Gestion de stock' : (g && NOMR[S.tab]) || NOMS[S.tab] || 'Stock';
+    var titreTel = S.gq ? 'Recherche' : S.tab === 'accueil' ? 'Gestion de stock' : g && S.tab === 'compte' ? 'Mot de passe' : (g && NOMR[S.tab]) || NOMS[S.tab] || 'Stock';
     return '<header class="top t2"><div class="top-in">'
       + '<span class="t2-g">' + (g ? '<button class="t2-back" data-tab="hub" aria-label="Accueil">' + ico('prec', 20, 2.4) + '<span>Accueil</span></button>' : '<button class="t2-back" data-tab="maison">' + ico('prec', 20, 2.4) + '<span>Accueil</span></button>') + '</span>'
       + '<h1 class="t2-t"><span class="m-hide">Gestion de stock</span><span class="m-only">' + esc(titreTel) + '</span></h1>'
