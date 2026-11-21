@@ -2906,3 +2906,11 @@ body.rail-on .rail{overflow-x:hidden}
 .rgl-g{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none}
 /* Logo du centre en haut du menu de gauche */
 img.rail-lo{width:48px;height:48px;border-radius:50%;object-fit:cover;clip-path:circle(42%);margin:-4px}
+/* Bandeau de date : même place sur toutes les pages (flèches + calendrier à gauche, affichage à droite) */
+.nd-bande{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;margin-top:10px;max-width:var(--hd-max,none)}
+.nd-bande > .grow{flex:1 1 0;min-width:0}
+.nd-dr{display:flex;align-items:center;gap:10px;flex:none;flex-wrap:wrap}
+.nd-sous{margin:4px 0 0;color:#d9dee3;font-size:14px;text-align:left;min-height:20px}
+.nd-bande .pt-s2.cache{visibility:hidden;pointer-events:none}
+@media (max-width:700px){.nd-bande{gap:8px}.nd-bande > .grow{display:none}.nd-dr{width:100%}.nd-dr .hr-seg{flex:1}.nd-dr .hr-seg button{flex:1}.nd-bande .pt-s2.cache{display:none}}
+.h-app.tres-large:has(.cg2-2c) > .a-hd{padding-left:max(14px,calc((100% - 1320px) / 2 + 14px));padding-right:max(14px,calc((100% - 1320px) / 2 + 14px))}
