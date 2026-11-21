@@ -339,7 +339,7 @@
     var cur = railPage(), ca = congesAttente().length + congesAnnul().length, ou = (S.oublis || []).length, mini = railMini();
     var it = function (tab, n, ic, b) { return '<button class="rail-l' + (cur === tab ? ' on' : '') + '" data-tab="' + tab + '"' + (cur === tab ? ' aria-current="page"' : '') + ' title="' + esc(n) + '">' + '<span class="rail-i">' + ico(ic, 21, 2.1) + (b && mini ? '<em class="rail-p">' + b + '</em>' : '') + '</span><span class="rail-t">' + n + '</span>' + (b && !mini ? '<em class="rail-b">' + b + '</em>' : '') + '</button>'; };
     return '<nav class="rail" aria-label="Pages"><div class="rail-hd"><img class="rail-lo" src="assets/icone-192.png" alt="" aria-hidden="true"><b class="rail-t">Evydent</b></div>'
-      + it('hub', 'Accueil', 'maison') + it('planning', 'Planning', 'equipe') + it('heures', 'Heures', 'histo') + it('pointage', 'Pointage', 'qr', ou) + it('pconges', 'Congés', 'agenda', ca) + it('equipe', 'Équipe', 'moi').replace('data-tab="equipe"', 'data-act="rgeq"') + it('occup', 'Occupation', 'fauteuil') + it('instr', 'Instruments', 'rotatif') + it('accueil', 'Gestion de stock', 'boite')
+      + it('hub', 'Accueil', 'maison') + it('planning', 'Planning', 'calendrier') + it('heures', 'Heures', 'histo') + it('pointage', 'Pointage', 'qr', ou) + it('pconges', 'Congés', 'valise', ca) + it('equipe', 'Équipe', 'equipe').replace('data-tab="equipe"', 'data-act="rgeq"') + it('occup', 'Occupation', 'fauteuil') + it('instr', 'Instruments', 'rotatif') + it('accueil', 'Gestion de stock', 'boite')
       + '<span class="rail-sp"></span>' + it('reglages', 'Réglages', 'reglage')
       + '<button class="rail-l rail-r" data-act="railmini" aria-label="' + (mini ? 'Afficher les noms des pages' : 'Réduire en icônes') + '" title="' + (mini ? 'Afficher les noms' : 'Réduire en icônes') + '"><span class="rail-i">' + ico(mini ? 'suiv' : 'prec', 20, 2.4) + '</span><span class="rail-t">' + (mini ? 'Afficher les noms' : 'Réduire en icônes') + '</span></button></nav>';
   }
@@ -354,7 +354,7 @@
     if (!gestion() || !telephone() || ['hub', 'mconges', 'reglages'].indexOf(S.tab) < 0) return '';
     var cur = railPage(), ca = congesAttente().length + congesAnnul().length;
     var it = function (tab, n, ic, b) { return '<button data-tab="' + tab + '" class="' + (cur === tab ? 'on' : '') + '"' + (cur === tab ? ' aria-current="page"' : '') + '><span class="bi">' + ico(ic, 24) + (b ? '<span class="badge">' + b + '</span>' : '') + '</span><span>' + n + '</span></button>'; };
-    return '<nav class="bnav hb4" aria-label="Pages">' + it('hub', 'Accueil', 'maison', ca) + it('mconges', 'Mes congés', 'agenda') + it('accueil', 'Stock', 'boite', S.attente && S.attente.length) + it('reglages', 'Réglages', 'reglage') + '</nav>';
+    return '<nav class="bnav hb4" aria-label="Pages">' + it('hub', 'Accueil', 'maison', ca) + it('mconges', 'Mes congés', 'valise') + it('accueil', 'Stock', 'boite', S.attente && S.attente.length) + it('reglages', 'Réglages', 'reglage') + '</nav>';
   }
   function render() {
     JOUR_CACHE = {};
@@ -527,10 +527,12 @@
 
   // ---------- Icônes dessinées (les mêmes que la maquette) ----------
   var SVGI = {
-    rotatif: '<circle cx="5.5" cy="9" r="2.5"/><path d="M8 8h3l10 1.5v3L11 14H8.5M5.5 11.5V15M11 8l1-2.5"/>',
+    calendrier: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M7.5 14h.01M12 14h.01M16.5 14h.01M7.5 17.5h.01M12 17.5h.01" stroke-width="2.6"/>',
+    valise: '<rect x="5" y="7" width="14" height="12" rx="2"/><path d="M9.5 7V4.5h5V7M9.5 10.5v5M14.5 10.5v5M8 19v1.5M16 19v1.5"/>',
+    rotatif: '<rect x="2.5" y="5.5" width="5" height="5" rx="1.6"/><path d="M5 10.5V15M7.5 7.2L19.8 6a1.7 1.7 0 0 1 1.7 1.7v3.6a1.7 1.7 0 0 1-1.7 1.7L7.5 9.3M14 7.2v4.6"/>',
     camion: '<path d="M3 7h12v9H3zM15 10h4l2 3v3h-6z"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>',
     qr: '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path d="M14 14h2v2h-2zM18 14h2M14 18v2h2M18 18h2v2"/>',
-    fauteuil: '<path d="M5 11V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4"/><path d="M3 13a2 2 0 0 1 4 0v3h10v-3a2 2 0 0 1 4 0v5H3z"/><path d="M6 18v2M18 18v2"/>',
+    fauteuil: '<path d="M2.49 5.22L4.89 11.8A1.5 1.5 0 0 0 7.71 10.78L5.31 4.2A1.5 1.5 0 0 0 2.49 5.22zM8.5 14.5L14.5 14.5A1.5 1.5 0 0 0 14.5 11.5L8.5 11.5A1.5 1.5 0 0 0 8.5 14.5zM15.2 16.18L17.56 18.03A1.5 1.5 0 0 0 19.41 15.67L17.04 13.82A1.5 1.5 0 0 0 15.2 16.18zM11.5 14.5v4.5M8 20.5h7"/>',
     bas: '<path d="M6 9l6 6 6-6"/>',
     haut: '<path d="M6 15l6-6 6 6"/>',
     graph: '<path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/>',
@@ -630,15 +632,15 @@
     if (pt && !hl) { var obA = (S.mesOublis || []).filter(function (o) { return o.statut === 'attente'; }).length; pt += '<button class="ob-lien" data-tab="moubli">' + ico('attente', 18, 2.2) + 'J’ai oublié de pointer' + (obA ? ' <span>' + obA + ' en attente</span>' : '') + '</button>'; }
     if (!hl && droit('stock')) t.push(tuileA('mstock', 'ts', 'boite', 'Stock', 'Sortie, inventaire, retour', inventaireAFaire() ? 'Inventaire à faire ce mois-ci' : ''));
     if (!hl && droit('planning') && S.visible && S.visible.planning && S.moiEq) t.push(tuileA('mplanning', 'tp', 'histo', 'Mon planning', 'Mes jours, mon dentiste, mes horaires'));
-    if (!hl && (droit('conges') || refDe())) { var att = (S.mesConges || []).filter(function (c) { return c.statut === 'attente'; }).length; t.push(tuileA('mconges', 'tc2', 'agenda', 'Mes congés', att ? att + ' demande' + (att > 1 ? 's' : '') + ' en attente' : 'Demander, suivre la réponse')); }
+    if (!hl && (droit('conges') || refDe())) { var att = (S.mesConges || []).filter(function (c) { return c.statut === 'attente'; }).length; t.push(tuileA('mconges', 'tc2', 'valise', 'Mes congés', att ? att + ' demande' + (att > 1 ? 's' : '') + ' en attente' : 'Demander, suivre la réponse')); }
     if (!hl && refDe()) {
       var rn = refNom(), ratt = (S.conges || []).filter(function (c) { return c.statut === 'attente'; }).length;
       if (telephone()) {   // sur téléphone, comme pour la référente et la responsable : ces pages s'ouvrent sur ordinateur
-        var gp = []; if (refDroit('planning_voir')) gp.push(['agenda', 'Planning ' + esc(rn)]); if (refDroit('conges_voir')) gp.push(['agenda', 'Congés ' + esc(rn)]); if (refDroit('pointage')) gp.push(['qr', 'Pointage ' + esc(rn)]);
+        var gp = []; if (refDroit('planning_voir')) gp.push(['calendrier', 'Planning ' + esc(rn)]); if (refDroit('conges_voir')) gp.push(['valise', 'Congés ' + esc(rn)]); if (refDroit('pointage')) gp.push(['qr', 'Pointage ' + esc(rn)]);
         if (gp.length) var pcRef = '<div class="h-pc"><span class="h-pc-l">À ouvrir sur ordinateur</span><div class="h-pc-g">' + gp.map(function (x) { return '<span>' + ico(x[0], 20) + '<b>' + x[1] + '</b></span>'; }).join('') + '</div></div>';
       } else {
-        if (refDroit('planning_voir')) t.push(tuileA('rplanning', 'tp', 'agenda', 'Planning ' + esc(rn), 'Postes, horaires, qui ferme le soir'));
-        if (refDroit('conges_voir')) t.push(tuileA('rconges', 'tc2', 'agenda', 'Congés · ' + esc(rn), ratt ? ratt + ' ' + pl(ratt, 'demande') + ' en attente' : 'Absences du mois, soldes'));
+        if (refDroit('planning_voir')) t.push(tuileA('rplanning', 'tp', 'calendrier', 'Planning ' + esc(rn), 'Postes, horaires, qui ferme le soir'));
+        if (refDroit('conges_voir')) t.push(tuileA('rconges', 'tc2', 'valise', 'Congés · ' + esc(rn), ratt ? ratt + ' ' + pl(ratt, 'demande') + ' en attente' : 'Absences du mois, soldes'));
         if (refDroit('pointage')) t.push(tuileA('rpointage', 'tp', 'qr', 'Pointage · ' + esc(rn), 'Arrivées et sorties de la semaine'));
       }
     }
@@ -1085,7 +1087,7 @@
       + '<div class="a-corps"><div class="a-liste">'
       + '<button class="a-li" data-tab="aide"><span class="a-lii">' + ico('aide', 20) + '</span><span class="a-it-n"><b>Aide et visite guidée</b><span>' + GUIDES.length + ' fiches pas à pas</span></span></button>'
       + (droit('planning') && S.visible && S.visible.planning && S.moiEq ? '<button class="a-li" data-tab="mplanning"><span class="a-lii">' + ico('histo', 20) + '</span><span class="a-it-n"><b>Mon planning</b><span>mes jours, mon dentiste, mes horaires</span></span></button>' : '')
-      + (droit('conges') ? '<button class="a-li" data-tab="mconges"><span class="a-lii">' + ico('agenda', 20) + '</span><span class="a-it-n"><b>Mes congés</b><span>' + ((S.mesConges || []).filter(function (c) { return c.statut === 'attente'; }).length ? 'demande en attente' : 'demander, suivre la réponse') + '</span></span></button>' : '')
+      + (droit('conges') ? '<button class="a-li" data-tab="mconges"><span class="a-lii">' + ico('valise', 20) + '</span><span class="a-it-n"><b>Mes congés</b><span>' + ((S.mesConges || []).filter(function (c) { return c.statut === 'attente'; }).length ? 'demande en attente' : 'demander, suivre la réponse') + '</span></span></button>' : '')
       + '<button class="a-li" data-tab="compte"><span class="a-lii">' + ico('code', 20) + '</span><span class="a-it-n"><b>Changer mon code</b><span>6 chiffres</span></span></button>'
       + '<button class="a-li" data-essai="aide" data-gid="iphone"><span class="a-lii">' + ico('tel', 20) + '</span><span class="a-it-n"><b>Mettre l’appli sur mon téléphone</b><span>icône sur l’écran d’accueil</span></span></button></div>'
       + '<button class="a-btn navy a-moi-out" data-act="out">' + ico('changer', 22, 2.2) + 'Changer de personne</button>'
@@ -1217,14 +1219,14 @@
     h += '<div class="a-corps h-corps">' + vBienvenue() + (ptIci ? '<div class="h-pt">' + tuilePointer() + '</div>' : '')
       + '<div class="h-tuiles">'
       + '<button class="h-tuile fonce" data-tab="accueil"><span class="ti">' + ico('boite', 34) + '</span><span class="tt"><b>Gestion de stock</b><span>' + (sous.length ? sous.join(' · ') : 'Sorties, inventaires, commandes') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
-      + (telephone() ? '' : '<button class="h-tuile" data-tab="planning"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span>Qui travaille, avec quel dentiste, et les heures</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>' + tuilePointage())
-      + (telephone() ? '<button class="h-tuile cg" data-tab="mconges"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Mes congés</b><span>Demander, suivre mes demandes, mon solde</span></span>'
-        : '<button class="h-tuile cg" data-tab="pconges"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Congés</b><span' + (ca ? ' class="h-av-t"' : '') + '>' + (ca ? ca + ' ' + pl(ca, 'demande') + ' à valider' : 'Demandes, absences du mois, soldes') + '</span></span>')
+      + (telephone() ? '' : '<button class="h-tuile" data-tab="planning"><span class="ti">' + ico('calendrier', 34) + '</span><span class="tt"><b>Planning</b><span>Qui travaille, avec quel dentiste, et les heures</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>' + tuilePointage())
+      + (telephone() ? '<button class="h-tuile cg" data-tab="mconges"><span class="ti">' + ico('valise', 34) + '</span><span class="tt"><b>Mes congés</b><span>Demander, suivre mes demandes, mon solde</span></span>'
+        : '<button class="h-tuile cg" data-tab="pconges"><span class="ti">' + ico('valise', 34) + '</span><span class="tt"><b>Congés</b><span' + (ca ? ' class="h-av-t"' : '') + '>' + (ca ? ca + ' ' + pl(ca, 'demande') + ' à valider' : 'Demandes, absences du mois, soldes') + '</span></span>')
         + '<span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
       + (telephone() ? '' : tuileOccup()) + tuileInstr() + '</div>'
       + ((S.oublis || []).length ? '<button class="h-alerte" data-tab="pointage">' + ico('attente', 22) + '<span><b>' + S.oublis.length + ' ' + pl(S.oublis.length, 'oubli') + ' de pointage</b> ' + pl(S.oublis.length, 'signalé') + ' à valider</span>' + ico('suiv', 20, 2.2) + '</button>' : '')
       + (ca ? '<button class="h-alerte" data-tab="pconges">' + ico('attente', 22) + '<span><b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à traiter</span>' + ico('suiv', 20, 2.4) + '</button>' : '')
-      + (telephone() ? '<div class="h-pc"><span class="h-pc-l">À ouvrir sur ordinateur</span><div class="h-pc-g"><span>' + ico('agenda', 20) + '<b>Planning</b></span><span>' + ico('qr', 20) + '<b>Pointage</b></span><span>' + ico('fauteuil', 20) + '<b>Occupation des cabinets</b></span></div></div>' : '')
+      + (telephone() ? '<div class="h-pc"><span class="h-pc-l">À ouvrir sur ordinateur</span><div class="h-pc-g"><span>' + ico('calendrier', 20) + '<b>Planning</b></span><span>' + ico('qr', 20) + '<b>Pointage</b></span><span>' + ico('fauteuil', 20) + '<b>Occupation des cabinets</b></span></div></div>' : '')
       + '</div>';
     return h;
   }
@@ -1465,7 +1467,7 @@
       var li = function (t, fait, attr, mots) { return '<button class="rg-it rgc" ' + attr + ' data-rgi="' + esc((t + ' ' + fait + ' ' + (mots || '')).toLowerCase()) + '"><b>' + t + '</b><small>' + fait + '</small>' + ico('suiv', 16, 2.4) + '</button>'; };
       var bc = function (t, items, cl) { return '<section class="rg-bloc rgc' + (cl ? ' ' + cl : '') + '"><h2 class="rgc-t">' + t + '</h2>' + items.join('') + '</section>'; };
       h += '<div class="rgc-top"><label class="rg-cherche">' + ico('loupe', 18, 2) + '<input id="rgq" placeholder="Chercher un réglage" autocomplete="off"></label></div>';
-      if (ca || sv) h += '<div class="rgc-faire">' + (ca ? '<button class="rgc-a" data-tab="pconges">' + ico('agenda', 20) + '<b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à traiter' + ico('suiv', 16, 2.4) + '</button>' : '') + (sv ? '<button class="rgc-a" data-tab="plus">' + ico('telecharger', 20) + '<b>Sauvegarde du mois</b> à télécharger' + ico('suiv', 16, 2.4) + '</button>' : '') + '</div>';
+      if (ca || sv) h += '<div class="rgc-faire">' + (ca ? '<button class="rgc-a" data-tab="pconges">' + ico('valise', 20) + '<b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à traiter' + ico('suiv', 16, 2.4) + '</button>' : '') + (sv ? '<button class="rgc-a" data-tab="plus">' + ico('telecharger', 20) + '<b>Sauvegarde du mois</b> à télécharger' + ico('suiv', 16, 2.4) + '</button>' : '') + '</div>';
       h += '<div class="rg-grille rgc-g">'
         + bc('Équipe', [railOn() ? '' : li('L’équipe', planPret() ? n + ' ' + pl(n, 'personne') : '', 'data-act="rgeq"', 'fiches semaine type absences contrat'), railOn() ? '' : li('Les dentistes', planPret() ? nd + ' ' + pl(nd, 'dentiste') : '', 'data-act="rgde"', 'jours de présence départs anticipés'), li('Profils', profilsListe().filter(function (x) { return !x.retire; }).length + ' profils', 'data-tab="pprofils"', 'planning contrat ce que chacun voit référente')])
         + bc('Planning', [li('Postes', postes().filter(function (x) { return !x.retire; }).length + ' postes', 'data-tab="ppostes"', 'sté admin accueil plages horaires fixe variable couleur'), li('Règles des heures', 'congés, férié, reliquat', 'data-tab="pregles"', 'maladie école formation cp samedi')])
@@ -2004,7 +2006,7 @@
     toast('✔ Note enregistrée'); render();
   }
   // --- Journal : tout ce qui s'est passé pour la personne, le plus récent en haut
-  var FE_CAT = { pt: ['Pointage', 'qr'], pl: ['Planning', 'equipe'], cg: ['Congés et absences', 'agenda'], fi: ['Fiche', 'crayon'] };
+  var FE_CAT = { pt: ['Pointage', 'qr'], pl: ['Planning', 'calendrier'], cg: ['Congés et absences', 'valise'], fi: ['Fiche', 'crayon'] };
   function feEvenements(p, D) {
     var ev = [], add = function (ts, cat, t, s, al, jour) { if (!ts) return; var d = new Date(ts); if (isNaN(d)) return; ev.push({ ts: d.toISOString(), jour: jour || dIso(d), h: fMin(d.getHours() * 60 + d.getMinutes()), cat: cat, t: t, s: s || '', al: !!al }); };
     var par = function (id) { var n = feQui(id); return n ? ' · par ' + n : ''; };
@@ -2588,7 +2590,7 @@
     });
     ev.sort(function (a, b) { return a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0; });
     var depuis = addJ(dIso(new Date()), -E.jn), jf = ['tout', 'pl', 'cg'].indexOf(E.jf) >= 0 ? E.jf : 'tout', l = ev.filter(function (x) { return x.jour >= depuis && (jf === 'tout' || x.cat === jf); });
-    var FC = { pl: ['Planning', 'equipe'], cg: ['Congés et absences', 'agenda'] };
+    var FC = { pl: ['Planning', 'calendrier'], cg: ['Congés et absences', 'valise'] };
     var h = '<div class="fe-jb"><div class="fe-jf" role="group" aria-label="Filtrer le journal">' + [['tout', 'Tout'], ['pl', 'Planning'], ['cg', 'Congés et absences']].map(function (x) { return '<button data-fejf="' + x[0] + '" aria-pressed="' + (jf === x[0]) + '"' + (jf === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>'; }).join('') + '</div>'
       + '<label class="fe-jq">' + ico('loupe', 18, 2.2) + '<input type="search" data-fejq placeholder="Chercher…" aria-label="Chercher dans le journal" value="' + esc(E.jq || '') + '"></label></div>';
     if (D.plm === null) h += '<p class="mu fe-p">Les changements du planning ne sont pas disponibles.</p>';
@@ -2734,7 +2736,7 @@
   function telephone() { try { return Math.min(screen.width, screen.height) < 600; } catch (e) { return false; } }
   function vSurPC() {
     return '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" data-tab="hub">' + ico('prec', 22, 2.4) + 'Accueil</button><h1>Planning</h1><span class="hr-vide"></span></div></header>'
-      + '<div class="a-corps"><div class="card pc-msg">' + ico('agenda', 34) + '<b>À ouvrir sur ordinateur</b><p class="mu">Le planning et le tableau des heures se gèrent sur un écran de PC. Sur téléphone, vous pouvez gérer les congés et les réglages.</p><button class="btn" data-tab="hub">Retour à l’accueil</button></div></div>';
+      + '<div class="a-corps"><div class="card pc-msg">' + ico('calendrier', 34) + '<b>À ouvrir sur ordinateur</b><p class="mu">Le planning et le tableau des heures se gèrent sur un écran de PC. Sur téléphone, vous pouvez gérer les congés et les réglages.</p><button class="btn" data-tab="hub">Retour à l’accueil</button></div></div>';
   }
   function renderH() {
     S.coulCat = null;
