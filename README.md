@@ -27,6 +27,8 @@ appliqués dans l'éditeur SQL de Supabase : d'abord sur Evydent-Dev, puis sur E
 
 **Et `033_instruments.sql`** (instruments rotatifs : fiches par numéro de série, envois en réparation, garanties) — Evydent-Dev, puis Evydent-Prod avec la 2.4.10.
 
+**`034_codes_barres.sql`** (sortie par scan, fonction en essai) — **Evydent-Dev seulement** pour l’instant. Ne pas la passer sur Evydent-Prod tant que la sortie par scan n’est pas validée : sans elle, la fonction reste invisible sur le site réel, même après une mise en prod de l’appli.
+
 Tant que ce n'est pas fait, le site marche : la page Wi-Fi du centre affiche un message d'attente et « Occupation des cabinets » déduit le cabinet de celui de l'assistante.
 
 Dernière migration notée comme appliquée sur la prod : 027 (027_referent_profil.sql, version 2.4.1, 15/11/2026) — avant : passage-prod-007-026.sql (14/11/2026).

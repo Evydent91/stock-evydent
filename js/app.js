@@ -277,7 +277,7 @@
       S.recents = x[7];
       S.rang = {}; (x[9] || []).forEach(function (r) { var o = S.rang[r.article_id] = S.rang[r.article_id] || { t: 0, c: {} }; o.t += +r.total; o.c[r.cabinet] = +r.total; });
       S.afPrix = {}; (x[8] || []).forEach(function (p) { (S.afPrix[p.article_id] = S.afPrix[p.article_id] || []).push(p); });
-      S.loading = false; render();
+      S.loading = false; render(); chargerScan();
       if (gestion()) chargerPlan(); else chargerMesConges();
       if (S.tab === 'histo') chargerHisto();
     }).catch(function (e) { S.loading = false; toast(msgErr(e)); render(); });
@@ -528,6 +528,8 @@
   // ---------- Icônes dessinées (les mêmes que la maquette) ----------
   var SVGI = {
     calendrier: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M7.5 14h.01M12 14h.01M16.5 14h.01M7.5 17.5h.01M12 17.5h.01" stroke-width="2.6"/>',
+    scan: '<path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3M7 8v8M10 8v8M13 8v8M16.5 8v8"/>',
+    lampe: '<path d="M8 2h8l-1 6H9zM9 8v12a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V8M12 12v3"/>',
     panne: '<path d="M12 3.5L2.5 20h19z"/><path d="M12 10v4.5M12 17.5h.01"/>',
     valise: '<rect x="5" y="7" width="14" height="12" rx="2"/><path d="M9.5 7V4.5h5V7M9.5 10.5v5M14.5 10.5v5M8 19v1.5M16 19v1.5"/>',
     rotatif: '<rect x="2.5" y="5.5" width="5" height="5" rx="1.6"/><path d="M5 10.5V15M7.5 7.2L19.8 6a1.7 1.7 0 0 1 1.7 1.7v3.6a1.7 1.7 0 0 1-1.7 1.7L7.5 9.3M14 7.2v4.6"/>',
@@ -922,7 +924,7 @@
     var ids = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; });
     if (s.voir && ids.length) return vSortieVerifA(ids, hors);
     var tri = s.tri || 'usage', q = norm(s.q), max = s.max || 30, l;
-    var h = hdA({ back: ACC, t: 'Sortie', cab: cabA('scab', s.cab, '', 'Cabinet ou Sté', true), extra: chercheA('sq', s.q), fixe: true }) + '<div class="a-corps">';
+    var h = hdA({ back: ACC, t: 'Sortie', cab: cabA('scab', s.cab, '', 'Cabinet ou Sté', true), extra: (scanOn() ? '<button class="a-scan" data-act="scanner">' + ico('scan', 26, 2) + 'Scanner un code</button>' : '') + chercheA('sq', s.q), fixe: true }) + '<div class="a-corps">';
     if (!q) h += '<div class="a-chips">' + [['usage', 'Les plus sortis'], ['fav', 'Mes favoris'], ['az', 'A → Z']].map(function (c) { return '<button class="a-ch' + (tri === c[0] ? ' on' : '') + '" data-stri="' + c[0] + '">' + c[1] + '</button>'; }).join('') + '</div>';
     if (hors) h += '<p class="a-note warn">Ce n’est pas votre cabinet : la sortie sera notée « hors cabinet » (remplacement).</p>';
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
@@ -940,7 +942,7 @@
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
     h += '<div class="a-pour">' + ico('cabinet', 26) + '<span>Pour ' + pourTxt(s.cab) + (hors ? ' · <span class="warn-t">remplacement (hors cabinet)</span>' : S.me.cabinet && +s.cab === +S.me.cabinet ? ' (le mien)' : '') + '</span></div>';
     h += '<div class="a-liste">' + ids.map(function (k) { return S.byId[k]; }).filter(Boolean).map(function (a) { return ligneSortieA(a, s, true); }).join('') + '</div>';
-    return h + '<button class="a-ajout" data-act="svoir">+ Ajouter un article</button><p class="a-aide">Si la réserve n’en a pas assez, la quantité en trop part en demande à confirmer par la référente.</p></div>';
+    return h + '<button class="a-ajout" data-act="svoir">+ Ajouter un article</button>' + (scanOn() ? '<button class="a-ajout" data-act="scanner">' + ico('scan', 20, 2) + ' Scanner un autre code</button>' : '') + '<p class="a-aide">Si la réserve n’en a pas assez, la quantité en trop part en demande à confirmer par la référente.</p></div>';
   }
   function vSortieOkA() {
     var o = S.sortie.ok;
@@ -1111,7 +1113,7 @@
 
   // ---------- Accueil de la référente et de la responsable (2 tuiles), Réglages, Équipe, Dentistes ----------
   // Écrans de la maquette « Accueil référente et responsable ». Chaque écran a son en-tête bleu.
-  var HUB = ['instr', 'occup', 'ptest', 'pwifi', 'mconges', 'mdemande', 'ptransfert', 'hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
+  var HUB = ['pessai', 'instr', 'occup', 'ptest', 'pwifi', 'mconges', 'mdemande', 'ptransfert', 'hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
   var JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'], JC = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
   // Affectations possibles d'une demi-journée (en plus des dentistes)
   // Postes (modifiables dans Réglages › Postes) ; École et « Ne travaille pas » sont fixes
@@ -1372,7 +1374,7 @@
 
   // Réglages : tous les réglages de l'application, regroupés par outil
   // Réglages sur ordinateur : menu fixe à gauche, toujours visible, pour passer d'un réglage à l'autre en un clic
-  var RG_TABS = ['reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pregles', 'ppostes', 'pqui', 'pqr', 'pwifi', 'ptest', 'pprofils', 'ptypes', 'proles', 'pvisible', 'ptransfert'];
+  var RG_TABS = ['pessai', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pregles', 'ppostes', 'pqui', 'pqr', 'pwifi', 'ptest', 'pprofils', 'ptypes', 'proles', 'pvisible', 'ptransfert'];
   function navReglages() {
     var cur = S.tab === 'pfiche' ? 'pequipe' : S.tab === 'dfiche' ? 'pdent' : S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible' ? 'pprofils' : S.tab;
     var L = function (t, attr, tab) { return '<button class="rgn-l' + (tab && tab === cur ? ' on' : '') + '" ' + attr + (tab && tab === cur ? ' aria-current="page"' : '') + '>' + t + '</button>'; };
@@ -1389,7 +1391,7 @@
       + G('pl', 'Planning', [['Postes', 'data-tab="ppostes"', 'ppostes'], ['Règles des heures', 'data-tab="pregles"', 'pregles']])
       + G('pt', 'Pointage', [['QR code', 'data-act="rgqr"', 'pqr'], ['Wi-Fi du centre', 'data-tab="pwifi"', 'pwifi'], ['Qui pointe', 'data-tab="pqui"', 'pqui']].concat(CONFIG.env === 'dev' ? [['Module de test', 'data-tab="ptest"', 'ptest']] : []))
       + G('cg', 'Congés', [['Demandes et planning', 'data-tab="pconges"']])
-      + G('ap', 'Application', [['Transfert vers la prod', 'data-tab="ptransfert"', 'ptransfert']])
+      + G('ap', 'Application', [['Transfert vers la prod', 'data-tab="ptransfert"', 'ptransfert']].concat(S.me && S.me.role === 'referente' ? [['Fonctions en essai', 'data-tab="pessai"', 'pessai']] : []))
       + G('st', 'Gestion de stock', [['Comptes de connexion', 'data-tab="equipe"'], ['Articles', 'data-tab="articles"'], ['Fournisseurs', 'data-tab="fournisseurs"'], ['Sauvegarde et journal', 'data-tab="plus"'], ['Mon mot de passe', 'data-tab="compte"']], 'stk')
       + '</nav>';
   }
@@ -1474,7 +1476,7 @@
         + bc('Planning', [li('Postes', postes().filter(function (x) { return !x.retire; }).length + ' postes', 'data-tab="ppostes"', 'sté admin accueil plages horaires fixe variable couleur'), li('Règles des heures', 'congés, férié, reliquat', 'data-tab="pregles"', 'maladie école formation cp samedi')])
         + bc('Pointage', [li('QR code', 'afficher, imprimer', 'data-act="rgqr"', 'régénérer'), li('Wi-Fi du centre', S.wifi ? ({ off: 'désactivé', souple: 'souple', strict: 'strict' })[S.wifi.mode || 'off'] : 'contrôle du pointage', 'data-tab="pwifi"', 'wifi réseau box souple strict'), li('Calcul et alertes', 'retard ' + R.pt_tol + ' min', 'data-tab="pregles"', 'reliquat temps pointé départ'), li('Qui pointe', np + ' ' + pl(np, 'personne'), 'data-tab="pqui"', 'soumise compte')].concat(CONFIG.env === 'dev' ? [li('Module de test', 'site de test', 'data-tab="ptest"', 'essai simulation scénarios')] : []))
         + bc('Congés', [li('Demandes et planning', ca ? ca + ' à traiter' : 'congés du mois', 'data-tab="pconges"', 'valider soldes absences')])
-        + bc('Application', [li('Transfert vers la prod', 'test → site réel', 'data-tab="ptransfert"', 'exporter importer équipe dentistes réglages congés')])
+        + bc('Application', [li('Transfert vers la prod', 'test → site réel', 'data-tab="ptransfert"', 'exporter importer équipe dentistes réglages congés')].concat(S.me.role === 'referente' ? [li('Fonctions en essai', 'sortie par scan : ' + (scanOn() ? 'allumée' : 'éteinte'), 'data-tab="pessai"', 'scan code barre codes-barres douchette datamatrix lot')] : []))
         + bc('Gestion de stock', [li('Comptes de connexion', 'identifiants, codes', 'data-tab="equipe"', 'rôles cabinet par défaut'), li('Articles', 'seuils, lieux', 'data-tab="articles"', 'types de soins'), li('Fournisseurs', 'coordonnées', 'data-tab="fournisseurs"', 'comptes'), li('Sauvegarde et journal', sv ? 'à télécharger' : 'à jour', 'data-tab="plus"', 'versions données'), li('Mon mot de passe', 'changer', 'data-tab="compte"', '')], 'stk')
         + '</div><p class="rg-vide" hidden>Aucun réglage ne correspond.</p>';
       return h + '</div>';
@@ -1502,6 +1504,7 @@
       + bloc('A', 'b1', 'Application', 'Données et versions', [
         it('Sauvegarde et journal des versions', 'Télécharger les données, ce qui a changé', 'data-tab="plus"'),
         it('Transfert vers la prod', 'Exporter l’équipe, les dentistes, les réglages et les congés du site de test, puis les importer sur le site réel', 'data-tab="ptransfert"', true),
+        S.me.role === 'referente' ? it('Fonctions en essai', 'Sortie par scan : ' + (scanOn() ? 'allumée' : 'éteinte'), 'data-tab="pessai"') : '',
         it('Mon mot de passe', 'Changer mon mot de passe', 'data-tab="compte"')])
       + '</div><p class="rg-vide" hidden>Aucun réglage ne correspond.</p>';
     return h + '</div>';
@@ -2741,7 +2744,7 @@
   }
   function renderH() {
     S.coulCat = null;
-    var ecr = { mconges: function () { moiG(); return vMesCongesA(); }, mdemande: function () { moiG(); return vDemandeA(); }, hub: vHub, occup: vOccup, instr: vInstr, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pwifi: vPWifi, ptest: vPTest, pprofils: vPProfils, ptransfert: vPTransfert }[S.tab] || vHub;
+    var ecr = { mconges: function () { moiG(); return vMesCongesA(); }, mdemande: function () { moiG(); return vDemandeA(); }, hub: vHub, occup: vOccup, instr: vInstr, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pwifi: vPWifi, ptest: vPTest, pprofils: vPProfils, ptransfert: vPTransfert, pessai: vPEssai }[S.tab] || vHub;
     if ((S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || S.tab === 'occup') && telephone()) ecr = vSurPC;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
     h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr' || S.tab === 'pequipe') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'occup' || S.tab === 'instr' || S.tab === 'heures' || S.tab === 'pointage' || ((S.tab === 'pconges' || S.tab === 'ppostes' || S.tab === 'pregles' || S.tab === 'pprofils' || S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible') && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
@@ -3024,6 +3027,290 @@
     if (d.act === 'insremet' && x) { insStatut(x, 'service', '✔ Remis en service'); return true; }
     if (d.insdel) { var e = I.env.filter(function (y) { return String(y.id) === String(d.insdel); })[0]; if (!e) return true; fenetre({ titre: 'Supprimer cet envoi ?', texte: 'Envoi du ' + insDate(e.envoye_le) + (e.retour_le ? ' et son retour du ' + insDate(e.retour_le) : '') + ' : il disparaît de l’historique et la garantie est recalculée.', ok: 'Supprimer', danger: true }).then(function (o) { if (!o) return; sb.from('instrument_envois').delete().eq('id', e.id).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } I.env = I.env.filter(function (y) { return y !== e; }); if (x && !e.retour_le && x.statut === 'reparation') insStatut(x, 'service', '✔ Envoi supprimé'); else { toast('✔ Envoi supprimé'); render(); } }); }); return true; }
     if (d.act === 'insdelx' && x) { fenetre({ titre: 'Supprimer la fiche ?', texte: insTy(x.type).n + ' ' + x.sn + ' et tout son historique seront effacés. Pour un instrument cassé, préférez « Mettre au rebut ».', ok: 'Supprimer', danger: true }).then(function (o) { if (!o) return; sb.from('instruments').delete().eq('id', x.id).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } I.l = I.l.filter(function (y) { return y !== x; }); I.env = I.env.filter(function (y) { return String(y.instrument_id) !== String(x.id); }); I.sel = null; I.form = null; toast('✔ Fiche supprimée'); render(); }); }); return true; }
+    return false;
+  }
+  // ---------- Sortie par scan (fonction en essai, mise à jour 034) ----------
+  // Invisible pour tout le monde tant que la table des codes n'existe pas sur la base (034 non passée)
+  // ou que l'interrupteur « scan_actif » est éteint (Réglages › Fonctions en essai, référente seulement).
+  function chargerScan() {
+    return Promise.all([
+      sb.from('parametres').select('cle,valeur').in('cle', ['scan_actif', 'scan_qui', 'scan_lot']).then(function (r) { if (r.error) throw r.error; return r.data || []; }),
+      toutLire('article_codes', '*')
+    ]).then(function (r) {
+      var p = {}; r[0].forEach(function (x) { p[x.cle] = x.valeur; });
+      var av = S.scan;
+      S.scan = { actif: p.scan_actif === true, qui: p.scan_qui === 'gestion' ? 'gestion' : 'equipe', lot: p.scan_lot === true, codes: r[1] || [] };
+      if (!av || av.manque || av.actif !== S.scan.actif || av.codes.length !== S.scan.codes.length) render();
+    }).catch(function () { S.scan = { manque: true, actif: false, codes: [] }; });
+  }
+  function scanOn() { return !!(S.scan && !S.scan.manque && S.scan.actif); }
+  function scanPeutAssocier() { return gestion() || !!(S.scan && S.scan.qui === 'equipe'); }
+  function codeDe(code) { return ((S.scan && S.scan.codes) || []).filter(function (c) { return c.code === code; })[0] || null; }
+  function codeAff(c) { return /^0\d{13}$/.test(c) ? c.slice(1) : c; }
+  // Lecture d'un code : GS1 (DataMatrix des dispositifs médicaux : (01) code produit, (10) lot…), EAN/UPC, HIBC, ou texte libre.
+  // Les codes produit sont ramenés à 14 chiffres : la boîte est reconnue qu'on scanne son code-barres ou son DataMatrix.
+  function scanLire(raw) {
+    var s = String(raw || '').replace(/^\][A-Za-z]\d/, '').replace(/^[\u001dè]+/, '').replace(/[\r\n]+$/, '').trim(), out = { brut: String(raw || ''), code: null, lot: null };
+    if (!s) return out;
+    var GS = '\u001d', FIXE = { '00': 18, '01': 14, '02': 14, '11': 6, '12': 6, '13': 6, '15': 6, '16': 6, '17': 6, '20': 2 };
+    if (/^(01|02)\d{14}/.test(s) || /^\(01\)/.test(s)) {
+      if (/^\(/.test(s)) s = s.replace(/\)(?=[^(]*\()/g, ')').replace(/\((\d{2,4})\)/g, function (m, ai, i) { return (i ? GS : '') + ai; });   // forme lisible « (01)…(10)… »
+      var i = 0, garde = 0;
+      while (i < s.length && garde++ < 20) {
+        if (s[i] === GS) { i++; continue; }
+        var ai = s.substr(i, 2), n = 2, lg = FIXE[ai], v;
+        if (lg == null) {
+          if (/^3[1-6]/.test(ai)) { n = 4; lg = 6; } else if (/^41/.test(ai)) { n = 3; lg = 13; }
+          else if (/^(23|24|25|40|42)/.test(ai)) n = 3; else if (/^7/.test(ai)) n = 4;
+          else if (!/^(10|21|22|30|37|9\d)$/.test(ai)) break;
+        }
+        if (lg != null) { v = s.substr(i + n, lg); i += n + lg; }
+        else { var j = s.indexOf(GS, i + n); if (j < 0) j = s.length; v = s.slice(i + n, j); i = j; }
+        if (ai === '01' || ai === '02') out.code = out.code || v; else if (ai === '10') out.lot = v;
+      }
+      return out;
+    }
+    if (/^\d{8}$|^\d{12,14}$/.test(s)) { out.code = ('00000000000000' + s).slice(-14); return out; }
+    if (/^\+/.test(s)) { var p = s.split('/'); out.code = p[0].toUpperCase(); if (p[1] && /^\$\$?/.test(p[1])) out.lot = p[1].replace(/^\$+\d*/, '') || null; return out; }
+    out.code = s.toUpperCase().slice(0, 80); return out;
+  }
+  var SCS = null, SC_FORMATS = ['data_matrix', 'ean_13', 'ean_8', 'code_128', 'upc_a', 'upc_e', 'code_39', 'itf', 'qr_code'];
+  // Lecteur : celui du téléphone quand il sait lire les DataMatrix (Android), sinon une bibliothèque chargée au premier scan (iPhone, ordinateur)
+  function scDetecteur() {
+    var pony = function () { return new Function('u', 'return import(u)')('https://cdn.jsdelivr.net/npm/barcode-detector@3.2.3/dist/es/ponyfill.min.js').then(function (m) { return new m.BarcodeDetector({ formats: SC_FORMATS }); }); };
+    if ('BarcodeDetector' in window && window.BarcodeDetector.getSupportedFormats) {
+      return window.BarcodeDetector.getSupportedFormats().then(function (f) {
+        if (f.indexOf('data_matrix') < 0 || f.indexOf('ean_13') < 0) return pony();
+        return new window.BarcodeDetector({ formats: SC_FORMATS.filter(function (x) { return f.indexOf(x) >= 0; }) });
+      }).catch(pony);
+    }
+    return pony();
+  }
+  function fermerScanStock() {
+    if (!SCS) return;
+    SCS.fini = true; try { (SCS.flux && SCS.flux.getTracks() || []).forEach(function (t) { t.stop(); }); } catch (e) {}
+    if (SCS.el && SCS.el.parentNode) SCS.el.parentNode.removeChild(SCS.el);
+    document.removeEventListener('keydown', scsTouche, true);
+    document.body.classList.remove('scan-ouvert'); SCS = null;
+  }
+  function ouvrirScanStock(mode, artId) {
+    fermerScanStock();
+    var a = artId ? S.byId[artId] : null;
+    var el = document.createElement('div'); el.className = 'scs'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Scanner un code-barres');
+    el.innerHTML = '<div class="scs-cam"><video playsinline muted autoplay></video><span class="scs-cadre" aria-hidden="true"></span>'
+      + '<div class="scs-hd"><button class="scs-r" data-sc="x" aria-label="Fermer le scanner">' + ico('croix', 22, 2.4) + '</button><span class="scs-pour">' + (mode === 'sortie' ? 'Pour ' + pourTxt(S.sortie.cab) : 'Code pour « ' + esc(a ? a.nom : '') + ' »') + '</span>'
+      + '<button class="scs-r" data-sc="lampe" aria-label="Allumer la lampe" aria-pressed="false" hidden>' + ico('lampe', 22, 2) + '</button></div></div><section class="scs-f" aria-live="polite"></section>';
+    document.body.appendChild(el); document.body.classList.add('scan-ouvert');
+    var Z = SCS = { el: el, video: el.querySelector('video'), f: el.querySelector('.scs-f'), mode: mode, art: artId || null, etat: 'vise', pause: false, vus: [], dernier: null };
+    el.addEventListener('click', scsClic); el.addEventListener('input', scsSaisie); document.addEventListener('keydown', scsTouche, true);
+    scsRendre();
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { Z.camKo = 'Pas d’appareil photo utilisable ici : utilisez la douchette, ou tapez le code.'; el.classList.add('sans-cam'); scsRendre(); return; }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }).then(function (flux) {
+      if (Z.fini) { flux.getTracks().forEach(function (t) { t.stop(); }); return; }
+      Z.flux = flux; Z.video.srcObject = flux; var p0 = Z.video.play(); if (p0 && p0.catch) p0.catch(function () {});
+      try { var tr = flux.getVideoTracks()[0], cap = tr.getCapabilities ? tr.getCapabilities() : {}; if (cap.torch) { Z.piste = tr; el.querySelector('[data-sc="lampe"]').hidden = false; } } catch (e) {}
+      return scDetecteur().then(function (det) {
+        if (Z.fini) return; Z.det = det; var der = 0;
+        (function boucle(ts) {
+          if (Z.fini) return;
+          if (!Z.pause && !Z.occupe && ts - der > 200 && Z.video.readyState >= 2) {
+            der = ts; Z.occupe = true;
+            det.detect(Z.video).then(function (l) { Z.occupe = false; if (l && l[0] && l[0].rawValue) scsLu(l[0].rawValue); }).catch(function () { Z.occupe = false; });
+          }
+          requestAnimationFrame(boucle);
+        })(0);
+      }, function () { if (Z.fini) return; Z.camKo = 'Le lecteur de codes ne s’est pas chargé (pas de réseau ?) : utilisez la douchette, ou tapez le code.'; scsRendre(); });
+    }).catch(function (e) {
+      if (Z.fini) return;
+      var refus = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError');
+      Z.camKo = refus ? 'L’accès à l’appareil photo est refusé : autorisez-le dans les réglages du navigateur, ou tapez le code.' : 'Pas d’appareil photo utilisable ici : utilisez la douchette, ou tapez le code.';
+      el.classList.add('sans-cam'); scsRendre();
+    });
+  }
+  function scsNb() { return Object.keys(S.sortie.panier).filter(function (k) { return S.sortie.panier[k] > 0; }).length; }
+  function scsArtTxt(a) { return (enBoite(a) ? 'Boîte entière' : 'À l’unité') + ' · réserve ' + fr(dispoUnites(a)) + (enBoite(a) ? ' ' + pl(dispoUnites(a), 'boîte') : ''); }
+  function scsResultats() {
+    var Z = SCS, q = norm(Z.q || ''), cab = +S.sortie.cab || 0;
+    var l = q ? S.articles.filter(trouve(q)).sort(parUsage(cab)).slice(0, 8) : S.articles.filter(function (a) { return !cab || pourLieu(a, cab); }).sort(parUsage(cab)).slice(0, 6);
+    if (!l.length) return '<p class="scs-vide">Aucun article ne correspond.</p>';
+    return l.map(function (a) { var on = String(Z.choix) === String(a.id); return '<button type="button" class="scs-ch' + (on ? ' on' : '') + '" data-sc="choix" data-id="' + a.id + '" role="radio" aria-checked="' + on + '"><span class="scs-rd" aria-hidden="true"></span><span><b>' + esc(a.nom) + '</b><small>' + scsArtTxt(a) + '</small></span></button>'; }).join('');
+  }
+  function scsRendre() {
+    var Z = SCS; if (!Z) return;
+    var h = '', L = Z.lu || {}, codeB = L.code ? '<div class="scs-code"><span>Code <b>' + esc(codeAff(L.code)) + '</b></span>' + (L.lot ? '<span>lot ' + esc(L.lot) + '</span>' : '') + '</div>' : '';
+    if (Z.etat === 'ok') {
+      var a = S.byId[Z.a];
+      h = '<div class="scs-t"><span class="scs-ic ok" aria-hidden="true">' + ico('ok', 24, 2.6) + '</span><span><b>' + esc(a.nom) + '</b><small>' + scsArtTxt(a) + (L.lot && S.scan.lot ? ' · lot ' + esc(L.lot) : '') + '</small></span></div>'
+        + '<div class="scs-qte"><span>Combien ?' + '<small>' + (enBoite(a) ? 'en boîtes' : 'en unités') + '</small></span><span class="scs-st"><button type="button" data-sc="moins" aria-label="Moins un">−</button><input id="scs-qv" inputmode="decimal" value="' + fr(Z.qte) + '" aria-label="Quantité"><button type="button" data-sc="plus" aria-label="Plus un">+</button></span></div>'
+        + (Z.mode === 'sortie' ? '<button class="scs-b navy" data-sc="ajout">' + ico('scan', 22, 2) + 'Ajouter et scanner le suivant</button><button class="scs-b or" data-sc="ajoutfin">Ajouter et vérifier ma sortie · ' + (scsNb() + (S.sortie.panier[a.id] > 0 ? 0 : 1)) + ' ' + pl(scsNb() + (S.sortie.panier[a.id] > 0 ? 0 : 1), 'article') + '</button>' : '')
+        + '<button class="scs-lien" data-sc="reprendre">Ce n’est pas ça : scanner à nouveau</button>';
+    } else if (Z.etat === 'inconnu') {
+      var peut = scanPeutAssocier(), ch = Z.choix ? S.byId[Z.choix] : null;
+      h = '<div class="scs-t"><span class="scs-ic q" aria-hidden="true">?</span><span><b>Code pas encore connu</b><small>' + (peut ? 'C’est la première fois qu’on scanne cette boîte' : 'Choisissez l’article à la main : la référente reliera ce code plus tard') + '</small></span></div>' + codeB
+        + '<b class="scs-qq">C’est quel article ?</b><label class="scs-rech">' + ico('loupe', 20, 2.2) + '<input id="scs-q" value="' + esc(Z.q || '') + '" placeholder="Chercher l’article" autocomplete="off" aria-label="Chercher l’article"></label>'
+        + '<div class="scs-res" role="radiogroup" aria-label="Articles">' + scsResultats() + '</div>'
+        + '<button class="scs-b navy" data-sc="' + (peut ? 'associer' : 'sansassoc') + '"' + (ch ? '' : ' disabled') + '>' + (ch ? (peut ? 'Associer à « ' + esc(ch.nom) + ' » et ajouter' : 'Ajouter « ' + esc(ch.nom) + ' » à la sortie') : 'Choisissez l’article') + '</button>'
+        + (peut ? '<p class="scs-n">La prochaine fois, cette boîte sera reconnue tout de suite, pour toute l’équipe.</p>' : '')
+        + '<button class="scs-lien" data-sc="pastrouve">Je ne trouve pas l’article</button>';
+    } else if (Z.etat === 'deja') {
+      var b0 = S.byId[Z.autre], a0 = S.byId[Z.art];
+      h = '<div class="scs-t"><span class="scs-ic q" aria-hidden="true">!</span><span><b>Code déjà relié</b><small>à « ' + esc(b0 ? b0.nom : 'un autre article') + ' »</small></span></div>' + codeB
+        + '<button class="scs-b navy" data-sc="relier">Le relier plutôt à « ' + esc(a0 ? a0.nom : '') + ' »</button><button class="scs-lien" data-sc="reprendre">Annuler : scanner un autre code</button>';
+    } else {
+      var n = scsNb();
+      h = (Z.camKo ? '<p class="scs-ko">' + esc(Z.camKo) + '</p>' : '<p class="scs-m">' + (Z.mode === 'sortie' ? 'Visez le code-barres ou le petit carré de la boîte' : 'Visez le code de la boîte à relier à cet article') + '</p>')
+        + (Z.msg ? '<p class="scs-info">' + Z.msg + '</p>' : '')
+        + '<div class="scs-man"><input class="in" id="scs-code" autocomplete="off" placeholder="Taper le code, ou douchette" aria-label="Code-barres tapé ou lu à la douchette"><button class="btn" data-sc="tape">OK</button></div>'
+        + (Z.mode === 'sortie' && Z.vus.length ? '<p class="scs-vus">Scannés : ' + Z.vus.slice(-4).map(function (v) { var x = S.byId[v.a]; return esc(x ? x.nom : '?') + ' × ' + fr(v.q); }).join(' · ') + (Z.vus.length > 4 ? '…' : '') + '</p>' : '')
+        + (Z.mode === 'sortie' ? (n ? '<button class="scs-b or" data-sc="fin">Terminer : vérifier ma sortie · ' + n + ' ' + pl(n, 'article') + '</button>' : '<button class="scs-b gris" data-sc="x">Fermer</button>') : '<button class="scs-b gris" data-sc="x">Fermer</button>');
+    }
+    Z.f.innerHTML = h; Z.el.classList.toggle('fiche', Z.etat !== 'vise');
+    var foc = Z.etat === 'inconnu' ? null : Z.etat === 'vise' && (Z.camKo || !telephone()) ? Z.f.querySelector('#scs-code') : null;
+    if (foc) try { foc.focus(); } catch (e) {}
+  }
+  function scsLu(raw) {
+    var Z = SCS; if (!Z || Z.fini || Z.pause) return;
+    var L = scanLire(raw); if (!L.code) return;
+    var mt = Date.now(); if (Z.dernier && Z.dernier.code === L.code && mt - Z.dernier.t < 2500) return;
+    Z.dernier = { code: L.code, t: mt }; Z.lu = L; Z.msg = null; Z.q = ''; Z.choix = null;
+    if (navigator.vibrate) try { navigator.vibrate(50); } catch (e) {}
+    var c = codeDe(L.code);
+    if (Z.mode === 'associer') {
+      if (c && String(c.article_id) === String(Z.art)) { Z.msg = '« ' + esc(codeAff(L.code)) + ' » est déjà relié à cet article.'; scsRendre(); return; }
+      if (c && c.article_id) { Z.pause = true; Z.etat = 'deja'; Z.autre = c.article_id; scsRendre(); return; }
+      scEnregistrerCode(L.code, Z.art, 'scan', c).then(function (ok) { if (ok) { fermerScanStock(); toast('✔ Code ' + codeAff(L.code) + ' relié'); render(); } });
+      return;
+    }
+    Z.pause = true;
+    if (c && c.article_id && S.byId[c.article_id]) { Z.etat = 'ok'; Z.a = c.article_id; Z.qte = 1; }
+    else Z.etat = 'inconnu';
+    scsRendre();
+  }
+  // Relier un code à un article (ou le mettre de côté sans article) : la gestion directement, l'équipe « à vérifier »
+  function scEnregistrerCode(code, artId, source, existant) {
+    var g = gestion(), q;
+    if (existant && existant.id) {
+      if (!g) return Promise.resolve(true);
+      q = sb.from('article_codes').update({ article_id: artId, a_verifier: false, verifie_le: new Date().toISOString() }).eq('id', existant.id).select().single();
+    } else q = sb.from('article_codes').insert({ code: code, article_id: artId || null, source: source, a_verifier: !g }).select().single();
+    return q.then(function (r) {
+      if (r.error) { toast(/duplicate|unique|23505/i.test(String(r.error.message || r.error.code)) ? 'Ce code est déjà enregistré' : msgErr(r.error)); return false; }
+      if (!r.data.cree_le) r.data.cree_le = new Date().toISOString(); if (!r.data.cree_par_nom && S.me) r.data.cree_par_nom = S.me.nom;
+      var l = S.scan.codes; S.scan.codes = l.filter(function (x) { return x.id !== r.data.id; }).concat([r.data]); return true;
+    });
+  }
+  function scsAjouter(fin) {
+    var Z = SCS, a = S.byId[Z.a], v = nb(String(($('scs-qv') || {}).value || Z.qte).replace(',', '.'));
+    if (!(v > 0)) { toast('Quantité ?'); return; }
+    var s = S.sortie; s.panier[a.id] = nb((s.panier[a.id] || 0) + v);
+    if (Z.lu && Z.lu.lot) (s.lots = s.lots || {})[a.id] = Z.lu.lot;
+    Z.vus.push({ a: a.id, q: v }); s.msg = null;
+    if (fin) { fermerScanStock(); s.voir = true; S.tab = 'sortie'; render(); window.scrollTo(0, 0); return; }
+    Z.etat = 'vise'; Z.pause = false; Z.msg = '✔ ' + esc(a.nom) + ' × ' + fr(v) + ' ajouté'; render(); scsRendre();
+  }
+  function scsClic(e) {
+    e.stopPropagation();
+    var b = e.target.closest('[data-sc]'); if (!b || b.disabled) return;
+    var Z = SCS, k = b.dataset.sc; if (!Z) return;
+    if (k === 'x') { var n = scsNb(); fermerScanStock(); if (Z.mode === 'sortie' && n) { S.sortie.voir = false; render(); } return; }
+    if (k === 'lampe' && Z.piste) { var on = b.getAttribute('aria-pressed') !== 'true'; Z.piste.applyConstraints({ advanced: [{ torch: on }] }).then(function () { b.setAttribute('aria-pressed', on); b.classList.toggle('on', on); }).catch(function () {}); return; }
+    if (k === 'tape') { var inp = $('scs-code'); if (inp && inp.value.trim()) { Z.dernier = null; scsLu(inp.value); } return; }
+    if (k === 'fin') { fermerScanStock(); S.sortie.voir = true; S.tab = 'sortie'; render(); window.scrollTo(0, 0); return; }
+    if (k === 'reprendre') { Z.etat = 'vise'; Z.pause = false; Z.msg = null; scsRendre(); return; }
+    if (k === 'moins' || k === 'plus') { var iv = $('scs-qv'), cur = nb(String(iv.value).replace(',', '.')) || 0; cur = k === 'plus' ? cur + 1 : Math.max(1, cur - 1); Z.qte = cur; iv.value = fr(cur); return; }
+    if (k === 'ajout' || k === 'ajoutfin') { scsAjouter(k === 'ajoutfin'); return; }
+    if (k === 'choix') { Z.choix = b.dataset.id; var res = Z.f.querySelector('.scs-res'); if (res) res.innerHTML = scsResultats(); var bb = Z.f.querySelector('[data-sc="associer"],[data-sc="sansassoc"]'), ch = S.byId[Z.choix]; if (bb && ch) { bb.disabled = false; bb.textContent = bb.dataset.sc === 'associer' ? 'Associer à « ' + ch.nom + ' » et ajouter' : 'Ajouter « ' + ch.nom + ' » à la sortie'; } return; }
+    if (k === 'associer' && Z.choix) { b.disabled = true; scEnregistrerCode(Z.lu.code, +Z.choix, 'scan', codeDe(Z.lu.code)).then(function (ok) { if (!SCS) return; if (!ok) { b.disabled = false; return; } Z.etat = 'ok'; Z.a = +Z.choix; Z.qte = 1; scsRendre(); }); return; }
+    if (k === 'sansassoc' && Z.choix) { if (!codeDe(Z.lu.code)) scEnregistrerCode(Z.lu.code, null, 'scan', null); Z.etat = 'ok'; Z.a = +Z.choix; Z.qte = 1; scsRendre(); return; }
+    if (k === 'pastrouve') {
+      if (!gestion() && !codeDe(Z.lu.code)) scEnregistrerCode(Z.lu.code, null, 'scan', null);
+      Z.etat = 'vise'; Z.pause = false; Z.msg = gestion() ? 'Créez l’article (Articles), puis ajoutez ce code dans sa fiche.' : 'Code mis de côté : la référente le reliera au bon article.'; scsRendre(); return;
+    }
+    if (k === 'relier') { var c = codeDe(Z.lu.code); if (!gestion()) return; sb.from('article_codes').update({ article_id: Z.art, a_verifier: false, verifie_le: new Date().toISOString() }).eq('id', c.id).select().single().then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } Object.assign(c, r.data); fermerScanStock(); toast('✔ Code relié à cet article'); render(); }); return; }
+  }
+  function scsSaisie(e) { var Z = SCS; if (!Z) return; if (e.target.id === 'scs-q') { Z.q = e.target.value; var res = Z.f.querySelector('.scs-res'); if (res) res.innerHTML = scsResultats(); } else if (e.target.id === 'scs-qv') Z.qte = nb(String(e.target.value).replace(',', '.')) || 1; }
+  function scsTouche(e) {
+    if (!SCS) return;
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fermerScanStock(); render(); return; }
+    if (e.key === 'Enter' && e.target && e.target.id === 'scs-code') { e.preventDefault(); e.stopPropagation(); if (e.target.value.trim()) { SCS.dernier = null; scsLu(e.target.value); } return; }
+    if (e.key === 'Enter' && e.target && e.target.id === 'scs-qv') { e.preventDefault(); e.stopPropagation(); if (SCS.mode === 'sortie') scsAjouter(false); }
+  }
+  // Fiche article : les codes de l'article
+  function carteCodes(a) {
+    var l = S.scan.codes.filter(function (c) { return String(c.article_id) === String(a.id); }).sort(function (x, y) { return x.cree_le < y.cree_le ? -1 : 1; });
+    return '<div class="card fx-c sc-carte"><h3 class="fx-h">Codes-barres' + (l.length ? ' · ' + l.length : '') + ' <span class="pill sc-essai">En essai</span></h3>'
+      + (l.length ? l.map(function (c) {
+        return '<div class="sc-l"><span class="grow"><b>' + esc(codeAff(c.code)) + '</b><small>' + (c.source === 'main' ? 'Ajouté à la main' : 'Associé au scan') + ' le ' + dateCourte(c.cree_le) + (c.cree_par_nom ? ' par ' + esc(c.cree_par_nom) : '') + '</small></span>'
+          + (c.a_verifier ? '<button class="btn sm sc-av" data-scok="' + c.id + '">À vérifier · C’est bon</button>' : '')
+          + '<button class="h-rond gris" data-scdel="' + c.id + '" aria-label="Retirer ce code" title="Retirer ce code">' + ico('poubelle', 16, 2.2) + '</button></div>';
+      }).join('') : '<p class="mu">Aucun code pour l’instant : il sera ajouté au premier scan, ou ici.</p>')
+      + '<div class="sc-add"><label for="scadd">Ajouter un code-barres</label><div class="row"><input class="in grow" id="scadd" autocomplete="off" placeholder="Scannez avec la douchette, ou tapez le code"><button class="btn" data-act="scadd">Ajouter</button>'
+      + '<button class="btn l" data-act="scanart" title="Scanner avec l’appareil photo">' + ico('scan', 18, 2.2) + (telephone() ? 'Scanner' : '') + '</button></div><small class="mu">Un code ne peut appartenir qu’à un seul article.</small></div></div>';
+  }
+  function scAjouterMain() {
+    var F = S.fiche, a = F && F.d, inp = $('scadd'); if (!a || !inp) return;
+    var L = scanLire(inp.value); if (!L.code) { toast('Tapez ou scannez un code'); return; }
+    var c = codeDe(L.code);
+    if (c && String(c.article_id) === String(a.id)) { toast('Ce code est déjà relié à cet article'); inp.value = ''; return; }
+    var go = function () { scEnregistrerCode(L.code, a.id, 'main', c).then(function (ok) { if (ok) { toast('✔ Code ' + codeAff(L.code) + ' ajouté'); render(); var i2 = $('scadd'); if (i2) i2.focus(); } }); };
+    if (c && c.article_id) { var b = S.byId[c.article_id]; fenetre({ titre: 'Code déjà relié', texte: 'Ce code est relié à « ' + (b ? b.nom : 'un autre article') + ' ». Le relier plutôt à « ' + a.nom + ' » ?', ok: 'Le relier ici' }).then(function (o) { if (o) go(); }); return; }
+    go();
+  }
+  function scValider(id) {
+    var c = S.scan.codes.filter(function (x) { return String(x.id) === String(id); })[0]; if (!c) return;
+    sb.from('article_codes').update({ a_verifier: false, verifie_le: new Date().toISOString() }).eq('id', c.id).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } c.a_verifier = false; toast('✔ Vérifié'); render(); });
+  }
+  function scRetirer(id) {
+    var c = S.scan.codes.filter(function (x) { return String(x.id) === String(id); })[0]; if (!c) return;
+    var a = S.byId[c.article_id];
+    fenetre({ titre: 'Retirer ce code ?', texte: codeAff(c.code) + (a ? ' ne sera plus reconnu comme « ' + a.nom + ' ». ' : ' sera oublié. ') + 'Au prochain scan, l’appli redemandera l’article.', ok: 'Retirer', danger: true }).then(function (o) {
+      if (!o) return; sb.from('article_codes').delete().eq('id', c.id).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } S.scan.codes = S.scan.codes.filter(function (x) { return x !== c; }); toast('✔ Code retiré'); render(); });
+    });
+  }
+  // Réglages › Fonctions en essai (référente)
+  function vPEssai() {
+    var h = hdA({ back: ['data-tab="reglages"', 'Réglages'], t: 'Fonctions en essai', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps es-corps">';
+    if (!S.me || S.me.role !== 'referente') return h + '<p class="a-vide">Réservé à la référente.</p></div>';
+    var Z = S.scan, prod = CONFIG.env !== 'dev';
+    if (!Z) { chargerScan(); return h + '<p class="a-vide">Chargement…</p></div>'; }
+    var opt = function (attr, v, cur, t, d) { var on = v === cur; return '<button type="button" class="es-o' + (on ? ' on' : '') + '" ' + attr + '="' + v + '" role="radio" aria-checked="' + on + '"><span class="es-rd" aria-hidden="true"></span><span><b>' + t + '</b><small>' + d + '</small></span></button>'; };
+    h += '<p class="es-intro">Des fonctions qu’on peut essayer avant de les ouvrir à toute l’équipe. Chaque base a ses propres interrupteurs : allumer ici ne change rien sur ' + (prod ? 'le site de test' : 'le site réel') + '.</p>';
+    h += '<section class="card es-c"><div class="es-hd"><span class="es-ti"><b>Sortie par scan</b><small>Bouton « Scanner un code » dans Sortie, et codes-barres dans les fiches articles. Éteinte : rien n’apparaît, pour personne.</small></span>'
+      + '<span class="pill ' + (prod ? 'warn' : 'info') + '">Base : ' + (prod ? 'Prod (réelle)' : 'Dev (test)') + '</span>'
+      + '<button type="button" class="es-sw' + (Z.actif ? ' on' : '') + '" role="switch" aria-checked="' + !!Z.actif + '" data-act="scactif"' + (Z.manque ? ' disabled' : '') + '><span aria-hidden="true"></span>' + (Z.actif ? 'Allumée' : 'Éteinte') + '</button></div>';
+    if (Z.manque) return h + '<div class="ban warn">Mise à jour <b>034</b> à faire sur cette base : tant qu’elle n’est pas passée, la sortie par scan reste invisible pour tout le monde et ne peut pas être allumée.</div></section></div>';
+    h += '<div class="es-g"><fieldset class="es-f"><legend>Qui peut associer un code inconnu ?</legend>'
+      + opt('data-scqui', 'equipe', Z.qui, 'Toute l’équipe', 'Plus rapide. Les nouvelles associations arrivent ci-dessous « à vérifier ».')
+      + opt('data-scqui', 'gestion', Z.qui, 'Seulement la référente et la responsable', 'Les autres choisissent l’article à la main ; le code est mis de côté ci-dessous.') + '</fieldset>'
+      + '<fieldset class="es-f"><legend>Garder le n° de lot à chaque sortie ?</legend>'
+      + opt('data-sclot', '1', Z.lot ? '1' : '0', 'Oui', 'Le lot lu est noté dans le mouvement : utile en cas de rappel de lot.')
+      + opt('data-sclot', '0', Z.lot ? '1' : '0', 'Non', 'Le code sert seulement à reconnaître l’article.') + '</fieldset></div></section>';
+    var av = Z.codes.filter(function (c) { return c.article_id && c.a_verifier; }), att = Z.codes.filter(function (c) { return !c.article_id; });
+    h += '<section class="card es-c"><h3 class="fx-h">Associations à vérifier' + (av.length ? ' · ' + av.length : '') + '</h3>' + (av.length ? av.map(function (c) { var a = S.byId[c.article_id]; return '<div class="sc-l"><span class="grow"><b>' + esc(a ? a.nom : 'Article supprimé') + '</b><small>Code ' + esc(codeAff(c.code)) + ' · associé au scan le ' + dateCourte(c.cree_le) + (c.cree_par_nom ? ' par ' + esc(c.cree_par_nom) : '') + '</small></span><button class="btn sm" data-scok="' + c.id + '">C’est bon</button><button class="btn l sm" data-scdel="' + c.id + '">Retirer</button></div>'; }).join('') : '<p class="mu">Rien à vérifier.</p>') + '</section>';
+    if (att.length || Z.qui === 'gestion') {
+      var opts = '<option value="">Choisir l’article…</option>' + S.articles.slice().sort(function (x, y) { return x.nom.localeCompare(y.nom, 'fr'); }).map(function (a) { return '<option value="' + a.id + '">' + esc(a.nom) + '</option>'; }).join('');
+      h += '<section class="card es-c"><h3 class="fx-h">Codes en attente d’un article' + (att.length ? ' · ' + att.length : '') + '</h3>' + (att.length ? att.map(function (c) { return '<div class="sc-l"><span class="grow"><b>' + esc(codeAff(c.code)) + '</b><small>scanné le ' + dateCourte(c.cree_le) + (c.cree_par_nom ? ' par ' + esc(c.cree_par_nom) : '') + '</small></span><select class="in es-sel" id="scr-' + c.id + '" aria-label="Article pour le code ' + esc(codeAff(c.code)) + '">' + opts + '</select><button class="btn sm" data-screl="' + c.id + '">Relier</button><button class="btn l sm" data-scdel="' + c.id + '">Oublier</button></div>'; }).join('') : '<p class="mu">Aucun code en attente.</p>') + '</section>';
+    }
+    return h + '</div>';
+  }
+  function scParam(cle, val, apres) {
+    return sb.from('parametres').upsert({ cle: cle, valeur: val, modifie_le: new Date().toISOString() }, { onConflict: 'cle' }).then(function (r) { if (r.error) throw r.error; if (apres) apres(); render(); }).catch(function (e) { toast(msgErr(e)); });
+  }
+  function scAction(d) {
+    if (d.act === 'scanner') { if (scanOn()) ouvrirScanStock('sortie'); return true; }
+    if (d.act === 'scanart') { if (scanOn() && S.fiche && S.fiche.d) ouvrirScanStock('associer', S.fiche.d.id); return true; }
+    if (d.act === 'scadd') { scAjouterMain(); return true; }
+    if (d.scok) { scValider(d.scok); return true; }
+    if (d.scdel) { scRetirer(d.scdel); return true; }
+    if (d.screl) { var sel = $('scr-' + d.screl), c = S.scan.codes.filter(function (x) { return String(x.id) === String(d.screl); })[0]; if (!sel || !sel.value) { toast('Choisissez l’article'); return true; } scEnregistrerCode(c.code, +sel.value, c.source, c).then(function (ok) { if (ok) { toast('✔ Code relié'); render(); } }); return true; }
+    if (d.act === 'scactif') {
+      var Z = S.scan; if (!Z || Z.manque) return true;
+      var on = !Z.actif, go = function () { scParam('scan_actif', on, function () { Z.actif = on; toast(on ? '✔ Sortie par scan allumée' : 'Sortie par scan éteinte'); }); };
+      if (on && CONFIG.env !== 'dev') fenetre({ titre: 'Allumer sur le site réel ?', texte: 'Toute l’équipe verra le bouton « Scanner un code » dans Sortie.', ok: 'Allumer' }).then(function (o) { if (o) go(); }); else go();
+      return true;
+    }
+    if (d.scqui) { scParam('scan_qui', d.scqui, function () { S.scan.qui = d.scqui; }); return true; }
+    if (d.sclot) { scParam('scan_lot', d.sclot === '1', function () { S.scan.lot = d.sclot === '1'; }); return true; }
     return false;
   }
   function tuileOccup() {
@@ -5666,6 +5953,7 @@
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
     h += '<p class="st-lab">Pour quel emplacement ?</p>' + tuilesCab([1, 2, 3, 4, 5, 6, 7, 8, 9], s.cab, 'scab', 'Cabinet')
       + (hors ? '<p class="ban warn">Ce n’est pas votre cabinet : la sortie sera enregistrée « hors cabinet » (remplacement).</p>' : '')
+      + (scanOn() ? '<button class="btn st-scan" data-act="scanner">' + ico('scan', 22, 2) + 'Scanner un code</button>' : '')
       + '<div class="st-f">' + barreRech('sq', s.q, 'Rechercher un article') + '</div>';
     var q = norm(s.q), ids = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; }), tri = parUsage(+s.cab);
     if (q) {
@@ -5684,7 +5972,7 @@
     if (s.msg) h += '<div class="ban ' + s.msg[0] + '" role="status">' + s.msg[1] + '</div>';
     h += '<div class="card pour">' + ico('cabinet', 24) + '<span>Pour ' + pourTxt(s.cab) + (hors ? ' <span class="pill warn">hors cabinet · remplacement</span>' : S.me.cabinet && +s.cab === +S.me.cabinet ? ' (le mien)' : '') + '</span></div>';
     h += '<div class="card liste">' + ids.map(function (k) { return S.byId[k]; }).filter(Boolean).map(function (a) { return ligneSortie(a, s); }).join('') + '</div>';
-    h += '<button class="btn l ajout" data-act="svoir">+ Ajouter un article</button>';
+    h += '<button class="btn l ajout" data-act="svoir">+ Ajouter un article</button>' + (scanOn() ? '<button class="btn l ajout" data-act="scanner">' + ico('scan', 18, 2) + ' Scanner un autre code</button>' : '');
     if (ids.some(function (k) { var a = S.byId[k]; return a && s.panier[k] > dispoUnites(a); })) h += '<p class="ban warn">Certaines quantités dépassent la réserve : la partie en trop partira en demande à confirmer par la référente.</p>';
     return h + '<button class="lnk annul" data-act="vider">Annuler et vider</button>';
   }
@@ -5752,7 +6040,7 @@
 
   function setQte(id, v) { v = Math.max(0, nb(String(v).replace(',', '.'))); if (v) S.sortie.panier[id] = v; else delete S.sortie.panier[id]; }
   function validerSortie() {
-    var s = S.sortie, lignes = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; }).map(function (k) { return { article_id: +k, quantite: s.panier[k] }; });
+    var s = S.sortie, lignes = Object.keys(s.panier).filter(function (k) { return s.panier[k] > 0; }).map(function (k) { var o = { article_id: +k, quantite: s.panier[k] }; if (s.lots && s.lots[k] && scanOn() && S.scan.lot) o.lot_fab = s.lots[k]; return o; });
     if (!lignes.length || s.busy) return;
     s.busy = true; render();
     sb.rpc('faire_sortie', { p_cabinet: +s.cab, p_lignes: lignes }).then(function (r) {
@@ -5764,7 +6052,7 @@
       if (d.hors_cabinet) m.push('Enregistré « hors cabinet ».');
       var resume = lignes.slice(0, 4).map(function (l) { var a = S.byId[l.article_id]; return esc(a ? a.nom : '?') + ' × ' + fr(l.quantite); }).join(' · ') + (lignes.length > 4 ? '…' : '');
       s.ok = { sorties: d.sorties || 0, attente: d.en_attente || 0, hors: d.hors_cabinet, cab: s.cab, resume: resume };
-      s.msg = null; s.panier = {}; s.q = ''; s.voir = false; s.max = 30;
+      s.msg = null; s.panier = {}; s.lots = {}; s.q = ''; s.voir = false; s.max = 30;
       window.scrollTo(0, 0); charger();
       if (!gestion()) { var t0 = s.ok; setTimeout(function () { if (S.sortie.ok === t0 && S.tab === 'sortie') { S.sortie.ok = null; S.tab = 'mstock'; render(); } }, 6000); }
     });
@@ -6157,12 +6445,13 @@
     var cms = S.commandes.filter(function (c) { return (S.lignes[c.id] || []).some(function (l) { return l.article_id === a.id; }); }), cEnc = cms.filter(function (c) { return c.statut === 'attente' || c.statut === 'partielle'; }), cAut = cms.filter(function (c) { return cEnc.indexOf(c) < 0; }).slice(0, 3);
     var lc = function (c) { var l = (S.lignes[c.id] || []).filter(function (x) { return x.article_id === a.id; }), q = l.reduce(function (t, x) { return t + +x.quantite; }, 0), rc = l.reduce(function (t, x) { return t + +x.recu; }, 0), st = CST[c.statut] || ['', c.statut], ouv = c.statut === 'attente' || c.statut === 'partielle';
       return '<div class="it"><div class="it-n"><b><button class="lk2" data-voir="c:' + c.id + '">' + esc(S.fournisseurs[c.fournisseur_id] || 'Fournisseur supprimé') + ' · ' + c.date_commande.split('-').reverse().join('/') + (c.numero ? ' · n° ' + esc(c.numero) : '') + '</button></b><span>' + (ouv ? 'commandé ' + fr(q) + ' · reçu ' + fr(rc) + ' · <span style="font-weight:700;color:var(--ink2)">attendu ' + fr(Math.max(0, q - rc)) + '</span>' : 'commandé ' + fr(q) + ' · reçu ' + fr(rc)) + '</span></div><span class="pill ' + st[0] + '">' + st[1] + '</span></div>'; };
+    if (scanOn()) h += carteCodes(a);
     h += '<div class="card fx-c"><h3 class="fx-h">Commandes' + (cEnc.length ? ' <span class="mu">· ' + cEnc.length + ' en cours</span>' : '') + '</h3>' + (cms.length ? cEnc.map(lc).join('') + cAut.map(lc).join('') : '<p class="mu">Cet article n’apparaît dans aucune commande.</p>') + '</div>';
     // derniers mouvements de cet article
     var mv = F.mv, mvL = mv ? (F.mvTout ? mv : mv.slice(0, 8)) : [];
     h += '<div class="card fx-c"><h3 class="fx-h">Derniers mouvements</h3>' + (!mv ? '<p class="mu">Chargement…</p>' : !mv.length ? '<p class="mu">Aucun mouvement enregistré pour cet article.</p>' : mvL.map(function (m) {
       var st = STAT[m.statut] || ['', m.statut], lieu = m.type === 'retour' ? cabTxt(m.emplacement_de) + ' → réserve' : m.type === 'sortie' || m.type === 'demande' ? '→ ' + cabTxt(m.emplacement_vers) : m.emplacement_de != null ? cabTxt(m.emplacement_de) : '';
-      return '<div class="it"><div class="it-n"><b>' + (TYP[m.type] || m.type) + (lieu ? ' ' + lieu : '') + (MV_EC.indexOf(m.type) >= 0 ? ' · écart ' : ' × ') + qteMvTxt(m, a) + '</b><span>' + quand(m.cree_le) + ' · ' + esc(m.auteur_nom || '') + (m.commande_id && cmdDe(m.commande_id) ? ' · <button class="lk2" data-voir="c:' + m.commande_id + '">voir la commande</button>' : '') + '</span></div>' + (m.statut !== 'ok' ? '<span class="pill ' + st[0] + '">' + st[1] + '</span>' : '') + (m.hors_cabinet ? '<span class="pill warn">hors cabinet</span>' : '') + '</div>';
+      return '<div class="it"><div class="it-n"><b>' + (TYP[m.type] || m.type) + (lieu ? ' ' + lieu : '') + (MV_EC.indexOf(m.type) >= 0 ? ' · écart ' : ' × ') + qteMvTxt(m, a) + '</b><span>' + quand(m.cree_le) + ' · ' + esc(m.auteur_nom || '') + (m.lot_fab ? ' · lot ' + esc(m.lot_fab) : '') + (m.commande_id && cmdDe(m.commande_id) ? ' · <button class="lk2" data-voir="c:' + m.commande_id + '">voir la commande</button>' : '') + '</span></div>' + (m.statut !== 'ok' ? '<span class="pill ' + st[0] + '">' + st[1] + '</span>' : '') + (m.hors_cabinet ? '<span class="pill warn">hors cabinet</span>' : '') + '</div>';
     }).join('') + (!F.mvTout && mv.length > 8 ? '<div style="margin-top:8px"><button class="lnk" data-act="mvplus">Afficher les ' + mv.length + ' derniers</button></div>' : '')) + '</div>';
     h += '<div class="card fx-c"><h3 class="fx-h">Fournisseurs et prix</h3>' + (F.fo.length ? F.fo.map(function (x) { return '<div class="it"><div class="it-n"><b>' + (x.rang === 0 ? '★ ' : '') + lF(x.fournisseur_id, '?') + '</b><span>' + (x.reference ? 'réf. ' + esc(x.reference) + ' · ' : '') + eur(x.prix) + '</span></div></div>'; }).join('') : '<p class="mu">Aucun fournisseur (SF).</p>') + '</div>';
     h += '<div class="card fx-c"><h3 class="fx-h">Historique des prix</h3>' + (F.hist.length ? '<div class="scroll"><table class="tbl tbl-p"><tbody>' + F.hist.map(function (p) { return '<tr><td>' + p.date_prix.split('-').reverse().join('/') + '</td><td>' + esc(S.fournisseurs[p.fournisseur_id] || '') + '</td><td class="n">' + eur(p.prix) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="mu">Aucun prix enregistré.</p>') + '</div></div></div>';
@@ -8039,7 +8328,7 @@
     if (d.act === 'rvider') { S.ret.panier = {}; render(); return; }
     if (d.rplus) { setRet(d.rplus, (S.ret.panier[d.rplus] || 0) + 1); S.ret.msg = null; render(); return; }
     if (d.rmoins) { setRet(d.rmoins, (S.ret.panier[d.rmoins] || 0) - 1); render(); return; }
-    if (d.act === 'vider') { S.sortie.panier = {}; S.sortie.voir = false; render(); return; }
+    if (d.act === 'vider') { S.sortie.panier = {}; S.sortie.lots = {}; S.sortie.voir = false; render(); return; }
     if (d.plus) { setQte(d.plus, (S.sortie.panier[d.plus] || 0) + 1); S.sortie.msg = null; render(); return; }
     if (d.moins) { setQte(d.moins, (S.sortie.panier[d.moins] || 0) - 1); render(); return; }
     if (d.foarch != null) { S.foArch = d.foarch === '1'; render(); return; }
@@ -8121,6 +8410,7 @@
     if (d.act === 'rgeq' || d.act === 'rgde') { var dfi = d.act === 'rgde' ? S.df : S.pf; if (dfi && (S.tab === 'pfiche' || S.tab === 'dfiche') && dfi.o && dfi.o !== JSON.stringify(dfi.d)) { fenetre({ titre: 'Changements non enregistrés', texte: 'La fiche ouverte a été modifiée sans être enregistrée.\n\nSi vous changez de page maintenant, ces changements seront perdus.', ok: 'Changer sans enregistrer', non: 'Rester sur la fiche' }).then(function (v) { if (v) ouvrirDepuisMenu(d.act === 'rgde'); }); return; } return ouvrirDepuisMenu(d.act === 'rgde'); }
     if (feAction(d)) return;
     if (S.tab === 'instr' && insAction(d)) return;
+    if ((d.act && d.act.indexOf('sc') === 0) || d.scok || d.scdel || d.screl || d.scqui || d.sclot) { if (scAction(d)) return; }
     if (d.rglp) return changerFiche('p', d.rglp);
     if (d.rgld) return changerFiche('d', d.rgld);
     if (d.rglnew) return changerFiche(d.rglnew, 'new');
@@ -8285,6 +8575,7 @@
     if (d.act === 'eqnewok') return creerCompte();
     if (d.act === 'cmok') return changerMonMdp();
   });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target && e.target.id === 'scadd') { e.preventDefault(); scAjouterMain(); } });
   document.addEventListener('input', function (e) {
     if (e.target.dataset && e.target.dataset.rglq != null) { var q = norm(e.target.value.trim()); [].forEach.call(document.querySelectorAll('.rgl-l'), function (b) { b.hidden = (!!q && b.dataset.rgln.indexOf(q) < 0) || b.dataset.ff === '0'; }); return; }
     if (e.target.dataset && e.target.dataset.insq != null) { var I0 = insEtat(); if (e.target.dataset.insq === 'tout') I0.q = e.target.value; else I0.qc[e.target.dataset.insq] = e.target.value; insFiltrer(); return; }
