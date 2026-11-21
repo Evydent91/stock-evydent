@@ -76,9 +76,10 @@
       ligne: function (c) {
         // ref | désignation | [index] | qté commandée | qté livrée | prix réf | [remise] | prix net TTC | total TTC | TVA
         if (c.length < 6 || !estTva(c[c.length - 1])) return null;
-        var n = c.length, q = c.slice(2).filter(estNb);
+        var n = c.length, q = c.slice(2).filter(estNb), k = 2;
         if (q.length < 4) return null;
-        return { nom: c[1], qte: num(q[1]), prix: num(c[n - 3]), total: num(c[n - 2]) };
+        while (k < n && !estNb(c[k])) k++;   // désignation coupée en plusieurs cellules (marque, réf. fabricant) : on la recolle
+        return { nom: c.slice(1, k).join(' '), qte: num(q[1]), prix: num(c[n - 3]), total: num(c[n - 2]) };
       },
       suite: false
     }
