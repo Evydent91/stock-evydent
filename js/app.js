@@ -327,7 +327,7 @@
   function railPage() {
     var t = S.tab;
     if (t === 'hub') return 'hub';
-    if (['planning', 'heures', 'pointage', 'pconges', 'occup'].indexOf(t) >= 0) return t;
+    if (['planning', 'heures', 'pointage', 'pconges', 'occup', 'instr'].indexOf(t) >= 0) return t;
     if (['pfiche', 'pequipe', 'dfiche', 'pdent'].indexOf(t) >= 0) return 'equipe';
     if (t === 'mconges' || t === 'mdemande') return 'mconges';
     if (STOCK_TABS.indexOf(t) >= 0) return 'accueil';
@@ -339,7 +339,7 @@
     var cur = railPage(), ca = congesAttente().length + congesAnnul().length, ou = (S.oublis || []).length, mini = railMini();
     var it = function (tab, n, ic, b) { return '<button class="rail-l' + (cur === tab ? ' on' : '') + '" data-tab="' + tab + '"' + (cur === tab ? ' aria-current="page"' : '') + ' title="' + esc(n) + '">' + '<span class="rail-i">' + ico(ic, 21, 2.1) + (b && mini ? '<em class="rail-p">' + b + '</em>' : '') + '</span><span class="rail-t">' + n + '</span>' + (b && !mini ? '<em class="rail-b">' + b + '</em>' : '') + '</button>'; };
     return '<nav class="rail" aria-label="Pages"><div class="rail-hd"><img class="rail-lo" src="assets/icone-192.png" alt="" aria-hidden="true"><b class="rail-t">Evydent</b></div>'
-      + it('hub', 'Accueil', 'maison') + it('planning', 'Planning', 'equipe') + it('heures', 'Heures', 'histo') + it('pointage', 'Pointage', 'qr', ou) + it('pconges', 'Congés', 'agenda', ca) + it('equipe', 'Équipe', 'moi').replace('data-tab="equipe"', 'data-act="rgeq"') + it('occup', 'Occupation', 'fauteuil') + it('accueil', 'Gestion de stock', 'boite')
+      + it('hub', 'Accueil', 'maison') + it('planning', 'Planning', 'equipe') + it('heures', 'Heures', 'histo') + it('pointage', 'Pointage', 'qr', ou) + it('pconges', 'Congés', 'agenda', ca) + it('equipe', 'Équipe', 'moi').replace('data-tab="equipe"', 'data-act="rgeq"') + it('occup', 'Occupation', 'fauteuil') + it('instr', 'Instruments', 'rotatif') + it('accueil', 'Gestion de stock', 'boite')
       + '<span class="rail-sp"></span>' + it('reglages', 'Réglages', 'reglage')
       + '<button class="rail-l rail-r" data-act="railmini" aria-label="' + (mini ? 'Afficher les noms des pages' : 'Réduire en icônes') + '" title="' + (mini ? 'Afficher les noms' : 'Réduire en icônes') + '"><span class="rail-i">' + ico(mini ? 'suiv' : 'prec', 20, 2.4) + '</span><span class="rail-t">' + (mini ? 'Afficher les noms' : 'Réduire en icônes') + '</span></button></nav>';
   }
@@ -527,6 +527,8 @@
 
   // ---------- Icônes dessinées (les mêmes que la maquette) ----------
   var SVGI = {
+    rotatif: '<circle cx="5.5" cy="9" r="2.5"/><path d="M8 8h3l10 1.5v3L11 14H8.5M5.5 11.5V15M11 8l1-2.5"/>',
+    camion: '<path d="M3 7h12v9H3zM15 10h4l2 3v3h-6z"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>',
     qr: '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path d="M14 14h2v2h-2zM18 14h2M14 18v2h2M18 18h2v2"/>',
     fauteuil: '<path d="M5 11V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4"/><path d="M3 13a2 2 0 0 1 4 0v3h10v-3a2 2 0 0 1 4 0v5H3z"/><path d="M6 18v2M18 18v2"/>',
     bas: '<path d="M6 9l6 6 6-6"/>',
@@ -1106,7 +1108,7 @@
 
   // ---------- Accueil de la référente et de la responsable (2 tuiles), Réglages, Équipe, Dentistes ----------
   // Écrans de la maquette « Accueil référente et responsable ». Chaque écran a son en-tête bleu.
-  var HUB = ['occup', 'ptest', 'pwifi', 'mconges', 'mdemande', 'ptransfert', 'hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
+  var HUB = ['instr', 'occup', 'ptest', 'pwifi', 'mconges', 'mdemande', 'ptransfert', 'hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
   var JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'], JC = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
   // Affectations possibles d'une demi-journée (en plus des dentistes)
   // Postes (modifiables dans Réglages › Postes) ; École et « Ne travaille pas » sont fixes
@@ -1218,7 +1220,7 @@
       + (telephone() ? '<button class="h-tuile cg" data-tab="mconges"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Mes congés</b><span>Demander, suivre mes demandes, mon solde</span></span>'
         : '<button class="h-tuile cg" data-tab="pconges"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Congés</b><span' + (ca ? ' class="h-av-t"' : '') + '>' + (ca ? ca + ' ' + pl(ca, 'demande') + ' à valider' : 'Demandes, absences du mois, soldes') + '</span></span>')
         + '<span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
-      + (telephone() ? '' : tuileOccup()) + '</div>'
+      + (telephone() ? '' : tuileOccup()) + tuileInstr() + '</div>'
       + ((S.oublis || []).length ? '<button class="h-alerte" data-tab="pointage">' + ico('attente', 22) + '<span><b>' + S.oublis.length + ' ' + pl(S.oublis.length, 'oubli') + ' de pointage</b> ' + pl(S.oublis.length, 'signalé') + ' à valider</span>' + ico('suiv', 20, 2.2) + '</button>' : '')
       + (ca ? '<button class="h-alerte" data-tab="pconges">' + ico('attente', 22) + '<span><b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à traiter</span>' + ico('suiv', 20, 2.4) + '</button>' : '')
       + (telephone() ? '<div class="h-pc"><span class="h-pc-l">À ouvrir sur ordinateur</span><div class="h-pc-g"><span>' + ico('agenda', 20) + '<b>Planning</b></span><span>' + ico('qr', 20) + '<b>Pointage</b></span><span>' + ico('fauteuil', 20) + '<b>Occupation des cabinets</b></span></div></div>' : '')
@@ -2735,10 +2737,10 @@
   }
   function renderH() {
     S.coulCat = null;
-    var ecr = { mconges: function () { moiG(); return vMesCongesA(); }, mdemande: function () { moiG(); return vDemandeA(); }, hub: vHub, occup: vOccup, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pwifi: vPWifi, ptest: vPTest, pprofils: vPProfils, ptransfert: vPTransfert }[S.tab] || vHub;
+    var ecr = { mconges: function () { moiG(); return vMesCongesA(); }, mdemande: function () { moiG(); return vDemandeA(); }, hub: vHub, occup: vOccup, instr: vInstr, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pwifi: vPWifi, ptest: vPTest, pprofils: vPProfils, ptransfert: vPTransfert }[S.tab] || vHub;
     if ((S.tab === 'planning' || S.tab === 'heures' || S.tab === 'pointage' || S.tab === 'occup') && telephone()) ecr = vSurPC;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
-    h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr' || S.tab === 'pequipe') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'occup' || S.tab === 'heures' || S.tab === 'pointage' || ((S.tab === 'pconges' || S.tab === 'ppostes' || S.tab === 'pregles' || S.tab === 'pprofils' || S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible') && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
+    h += '<div class="a-app h-app' + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr' || S.tab === 'pequipe') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'occup' || S.tab === 'instr' || S.tab === 'heures' || S.tab === 'pointage' || ((S.tab === 'pconges' || S.tab === 'ppostes' || S.tab === 'pregles' || S.tab === 'pprofils' || S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible') && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
     [S.pf, S.df].forEach(function (F) { if (F && F.raz) { F.raz = false; F.o = JSON.stringify(F.d); } });
     if (S.tab === 'pfiche') h += vBarPFiche();
     if (S.tab === 'dfiche') h += vBarDFiche();
@@ -2781,6 +2783,214 @@
     }).catch(function () { O.ok[lundi] = true; O.charge = null; });
   }
   function occInit() { var O = S.occ = S.occ || { jour: occOuvre(dIso(new Date()), 1), mode: 'jour', ok: {}, ref: null, ed: null }; return O; }
+  // =====================================================================
+  // Instruments rotatifs : une fiche par numéro de série, envois en réparation, garanties
+  // =====================================================================
+  var INS_T = [
+    { k: 'turbine', n: 'Turbine', s: 'COXO · grande vitesse' },
+    { k: 'ca20', n: 'Contre-angle 20:1', s: 'Point vert · implantologie' },
+    { k: 'ca11', n: 'Contre-angle 1:1', s: 'Bague bleue' },
+    { k: 'ca15', n: 'Contre-angle 1:5', s: 'Bague rouge · multiplicateur' }
+  ];
+  var INS_MOTIFS = ['Bruit', 'Perte de puissance', 'Spray', 'Lumière', 'Chauffe', 'Fraise qui tient mal', 'Autre'];
+  function insEtat() { return S.ins = S.ins || { l: null, env: [], q: '', qc: {}, f: 'tous', sel: null, form: null, fd: {} }; }
+  function insTy(k) { return INS_T.filter(function (t) { return t.k === k; })[0] || INS_T[0]; }
+  function chargerInstr() {
+    var I = insEtat(); if (I.charge) return; I.charge = true;
+    Promise.all([toutLire('instruments', '*'), toutLire('instrument_envois', '*')]).then(function (r) {
+      I.l = r[0] || []; I.env = r[1] || []; I.manque = false; I.err = null; I.charge = false; render();
+    }).catch(function (e) {
+      I.charge = false; I.l = []; I.env = [];
+      if (/instrument|relation|does not exist|schema cache/i.test(String(e && (e.message || e.code)))) I.manque = true; else I.err = msgErr(e);
+      render();
+    });
+  }
+  function insById(id) { return ((S.ins && S.ins.l) || []).filter(function (x) { return String(x.id) === String(id); })[0]; }
+  function insEnvois(id) { return ((S.ins && S.ins.env) || []).filter(function (e) { return String(e.instrument_id) === String(id); }).sort(function (a, b) { return a.envoye_le < b.envoye_le ? 1 : a.envoye_le > b.envoye_le ? -1 : b.id - a.id; }); }
+  function insEnCours(id) { return insEnvois(id).filter(function (e) { return !e.retour_le; })[0] || null; }
+  function insDerRep(id) { return insEnvois(id).filter(function (e) { return e.retour_le; })[0] || null; }
+  function addMois(iso, n) { var d = dDe(String(iso).slice(0, 10)), j = d.getDate(); d.setDate(1); d.setMonth(d.getMonth() + (+n || 0)); d.setDate(Math.min(j, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate())); return dIso(d); }
+  function nbJours(a, b) { return Math.round((dDe(b) - dDe(a)) / 864e5); }
+  function insDate(iso) { if (!iso) return ''; var d = dDe(String(iso).slice(0, 10)); return d.getDate() + (d.getDate() === 1 ? 'er' : '') + ' ' + MOIS[d.getMonth()] + ' ' + d.getFullYear(); }
+  var MOIS_AB = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  function insDateC(iso) { if (!iso) return ''; var d = dDe(String(iso).slice(0, 10)), y = d.getFullYear(); return d.getDate() + ' ' + MOIS_AB[d.getMonth()] + (y !== new Date().getFullYear() ? ' ' + y : ''); }
+  // Garantie : celle de l'achat, ou celle de la dernière réparation si elle va plus loin
+  function insGarantie(x) {
+    var fa = x.achat ? addMois(x.achat, x.garantie_mois || 0) : null, fr = null, rr = null;
+    insEnvois(x.id).forEach(function (e) { if (e.retour_le && +e.garantie_rep_mois > 0) { var f = addMois(e.retour_le, e.garantie_rep_mois); if (!fr || f > fr) { fr = f; rr = e; } } });
+    var fin = fa && fr ? (fr > fa ? fr : fa) : fa || fr, src = fin && fin === fr && fr !== fa ? 'rep' : 'achat', auj = dIso(new Date());
+    if (!fin) return { k: 'inc', court: 'Garantie inconnue', long: 'Garantie inconnue', sous: 'Renseignez la date d’achat dans la fiche.' };
+    if (fin < auj) return { k: 'non', court: 'Hors garantie', long: 'Hors garantie', sous: 'Garantie terminée le ' + insDate(fin) + (src === 'rep' ? ' (garantie de la réparation)' : ''), fin: fin, src: src };
+    var nj = nbJours(auj, fin), m = 0; while (addMois(auj, m + 1) <= fin) m++;
+    var j = nbJours(addMois(auj, m), fin), reste = m ? m + ' mois' + (j ? ' et ' + j + ' jour' + (j > 1 ? 's' : '') : '') : nj + ' jour' + (nj > 1 ? 's' : '');
+    var sous = src === 'rep' ? 'Garantie de la réparation du ' + insDate(rr.retour_le) + ' (' + rr.garantie_rep_mois + ' mois), jusqu’au ' + insDate(fin) : 'Garantie d’achat de ' + (x.garantie_mois || 0) + ' mois, jusqu’au ' + insDate(fin);
+    return { k: nj <= 30 ? 'fin' : 'ok', court: nj <= 30 ? 'Fin de garantie dans ' + nj + ' j' : (src === 'rep' ? 'Réparation garantie · ' : 'Garantie · ') + (m ? m + ' mois' : nj + ' j'), long: 'Sous garantie : encore ' + reste, sous: sous, fin: fin, src: src, nj: nj };
+  }
+  function tuileInstr() {
+    var I = insEtat(); if (!I.l && !I.charge) chargerInstr();
+    var l = (I.l || []).filter(function (x) { return x.statut !== 'rebut'; }), nr = l.filter(function (x) { return x.statut === 'reparation'; }).length, nf = l.filter(function (x) { return x.statut === 'service' && insGarantie(x).k === 'fin'; }).length, s = [];
+    if (nr) s.push(nr + ' en réparation'); if (nf) s.push(nf + ' ' + pl(nf, 'garantie') + ' bientôt ' + (nf > 1 ? 'finies' : 'finie'));
+    return '<button class="h-tuile ins" data-tab="instr"><span class="ti">' + ico('rotatif', 34) + '</span><span class="tt"><b>Instruments rotatifs</b><span' + (s.length ? ' class="h-av-t"' : '') + '>' + (I.manque ? 'Mise à jour 033 de la base à faire' : s.length ? s.join(' · ') : 'Réparations et garanties') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>';
+  }
+  function insCarte(x) {
+    var g = insGarantie(x), ec = insEnCours(x.id), dr = insDerRep(x.id);
+    return '<button class="ins-c' + (ec ? ' out' : '') + (x.statut === 'rebut' ? ' reb' : '') + '" data-ins="' + x.id + '" data-sn="' + esc(norm(x.sn)) + '"><span class="ins-c1"><b>' + esc(x.sn) + '</b>' + (x.cabinet && !ec ? '<small>cab. ' + x.cabinet + '</small>' : '') + '</span>'
+      + '<span class="ins-c2">' + (x.statut === 'rebut' ? '<span class="ins-p non">Au rebut</span>' : '<span class="ins-p ' + g.k + '">' + g.court + '</span>') + (dr ? '<small>réparé le ' + insDateC(dr.retour_le) + '</small>' : '') + '</span>'
+      + (ec ? '<span class="ins-out">' + ico('camion', 15, 2.4) + (ec.en_garantie ? 'En garantie' : 'En réparation') + (ec.chez ? ' chez ' + esc(ec.chez) : '') + ' depuis le ' + insDateC(ec.envoye_le) + '</span>' : '') + '</button>';
+  }
+  function vInstr() {
+    var I = insEtat(); if (!I.l && !I.charge) chargerInstr();
+    var x = I.sel ? insById(I.sel) : null; if (I.sel && I.l && !x && I.sel !== 'new') I.sel = null;
+    var enRep = (I.l || []).filter(function (y) { return y.statut === 'reparation'; }).length;
+    var btns = '<span class="pl-hbtns"><button class="pl-imp" data-insf="rep">' + ico('camion', 18, 2.2) + '<span class="m-hide">Envois en cours · ' + enRep + '</span></button><button class="pl-imp" data-act="insnew">' + ico('plus', 18, 2.4) + '<span class="m-hide">Ajouter un instrument</span></button></span>';
+    var fil = '<div class="hr-seg" role="group" aria-label="Afficher">' + [['tous', 'Tous'], ['centre', 'Au centre'], ['rep', 'En réparation'], ['fin', 'Garantie bientôt finie'], ['rebut', 'Au rebut']].map(function (f) { return '<button data-insf="' + f[0] + '" aria-pressed="' + (I.f === f[0]) + '"' + (I.f === f[0] ? ' class="on"' : '') + '>' + f[1] + '</button>'; }).join('') + '</div>';
+    var rech = '<label class="ins-q">' + ico('loupe', 20, 2.2) + '<input type="search" data-insq="tout" placeholder="Chercher un numéro de série (SN)…" aria-label="Chercher un numéro de série dans tous les instruments" value="' + esc(I.q || '') + '" autocomplete="off"></label>';
+    var fiche = !!(I.sel || I.form === 'new');
+    var h = '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" ' + (fiche ? 'data-act="insback"' : 'data-tab="hub"') + '>' + ico('prec', 22, 2.4) + (fiche ? 'Instruments' : 'Accueil') + '</button><h1>' + (fiche && x ? esc(x.sn) : I.form === 'new' ? 'Nouvel instrument' : 'Instruments rotatifs') + '</h1>' + (fiche ? '<span class="a-cale"></span>' : btns) + '</div>'
+      + (fiche ? '' : bandeDate(rech, telephone() ? '' : fil, I.q ? '<span id="insn"></span>' : '')) + '</header><div class="a-corps ins-corps">';
+    if (I.manque) return h + '<div class="ban warn">La mise à jour <b>033</b> de la base n’est pas encore faite : les instruments ne peuvent pas être enregistrés. Lancez <code>033_instruments.sql</code> dans Supabase.</div></div>';
+    if (I.err) return h + '<div class="ban warn">' + esc(I.err) + '</div></div>';
+    if (!I.l) return h + '<p class="a-vide">Chargement…</p></div>';
+    if (fiche) return h + vInstrFiche(x) + '</div>';
+    if (telephone()) h += '<div class="ins-ft">' + fil + '</div>';
+    var ok = function (y) { var g = I.f === 'fin' ? insGarantie(y) : null; return I.f === 'rebut' ? y.statut === 'rebut' : y.statut !== 'rebut' && (I.f === 'tous' || (I.f === 'centre' && y.statut === 'service') || (I.f === 'rep' && y.statut === 'reparation') || (I.f === 'fin' && y.statut === 'service' && g.k === 'fin')); };
+    h += '<div class="ins-g">' + INS_T.map(function (t) {
+      var tous = I.l.filter(function (y) { return y.type === t.k; }), l = tous.filter(ok).sort(function (a, b) { var ra = a.statut === 'reparation' ? 0 : 1, rb = b.statut === 'reparation' ? 0 : 1; return ra - rb || String(a.sn).localeCompare(String(b.sn)); });
+      var nc = tous.filter(function (y) { return y.statut === 'service'; }).length, nr = tous.filter(function (y) { return y.statut === 'reparation'; }).length;
+      return '<section class="ins-col" data-inscol="' + t.k + '"><div class="ins-h"><img src="assets/instruments/' + t.k + '.jpg" alt="' + esc(t.n) + '" loading="lazy"><b>' + t.n + '</b><small>' + t.s + '</small>'
+        + '<span class="ins-k"><span>' + nc + ' au centre</span>' + (nr ? '<span class="w">' + nr + ' en réparation</span>' : '') + '</span>'
+        + '<label class="ins-qc">' + ico('loupe', 18, 2.2) + '<input type="search" data-insq="' + t.k + '" placeholder="SN…" aria-label="Chercher un SN parmi : ' + esc(t.n) + '" value="' + esc(I.qc[t.k] || '') + '" autocomplete="off"></label></div>'
+        + '<div class="ins-l">' + (l.length ? l.map(insCarte).join('') : '<p class="mu ins-vide">' + (tous.length ? 'Aucun pour ce filtre.' : 'Aucun instrument enregistré.') + '</p>') + '<p class="mu ins-vide ins-rien" hidden>Aucun SN ne correspond.</p></div></section>';
+    }).join('') + '</div>';
+    if (I.q || Object.keys(I.qc).some(function (k) { return I.qc[k]; })) setTimeout(insFiltrer, 0);
+    return h + '</div>';
+  }
+  // Recherche par SN, sans redessiner la page : la saisie garde le curseur
+  function insFiltrer() {
+    var I = insEtat(), q = norm(I.q || '').replace(/\s+/g, ''), n = 0;
+    [].forEach.call(document.querySelectorAll('.ins-col'), function (col) {
+      var qc = norm(I.qc[col.dataset.inscol] || '').replace(/\s+/g, ''), vu = 0, cartes = col.querySelectorAll('.ins-c');
+      [].forEach.call(cartes, function (c) { var sn = c.dataset.sn.replace(/\s+/g, ''), ok = (!q || sn.indexOf(q) >= 0) && (!qc || sn.indexOf(qc) >= 0); c.hidden = !ok; if (ok) { vu++; n++; } });
+      var r = col.querySelector('.ins-rien'); if (r) r.hidden = !(cartes.length && !vu);
+    });
+    var el = document.getElementById('insn'); if (el) el.textContent = q ? (n ? n + ' instrument' + (n > 1 ? 's' : '') + ' trouvé' + (n > 1 ? 's' : '') : 'Aucun numéro de série ne correspond') : '';
+  }
+  function vInstrFiche(x) {
+    var I = insEtat(), nouv = !x;
+    if (nouv || I.form === 'edit') return vInstrForm(x);
+    var t = insTy(x.type), g = insGarantie(x), ec = insEnCours(x.id), dr = insDerRep(x.id), env = insEnvois(x.id), auj = dIso(new Date());
+    var h = '<div class="ins-f"><section class="card ins-fc"><div class="ins-fh"><img src="assets/instruments/' + t.k + '.jpg" alt="' + esc(t.n) + '"><div><small>' + esc(t.n) + ' · ' + esc(t.s) + '</small><b class="ins-sn">SN ' + esc(x.sn) + '</b><span class="mu">' + (x.statut === 'rebut' ? 'Au rebut' : ec ? 'Parti ' + (ec.en_garantie ? 'en garantie' : 'en réparation') : 'Au centre') + (x.cabinet && !ec && x.statut !== 'rebut' ? ' · cabinet ' + x.cabinet : '') + '</span></div></div>';
+    h += '<div class="ins-gar ' + g.k + '"><span class="ins-gi" aria-hidden="true">' + ico(g.k === 'ok' || g.k === 'fin' ? 'ok' : 'attente', 22, 2.6) + '</span><span><b>' + g.long + '</b><small>' + g.sous + '</small></span></div>';
+    if (ec) h += '<div class="ins-ec">' + ico('camion', 20, 2.2) + '<span><b>Parti le ' + insDate(ec.envoye_le) + (ec.chez ? ' chez ' + esc(ec.chez) : '') + ' · ' + (ec.en_garantie ? 'en garantie' : 'hors garantie') + '</b><small>' + esc([ec.motif, ec.detail].filter(Boolean).join(' · ') || 'problème non précisé') + (ec.bon ? ' · bon ' + esc(ec.bon) : '') + ' · absent depuis ' + nbJours(ec.envoye_le, auj) + ' j</small></span></div>';
+    h += '<div class="ins-2">'
+      + '<div><small>Dernière réparation</small>' + (dr ? '<b>Revenu le ' + insDate(dr.retour_le) + '</b><span>' + esc(dr.travaux || 'travaux non précisés') + ' · ' + (dr.en_garantie ? 'en garantie' : dr.prix != null ? eur(dr.prix) + ' TTC' : 'prix non saisi') + '</span><span class="mu">Absent ' + nbJours(dr.envoye_le, dr.retour_le) + ' j · envoyé le ' + insDateC(dr.envoye_le) + (dr.chez ? ' chez ' + esc(dr.chez) : '') + '</span>' : '<b>Aucune</b><span class="mu">' + (x.achat ? 'depuis l’achat' : 'enregistrée dans l’appli') + '</span>') + '</div>'
+      + '<div><small>Achat</small>' + (x.achat ? '<b>' + insDate(x.achat) + '</b>' : '<b class="mu">Date non renseignée</b>') + '<span>' + esc(x.fournisseur || 'fournisseur non renseigné') + '</span><span class="mu">Garantie d’achat : ' + (x.garantie_mois || 0) + ' mois</span></div></div>';
+    if (x.note) h += '<p class="ins-note">' + esc(x.note) + '</p>';
+    if (I.form === 'envoi' || I.form === 'retour') h += I.form === 'envoi' ? vInstrEnvoi(x, g) : vInstrRetour(x, ec);
+    else h += '<div class="ins-act">' + (x.statut === 'rebut' ? '<button class="btn" data-act="insremet">Remettre en service</button>'
+      : ec ? '<button class="btn" data-insform="retour">' + ico('refaire', 18, 2.4) + 'Enregistrer le retour</button>' : '<button class="btn" data-insform="envoi">' + ico('camion', 18, 2.2) + 'Envoyer en réparation</button>')
+      + '<button class="btn l" data-insform="edit">Modifier la fiche</button>' + (x.statut !== 'rebut' && !ec ? '<button class="btn l ins-reb" data-act="insrebut">Mettre au rebut</button>' : '') + '</div>';
+    h += '</section><section class="card ins-hist"><h2 class="fi-h3">Historique</h2>';
+    var ev = [];
+    env.forEach(function (e) {
+      if (e.retour_le) ev.push({ d: e.retour_le, k: 'ret', t: e.rebut ? 'Revenu non réparable' : 'Retour de réparation', s: [e.travaux, e.en_garantie ? 'en garantie' : '', e.garantie_rep_mois ? 'garantie ' + e.garantie_rep_mois + ' mois' : ''].filter(Boolean).join(' · '), m: e.en_garantie ? '0 €' : e.prix != null ? eur(e.prix) : '' });
+      ev.push({ d: e.envoye_le, k: 'env', t: (e.en_garantie ? 'Envoyé en garantie' : 'Envoyé en réparation') + (e.chez ? ' chez ' + e.chez : ''), s: [e.motif, e.detail, e.bon ? 'bon ' + e.bon : ''].filter(Boolean).join(' · '), m: '', id: e.id });
+    });
+    if (x.achat) ev.push({ d: x.achat, k: 'ach', t: 'Achat', s: [x.fournisseur, 'garantie ' + (x.garantie_mois || 0) + ' mois'].filter(Boolean).join(' · '), m: '' });
+    ev.sort(function (a, b) { return a.d < b.d ? 1 : a.d > b.d ? -1 : (a.k === 'ret' ? -1 : 1); });
+    var IC = { env: 'camion', ret: 'refaire', ach: 'panier' };
+    h += ev.length ? '<div class="ins-ev">' + ev.map(function (e) { return '<div class="ins-e"><span class="mu">' + insDateC(e.d) + '</span><span class="ins-ei ' + e.k + '" aria-hidden="true">' + ico(IC[e.k], 17, 2.2) + '</span><span><b>' + esc(e.t) + '</b>' + (e.s ? '<small>' + esc(e.s) + '</small>' : '') + '</span><b>' + esc(e.m) + '</b>' + (e.id ? '<button class="h-rond gris ins-del" data-insdel="' + e.id + '" aria-label="Supprimer cet envoi" title="Supprimer cet envoi">' + ico('poubelle', 16, 2.2) + '</button>' : '<span></span>') + '</div>'; }).join('') + '</div>' : '<p class="a-vide">Rien pour l’instant.</p>';
+    return h + '</section></div>';
+  }
+  function insChezListe() { var v = { COXO: 1 }; ((S.ins && S.ins.env) || []).forEach(function (e) { if (e.chez) v[e.chez] = 1; }); return '<datalist id="ins-chez">' + Object.keys(v).map(function (c) { return '<option value="' + esc(c) + '">'; }).join('') + '</datalist>'; }
+  function vInstrEnvoi(x, g) {
+    var I = insEtat(), fd = I.fd, sousG = g.k === 'ok' || g.k === 'fin';
+    return '<section class="ins-form"><h3>Envoyer en réparation</h3>'
+      + '<label class="ins-gsw ' + (sousG ? 'ok' : '') + '"><input type="checkbox" id="ins-gar"' + (sousG ? ' checked' : '') + '><span><b>' + (sousG ? 'Encore sous garantie' + (g.fin ? ' (jusqu’au ' + insDate(g.fin) + ')' : '') : 'Hors garantie') + '</b><small>' + (sousG ? 'L’envoi est noté « en garantie ». Joindre la copie de la facture d’achat.' : 'Cochez si le réparateur le prend quand même en garantie.') + '</small></span></label>'
+      + '<div class="ins-l2"><span class="mu">Le problème</span><div class="ins-mo" role="group" aria-label="Problème">' + INS_MOTIFS.map(function (m) { var on = fd.motif === m; return '<button type="button" data-insmo="' + esc(m) + '" aria-pressed="' + on + '"' + (on ? ' class="on"' : '') + '>' + m + '</button>'; }).join('') + '</div>'
+      + '<textarea class="in" id="ins-det" rows="2" placeholder="Précisions (facultatif)"></textarea></div>'
+      + '<div class="ins-fg"><label>Envoyé chez<input class="in" id="ins-chez" list="ins-chez" value="' + esc(fd.chez || (sousG ? 'COXO' : '')) + '" placeholder="Ex. : COXO, réparateur…">' + insChezListe() + '</label>'
+      + '<label>Date d’envoi<input class="in" type="date" id="ins-dte" value="' + dIso(new Date()) + '"></label>'
+      + '<label class="pl">N° de bon ou de suivi (facultatif)<input class="in" id="ins-bon" placeholder="Ex. : n° de colis, bon de retour…"></label></div>'
+      + '<div class="ins-fb"><button class="btn l" data-insform="">Annuler</button><button class="btn" data-act="insenvoi">Enregistrer l’envoi</button></div></section>';
+  }
+  function vInstrRetour(x, ec) {
+    if (!ec) return '';
+    return '<section class="ins-form"><h3>Retour de réparation</h3><p class="mu" style="margin:0">Parti le ' + insDate(ec.envoye_le) + (ec.chez ? ' chez ' + esc(ec.chez) : '') + ' · ' + (ec.en_garantie ? 'en garantie' : 'hors garantie') + (ec.motif ? ' · ' + esc(ec.motif) : '') + '</p>'
+      + '<div class="ins-fg"><label>Date de retour<input class="in" type="date" id="ins-ret" value="' + dIso(new Date()) + '"></label>'
+      + '<label>Prix TTC<input class="in" id="ins-prix" inputmode="decimal" placeholder="' + (ec.en_garantie ? '0 (en garantie)' : 'Ex. : 148,00') + '"></label>'
+      + '<label class="pl">Travaux faits<input class="in" id="ins-trav" placeholder="Ex. : roulements changés"></label>'
+      + '<label>Garantie de la réparation (mois)<input class="in" id="ins-grm" type="number" min="0" max="60" value="' + (ec.en_garantie ? '0' : '6') + '"></label>'
+      + '<label>Rendu au<select class="in" id="ins-cab"><option value="">Pas de cabinet</option>' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+x.cabinet === c ? ' selected' : '') + '>Cabinet ' + c + '</option>'; }).join('') + '</select></label></div>'
+      + '<label class="row"><input type="checkbox" id="ins-hs" style="width:22px;height:22px;flex:none"><span>Non réparable : le mettre au rebut</span></label>'
+      + '<div class="ins-fb"><button class="btn l" data-insform="">Annuler</button><button class="btn" data-act="insretour">Enregistrer le retour</button></div></section>';
+  }
+  function vInstrForm(x) {
+    var I = insEtat(), d = x || { type: I.fd.type || 'turbine', garantie_mois: 12 };
+    return '<div class="ins-f1"><section class="card ins-form"><h3>' + (x ? 'Modifier la fiche' : 'Nouvel instrument') + '</h3><div class="ins-fg">'
+      + '<label class="pl">Type<select class="in" id="ins-ty">' + INS_T.map(function (t) { return '<option value="' + t.k + '"' + (d.type === t.k ? ' selected' : '') + '>' + t.n + ' · ' + t.s + '</option>'; }).join('') + '</select></label>'
+      + '<label class="pl">Numéro de série (SN)<input class="in" id="ins-sn" value="' + esc(d.sn || '') + '" autocomplete="off" placeholder="Tel qu’il est gravé sur l’instrument"></label>'
+      + '<label>Date d’achat<input class="in" type="date" id="ins-ach" value="' + esc(String(d.achat || '').slice(0, 10)) + '"></label>'
+      + '<label>Garantie d’achat (mois)<input class="in" type="number" min="0" max="120" id="ins-gm" value="' + (d.garantie_mois != null ? d.garantie_mois : 12) + '"></label>'
+      + '<label>Fournisseur<input class="in" id="ins-fo" value="' + esc(d.fournisseur || '') + '" placeholder="Ex. : dépôt dentaire"></label>'
+      + '<label>Cabinet<select class="in" id="ins-cb"><option value="">Pas de cabinet</option>' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+d.cabinet === c ? ' selected' : '') + '>Cabinet ' + c + '</option>'; }).join('') + '</select></label>'
+      + '<label class="pl">Note (facultatif)<input class="in" id="ins-no" value="' + esc(d.note || '') + '"></label></div>'
+      + '<div class="ins-fb">' + (x ? '<button class="btn l ins-reb" data-act="insdelx">Supprimer la fiche</button><span class="grow"></span>' : '') + '<button class="btn l" data-act="insback">Annuler</button><button class="btn" data-act="inssave">Enregistrer</button></div></section></div>';
+  }
+  function insVal(id) { var el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; }
+  async function insSauver() {
+    var I = insEtat(), x = I.sel ? insById(I.sel) : null, sn = insVal('ins-sn').toUpperCase();
+    if (!sn) { toast('Le numéro de série est obligatoire'); return; }
+    var o = { type: insVal('ins-ty') || 'turbine', sn: sn, achat: insVal('ins-ach') || null, garantie_mois: Math.max(0, Math.min(120, parseInt(insVal('ins-gm'), 10) || 0)), fournisseur: insVal('ins-fo') || null, cabinet: +insVal('ins-cb') || null, note: insVal('ins-no') || null, modifie_le: new Date().toISOString() };
+    var r = x ? await sb.from('instruments').update(o).eq('id', x.id).select().single() : await sb.from('instruments').insert(o).select().single();
+    if (r.error) { toast(/duplicate|unique|23505/i.test(String(r.error.message || r.error.code)) ? 'Ce numéro de série existe déjà' : msgErr(r.error)); return; }
+    if (x) Object.assign(x, r.data); else I.l.push(r.data);
+    I.sel = r.data.id; I.form = null; I.fd = {}; toast('✔ ' + insTy(o.type).n + ' ' + sn + ' enregistré' + (insTy(o.type).k === 'turbine' ? 'e' : '')); render(); window.scrollTo(0, 0);
+  }
+  async function insEnvoyer() {
+    var I = insEtat(), x = insById(I.sel); if (!x) return;
+    var e = { instrument_id: x.id, envoye_le: insVal('ins-dte') || dIso(new Date()), motif: I.fd.motif || null, detail: insVal('ins-det') || null, chez: insVal('ins-chez') || null, en_garantie: !!(document.getElementById('ins-gar') || {}).checked, bon: insVal('ins-bon') || null };
+    var r = await sb.from('instrument_envois').insert(e).select().single();
+    if (r.error) { toast(msgErr(r.error)); return; }
+    I.env.push(r.data);
+    var u = await sb.from('instruments').update({ statut: 'reparation', modifie_le: new Date().toISOString() }).eq('id', x.id);
+    if (!u.error) x.statut = 'reparation';
+    I.form = null; I.fd = {}; toast('✔ Envoi enregistré'); render();
+  }
+  async function insRetour() {
+    var I = insEtat(), x = insById(I.sel), ec = x && insEnCours(x.id); if (!ec) return;
+    var prix = insVal('ins-prix').replace(/\s|€/g, '').replace(',', '.'), hs = !!(document.getElementById('ins-hs') || {}).checked;
+    var o = { retour_le: insVal('ins-ret') || dIso(new Date()), travaux: insVal('ins-trav') || null, prix: prix === '' ? (ec.en_garantie ? 0 : null) : nb(prix), garantie_rep_mois: Math.max(0, Math.min(60, parseInt(insVal('ins-grm'), 10) || 0)), rebut: hs, modifie_le: new Date().toISOString() };
+    if (o.retour_le < ec.envoye_le) { toast('Le retour ne peut pas être avant l’envoi'); return; }
+    var r = await sb.from('instrument_envois').update(o).eq('id', ec.id).select().single();
+    if (r.error) { toast(msgErr(r.error)); return; }
+    Object.assign(ec, r.data);
+    var cab = +insVal('ins-cab') || null, u = await sb.from('instruments').update({ statut: hs ? 'rebut' : 'service', cabinet: cab, modifie_le: new Date().toISOString() }).eq('id', x.id);
+    if (!u.error) { x.statut = hs ? 'rebut' : 'service'; x.cabinet = cab; }
+    I.form = null; toast(hs ? '✔ Retour enregistré : instrument au rebut' : '✔ Retour enregistré'); render();
+  }
+  async function insStatut(x, st, msg) {
+    var u = await sb.from('instruments').update({ statut: st, modifie_le: new Date().toISOString() }).eq('id', x.id);
+    if (u.error) { toast(msgErr(u.error)); return; }
+    x.statut = st; toast(msg); render();
+  }
+  function insAction(d) {
+    var I = insEtat(), x = I.sel ? insById(I.sel) : null;
+    if (d.ins) { I.sel = d.ins; I.form = null; I.fd = {}; render(); window.scrollTo(0, 0); return true; }
+    if (d.insf) { I.f = d.insf; I.sel = null; I.form = null; render(); return true; }
+    if (d.insform != null) { I.form = d.insform || null; I.fd = {}; render(); return true; }
+    if (d.insmo) { I.fd.motif = I.fd.motif === d.insmo ? null : d.insmo; [].forEach.call(document.querySelectorAll('[data-insmo]'), function (b) { var on = b.dataset.insmo === I.fd.motif; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); }); return true; }
+    if (d.act === 'insnew') { I.sel = null; I.form = 'new'; I.fd = {}; render(); window.scrollTo(0, 0); return true; }
+    if (d.act === 'insback') { if (I.form === 'edit') I.form = null; else { I.sel = null; I.form = null; } render(); return true; }
+    if (d.act === 'inssave') { insSauver(); return true; }
+    if (d.act === 'insenvoi') { insEnvoyer(); return true; }
+    if (d.act === 'insretour') { insRetour(); return true; }
+    if (d.act === 'insrebut' && x) { fenetre({ titre: 'Mettre au rebut ?', texte: insTy(x.type).n + ' ' + x.sn + ' ne sera plus compté au centre. Son historique est gardé ; il reste visible avec le filtre « Au rebut ».', ok: 'Mettre au rebut', danger: true }).then(function (o) { if (o) insStatut(x, 'rebut', '✔ Mis au rebut'); }); return true; }
+    if (d.act === 'insremet' && x) { insStatut(x, 'service', '✔ Remis en service'); return true; }
+    if (d.insdel) { var e = I.env.filter(function (y) { return String(y.id) === String(d.insdel); })[0]; if (!e) return true; fenetre({ titre: 'Supprimer cet envoi ?', texte: 'Envoi du ' + insDate(e.envoye_le) + (e.retour_le ? ' et son retour du ' + insDate(e.retour_le) : '') + ' : il disparaît de l’historique et la garantie est recalculée.', ok: 'Supprimer', danger: true }).then(function (o) { if (!o) return; sb.from('instrument_envois').delete().eq('id', e.id).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } I.env = I.env.filter(function (y) { return y !== e; }); if (x && !e.retour_le && x.statut === 'reparation') insStatut(x, 'service', '✔ Envoi supprimé'); else { toast('✔ Envoi supprimé'); render(); } }); }); return true; }
+    if (d.act === 'insdelx' && x) { fenetre({ titre: 'Supprimer la fiche ?', texte: insTy(x.type).n + ' ' + x.sn + ' et tout son historique seront effacés. Pour un instrument cassé, préférez « Mettre au rebut ».', ok: 'Supprimer', danger: true }).then(function (o) { if (!o) return; sb.from('instruments').delete().eq('id', x.id).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } I.l = I.l.filter(function (y) { return y !== x; }); I.env = I.env.filter(function (y) { return String(y.instrument_id) !== String(x.id); }); I.sel = null; I.form = null; toast('✔ Fiche supprimée'); render(); }); }); return true; }
+    return false;
+  }
   function tuileOccup() {
     if (!S.dentistes) return '';
     var O = occInit(), auj = dIso(new Date()), J = occJour(auj); occAssurer(lundiDe(auj));
@@ -7875,6 +8085,7 @@
     if (d.rgnc) { var pli = rgnPlie(); pli[d.rgnc] = !pli[d.rgnc]; lsSet('evy-rgn-plie', JSON.stringify(pli)); render(); return; }
     if (d.act === 'rgeq' || d.act === 'rgde') { var dfi = d.act === 'rgde' ? S.df : S.pf; if (dfi && (S.tab === 'pfiche' || S.tab === 'dfiche') && dfi.o && dfi.o !== JSON.stringify(dfi.d)) { fenetre({ titre: 'Changements non enregistrés', texte: 'La fiche ouverte a été modifiée sans être enregistrée.\n\nSi vous changez de page maintenant, ces changements seront perdus.', ok: 'Changer sans enregistrer', non: 'Rester sur la fiche' }).then(function (v) { if (v) ouvrirDepuisMenu(d.act === 'rgde'); }); return; } return ouvrirDepuisMenu(d.act === 'rgde'); }
     if (feAction(d)) return;
+    if (S.tab === 'instr' && insAction(d)) return;
     if (d.rglp) return changerFiche('p', d.rglp);
     if (d.rgld) return changerFiche('d', d.rgld);
     if (d.rglnew) return changerFiche(d.rglnew, 'new');
@@ -8041,6 +8252,7 @@
   });
   document.addEventListener('input', function (e) {
     if (e.target.dataset && e.target.dataset.rglq != null) { var q = norm(e.target.value.trim()); [].forEach.call(document.querySelectorAll('.rgl-l'), function (b) { b.hidden = (!!q && b.dataset.rgln.indexOf(q) < 0) || b.dataset.ff === '0'; }); return; }
+    if (e.target.dataset && e.target.dataset.insq != null) { var I0 = insEtat(); if (e.target.dataset.insq === 'tout') I0.q = e.target.value; else I0.qc[e.target.dataset.insq] = e.target.value; insFiltrer(); return; }
     if (e.target.dataset && e.target.dataset.fejq != null) { var q2 = norm(e.target.value.trim()); feEtat().jq = e.target.value; feFiltrerJournal(q2); return; }
     var t = e.target; if (!S.me) return;
     if (t.id === 'rgq') {   // recherche dans les réglages : on masque sans redessiner (le curseur reste dans le champ)
