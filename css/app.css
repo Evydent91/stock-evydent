@@ -3207,3 +3207,17 @@ button.tl-chip{cursor:pointer;font-family:inherit}
   body.g-stock .t2-q{display:none}
   body.g-stock .t2-back{display:none}
 }
+/* À faire (stock, téléphone) : chiffres cliquables */
+.ga-st > button{border:none;font:inherit;text-align:left;cursor:pointer;color:var(--ink);background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(31,42,51,.08);padding:12px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.ga-st b.eur{font-size:17px;line-height:1.5;white-space:nowrap}
+.ga.tl-c{display:flex;flex-direction:column}
+.ga.tl-c .gq-m{margin:0}
+/* Articles (gestion, téléphone) : filtres sur une ligne qui glisse, liste en une seule carte */
+@media (max-width:700px){
+  .stk-fl{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;scrollbar-width:none;margin:0 -12px;padding:0 12px 2px}
+  .stk-fl::-webkit-scrollbar{display:none}
+  .stk-fl .chip{flex:none;white-space:nowrap}
+  .stk-fl .stk-fs{display:none}
+  .stk-x .ar-new{min-height:44px}
+}
+@media (max-width:700px){ .stk-fl > .mu{flex:none;white-space:nowrap;align-self:center} }

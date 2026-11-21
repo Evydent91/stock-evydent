@@ -6387,16 +6387,20 @@
     var att = S.attente.length, cmd = n('commander'), rup = n('rupture'), cmdR = A.filter(function (a) { return filtreStock(a, 'commander') && stockDe(a.id, 0) <= 0; }).length;
     var valR = 0, valC = 0; A.forEach(function (a) { var cm = valUnit(a), f = facteur(a); valR += stockDe(a.id, 0) * cm; for (var c = 1; c <= 9; c++) valC += stockDe(a.id, c) / f * cm; });
     var emps = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (e) { var x = etatInventaire(e); x.emp = e; return x; }), aF = emps.filter(function (x) { return x.cls !== 'ok'; }).length;
-    var T = function (tab, fonce, ic, titre, sous, em) { return '<button class="ga-t' + (fonce ? ' fonce' : '') + '" data-tab="' + tab + '"><span class="ga-ic" aria-hidden="true">' + ico(ic, 30) + '</span><span class="ga-tx"><b>' + titre + '</b><span>' + sous + '</span>' + (em ? '<em>' + em + '</em>' : '') + '</span>' + ico('suiv', 22, 2.4) + '</button>'; };
-    var h = '<div class="ga">' + champGq();
-    if (sauvegardeEnRetard()) h += '<button class="ga-al" data-tab="plus">' + ico('telecharger', 22) + '<span><b>Sauvegarde du mois</b> à télécharger</span>' + ico('suiv', 20, 2.4) + '</button>';
-    if (att) h += '<button class="ga-al" data-tab="demandes">' + ico('attente', 22) + '<span><b>' + att + ' ' + pl(att, 'demande') + ' à confirmer</b> · sorties au-delà de la réserve</span>' + ico('suiv', 20, 2.4) + '</button>';
-    h += T('sortie', true, 'sortie', 'Sortie', 'Prendre dans la réserve')
-      + T('commandes', false, 'panier', 'Commandes', 'Par fournisseur, prêtes à envoyer', cmd ? cmd + ' à commander' + (cmdR ? ' · ' + cmdR + ' en rupture' : '') : '')
-      + T('inventaire', false, 'invok', 'Inventaires', 'Réserve, cabinets et Sté', aF ? aF + ' à faire ce mois-ci' : '');
-    h += '<h2 class="ga-h">En un coup d’œil</h2><div class="ga-g2">'
-      + '<button class="ga-c" data-go="stock:rupture"><b class="' + (rup ? 'ko' : '') + '">' + rup + '</b><span>en rupture</span><small>réserve à zéro</small></button>'
-      + '<button class="ga-c" data-go="stock:"><b class="eur">' + eur(valR) + '</b><span>valeur réserve</span><small>cabinets : ' + eur(valC) + '</small></button></div>';
+    var h = '<div class="ga tl-c">' + champGq();
+    h += '<button class="tl-grand navy" data-tab="sortie"><span class="tl-gi">' + ico('sortie', 30, 1.9) + '</span><span class="tl-n"><b>Sortie</b><span>Prendre dans la réserve</span></span>' + ico('suiv', 20, 2.4) + '</button>';
+    if (att) { var m0 = S.attente[0], a0 = S.byId[m0.article_id] || { nom: '?' }; h += tlAl('data-tab="demandes"', 'boite', 'warn', att + ' ' + pl(att, 'sortie') + ' à confirmer', esc(a0.nom) + ' × ' + fr(m0.quantite) + ' · ' + cabTxt(m0.emplacement_vers) + (att > 1 ? '…' : ' · au-delà de la réserve')); }
+    if (sauvegardeEnRetard()) h += tlAl('data-tab="plus"', 'telecharger', 'warn', 'Sauvegarde du mois', 'à télécharger');
+    h += '<div class="tl-stat ga-st" style="grid-template-columns:repeat(3,minmax(0,1fr))">'
+      + '<button data-go="stock:commander"><b class="' + (cmd ? 'warn' : '') + '">' + cmd + '</b><span>à commander</span></button>'
+      + '<button data-go="stock:rupture"><b class="' + (rup ? 'ko' : '') + '">' + rup + '</b><span>en rupture</span></button>'
+      + '<button data-go="stock:"><b class="eur">' + eur(valR) + '</b><span>valeur réserve</span></button></div>';
+    h += tlListe([
+      { at: 'data-tab="commandes"', ic: 'panier', te: 'st', t: 'Commandes', s: cmd ? cmd + ' à commander' + (cmdR ? ' · ' + cmdR + ' en rupture' : '') : 'Par fournisseur, prêtes à envoyer', sw: cmd ? 'warn' : '' },
+      { at: 'data-tab="inventaire"', ic: 'invok', te: 'st', t: 'Inventaires', s: aF ? aF + ' à faire ce mois-ci' : 'Réserve, cabinets et Sté : tout est à jour', sw: aF ? 'warn' : 'ok' },
+      scanOn() ? { at: 'data-act="screlier"', ic: 'scan', te: 'st', t: 'Relier des codes-barres', s: 'En essai' } : null,
+      { at: 'data-tab="histo"', ic: 'histo', te: 'ap', t: 'Historique des mouvements', s: 'Sorties, retours, inventaires' }
+    ]);
     h += '<section class="ga-s"><div class="ga-sh"><b>Inventaires du mois</b><span>' + (10 - aF) + ' à jour · ' + aF + ' à faire</span></div><div class="ga-inv">'
       + emps.map(function (x) { return '<button class="' + (x.cls === 'ok' ? 'ok' : 'af') + '" data-go="inventaire:' + x.emp + '" title="' + esc(cabTxt(x.emp) + ' : ' + x.txt) + '"><b>' + (x.emp === 0 ? 'Rés.' : x.emp === 9 ? 'Sté' : x.emp) + '</b><i aria-hidden="true"></i></button>'; }).join('')
       + '</div><small>Vert : à jour · orange : à faire</small></section>';
