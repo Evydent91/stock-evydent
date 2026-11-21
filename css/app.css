@@ -3296,3 +3296,7 @@ button.tl-chip{cursor:pointer;font-family:inherit}
 .ins-tb{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -14px;padding:0 14px}
 .ins-tb::-webkit-scrollbar{display:none}
 .ins-tb .btn{flex:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;min-height:42px}
+/* Lignes qui défilent de côté : fondu sur le bord où il reste des choix */
+.hs-d{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 44px),transparent)}
+.hs-g{-webkit-mask-image:linear-gradient(to right,transparent,#000 44px);mask-image:linear-gradient(to right,transparent,#000 44px)}
+.hs-g.hs-d{-webkit-mask-image:linear-gradient(to right,transparent,#000 44px,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(to right,transparent,#000 44px,#000 calc(100% - 44px),transparent)}

@@ -314,8 +314,22 @@
   function poser(app, h) {
     var ae = document.activeElement, fq = ae && ae.id && ae.tagName === 'INPUT' ? ae.id : null, pos = fq && ae.selectionStart;
     app.innerHTML = h;
+    setTimeout(marquerDefilants, 0);
     if (fq && $(fq)) { S.refocus = true; $(fq).focus(); try { $(fq).setSelectionRange(pos, pos); } catch (e) {} S.refocus = false; }
   }
+  // Lignes qui défilent de côté (pastilles, filtres) : un fondu sur le bord montre qu'il y a la suite,
+  // et le choix en cours est ramené dans l'écran s'il était caché
+  var DEFIL = '.tl-segs,.t2-nav.t2-6,.ins-ft .hr-seg,.ins-tb,.stk-fl,.snav,.iv-emps,.st-emps,.cg-filtres';
+  function marquerDefilants() {
+    [].forEach.call(document.querySelectorAll(DEFIL), function (el) {
+      if (el.scrollWidth <= el.clientWidth + 2) { el.classList.remove('hs-g', 'hs-d'); return; }
+      var on = el.querySelector('.on,[aria-pressed="true"],[aria-selected="true"]');
+      if (on && !el._hsVu) { el._hsVu = 1; var g = on.offsetLeft - el.offsetLeft, dr = g + on.offsetWidth; if (dr > el.scrollLeft + el.clientWidth || g < el.scrollLeft) el.scrollLeft = Math.max(0, g - 24); }
+      var maj = function () { el.classList.toggle('hs-g', el.scrollLeft > 4); el.classList.toggle('hs-d', el.scrollLeft + el.clientWidth < el.scrollWidth - 4); };
+      maj(); if (!el._hs) { el._hs = 1; el.addEventListener('scroll', maj, { passive: true }); }
+    });
+  }
+  window.addEventListener('resize', function () { marquerDefilants(); });
   // Numéro de version en haut à droite du bandeau (avec « Bêta test » sur le site de test)
   function coinVersion() {
     var e = document.getElementById('ver-coin');
