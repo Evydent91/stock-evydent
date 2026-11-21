@@ -2858,7 +2858,7 @@
       var tous = I.l.filter(function (y) { return y.type === t.k; }), l = tous.filter(ok).sort(function (a, b) { var ra = a.statut === 'reparation' ? 0 : 1, rb = b.statut === 'reparation' ? 0 : 1; return ra - rb || String(a.sn).localeCompare(String(b.sn)); });
       var nc = tous.filter(function (y) { return y.statut === 'service'; }).length, nr = tous.filter(function (y) { return y.statut === 'reparation'; }).length;
       return '<section class="ins-col" data-inscol="' + t.k + '"><div class="ins-h"><img src="assets/instruments/' + t.k + '.jpg" alt="' + esc(t.n) + '" loading="lazy"><b>' + t.n + '</b><small>' + t.s + '</small>'
-        + '<span class="ins-k"><span>' + nc + ' au centre</span>' + (nr ? '<span class="w">' + nr + ' en réparation</span>' : '') + '</span>'
+        + '<span class="ins-k"><span>' + nc + ' au centre</span>' + (nr ? '<span class="w">' + nr + ' en réparation</span>' : '') + (function () { var v = 0, n = 0; tous.forEach(function (y) { if (y.statut !== 'rebut' && y.valeur != null) { v += +y.valeur; n++; } }); return n ? '<span class="v" title="Valeur des instruments renseignés (hors rebut)">Valeur ' + eur(v) + '</span>' : ''; })() + '</span>'
         + '<label class="ins-qc">' + ico('loupe', 18, 2.2) + '<input type="search" data-insq="' + t.k + '" placeholder="SN…" aria-label="Chercher un SN parmi : ' + esc(t.n) + '" value="' + esc(I.qc[t.k] || '') + '" autocomplete="off"></label></div>'
         + '<div class="ins-l">' + (l.length ? l.map(insCarte).join('') : '<p class="mu ins-vide">' + (tous.length ? 'Aucun pour ce filtre.' : 'Aucun instrument enregistré.') + '</p>') + '<p class="mu ins-vide ins-rien" hidden>Aucun SN ne correspond.</p></div></section>';
     }).join('') + '</div>';
@@ -2884,7 +2884,7 @@
     if (ec) h += '<div class="ins-ec">' + ico('camion', 20, 2.2) + '<span><b>Parti le ' + insDate(ec.envoye_le) + (ec.chez ? ' chez ' + esc(ec.chez) : '') + ' · ' + (ec.en_garantie ? 'en garantie' : 'hors garantie') + '</b><small>' + esc([ec.motif, ec.detail].filter(Boolean).join(' · ') || 'problème non précisé') + (ec.bon ? ' · bon ' + esc(ec.bon) : '') + ' · absent depuis ' + nbJours(ec.envoye_le, auj) + ' j</small></span></div>';
     h += '<div class="ins-2">'
       + '<div><small>Dernière réparation</small>' + (dr ? '<b>Revenu le ' + insDate(dr.retour_le) + '</b><span>' + esc(dr.travaux || 'travaux non précisés') + ' · ' + (dr.en_garantie ? 'en garantie' : dr.prix != null ? eur(dr.prix) + ' TTC' : 'prix non saisi') + '</span><span class="mu">Absent ' + nbJours(dr.envoye_le, dr.retour_le) + ' j · envoyé le ' + insDateC(dr.envoye_le) + (dr.chez ? ' chez ' + esc(dr.chez) : '') + '</span>' : '<b>Aucune</b><span class="mu">' + (x.achat ? 'depuis l’achat' : 'enregistrée dans l’appli') + '</span>') + '</div>'
-      + '<div><small>Achat</small>' + (x.achat ? '<b>' + insDate(x.achat) + '</b>' : '<b class="mu">Date non renseignée</b>') + '<span>' + esc(x.fournisseur || 'fournisseur non renseigné') + '</span><span class="mu">Garantie d’achat : ' + (x.garantie_mois || 0) + ' mois</span></div></div>';
+      + '<div><small>Achat</small>' + (x.achat ? '<b>' + insDate(x.achat) + '</b>' : '<b class="mu">Date non renseignée</b>') + '<span>' + (x.valeur != null ? '<b>' + eur(x.valeur) + ' TTC</b> · ' : '') + esc(x.fournisseur || 'fournisseur non renseigné') + '</span><span class="mu">Garantie d’achat : ' + (x.garantie_mois || 0) + ' mois</span></div></div>';
     if (x.note) h += '<p class="ins-note">' + esc(x.note) + '</p>';
     if (I.form === 'envoi' || I.form === 'retour') h += I.form === 'envoi' ? vInstrEnvoi(x, g) : vInstrRetour(x, ec);
     else h += '<div class="ins-act">' + (x.statut === 'rebut' ? '<button class="btn" data-act="insremet">Remettre en service</button>'
@@ -2896,7 +2896,7 @@
       if (e.retour_le) ev.push({ d: e.retour_le, k: 'ret', t: e.rebut ? 'Revenu non réparable' : 'Retour de réparation', s: [e.travaux, e.en_garantie ? 'en garantie' : '', e.garantie_rep_mois ? 'garantie ' + e.garantie_rep_mois + ' mois' : ''].filter(Boolean).join(' · '), m: e.en_garantie ? '0 €' : e.prix != null ? eur(e.prix) : '' });
       ev.push({ d: e.envoye_le, k: 'env', t: (e.en_garantie ? 'Envoyé en garantie' : 'Envoyé en réparation') + (e.chez ? ' chez ' + e.chez : ''), s: [e.motif, e.detail, e.bon ? 'bon ' + e.bon : ''].filter(Boolean).join(' · '), m: '', id: e.id });
     });
-    if (x.achat) ev.push({ d: x.achat, k: 'ach', t: 'Achat', s: [x.fournisseur, 'garantie ' + (x.garantie_mois || 0) + ' mois'].filter(Boolean).join(' · '), m: '' });
+    if (x.achat) ev.push({ d: x.achat, k: 'ach', t: 'Achat', s: [x.fournisseur, 'garantie ' + (x.garantie_mois || 0) + ' mois'].filter(Boolean).join(' · '), m: x.valeur != null ? eur(x.valeur) : '' });
     ev.sort(function (a, b) { return a.d < b.d ? 1 : a.d > b.d ? -1 : (a.k === 'ret' ? -1 : 1); });
     var IC = { env: 'camion', ret: 'refaire', ach: 'panier' };
     h += ev.length ? '<div class="ins-ev">' + ev.map(function (e) { return '<div class="ins-e"><span class="mu">' + insDateC(e.d) + '</span><span class="ins-ei ' + e.k + '" aria-hidden="true">' + ico(IC[e.k], 17, 2.2) + '</span><span><b>' + esc(e.t) + '</b>' + (e.s ? '<small>' + esc(e.s) + '</small>' : '') + '</span><b>' + esc(e.m) + '</b>' + (e.id ? '<button class="h-rond gris ins-del" data-insdel="' + e.id + '" aria-label="Supprimer cet envoi" title="Supprimer cet envoi">' + ico('poubelle', 16, 2.2) + '</button>' : '<span></span>') + '</div>'; }).join('') + '</div>' : '<p class="a-vide">Rien pour l’instant.</p>';
@@ -2932,6 +2932,7 @@
       + '<label class="pl">Numéro de série (SN)<input class="in" id="ins-sn" value="' + esc(d.sn || '') + '" autocomplete="off" placeholder="Tel qu’il est gravé sur l’instrument"></label>'
       + '<label>Date d’achat<input class="in" type="date" id="ins-ach" value="' + esc(String(d.achat || '').slice(0, 10)) + '"></label>'
       + '<label>Garantie d’achat (mois)<input class="in" type="number" min="0" max="120" id="ins-gm" value="' + (d.garantie_mois != null ? d.garantie_mois : 12) + '"></label>'
+      + '<label>Valeur (prix d’achat TTC)<input class="in" id="ins-va" inputmode="decimal" value="' + (d.valeur != null ? String(d.valeur).replace('.', ',') : '') + '" placeholder="Ex. : 690,00"></label>'
       + '<label>Fournisseur<input class="in" id="ins-fo" value="' + esc(d.fournisseur || '') + '" placeholder="Ex. : dépôt dentaire"></label>'
       + '<label>Cabinet<select class="in" id="ins-cb"><option value="">Pas de cabinet</option>' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+d.cabinet === c ? ' selected' : '') + '>Cabinet ' + c + '</option>'; }).join('') + '</select></label>'
       + '<label class="pl">Note (facultatif)<input class="in" id="ins-no" value="' + esc(d.note || '') + '"></label></div>'
@@ -2941,8 +2942,12 @@
   async function insSauver() {
     var I = insEtat(), x = I.sel ? insById(I.sel) : null, sn = insVal('ins-sn').toUpperCase();
     if (!sn) { toast('Le numéro de série est obligatoire'); return; }
-    var o = { type: insVal('ins-ty') || 'turbine', sn: sn, achat: insVal('ins-ach') || null, garantie_mois: Math.max(0, Math.min(120, parseInt(insVal('ins-gm'), 10) || 0)), fournisseur: insVal('ins-fo') || null, cabinet: +insVal('ins-cb') || null, note: insVal('ins-no') || null, modifie_le: new Date().toISOString() };
-    var r = x ? await sb.from('instruments').update(o).eq('id', x.id).select().single() : await sb.from('instruments').insert(o).select().single();
+    var va = insVal('ins-va').replace(/\s|€/g, '').replace(',', '.');
+    if (va !== '' && !(+va >= 0)) { toast('La valeur doit être un montant, par exemple 690,00'); return; }
+    var o = { type: insVal('ins-ty') || 'turbine', sn: sn, valeur: va === '' ? null : nb(va), achat: insVal('ins-ach') || null, garantie_mois: Math.max(0, Math.min(120, parseInt(insVal('ins-gm'), 10) || 0)), fournisseur: insVal('ins-fo') || null, cabinet: +insVal('ins-cb') || null, note: insVal('ins-no') || null, modifie_le: new Date().toISOString() };
+    var ecrire = function () { return x ? sb.from('instruments').update(o).eq('id', x.id).select().single() : sb.from('instruments').insert(o).select().single(); };
+    var r = await ecrire();
+    if (r.error && /valeur/.test(String(r.error.message))) { delete o.valeur; r = await ecrire(); if (!r.error) toast('Valeur non enregistrée : relancez la mise à jour 033 dans Supabase'); }
     if (r.error) { toast(/duplicate|unique|23505/i.test(String(r.error.message || r.error.code)) ? 'Ce numéro de série existe déjà' : msgErr(r.error)); return; }
     if (x) Object.assign(x, r.data); else I.l.push(r.data);
     I.sel = r.data.id; I.form = null; I.fd = {}; toast('✔ ' + insTy(o.type).n + ' ' + sn + ' enregistré' + (insTy(o.type).k === 'turbine' ? 'e' : '')); render(); window.scrollTo(0, 0);
