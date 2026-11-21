@@ -314,6 +314,7 @@
   function poser(app, h) {
     var ae = document.activeElement, fq = ae && ae.id && ae.tagName === 'INPUT' ? ae.id : null, pos = fq && ae.selectionStart;
     app.innerHTML = h;
+    document.body.classList.toggle('tablette', tablette());
     setTimeout(marquerDefilants, 0);
     if (fq && $(fq)) { S.refocus = true; $(fq).focus(); try { $(fq).setSelectionRange(pos, pos); } catch (e) {} S.refocus = false; }
   }
@@ -2894,6 +2895,8 @@
 
   // Téléphone : le plus petit côté de l'écran fait moins de 600 px (quelle que soit l'orientation)
   function telephone() { try { return Math.min(screen.width, screen.height) < 600; } catch (e) { return false; } }
+  // Tablette : écran tactile qui n'est pas un téléphone (iPad, tablette Android) : mêmes pages que l'ordinateur, en-têtes plus compacts
+  function tablette() { try { return !telephone() && window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(pointer: fine)').matches; } catch (e) { return false; } }
   function vSurPC() {
     var tt = { planning: 'Planning', heures: 'Heures', pointage: 'Pointage', occup: 'Occupation' }[S.tab] || 'Planning';
     return '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" data-tab="' + (S.tab === 'planning' ? 'hub' : 'pplus') + '">' + ico('prec', 22, 2.4) + (S.tab === 'planning' ? 'Accueil' : 'Plus') + '</button><h1>' + tt + '</h1><span class="hr-vide"></span></div></header>'
@@ -4558,7 +4561,7 @@
       + '<button class="pl-auj nd-auj' + (o.auj ? '' : ' cache') + '" ' + aujA + (o.auj ? ' aria-label="' + esc(o.auj) + '"' : ' tabindex="-1" aria-hidden="true"') + '>' + ico('refaire', 16, 2.4) + '<span>' + (o.auj || (o.pas === 'mois' ? 'Ce mois-ci' : o.pas === 'jour' ? 'Aujourd’hui' : 'Cette semaine')) + '</span></button></div>';
   }
   // Bandeau de date commun à toutes les pages : flèches et calendrier à gauche, choix de l'affichage à droite, précision en dessous
-  function bandeDate(nav, droite, sous) { return '<div class="nd-bande">' + nav + '<span class="grow"></span>' + (droite ? '<span class="nd-dr">' + droite + '</span>' : '') + '</div>' + (sous != null ? '<p class="nd-sous">' + (sous || '&nbsp;') + '</p>' : ''); }
+  function bandeDate(nav, droite, sous) { return '<div class="nd-bande">' + nav + '<span class="grow"></span>' + (droite ? '<span class="nd-dr">' + droite + '</span>' : '') + '</div>' + (sous != null && !(sous === '' && tablette()) ? '<p class="nd-sous">' + (sous || '&nbsp;') + '</p>' : ''); }
   // Date choisie dans le calendrier : chaque page la ramène à sa période (jour, lundi de la semaine, mois)
   function navDateChoisie(cle, v) {
     if (!v) return;

@@ -3326,3 +3326,30 @@ button.tl-chip{cursor:pointer;font-family:inherit}
 .tl-sec.warn{color:#8a3d0c}
 .ins-r.tel{min-height:48px;gap:10px}.ins-r.tel .ins-p{flex:none;white-space:nowrap}
 .ins-ty .ins-dot{width:11px;height:11px;margin-right:2px;vertical-align:-1px}
+/* Tablette (écran tactile qui n'est pas un téléphone) : en-têtes compacts, pour laisser la place au contenu */
+body.tablette .a-hd{padding:calc(6px + env(safe-area-inset-top)) 14px 8px;gap:8px}
+body.tablette .a-hd-row{min-height:40px}
+body.tablette .a-hd-row h1{font-size:22px}
+body.tablette .a-back{min-height:40px}
+body.tablette .a-maison{padding:calc(10px + env(safe-area-inset-top)) 16px 12px;gap:8px}
+body.tablette .a-maison h1{font-size:26px}
+body.tablette .a-maison p{font-size:14.5px;margin-top:2px}
+body.tablette .a-mh-top img{width:32px;height:32px}
+body.tablette .h-hd .h-rond,body.tablette .nd .h-rond{width:38px;height:38px}
+body.tablette .pl-imp{height:34px;font-size:13.5px;padding:0 10px;white-space:nowrap}
+body.tablette .hr-seg{padding:3px}
+body.tablette .hr-seg button{height:32px;font-size:14px;padding:0 12px}
+body.tablette .nd-sous:empty,body.tablette .nd-sous{margin:0;min-height:0}
+body.tablette .top-in{padding-top:6px;padding-bottom:6px}
+body.tablette .a-hd label.a-rech,body.tablette .a-hd .ins-q{height:40px}
+@media (max-width:1300px){ body.tablette .pl-imp .m-hide{display:none} }
+/* Tableau des instruments sur un écran moyen : colonnes secondaires retirées */
+@media (max-width:1300px){
+  .ins-r:not(.tel){grid-template-columns:120px 150px 70px 170px minmax(150px,1fr) 90px 18px}
+  .ins-r:not(.tel) > :nth-child(3){display:none}
+}
+@media (max-width:960px){
+  .ins-r:not(.tel){grid-template-columns:110px 140px 64px 160px minmax(120px,1fr) 18px}
+  .ins-r:not(.tel) > .d{display:none}
+}
+@media (max-width:960px){ .ins-r:not(.tel){grid-template-columns:110px 140px 64px 180px minmax(120px,1fr) 18px} .ins-r:not(.tel) .ins-p{white-space:nowrap;font-size:12px} }
