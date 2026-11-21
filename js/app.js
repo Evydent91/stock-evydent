@@ -1212,8 +1212,9 @@
       + '<button class="h-moi" data-act="out" aria-label="Changer de personne (' + esc(S.me.nom) + ')" title="Changer de personne"><span class="h-av" aria-hidden="true">' + esc((S.me.nom || '?').charAt(0).toUpperCase()) + '</span><span class="h-moi-t">' + esc(S.me.nom) + ' · changer</span></button></div>'
       + '<div><h1>Bonjour ' + esc(S.me.nom) + '</h1><p>' + LABEL[S.me.role] + ' · ' + j + '</p></div></header>';
     var ca = congesAttente().length + congesAnnul().length;
-    moiG(); if (S.moiEq && S.moiEq.pointage && !S.monPtVu) { S.monPtVu = true; chargerMonPointage(); }
-    h += '<div class="a-corps h-corps">' + vBienvenue() + (S.moiEq && S.moiEq.pointage ? '<div class="h-pt">' + tuilePointer() + '</div>' : '')
+    moiG(); var ptIci = telephone() && S.moiEq && S.moiEq.pointage; // sur ordinateur, pas de bouton « Pointer » : on pointe avec son téléphone
+    if (ptIci && !S.monPtVu) { S.monPtVu = true; chargerMonPointage(); }
+    h += '<div class="a-corps h-corps">' + vBienvenue() + (ptIci ? '<div class="h-pt">' + tuilePointer() + '</div>' : '')
       + '<div class="h-tuiles">'
       + '<button class="h-tuile fonce" data-tab="accueil"><span class="ti">' + ico('boite', 34) + '</span><span class="tt"><b>Gestion de stock</b><span>' + (sous.length ? sous.join(' · ') : 'Sorties, inventaires, commandes') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
       + (telephone() ? '' : '<button class="h-tuile" data-tab="planning"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span>Qui travaille, avec quel dentiste, et les heures</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>' + tuilePointage())
