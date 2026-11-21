@@ -3038,7 +3038,7 @@
     var I = insEtat(); if (!I.l && !I.charge) chargerInstr();
     var x = I.sel ? insById(I.sel) : null; if (I.sel && I.l && !x && I.sel !== 'new') I.sel = null;
     var enRep = (I.l || []).filter(function (y) { return y.statut === 'reparation'; }).length;
-    var btns = '<span class="pl-hbtns"><button class="pl-imp" data-insf="rep">' + ico('camion', 18, 2.2) + '<span class="m-hide">Envois en cours · ' + enRep + '</span></button><button class="pl-imp" data-act="insnew">' + ico('plus', 18, 2.4) + '<span class="m-hide">Ajouter un instrument</span></button></span>';
+    var btns = '<span class="pl-hbtns"><button class="pl-imp" data-insf="rep">' + ico('camion', 18, 2.2) + '<span class="m-hide">Envois en cours · ' + enRep + '</span></button><label class="pl-imp" title="Créer les fiches depuis des factures PDF (DFC Instruments)">' + ico('haut', 18, 2.2) + '<span class="m-hide">Importer</span><input type="file" id="insfac" accept="application/pdf,.pdf" multiple hidden></label><button class="pl-imp" data-act="insnew">' + ico('plus', 18, 2.4) + '<span class="m-hide">Ajouter un instrument</span></button></span>';
     var fil = '<div class="hr-seg" role="group" aria-label="Afficher">' + [['tous', 'Tous'], ['centre', 'Au centre'], ['panne', 'En panne'], ['rep', 'En réparation'], ['fin', 'Garantie bientôt finie'], ['rebut', 'Au rebut']].map(function (f) { return '<button data-insf="' + f[0] + '" aria-pressed="' + (I.f === f[0]) + '"' + (I.f === f[0] ? ' class="on"' : '') + '>' + f[1] + '</button>'; }).join('') + '</div>';
     var rech = '<label class="ins-q">' + ico('loupe', 20, 2.2) + '<input type="search" data-insq="tout" placeholder="Chercher un numéro de série (SN)…" aria-label="Chercher un numéro de série dans tous les instruments" value="' + esc(I.q || '') + '" autocomplete="off"></label>';
     var fiche = !!(I.sel || I.form === 'new');
@@ -3048,6 +3048,7 @@
     if (I.err) return h + '<div class="ban warn">' + esc(I.err) + '</div></div>';
     if (!I.l) return h + '<p class="a-vide">Chargement…</p></div>';
     if (fiche) return h + vInstrFiche(x) + '</div>';
+    if (I.imp) return h + vInsImport() + '</div>';
     if (telephone()) h += '<div class="ins-ft">' + fil + '</div>';
     var ok = function (y) { var g = I.f === 'fin' ? insGarantie(y) : null; return I.f === 'rebut' ? y.statut === 'rebut' : y.statut !== 'rebut' && (I.f === 'tous' || (I.f === 'centre' && y.statut === 'service') || (I.f === 'panne' && y.statut === 'panne') || (I.f === 'rep' && y.statut === 'reparation') || (I.f === 'fin' && y.statut === 'service' && g.k === 'fin')); };
     h += '<div class="ins-g' + (telephone() ? ' tel' : '') + '">' + INS_T.map(function (t) {
@@ -3146,6 +3147,49 @@
       + '<label class="pl">Note (facultatif)<input class="in" id="ins-no" value="' + esc(d.note || '') + '"></label></div>'
       + '<div class="ins-fb">' + (x ? '<button class="btn l ins-reb" data-act="insdelx">Supprimer la fiche</button><span class="grow"></span>' : '') + '<button class="btn l" data-act="insback">Annuler</button><button class="btn" data-act="inssave">Enregistrer</button></div></section></div>';
   }
+  // Import de factures d'instruments : une fiche par numéro de série, à vérifier avant de créer
+  function insImporter(files) {
+    var I = insEtat(), fs = [].slice.call(files || []); if (!fs.length) return;
+    I.imp = { charge: true, f: [], sel: {}, cab: '' }; I.sel = null; I.form = null; render();
+    var deja = {}; (I.l || []).forEach(function (y) { deja[String(y.sn).trim().toUpperCase()] = 1; });
+    Promise.all(fs.map(function (f) { return f.arrayBuffer().then(FACTURES.extraireLignes).then(function (L) { var R = FACTURES.lireInstruments(L); R.nomFichier = f.name; return R; }).catch(function () { return { nomFichier: f.name, instruments: [], autres: [], err: true }; }); })).then(function (rs) {
+      rs.sort(function (a, b) { return String(a.date || '') < String(b.date || '') ? -1 : 1; });
+      var vus = {};
+      rs.forEach(function (R) { R.instruments.forEach(function (x) { var k = x.sn.toUpperCase(); x.deja = !!deja[k] || !!vus[k]; vus[k] = 1; if (!x.deja) I.imp.sel[k] = true; }); });
+      I.imp.f = rs; I.imp.charge = false; render(); window.scrollTo(0, 0);
+    });
+  }
+  function vInsImport() {
+    var M = insEtat().imp, n = 0;
+    if (M.charge) return '<p class="a-vide">Lecture des factures…</p>';
+    var h = '<section class="card ins-imp"><div class="row wrap"><b class="grow" style="font-size:18px">Créer les fiches depuis les factures</b><button class="btn l sm" data-act="insimpx">Annuler</button></div>'
+      + '<p class="mu" style="margin:6px 0 10px">Une fiche par numéro de série, avec la date d’achat, la valeur payée (TTC, remises comprises) et la garantie de la facture (12 mois quand elle n’est pas écrite). Décochez ce qu’il ne faut pas créer.</p>';
+    M.f.forEach(function (R) {
+      h += '<div class="ins-impf"><b>' + (R.fournisseur ? esc(R.fournisseur) + ' · facture ' + esc(R.facture || '?') + (R.date ? ' du ' + insDate(R.date) : '') : esc(R.nomFichier) + ' · <span class="ko-t">pas reconnue</span>') + '</b>';
+      R.instruments.forEach(function (x) {
+        var k = x.sn.toUpperCase(), on = !x.deja && M.sel[k]; if (on) n++;
+        h += '<label class="ins-impl' + (x.deja ? ' deja' : '') + '"><input type="checkbox" data-insimp="' + esc(k) + '"' + (on ? ' checked' : '') + (x.deja ? ' disabled' : '') + '><span class="grow"><b>' + esc(insTy(x.type).n) + ' · ' + esc(x.sn) + '</b><small>' + esc([x.modele, x.ref ? 'réf. ' + x.ref : ''].filter(Boolean).join(' · ')) + ' · garantie ' + (x.garantie_mois || 12) + ' mois' + (x.deja ? ' · <b>déjà dans l’appli</b>' : '') + '</small></span><b class="ins-impv">' + fr2(x.valeur) + ' €</b></label>';
+      });
+      if (R.autres.length) h += '<p class="mu ins-impa">Pas un instrument (pas de fiche) : ' + R.autres.map(esc).join(' · ') + '</p>';
+      if (!R.instruments.length && !R.autres.length) h += '<p class="mu ins-impa">' + (R.fournisseur ? 'Aucun numéro de série sur cette facture.' : 'Cette facture n’est pas une facture DFC Instruments : l’import sait lire celles-là pour l’instant.') + '</p>';
+      h += '</div>';
+    });
+    h += '<div class="row wrap ins-impb"><label>Cabinet des nouvelles fiches <select class="in" id="insimpcab"><option value="">Pas de cabinet (à renseigner ensuite)</option>' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<option value="' + c + '"' + (+M.cab === c ? ' selected' : '') + '>Cabinet ' + c + '</option>'; }).join('') + '</select></label><span class="grow"></span>'
+      + '<button class="btn" data-act="insimpok"' + (n && !M.busy ? '' : ' disabled') + '>' + (M.busy ? 'Création…' : 'Créer ' + n + ' fiche' + (n > 1 ? 's' : '')) + '</button></div></section>';
+    return h;
+  }
+  function fr2(v) { return (+v || 0).toFixed(2).replace('.', ','); }
+  async function insImportOk() {
+    var I = insEtat(), M = I.imp; if (!M || M.busy) return;
+    var cab = +insVal('insimpcab') || null, rows = [];
+    M.f.forEach(function (R) { R.instruments.forEach(function (x) { if (x.deja || !M.sel[x.sn.toUpperCase()]) return;
+      rows.push({ type: x.type, sn: x.sn.toUpperCase(), achat: R.date, garantie_mois: x.garantie_mois || 12, fournisseur: R.fournisseur, valeur: x.valeur, cabinet: cab, statut: 'service', note: 'Facture ' + R.facture + (x.modele ? ' · ' + x.modele : '') + (x.ref ? ' · réf. ' + x.ref : '') }); }); });
+    if (!rows.length) return;
+    M.busy = true; render();
+    var r = await sb.from('instruments').insert(rows).select();
+    if (r.error) { M.busy = false; toast(/duplicate|unique|23505/i.test(String(r.error.message || r.error.code)) ? 'Un de ces numéros de série existe déjà : rechargez la page et recommencez' : msgErr(r.error)); render(); return; }
+    I.l = (I.l || []).concat(r.data || []); I.imp = null; toast('✔ ' + rows.length + ' fiche' + (rows.length > 1 ? 's' : '') + ' créée' + (rows.length > 1 ? 's' : '')); render(); window.scrollTo(0, 0);
+  }
   function insVal(id) { var el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; }
   async function insSauver() {
     var I = insEtat(), x = I.sel ? insById(I.sel) : null, sn = insVal('ins-sn').toUpperCase();
@@ -3204,6 +3248,8 @@
     if (d.insf) { I.f = d.insf; I.sel = null; I.form = null; render(); return true; }
     if (d.insform != null) { I.form = d.insform || null; I.fd = {}; if (I.form === 'envoi' && x && x.statut === 'panne' && x.panne_motif) I.fd.motif = x.panne_motif; render(); return true; }
     if (d.insmo) { I.fd.motif = I.fd.motif === d.insmo ? null : d.insmo; [].forEach.call(document.querySelectorAll('[data-insmo]'), function (b) { var on = b.dataset.insmo === I.fd.motif; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); }); return true; }
+    if (d.act === 'insimpx') { I.imp = null; render(); return true; }
+    if (d.act === 'insimpok') { insImportOk(); return true; }
     if (d.act === 'insnew') { I.sel = null; I.form = 'new'; I.fd = {}; render(); window.scrollTo(0, 0); return true; }
     if (d.act === 'insback') { if (I.form === 'edit') I.form = null; else { I.sel = null; I.form = null; } render(); return true; }
     if (d.act === 'inssave') { insSauver(); return true; }
@@ -8894,6 +8940,9 @@
   });
   document.addEventListener('change', function (e) {
     var t = e.target; if (!S.me) return;
+    if (t.id === 'insfac' && t.files && t.files.length) { insImporter(t.files); t.value = ''; return; }
+    if (t.dataset && t.dataset.insimp != null && S.ins && S.ins.imp) { S.ins.imp.sel[t.dataset.insimp] = t.checked; render(); return; }
+    if (t.id === 'insimpcab' && S.ins && S.ins.imp) { S.ins.imp.cab = t.value; return; }
     if (t.id === 'trff' && t.files && t.files[0]) { trfLire(t.files[0]); t.value = ''; return; }
     if ((t.id === 'pttpers' || t.id === 'pttjour') && S.ptt) { S.ptt[t.id === 'pttpers' ? 'pers' : 'jour'] = t.id === 'pttpers' ? +t.value : t.value; var Tq = S.ptt; Tq.der = null; pttLigne(Tq.pers, Tq.jour).then(function (l) { Tq.ligne = l; render(); }).catch(function () {}); render(); return; }
     if ((t.id === 'pttspers' || t.id === 'pttsjour') && S.ptt) { S.ptt[t.id === 'pttspers' ? 'spers' : 'sjour'] = t.id === 'pttspers' ? +t.value : t.value; return; }

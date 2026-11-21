@@ -205,5 +205,50 @@
     return F;
   }
 
-  window.FACTURES = { extraireLignes: extraireLignes, lireFacture: lireFacture, modeles: MODELES.map(function (m) { return m.nom; }), _lignesDuDoc: lignesDuDoc };
+  // Factures d'instruments rotatifs (DFC Instruments, COXO) : une fiche par numéro de série.
+  // Renvoie { fournisseur, facture, date, instruments: [{ type, sn, ref, modele, valeur, garantie_mois }], autres: [désignations sans numéro de série] }
+  function typeInstr(d) {
+    d = String(d).toUpperCase();
+    if (/TURBINE/.test(d)) return 'turbine';
+    if (/20\s*:\s*1|BAGUE VERTE/.test(d)) return 'ca20';
+    if (/1\s*:\s*5|C7-5|BAGUE ROUGE/.test(d)) return 'ca15';
+    if (/1\s*:\s*1|\b1C\b|BAGUE BLEUE/.test(d)) return 'ca11';
+    return null;
+  }
+  function lireInstruments(lignes) {
+    var t = lignes.join('\n'), R = { fournisseur: null, facture: null, date: null, instruments: [], autres: [] };
+    if (!/DFC INSTRUMENTS/i.test(t)) return R;
+    R.fournisseur = 'DFC Instruments';
+    var e = t.match(/(FC\d+) \| (\d\d)\/(\d\d)\/(\d{4})/); if (e) { R.facture = e[1]; R.date = e[4] + '-' + e[3] + '-' + e[2]; }
+    var blocs = [], b = null, zone = false;
+    lignes.forEach(function (l) {
+      if (/^Code \| Description/.test(l)) { zone = true; return; }
+      if (!zone) return;
+      if (/^(FR|Règlement|E s c ompte)/.test(l)) { zone = false; b = null; return; }
+      var c = l.split(' | ');
+      if (/^\d{1,5}$/.test(c[0]) && c.length >= 4) {
+        var txt = c.slice(1).filter(function (x) { return !/^[\d\s.,]+$/.test(x) && !/^[\d,.]+ [\d,.]+$/.test(x); }), nums = c.slice(1).filter(function (x) { return /^[\d\s.,]+$/.test(x) || /^[\d,.]+ [\d,.]+$/.test(x); });
+        b = { code: c[0], desc: txt.join(' '), qte: parseInt(nums[0], 10) || 0, ttc: num(c[c.length - 1]), sn: [], gar: null, serie: false }; blocs.push(b); return;
+      }
+      if (!b) return;
+      var g = l.match(/GARANTIE (\d+) MOIS/i); if (g) { b.gar = +g[1]; return; }
+      if (/^(REF\s*:|Numéro de série)/i.test(l)) { b.serie = true; return; }
+      if (b.serie) { var m, re = /\b([A-Z0-9]{4}-\d{4})\b/g; while ((m = re.exec(l))) b.sn.push({ sn: m[1], ref: (l.slice(0, m.index).match(/(\d{7})\s*$/) || [])[1] || null }); return; }
+      if (!/^[\d\s.,|]+$/.test(l)) b.desc += (b.desc ? ' ' : '') + l;
+    });
+    // remise sur toute la facture (« Remise 10,00% ») et frais de port : répartis au prorata des lignes, sans compter les lots (« PACK », « PROMOTION »)
+    var tot = t.match(/Total TTC \| ([\d\s.]*\d,\d\d)/), port = t.match(/Port HT \| ([\d\s.]*\d,\d\d)/);
+    var reels = blocs.filter(function (x) { return x.qte > 0 && x.ttc > 0 && !/^(PACK|PROMOTION)/i.test(x.desc); });
+    var somme = reels.reduce(function (s0, x) { return s0 + x.ttc; }, 0), cible = tot ? num(tot[1]) - (port ? num(port[1]) * 1.2 : 0) : null;
+    var k = cible && somme && cible < somme - 0.05 && cible > somme * 0.5 ? cible / somme : 1;
+    reels.forEach(function (x) {
+      var ty = typeInstr(x.desc), mo = (x.desc.match(/\b(CX[0-9A-Z]+(?:-[0-9A-Z]+)?(?: 1C)?)/) || [])[1] || '', ref0 = (x.sn.filter(function (q) { return q.ref; })[0] || {}).ref || null;
+      if (!ty || !x.sn.length) { R.autres.push(x.desc); return; }
+      var v = Math.round(x.ttc * k / x.qte * 100) / 100;
+      x.sn.forEach(function (s0) { R.instruments.push({ type: ty, sn: s0.sn, ref: s0.ref || ref0, modele: mo, valeur: v, garantie_mois: x.gar, desc: x.desc }); });
+    });
+    return R;
+  }
+
+  window.FACTURES = { lireInstruments: lireInstruments, extraireLignes: extraireLignes, lireFacture: lireFacture, modeles: MODELES.map(function (m) { return m.nom; }), _lignesDuDoc: lignesDuDoc };
 })();
