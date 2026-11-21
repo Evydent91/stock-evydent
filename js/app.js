@@ -2796,7 +2796,7 @@
     { k: 'ca11', n: 'Contre-angle bague bleue', s: '1:1' },
     { k: 'ca15', n: 'Contre-angle bague rouge', s: '1:5 · multiplicateur' }
   ];
-  var INS_MOTIFS = ['Bruit', 'Perte de puissance', 'Spray', 'Lumière', 'Chauffe', 'Fraise qui tient mal', 'Autre'];
+  var INS_MOTIFS = ['Bruit', 'Perte de puissance', 'Spray', 'Lumière', 'Chauffe', 'Fraise qui ne tourne pas', 'Fraise qui tient mal', 'Autre'];
   function insEtat() { return S.ins = S.ins || { l: null, env: [], q: '', qc: {}, f: 'tous', sel: null, form: null, fd: {} }; }
   function insTy(k) { return INS_T.filter(function (t) { return t.k === k; })[0] || INS_T[0]; }
   function chargerInstr() {
@@ -2930,7 +2930,7 @@
       + '<div class="ins-l2"><span class="mu">Le problème</span><div class="ins-mo" role="group" aria-label="Problème">' + INS_MOTIFS.map(function (m) { var on = fd.motif === m; return '<button type="button" data-insmo="' + esc(m) + '" aria-pressed="' + on + '"' + (on ? ' class="on"' : '') + '>' + m + '</button>'; }).join('') + '</div>'
       + '<textarea class="in" id="ins-pdet" rows="2" placeholder="Précisions (facultatif) : ce qui se passe, qui l’a remarqué…"></textarea></div>'
       + '<div class="ins-fg"><label>Depuis le<input class="in" type="date" id="ins-pdte" value="' + dIso(new Date()) + '"></label></div>'
-      + '<div class="ins-fb"><button class="btn l" data-insform="">Annuler</button><button class="btn" data-act="inspanne">' + ico('panne', 18, 2.2) + 'Enregistrer : en panne</button></div></section>';
+      + '<div class="ins-fb"><button class="btn l" data-insform="">Annuler</button><button class="btn" data-act="inspanne">' + ico('panne', 18, 2.2) + 'Enregistrer la panne</button></div></section>';
   }
   function vInstrRetour(x, ec) {
     if (!ec) return '';
