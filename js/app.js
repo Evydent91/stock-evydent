@@ -175,7 +175,7 @@
   }
   // À chaque changement de personne : on repart de zéro (cabinet par défaut, panier, inventaire, écrans ouverts)
   function oublierPersonne() {
-    S.session = null; S.me = null; S.tab = 'maison'; S.tabChoisi = false; S.fiche = null; S.eqEdit = null; S.eqNew = null; S.cmBusy = false; S.histTous = false; S.histo = []; S.menu = false; S.tour = null; S.pl = null; S.plImp = null; S.pf = null; S.df = null; S.equipe = null; S.dentistes = null; S.conges = null; S.mesConges = null; S.moiEq = null; S.dm = null; S.rgEdit = null; S.cAjout = null;
+    S.session = null; S.me = null; S.tab = 'maison'; S.tabChoisi = false; S.fiche = null; S.eqEdit = null; S.eqNew = null; S.cmBusy = false; S.histTous = false; S.histo = []; S.menu = false; S.tour = null; S.pl = null; S.plImp = null; S.pf = null; S.df = null; S.equipe = null; S.dentistes = null; S.conges = null; S.mesConges = null; S.moiEq = null; S.dm = null; S.rgEdit = null; S.cAjout = null; S.monPtVu = false; S.monPt = null;
     S.sortie = { cab: null, q: '', panier: {}, msg: null, busy: false };
     S.ret = { cab: null, q: '', panier: {}, msg: null, busy: false };
     S.inv = { emp: null, d: {}, q: '', tous: false, recap: false, motifs: {}, busy: false, msg: null, max: 80 };
@@ -677,7 +677,7 @@
       sb.from('parametres').select('cle,valeur').in('cle', ['postes'])
     ]).then(function (r) {
       var eq = ok(r[0]), ids = {}; eq.forEach(function (p) { ids[p.id] = 1; });
-      S.equipe = eq; S.dentistes = S.dentistes || [];
+      S.equipe = masquerPtEssai(eq); S.dentistes = S.dentistes || [];
       var tv = {}; ok(r[1]).forEach(function (x) { if (ids[x.equipe_id]) (tv[x.equipe_id] = tv[x.equipe_id] || []).push(x); }); S.trames = tv;
       var rows = {}; ok(r[2]).forEach(function (x) { if (ids[x.equipe_id]) rows[cleCase(x.equipe_id, String(x.jour).slice(0, 10), x.demi)] = x; });
       S.conges = ok(r[3]).filter(function (x) { return ids[x.equipe_id]; });
@@ -1213,7 +1213,8 @@
       + '<button class="h-moi" data-act="out" aria-label="Changer de personne (' + esc(S.me.nom) + ')" title="Changer de personne"><span class="h-av" aria-hidden="true">' + esc((S.me.nom || '?').charAt(0).toUpperCase()) + '</span><span class="h-moi-t">' + esc(S.me.nom) + ' · changer</span></button></div>'
       + '<div><h1>Bonjour ' + esc(S.me.nom) + '</h1><p>' + LABEL[S.me.role] + ' · ' + j + '</p></div></header>';
     var ca = congesAttente().length + congesAnnul().length;
-    h += '<div class="a-corps h-corps">' + vBienvenue()
+    moiG(); if (S.moiEq && S.moiEq.pointage && !S.monPtVu) { S.monPtVu = true; chargerMonPointage(); }
+    h += '<div class="a-corps h-corps">' + vBienvenue() + (S.moiEq && S.moiEq.pointage ? '<div class="h-pt">' + tuilePointer() + '</div>' : '')
       + '<div class="h-tuiles">'
       + '<button class="h-tuile fonce" data-tab="accueil"><span class="ti">' + ico('boite', 34) + '</span><span class="tt"><b>Gestion de stock</b><span>' + (sous.length ? sous.join(' · ') : 'Sorties, inventaires, commandes') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>'
       + (telephone() ? '' : '<button class="h-tuile" data-tab="planning"><span class="ti">' + ico('agenda', 34) + '</span><span class="tt"><b>Planning</b><span>Qui travaille, avec quel dentiste, et les heures</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>' + tuilePointage())
@@ -1812,8 +1813,11 @@
     };
     R.absences = function () { return nouv ? avant : (ty.contrat !== false && p.type !== 'interimaire' ? blocSoldeFiche(p) : '') + '<h3 class="fi-h3">Congés</h3>' + blocConges(false, F.id, p) + '<h3 class="fi-h3">Formations</h3>' + blocConges(false, F.id, p, true) + '<h3 class="fi-h3">Jours off</h3>' + blocOffs(F); };
     R.compte = function () {
-      var x = (!pointagePret() ? '' : prof && (prof.role === 'referente' || prof.role === 'responsable') ? '<p class="mu">Pointage journalier : non concernée (' + LABEL[prof.role].toLowerCase() + ').</p>'
-        : '<label class="row fi-pt"><input type="checkbox" data-pff="pointage"' + (p.pointage ? ' checked' : '') + ' style="width:22px;height:22px;flex:none"><span><b>Soumise au pointage journalier</b><span class="mu">Scanne le QR code du centre à l’arrivée et à la sortie (tuile « Pointer » de son application).</span></span></label>');
+      var ess = !!(p.regles && p.regles.pt_essai), gst = prof && (prof.role === 'referente' || prof.role === 'responsable');
+      var x = !pointagePret() ? '' : p._ptEssai ? '<p class="mu">Pointage journalier : non concernée.</p>'
+        : gst ? '<label class="row fi-pt"><input type="checkbox" data-pff="pt_essai_g"' + (p.pointage && ess ? ' checked' : '') + ' style="width:22px;height:22px;flex:none"><span><b>Pointe à l’essai</b><span class="mu">' + esc(p.prenom) + ' pointe avec le QR code (tuile « Pointer » de son accueil). Ses pointages ne sont visibles que par elle-même : les autres comptes de gestion ne les voient pas.</span></span></label>'
+        : '<label class="row fi-pt"><input type="checkbox" data-pff="pointage"' + (p.pointage ? ' checked' : '') + ' style="width:22px;height:22px;flex:none"><span><b>Soumise au pointage journalier</b><span class="mu">Scanne le QR code du centre à l’arrivée et à la sortie (tuile « Pointer » de son application).</span></span></label>'
+          + (p.pointage && ess ? '<p class="mu" style="margin:4px 0 0 34px">À l’essai : ses pointages ne sont visibles que par elle-même. <button class="lien" data-act="ptessaifin">Rendre visible</button></p>' : '');
       var h2 = '';
       if (nouv) h2 += '<div class="card"><p class="mu" style="margin:0">Enregistrez d’abord la fiche, puis vous pourrez lui créer un compte.</p></div>';
       else if (prof) h2 += carteProfil(prof) + '<button class="a-lien" data-act="pfdelier">Détacher ce compte de la fiche</button>';
@@ -2142,6 +2146,7 @@
     if (d.rglf) { E.lf = d.rglf; render(); return true; }
     if (d.act === 'feplus') { E.jn += 60; render(); return true; }
     if (d.act === 'fenote') { sauverNote(); return true; }
+    if (d.act === 'ptessaifin' && S.pf) { S.pf.d.regles = Object.assign({}, S.pf.d.regles || {}); delete S.pf.d.regles.pt_essai; render(); toast('Pensez à enregistrer la fiche'); return true; }
     if (d.act === 'fdnote') { sauverNoteDent(); return true; }
     if (d.feoc) { var O = occInit(); O.mode = 'mois'; O.jour = occOuvre(d.feoc + '-01', 1); O.stats = null; S.tab = 'occup'; render(); window.scrollTo(0, 0); return true; }
     if (d.fevoir && F) { var x = d.fevoir.split(':'); F.onglet = x[0]; if (x[1]) E.jf = x[1]; render(); window.scrollTo(0, 0); return true; }
@@ -2161,6 +2166,7 @@
       if (k === 'ecole_jour') v = v ? +v : null;
       if (k === 'profil') { if (v === 'assistante' || v === 'apprentie') { F.d.type = 'assistante'; F.d.statut = v === 'apprentie' ? 'apprentie' : 'qualifiee'; } else { F.d.type = v; F.d.statut = 'qualifiee'; } return; }
       if (k === 'repli') { F.d.regles = Object.assign({}, F.d.regles || {}); F.d.regles.repli = v; return; }
+      if (k === 'pt_essai_g') { F.d.regles = Object.assign({}, F.d.regles || {}); F.d.pointage = !!v; if (v) F.d.regles.pt_essai = true; else delete F.d.regles.pt_essai; render(); return; }
       if (k === 'cp_aj') { F.d.regles = Object.assign({}, F.d.regles || {}); var aj = F.d.regles.cp_aj = Object.assign({}, F.d.regles.cp_aj || {}), pk = periodeCP(dIso(new Date())).du, va = String(v).replace(',', '.').trim(); if (va === '') delete aj[pk]; else aj[pk] = +va; return; }
       if (k === 'cp_acquis_mois') { F.d.regles = Object.assign({}, F.d.regles || {}); if (v) F.d.regles[k] = String(v).slice(0, 7); else delete F.d.regles[k]; return; }
       if (k === 'cp_droits' || k === 'cp_report' || k === 'cp_pris_avant' || k === 'cp_acquis') { F.d.regles = Object.assign({}, F.d.regles || {}); var nv = String(v).replace(',', '.').trim(); if (nv === '') delete F.d.regles[k]; else F.d.regles[k] = +nv; return; }
@@ -2332,7 +2338,7 @@
     if (!String(p.prenom || '').trim()) { toast('Le prénom est obligatoire'); return; }
     if (p.statut !== 'apprentie') p.ecole_jour = null;
     var o = { prenom: String(p.prenom).trim(), type: p.type, statut: p.statut, contrat_h: +p.contrat_h || 0, ecole_jour: p.ecole_jour || null, actif: !!p.actif, trame: p.trame || {}, regles: p.regles || {}, consigne: String(p.consigne || '').trim() || null };
-    if (pointagePret()) o.pointage = !!p.pointage;
+    if (pointagePret()) o.pointage = p._ptEssai ? true : !!p.pointage;   // un pointage à l'essai caché à ce compte n'est pas coupé par erreur
     if (F.id === 'new') o.ordre = S.equipe.reduce(function (m, x) { return Math.max(m, x.ordre || 0); }, 0) + 1;
     var vers = F.id !== 'new' && S.trames ? versionsTrame({ id: F.id }) : null, edV = vers && F.ver ? vers.filter(function (x) { return x.depuis === F.ver; })[0] : null;
     var avantT = edV ? edV.trame || {} : (persById(F.id) || {}).trame || {}, change = vers && JSON.stringify(o.trame) !== JSON.stringify(avantT);
@@ -2345,7 +2351,7 @@
       if (r === 'stop') return;
       if (r.error) throw r.error;
       var x = r.data || Object.assign({ id: F.id }, F.d, o);
-      F.busy = false; F.id = x.id; F.d = JSON.parse(JSON.stringify(x)); F.ver = null; F.raz = true; toast('✔ Fiche de ' + x.prenom + ' enregistrée'); chargerPlan();
+      masquerPtEssai([x]);       F.busy = false; F.id = x.id; F.d = JSON.parse(JSON.stringify(x)); F.ver = null; F.raz = true; toast('✔ Fiche de ' + x.prenom + ' enregistrée'); chargerPlan();
       return synchroCompte(x);
     }).catch(function (e) { F.busy = false; toast(/type_check/.test(String(e && e.message)) ? 'Ce type de personnel demande la mise à jour 020 de la base' : msgErr(e)); chargerPlan(); render(); });
   }
@@ -2717,7 +2723,7 @@
       if (r[4] && !r[4].error) { var tv = {}; (r[4].data || []).forEach(function (x) { (tv[x.equipe_id] = tv[x.equipe_id] || []).push(x); }); S.trames = tv; } else S.trames = null;
       if (r[3] && !r[3].error) (r[3].data || []).forEach(function (x) { if (x.cle === 'regles_heures') S.regles = x.valeur; else if (x.cle === 'simulation_pointage') S.simOn = x.valeur === true; else if (x.cle === 'postes') S.postes = x.valeur; else if (x.cle === 'types_personnel') S.typesPers = x.valeur; else if (x.cle === 'roles') S.roles = x.valeur; else if (x.cle === 'profils') S.profilsP = Array.isArray(x.valeur) ? x.valeur : null; else if (x.cle === 'ref_droits') S.refDroits = x.valeur || {}; else if (x.cle === 'interim_semaines') S.interimSem = Array.isArray(x.valeur) ? x.valeur : []; else S.visible = x.valeur; });
       if (!Array.isArray(S.roles)) S.roles = S.roles || [];
-      if (r[0].error || r[1].error) { S.equipe = null; S.dentistes = null; } else { S.equipe = r[0].data; S.dentistes = r[1].data; }
+      if (r[0].error || r[1].error) { S.equipe = null; S.dentistes = null; } else { S.equipe = masquerPtEssai(r[0].data); S.dentistes = r[1].data; }
       S.conges = r[2] && !r[2].error ? r[2].data : [];
       chargerOublis(); chargerClos();
       render();
@@ -3413,7 +3419,7 @@
   }
   function chargerOublis() {
     if (!gestion()) return Promise.resolve();
-    return sb.from('pointage_oublis').select('*').eq('statut', 'attente').order('jour').then(function (r) { S.oublis = r.error ? null : r.data || []; render(); }, function () { S.oublis = null; });
+    return sb.from('pointage_oublis').select('*').eq('statut', 'attente').order('jour').then(function (r) { S.oublis = r.error ? null : (r.data || []).filter(function (o) { return !ptCache(o.equipe_id); }); render(); }, function () { S.oublis = null; });
   }
   function joursOubli() {   // aujourd'hui et les 14 jours d'avant, du lundi au vendredi
     var l = [], d = dIso(maintenantPt());
@@ -3651,7 +3657,8 @@
   }
   function heuresSemPrevu(p, lundi) { var s0 = 0; for (var k = 0; k < 5; k++) s0 += heuresJPrevu(p, addJ(lundi, k)); return s0; }
   function ptHc(r) { return !!(r && (r.arrivee_hc || r.sortie_hc)); }   // pointé hors du Wi-Fi du centre, pas encore vérifié
-  function ptRow(eid, iso) { return S.ptg && S.ptg.rows ? S.ptg.rows[eid + '|' + iso] : null; }
+  function ptCache(eid) { var p = persById(eid); return !!(p && p._ptEssai); }
+  function ptRow(eid, iso) { return S.ptg && S.ptg.rows && !ptCache(eid) ? S.ptg.rows[eid + '|' + iso] : null; }
   function heuresSem(p, lundi) { var fg = typeof figeDe === 'function' ? figeDe(lundi, p) : null; if (fg && fg.ret != null) return +fg.ret; var s = 0; for (var k = 0; k < 5; k++) s += heuresJ(p, addJ(lundi, k)); return s; }
   // Reliquat avant la semaine affichée : somme des (heures faites − contrat) depuis la date de départ
   // Reliquat à la fin d'une semaine ; 0 tant que la semaine est avant la date « Compté à partir du » (Réglages › Règles des heures)
@@ -3861,6 +3868,9 @@
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) { window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); }); }
   // ---------- Pointage journalier (QR code) ----------
   var JETON_QR = null;
+  // Pointage « à l'essai » (règle pt_essai) : seule la personne voit ses propres pointages.
+  // Pour tous les autres comptes, elle apparaît comme ne pointant pas (planning, heures, page Pointage, fiches).
+  function masquerPtEssai(l) { var moi = S.me && S.me.id; (l || []).forEach(function (p) { if (p && p.pointage && p.regles && p.regles.pt_essai && p.profil_id !== moi) { p.pointage = false; p._ptEssai = true; } }); return l; }
   function pointagePret() { return (S.equipe || []).some(function (e) { return 'pointage' in e; }); }
   // Scan lu (caméra de l'appli ou appareil photo du téléphone) : premier scan de la journée fait l'après-midi
   // (après le milieu de sa journée prévue) → on demande « arrivée ou sortie ? »
@@ -4572,7 +4582,7 @@
       sb.from('pointage_cle').select('*').eq('id', 1).maybeSingle()
     ]).then(function (r) {
       if (!S.ptLog || S.ptLog.cle !== cle) return;
-      var vus = {}; E.l = r[0].concat(r[1]).filter(function (x) { if (vus[x.id]) return false; vus[x.id] = 1; return true; }).sort(function (a, b) { return a.quand > b.quand ? -1 : a.quand < b.quand ? 1 : b.id - a.id; });   // le plus récent en haut
+      var vus = {}; E.l = r[0].concat(r[1]).filter(function (x) { if (vus[x.id] || (x.equipe_id && ptCache(x.equipe_id))) return false; vus[x.id] = 1; return true; }).sort(function (a, b) { return a.quand > b.quand ? -1 : a.quand < b.quand ? 1 : b.id - a.id; });   // le plus récent en haut
       E.q = r[2] && r[2].data; render();
     }).catch(function (e) { if (!S.ptLog) return; E.err = /pointage_journal/.test(String(e && e.message)) ? 'La mise à jour 018 de la base n’est pas encore faite.' : msgErr(e); render(); });
   }
