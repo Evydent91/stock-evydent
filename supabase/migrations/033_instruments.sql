@@ -3,7 +3,7 @@
 -- Suppose : 001 à 032 déjà appliquées.
 -- Ce que fait cette migration :
 --  1. table instruments : un instrument par numéro de série (type, date d'achat,
---     durée de garantie en mois, valeur TTC, fournisseur, cabinet, état : en service / en réparation / au rebut) ;
+--     durée de garantie en mois, valeur TTC, fournisseur, cabinet, état : en service / en panne (à réparer) / en réparation / au rebut) ;
 --  2. table instrument_envois : chaque envoi (date, problème, chez qui, en garantie ou non, n° de bon)
 --     et son retour (date, travaux, prix TTC, garantie de la réparation en mois) ;
 --  3. accès réservé à la référente et à la responsable (lecture et écriture).
@@ -27,6 +27,12 @@ create table if not exists public.instruments (
 create unique index if not exists instruments_sn_unique on public.instruments (upper(trim(sn)));
 -- valeur de l'instrument (prix d'achat TTC) : ajoutée après coup, la relancer suffit si la table existe déjà
 alter table public.instruments add column if not exists valeur numeric(10,2) check (valeur is null or valeur >= 0);
+-- « En panne » : l'instrument est au centre mais ne doit plus servir, il est à réparer (ajouté après coup, rejouable)
+alter table public.instruments drop constraint if exists instruments_statut_check;
+alter table public.instruments add constraint instruments_statut_check check (statut in ('service', 'panne', 'reparation', 'rebut'));
+alter table public.instruments add column if not exists panne_le date;
+alter table public.instruments add column if not exists panne_motif text;
+alter table public.instruments add column if not exists panne_detail text;
 
 create table if not exists public.instrument_envois (
   id bigserial primary key,
@@ -46,6 +52,8 @@ create table if not exists public.instrument_envois (
   cree_par uuid default auth.uid(),
   modifie_le timestamptz not null default now()
 );
+-- date où la panne avait été signalée, gardée dans l'historique quand l'instrument part
+alter table public.instrument_envois add column if not exists panne_le date;
 create index if not exists instrument_envois_instr on public.instrument_envois (instrument_id, envoye_le desc);
 
 alter table public.instruments enable row level security;

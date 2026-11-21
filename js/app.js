@@ -528,6 +528,7 @@
   // ---------- Icônes dessinées (les mêmes que la maquette) ----------
   var SVGI = {
     calendrier: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M7.5 14h.01M12 14h.01M16.5 14h.01M7.5 17.5h.01M12 17.5h.01" stroke-width="2.6"/>',
+    panne: '<path d="M12 3.5L2.5 20h19z"/><path d="M12 10v4.5M12 17.5h.01"/>',
     valise: '<rect x="5" y="7" width="14" height="12" rx="2"/><path d="M9.5 7V4.5h5V7M9.5 10.5v5M14.5 10.5v5M8 19v1.5M16 19v1.5"/>',
     rotatif: '<rect x="2.5" y="5.5" width="5" height="5" rx="1.6"/><path d="M5 10.5V15M7.5 7.2L19.8 6a1.7 1.7 0 0 1 1.7 1.7v3.6a1.7 1.7 0 0 1-1.7 1.7L7.5 9.3M14 7.2v4.6"/>',
     camion: '<path d="M3 7h12v9H3zM15 10h4l2 3v3h-6z"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>',
@@ -2831,14 +2832,16 @@
   }
   function tuileInstr() {
     var I = insEtat(); if (!I.l && !I.charge) chargerInstr();
-    var l = (I.l || []).filter(function (x) { return x.statut !== 'rebut'; }), nr = l.filter(function (x) { return x.statut === 'reparation'; }).length, nf = l.filter(function (x) { return x.statut === 'service' && insGarantie(x).k === 'fin'; }).length, s = [];
-    if (nr) s.push(nr + ' en réparation'); if (nf) s.push(nf + ' ' + pl(nf, 'garantie') + ' bientôt ' + (nf > 1 ? 'finies' : 'finie'));
+    var l = (I.l || []).filter(function (x) { return x.statut !== 'rebut'; }), nr = l.filter(function (x) { return x.statut === 'reparation'; }).length, np = l.filter(function (x) { return x.statut === 'panne'; }).length, nf = l.filter(function (x) { return x.statut === 'service' && insGarantie(x).k === 'fin'; }).length, s = [];
+    if (np) s.push(np + ' en panne'); if (nr) s.push(nr + ' en réparation'); if (nf) s.push(nf + ' ' + pl(nf, 'garantie') + ' bientôt ' + (nf > 1 ? 'finies' : 'finie'));
     return '<button class="h-tuile ins" data-tab="instr"><span class="ti">' + ico('rotatif', 34) + '</span><span class="tt"><b>Instruments rotatifs</b><span' + (s.length ? ' class="h-av-t"' : '') + '>' + (I.manque ? 'Mise à jour 033 de la base à faire' : s.length ? s.join(' · ') : 'Réparations et garanties') + '</span></span><span class="tc">' + ico('suiv', 22, 2.4) + '</span></button>';
   }
   function insCarte(x) {
     var g = insGarantie(x), ec = insEnCours(x.id), dr = insDerRep(x.id);
-    return '<button class="ins-c' + (ec ? ' out' : '') + (x.statut === 'rebut' ? ' reb' : '') + '" data-ins="' + x.id + '" data-sn="' + esc(norm(x.sn)) + '"><span class="ins-c1"><b>' + esc(x.sn) + '</b>' + (x.cabinet && !ec ? '<small>cab. ' + x.cabinet + '</small>' : '') + '</span>'
+    var pn = x.statut === 'panne' && !ec;
+    return '<button class="ins-c' + (ec ? ' out' : '') + (pn ? ' pan' : '') + (x.statut === 'rebut' ? ' reb' : '') + '" data-ins="' + x.id + '" data-sn="' + esc(norm(x.sn)) + '"><span class="ins-c1"><b>' + esc(x.sn) + '</b>' + (x.cabinet && !ec ? '<small>cab. ' + x.cabinet + '</small>' : '') + '</span>'
       + '<span class="ins-c2">' + (x.statut === 'rebut' ? '<span class="ins-p non">Au rebut</span>' : '<span class="ins-p ' + g.k + '">' + g.court + '</span>') + (dr ? '<small>réparé le ' + insDateC(dr.retour_le) + '</small>' : '') + '</span>'
+      + (pn ? '<span class="ins-pout">' + ico('panne', 15, 2.4) + 'En panne' + (x.panne_le ? ' depuis le ' + insDateC(x.panne_le) : '') + ' · à réparer</span>' : '')
       + (ec ? '<span class="ins-out">' + ico('camion', 15, 2.4) + (ec.en_garantie ? 'En garantie' : 'En réparation') + (ec.chez ? ' chez ' + esc(ec.chez) : '') + ' depuis le ' + insDateC(ec.envoye_le) + '</span>' : '') + '</button>';
   }
   function vInstr() {
@@ -2846,7 +2849,7 @@
     var x = I.sel ? insById(I.sel) : null; if (I.sel && I.l && !x && I.sel !== 'new') I.sel = null;
     var enRep = (I.l || []).filter(function (y) { return y.statut === 'reparation'; }).length;
     var btns = '<span class="pl-hbtns"><button class="pl-imp" data-insf="rep">' + ico('camion', 18, 2.2) + '<span class="m-hide">Envois en cours · ' + enRep + '</span></button><button class="pl-imp" data-act="insnew">' + ico('plus', 18, 2.4) + '<span class="m-hide">Ajouter un instrument</span></button></span>';
-    var fil = '<div class="hr-seg" role="group" aria-label="Afficher">' + [['tous', 'Tous'], ['centre', 'Au centre'], ['rep', 'En réparation'], ['fin', 'Garantie bientôt finie'], ['rebut', 'Au rebut']].map(function (f) { return '<button data-insf="' + f[0] + '" aria-pressed="' + (I.f === f[0]) + '"' + (I.f === f[0] ? ' class="on"' : '') + '>' + f[1] + '</button>'; }).join('') + '</div>';
+    var fil = '<div class="hr-seg" role="group" aria-label="Afficher">' + [['tous', 'Tous'], ['centre', 'Au centre'], ['panne', 'En panne'], ['rep', 'En réparation'], ['fin', 'Garantie bientôt finie'], ['rebut', 'Au rebut']].map(function (f) { return '<button data-insf="' + f[0] + '" aria-pressed="' + (I.f === f[0]) + '"' + (I.f === f[0] ? ' class="on"' : '') + '>' + f[1] + '</button>'; }).join('') + '</div>';
     var rech = '<label class="ins-q">' + ico('loupe', 20, 2.2) + '<input type="search" data-insq="tout" placeholder="Chercher un numéro de série (SN)…" aria-label="Chercher un numéro de série dans tous les instruments" value="' + esc(I.q || '') + '" autocomplete="off"></label>';
     var fiche = !!(I.sel || I.form === 'new');
     var h = '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" ' + (fiche ? 'data-act="insback"' : 'data-tab="hub"') + '>' + ico('prec', 22, 2.4) + (fiche ? 'Instruments' : 'Accueil') + '</button><h1>' + (fiche && x ? esc(x.sn) : I.form === 'new' ? 'Nouvel instrument' : 'Instruments rotatifs') + '</h1>' + (fiche ? '<span class="a-cale"></span>' : btns) + '</div>'
@@ -2856,12 +2859,12 @@
     if (!I.l) return h + '<p class="a-vide">Chargement…</p></div>';
     if (fiche) return h + vInstrFiche(x) + '</div>';
     if (telephone()) h += '<div class="ins-ft">' + fil + '</div>';
-    var ok = function (y) { var g = I.f === 'fin' ? insGarantie(y) : null; return I.f === 'rebut' ? y.statut === 'rebut' : y.statut !== 'rebut' && (I.f === 'tous' || (I.f === 'centre' && y.statut === 'service') || (I.f === 'rep' && y.statut === 'reparation') || (I.f === 'fin' && y.statut === 'service' && g.k === 'fin')); };
+    var ok = function (y) { var g = I.f === 'fin' ? insGarantie(y) : null; return I.f === 'rebut' ? y.statut === 'rebut' : y.statut !== 'rebut' && (I.f === 'tous' || (I.f === 'centre' && y.statut === 'service') || (I.f === 'panne' && y.statut === 'panne') || (I.f === 'rep' && y.statut === 'reparation') || (I.f === 'fin' && y.statut === 'service' && g.k === 'fin')); };
     h += '<div class="ins-g">' + INS_T.map(function (t) {
-      var tous = I.l.filter(function (y) { return y.type === t.k; }), l = tous.filter(ok).sort(function (a, b) { var ra = a.statut === 'reparation' ? 0 : 1, rb = b.statut === 'reparation' ? 0 : 1; return ra - rb || String(a.sn).localeCompare(String(b.sn)); });
-      var nc = tous.filter(function (y) { return y.statut === 'service'; }).length, nr = tous.filter(function (y) { return y.statut === 'reparation'; }).length;
+      var tous = I.l.filter(function (y) { return y.type === t.k; }), l = tous.filter(ok).sort(function (a, b) { var RG = { panne: 0, reparation: 1 }, ra = RG[a.statut] != null ? RG[a.statut] : 2, rb = RG[b.statut] != null ? RG[b.statut] : 2; return ra - rb || String(a.sn).localeCompare(String(b.sn)); });
+      var nc = tous.filter(function (y) { return y.statut === 'service'; }).length, nr = tous.filter(function (y) { return y.statut === 'reparation'; }).length, np = tous.filter(function (y) { return y.statut === 'panne'; }).length;
       return '<section class="ins-col" data-inscol="' + t.k + '"><div class="ins-h"><img src="assets/instruments/' + t.k + '.jpg" alt="' + esc(t.n) + '" loading="lazy"><b>' + t.n + '</b><small>' + t.s + '</small>'
-        + '<span class="ins-k"><span>' + nc + ' au centre</span>' + (nr ? '<span class="w">' + nr + ' en réparation</span>' : '') + (function () { var v = 0, n = 0; tous.forEach(function (y) { if (y.statut !== 'rebut' && y.valeur != null) { v += +y.valeur; n++; } }); return n ? '<span class="v" title="Valeur des instruments renseignés (hors rebut)">Valeur ' + eur(v) + '</span>' : ''; })() + '</span>'
+        + '<span class="ins-k"><span>' + nc + ' au centre</span>' + (np ? '<span class="p">' + np + ' en panne</span>' : '') + (nr ? '<span class="w">' + nr + ' en réparation</span>' : '') + (function () { var v = 0, n = 0; tous.forEach(function (y) { if (y.statut !== 'rebut' && y.valeur != null) { v += +y.valeur; n++; } }); return n ? '<span class="v" title="Valeur des instruments renseignés (hors rebut)">Valeur ' + eur(v) + '</span>' : ''; })() + '</span>'
         + '<label class="ins-qc">' + ico('loupe', 18, 2.2) + '<input type="search" data-insq="' + t.k + '" placeholder="SN…" aria-label="Chercher un SN parmi : ' + esc(t.n) + '" value="' + esc(I.qc[t.k] || '') + '" autocomplete="off"></label></div>'
         + '<div class="ins-l">' + (l.length ? l.map(insCarte).join('') : '<p class="mu ins-vide">' + (tous.length ? 'Aucun pour ce filtre.' : 'Aucun instrument enregistré.') + '</p>') + '<p class="mu ins-vide ins-rien" hidden>Aucun SN ne correspond.</p></div></section>';
     }).join('') + '</div>';
@@ -2882,26 +2885,30 @@
     var I = insEtat(), nouv = !x;
     if (nouv || I.form === 'edit') return vInstrForm(x);
     var t = insTy(x.type), g = insGarantie(x), ec = insEnCours(x.id), dr = insDerRep(x.id), env = insEnvois(x.id), auj = dIso(new Date());
-    var h = '<div class="ins-f"><section class="card ins-fc"><div class="ins-fh"><img src="assets/instruments/' + t.k + '.jpg" alt="' + esc(t.n) + '"><div><small>' + esc(t.n) + ' · ' + esc(t.s) + '</small><b class="ins-sn">SN ' + esc(x.sn) + '</b><span class="mu">' + (x.statut === 'rebut' ? 'Au rebut' : ec ? 'Parti ' + (ec.en_garantie ? 'en garantie' : 'en réparation') : 'Au centre') + (x.cabinet && !ec && x.statut !== 'rebut' ? ' · cabinet ' + x.cabinet : '') + '</span></div></div>';
+    var h = '<div class="ins-f"><section class="card ins-fc"><div class="ins-fh"><img src="assets/instruments/' + t.k + '.jpg" alt="' + esc(t.n) + '"><div><small>' + esc(t.n) + ' · ' + esc(t.s) + '</small><b class="ins-sn">SN ' + esc(x.sn) + '</b><span class="mu">' + (x.statut === 'rebut' ? 'Au rebut' : ec ? 'Parti ' + (ec.en_garantie ? 'en garantie' : 'en réparation') : x.statut === 'panne' ? 'Au centre · en panne, à réparer' : 'Au centre') + (x.cabinet && !ec && x.statut !== 'rebut' ? ' · cabinet ' + x.cabinet : '') + '</span></div></div>';
     h += '<div class="ins-gar ' + g.k + '"><span class="ins-gi" aria-hidden="true">' + ico(g.k === 'ok' || g.k === 'fin' ? 'ok' : 'attente', 22, 2.6) + '</span><span><b>' + g.long + '</b><small>' + g.sous + '</small></span></div>';
+    if (x.statut === 'panne' && !ec) h += '<div class="ins-pn">' + ico('panne', 22, 2.2) + '<span><b>En panne' + (x.panne_le ? ' depuis le ' + insDate(x.panne_le) : '') + ' · à réparer</b><small>' + esc([x.panne_motif, x.panne_detail].filter(Boolean).join(' · ') || 'problème non précisé') + (x.panne_le ? ' · signalé ' + (nbJours(x.panne_le, auj) > 0 ? 'il y a ' + nbJours(x.panne_le, auj) + ' j' : 'aujourd’hui') : '') + '. Ne plus l’utiliser : il attend de partir en réparation.</small></span></div>';
     if (ec) h += '<div class="ins-ec">' + ico('camion', 20, 2.2) + '<span><b>Parti le ' + insDate(ec.envoye_le) + (ec.chez ? ' chez ' + esc(ec.chez) : '') + ' · ' + (ec.en_garantie ? 'en garantie' : 'hors garantie') + '</b><small>' + esc([ec.motif, ec.detail].filter(Boolean).join(' · ') || 'problème non précisé') + (ec.bon ? ' · bon ' + esc(ec.bon) : '') + ' · absent depuis ' + nbJours(ec.envoye_le, auj) + ' j</small></span></div>';
     h += '<div class="ins-2">'
       + '<div><small>Dernière réparation</small>' + (dr ? '<b>Revenu le ' + insDate(dr.retour_le) + '</b><span>' + esc(dr.travaux || 'travaux non précisés') + ' · ' + (dr.en_garantie ? 'en garantie' : dr.prix != null ? eur(dr.prix) + ' TTC' : 'prix non saisi') + '</span><span class="mu">Absent ' + nbJours(dr.envoye_le, dr.retour_le) + ' j · envoyé le ' + insDateC(dr.envoye_le) + (dr.chez ? ' chez ' + esc(dr.chez) : '') + '</span>' : '<b>Aucune</b><span class="mu">' + (x.achat ? 'depuis l’achat' : 'enregistrée dans l’appli') + '</span>') + '</div>'
       + '<div><small>Achat</small>' + (x.achat ? '<b>' + insDate(x.achat) + '</b>' : '<b class="mu">Date non renseignée</b>') + '<span>' + (x.valeur != null ? '<b>' + eur(x.valeur) + ' TTC</b> · ' : '') + esc(x.fournisseur || 'fournisseur non renseigné') + '</span><span class="mu">Garantie d’achat : ' + (x.garantie_mois || 0) + ' mois</span></div></div>';
     if (x.note) h += '<p class="ins-note">' + esc(x.note) + '</p>';
-    if (I.form === 'envoi' || I.form === 'retour') h += I.form === 'envoi' ? vInstrEnvoi(x, g) : vInstrRetour(x, ec);
+    if (I.form === 'envoi' || I.form === 'retour' || I.form === 'panne') h += I.form === 'envoi' ? vInstrEnvoi(x, g) : I.form === 'panne' ? vInstrPanne(x) : vInstrRetour(x, ec);
     else h += '<div class="ins-act">' + (x.statut === 'rebut' ? '<button class="btn" data-act="insremet">Remettre en service</button>'
-      : ec ? '<button class="btn" data-insform="retour">' + ico('refaire', 18, 2.4) + 'Enregistrer le retour</button>' : '<button class="btn" data-insform="envoi">' + ico('camion', 18, 2.2) + 'Envoyer en réparation</button>')
+      : ec ? '<button class="btn" data-insform="retour">' + ico('refaire', 18, 2.4) + 'Enregistrer le retour</button>' : '<button class="btn" data-insform="envoi">' + ico('camion', 18, 2.2) + 'Envoyer en réparation</button>'
+        + (x.statut === 'panne' ? '<button class="btn l" data-act="insremet">' + ico('ok', 18, 2.4) + 'Remettre en service</button>' : '<button class="btn l ins-bpn" data-insform="panne">' + ico('panne', 18, 2.2) + 'En panne</button>'))
       + '<button class="btn l" data-insform="edit">Modifier la fiche</button>' + (x.statut !== 'rebut' && !ec ? '<button class="btn l ins-reb" data-act="insrebut">Mettre au rebut</button>' : '') + '</div>';
     h += '</section><section class="card ins-hist"><h2 class="fi-h3">Historique</h2>';
     var ev = [];
     env.forEach(function (e) {
       if (e.retour_le) ev.push({ d: e.retour_le, k: 'ret', t: e.rebut ? 'Revenu non réparable' : 'Retour de réparation', s: [e.travaux, e.en_garantie ? 'en garantie' : '', e.garantie_rep_mois ? 'garantie ' + e.garantie_rep_mois + ' mois' : ''].filter(Boolean).join(' · '), m: e.en_garantie ? '0 €' : e.prix != null ? eur(e.prix) : '' });
+      if (e.panne_le) ev.push({ d: e.panne_le, k: 'pan', t: 'Signalé en panne', s: e.panne_le < e.envoye_le ? 'parti ' + nbJours(e.panne_le, e.envoye_le) + ' j plus tard' : '', m: '' });
       ev.push({ d: e.envoye_le, k: 'env', t: (e.en_garantie ? 'Envoyé en garantie' : 'Envoyé en réparation') + (e.chez ? ' chez ' + e.chez : ''), s: [e.motif, e.detail, e.bon ? 'bon ' + e.bon : ''].filter(Boolean).join(' · '), m: '', id: e.id });
     });
+    if (x.statut === 'panne' && x.panne_le) ev.push({ d: x.panne_le, k: 'pan', t: 'Signalé en panne', s: [x.panne_motif, x.panne_detail].filter(Boolean).join(' · '), m: '' });
     if (x.achat) ev.push({ d: x.achat, k: 'ach', t: 'Achat', s: [x.fournisseur, 'garantie ' + (x.garantie_mois || 0) + ' mois'].filter(Boolean).join(' · '), m: x.valeur != null ? eur(x.valeur) : '' });
-    ev.sort(function (a, b) { return a.d < b.d ? 1 : a.d > b.d ? -1 : (a.k === 'ret' ? -1 : 1); });
-    var IC = { env: 'camion', ret: 'refaire', ach: 'panier' };
+    ev.sort(function (a, b) { return a.d < b.d ? 1 : a.d > b.d ? -1 : (a.k === 'ret' ? -1 : b.k === 'ret' ? 1 : a.k === 'env' ? -1 : 1); });
+    var IC = { env: 'camion', ret: 'refaire', ach: 'panier', pan: 'panne' };
     h += ev.length ? '<div class="ins-ev">' + ev.map(function (e) { return '<div class="ins-e"><span class="mu">' + insDateC(e.d) + '</span><span class="ins-ei ' + e.k + '" aria-hidden="true">' + ico(IC[e.k], 17, 2.2) + '</span><span><b>' + esc(e.t) + '</b>' + (e.s ? '<small>' + esc(e.s) + '</small>' : '') + '</span><b>' + esc(e.m) + '</b>' + (e.id ? '<button class="h-rond gris ins-del" data-insdel="' + e.id + '" aria-label="Supprimer cet envoi" title="Supprimer cet envoi">' + ico('poubelle', 16, 2.2) + '</button>' : '<span></span>') + '</div>'; }).join('') + '</div>' : '<p class="a-vide">Rien pour l’instant.</p>';
     return h + '</section></div>';
   }
@@ -2911,11 +2918,19 @@
     return '<section class="ins-form"><h3>Envoyer en réparation</h3>'
       + '<label class="ins-gsw ' + (sousG ? 'ok' : '') + '"><input type="checkbox" id="ins-gar"' + (sousG ? ' checked' : '') + '><span><b>' + (sousG ? 'Encore sous garantie' + (g.fin ? ' (jusqu’au ' + insDate(g.fin) + ')' : '') : 'Hors garantie') + '</b><small>' + (sousG ? 'L’envoi est noté « en garantie ». Joindre la copie de la facture d’achat.' : 'Cochez si le réparateur le prend quand même en garantie.') + '</small></span></label>'
       + '<div class="ins-l2"><span class="mu">Le problème</span><div class="ins-mo" role="group" aria-label="Problème">' + INS_MOTIFS.map(function (m) { var on = fd.motif === m; return '<button type="button" data-insmo="' + esc(m) + '" aria-pressed="' + on + '"' + (on ? ' class="on"' : '') + '>' + m + '</button>'; }).join('') + '</div>'
-      + '<textarea class="in" id="ins-det" rows="2" placeholder="Précisions (facultatif)"></textarea></div>'
+      + '<textarea class="in" id="ins-det" rows="2" placeholder="Précisions (facultatif)">' + esc(x.statut === 'panne' ? x.panne_detail || '' : '') + '</textarea></div>'
       + '<div class="ins-fg"><label>Envoyé chez<input class="in" id="ins-chez" list="ins-chez" value="' + esc(fd.chez || (sousG ? 'COXO' : '')) + '" placeholder="Ex. : COXO, réparateur…">' + insChezListe() + '</label>'
       + '<label>Date d’envoi<input class="in" type="date" id="ins-dte" value="' + dIso(new Date()) + '"></label>'
       + '<label class="pl">N° de bon ou de suivi (facultatif)<input class="in" id="ins-bon" placeholder="Ex. : n° de colis, bon de retour…"></label></div>'
       + '<div class="ins-fb"><button class="btn l" data-insform="">Annuler</button><button class="btn" data-act="insenvoi">Enregistrer l’envoi</button></div></section>';
+  }
+  function vInstrPanne(x) {
+    var I = insEtat(), fd = I.fd;
+    return '<section class="ins-form"><h3>Signaler une panne</h3><p class="mu" style="margin:0">L’instrument reste au centre, marqué « en panne · à réparer » : on le retrouve en tête de sa colonne jusqu’à ce qu’il parte en réparation.</p>'
+      + '<div class="ins-l2"><span class="mu">Le problème</span><div class="ins-mo" role="group" aria-label="Problème">' + INS_MOTIFS.map(function (m) { var on = fd.motif === m; return '<button type="button" data-insmo="' + esc(m) + '" aria-pressed="' + on + '"' + (on ? ' class="on"' : '') + '>' + m + '</button>'; }).join('') + '</div>'
+      + '<textarea class="in" id="ins-pdet" rows="2" placeholder="Précisions (facultatif) : ce qui se passe, qui l’a remarqué…"></textarea></div>'
+      + '<div class="ins-fg"><label>Depuis le<input class="in" type="date" id="ins-pdte" value="' + dIso(new Date()) + '"></label></div>'
+      + '<div class="ins-fb"><button class="btn l" data-insform="">Annuler</button><button class="btn" data-act="inspanne">' + ico('panne', 18, 2.2) + 'Enregistrer : en panne</button></div></section>';
   }
   function vInstrRetour(x, ec) {
     if (!ec) return '';
@@ -2958,11 +2973,14 @@
   async function insEnvoyer() {
     var I = insEtat(), x = insById(I.sel); if (!x) return;
     var e = { instrument_id: x.id, envoye_le: insVal('ins-dte') || dIso(new Date()), motif: I.fd.motif || null, detail: insVal('ins-det') || null, chez: insVal('ins-chez') || null, en_garantie: !!(document.getElementById('ins-gar') || {}).checked, bon: insVal('ins-bon') || null };
+    if (x.statut === 'panne' && x.panne_le) e.panne_le = x.panne_le;
     var r = await sb.from('instrument_envois').insert(e).select().single();
+    if (r.error && e.panne_le && /panne_le/.test(String(r.error.message))) { delete e.panne_le; r = await sb.from('instrument_envois').insert(e).select().single(); }
     if (r.error) { toast(msgErr(r.error)); return; }
     I.env.push(r.data);
-    var u = await sb.from('instruments').update({ statut: 'reparation', modifie_le: new Date().toISOString() }).eq('id', x.id);
-    if (!u.error) x.statut = 'reparation';
+    var maj = { statut: 'reparation', modifie_le: new Date().toISOString() }; if (x.statut === 'panne') { maj.panne_le = null; maj.panne_motif = null; maj.panne_detail = null; }
+    var u = await sb.from('instruments').update(maj).eq('id', x.id);
+    if (!u.error) Object.assign(x, maj);
     I.form = null; I.fd = {}; toast('✔ Envoi enregistré'); render();
   }
   async function insRetour() {
@@ -2978,21 +2996,30 @@
     I.form = null; toast(hs ? '✔ Retour enregistré : instrument au rebut' : '✔ Retour enregistré'); render();
   }
   async function insStatut(x, st, msg) {
-    var u = await sb.from('instruments').update({ statut: st, modifie_le: new Date().toISOString() }).eq('id', x.id);
+    var maj = { statut: st, modifie_le: new Date().toISOString() }; if (x.statut === 'panne' && st !== 'panne') { maj.panne_le = null; maj.panne_motif = null; maj.panne_detail = null; }
+    var u = await sb.from('instruments').update(maj).eq('id', x.id);
     if (u.error) { toast(msgErr(u.error)); return; }
-    x.statut = st; toast(msg); render();
+    Object.assign(x, maj); toast(msg); render();
+  }
+  async function insPanne() {
+    var I = insEtat(), x = insById(I.sel); if (!x) return;
+    var maj = { statut: 'panne', panne_le: insVal('ins-pdte') || dIso(new Date()), panne_motif: I.fd.motif || null, panne_detail: insVal('ins-pdet') || null, modifie_le: new Date().toISOString() };
+    var u = await sb.from('instruments').update(maj).eq('id', x.id);
+    if (u.error) { toast(/panne|statut_check|23514/i.test(String(u.error.message || u.error.code)) ? '« En panne » demande de relancer la mise à jour 033 dans Supabase' : msgErr(u.error)); return; }
+    Object.assign(x, maj); I.form = null; I.fd = {}; toast('✔ Noté en panne : à réparer'); render();
   }
   function insAction(d) {
     var I = insEtat(), x = I.sel ? insById(I.sel) : null;
     if (d.ins) { I.sel = d.ins; I.form = null; I.fd = {}; render(); window.scrollTo(0, 0); return true; }
     if (d.insf) { I.f = d.insf; I.sel = null; I.form = null; render(); return true; }
-    if (d.insform != null) { I.form = d.insform || null; I.fd = {}; render(); return true; }
+    if (d.insform != null) { I.form = d.insform || null; I.fd = {}; if (I.form === 'envoi' && x && x.statut === 'panne' && x.panne_motif) I.fd.motif = x.panne_motif; render(); return true; }
     if (d.insmo) { I.fd.motif = I.fd.motif === d.insmo ? null : d.insmo; [].forEach.call(document.querySelectorAll('[data-insmo]'), function (b) { var on = b.dataset.insmo === I.fd.motif; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); }); return true; }
     if (d.act === 'insnew') { I.sel = null; I.form = 'new'; I.fd = {}; render(); window.scrollTo(0, 0); return true; }
     if (d.act === 'insback') { if (I.form === 'edit') I.form = null; else { I.sel = null; I.form = null; } render(); return true; }
     if (d.act === 'inssave') { insSauver(); return true; }
     if (d.act === 'insenvoi') { insEnvoyer(); return true; }
     if (d.act === 'insretour') { insRetour(); return true; }
+    if (d.act === 'inspanne') { insPanne(); return true; }
     if (d.act === 'insrebut' && x) { fenetre({ titre: 'Mettre au rebut ?', texte: insTy(x.type).n + ' ' + x.sn + ' ne sera plus compté au centre. Son historique est gardé ; il reste visible avec le filtre « Au rebut ».', ok: 'Mettre au rebut', danger: true }).then(function (o) { if (o) insStatut(x, 'rebut', '✔ Mis au rebut'); }); return true; }
     if (d.act === 'insremet' && x) { insStatut(x, 'service', '✔ Remis en service'); return true; }
     if (d.insdel) { var e = I.env.filter(function (y) { return String(y.id) === String(d.insdel); })[0]; if (!e) return true; fenetre({ titre: 'Supprimer cet envoi ?', texte: 'Envoi du ' + insDate(e.envoye_le) + (e.retour_le ? ' et son retour du ' + insDate(e.retour_le) : '') + ' : il disparaît de l’historique et la garantie est recalculée.', ok: 'Supprimer', danger: true }).then(function (o) { if (!o) return; sb.from('instrument_envois').delete().eq('id', e.id).then(function (r) { if (r.error) { toast(msgErr(r.error)); return; } I.env = I.env.filter(function (y) { return y !== e; }); if (x && !e.retour_le && x.statut === 'reparation') insStatut(x, 'service', '✔ Envoi supprimé'); else { toast('✔ Envoi supprimé'); render(); } }); }); return true; }

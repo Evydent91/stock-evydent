@@ -2996,3 +2996,11 @@ img.rail-lo{width:48px;height:48px;border-radius:50%;object-fit:cover;clip-path:
 .ins-k span.v{background:#f1e9cf;color:#5c4c14}
 /* Accueil : toutes les tuiles ont la même hauteur, quelle que soit la longueur du texte */
 @media (min-width:701px){.h-tuiles{grid-auto-rows:1fr}}
+/* Instruments : en panne (au centre, à réparer) */
+.ins-k span.p{background:#fdecec;color:#a3231b}
+.ins-c.pan{background:#fef6f5;border-color:#f2c2bd}
+.ins-pout{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#a3231b}
+.ins-pn{display:flex;align-items:center;gap:12px;border:1.5px solid #f2c2bd;background:#fef6f5;border-radius:14px;padding:10px 14px;color:#a3231b}
+.ins-pn > span{display:flex;flex-direction:column;color:var(--ink)}.ins-pn small{color:var(--mute);font-size:13.5px}
+.btn.l.ins-bpn{color:#a3231b;border-color:#e3a39c}
+.ins-ei.pan{background:#fdecec;color:#a3231b}
