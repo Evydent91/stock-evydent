@@ -3372,3 +3372,9 @@ body.tablette .a-maison p{font-size:13.5px}
 body.tablette .h-hd > .a-mh-top{flex:0 0 auto;order:2}
 body.tablette .h-hd > .a-mh-top img,body.tablette .h-hd > .a-mh-top .grow{display:none}
 body.tablette .h-hd > div:not(.a-mh-top){flex:1 1 auto;order:1;min-width:0}
+/* Tablette, Pointage : période invisible retirée (elle gardait sa place), choix Jour/Semaine sur la ligne des dates, sous-titre retiré */
+body.tablette .pt-s2.cache{display:none}
+body.tablette .pt-hd .nd-bande{flex:1 1 100%}
+body.tablette .pt-hd .nd-sous{display:none}
+body.tablette .hr-nav{gap:8px;margin-top:0}
+body.tablette .hr-sous{margin:2px 0 0;font-size:13px}
