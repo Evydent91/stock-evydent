@@ -342,7 +342,7 @@
   function railPage() {
     var t = S.tab;
     if (t === 'hub') return 'hub';
-    if (['planning', 'heures', 'pointage', 'pconges', 'occup', 'instr'].indexOf(t) >= 0) return t;
+    if (['planning', 'heures', 'pointage', 'pconges', 'occup', 'instr', 'pform'].indexOf(t) >= 0) return t;
     if (['pfiche', 'pequipe', 'dfiche', 'pdent'].indexOf(t) >= 0) return 'equipe';
     if (t === 'mconges' || t === 'mdemande') return 'mconges';
     if (STOCK_TABS.indexOf(t) >= 0) return 'accueil';
@@ -354,7 +354,7 @@
     var cur = railPage(), ca = congesAttente().length + congesAnnul().length, ou = (S.oublis || []).length, mini = railMini();
     var it = function (tab, n, ic, b) { return '<button class="rail-l' + (cur === tab ? ' on' : '') + '" data-tab="' + tab + '"' + (cur === tab ? ' aria-current="page"' : '') + ' title="' + esc(n) + '">' + '<span class="rail-i">' + ico(ic, 21, 2.1) + (b && mini ? '<em class="rail-p">' + b + '</em>' : '') + '</span><span class="rail-t">' + n + '</span>' + (b && !mini ? '<em class="rail-b">' + b + '</em>' : '') + '</button>'; };
     return '<nav class="rail" aria-label="Pages"><div class="rail-hd"><img class="rail-lo" src="assets/icone-192.png" alt="" aria-hidden="true"><b class="rail-t">Evydent</b></div>'
-      + it('hub', 'Accueil', 'maison') + it('planning', 'Planning', 'calendrier') + it('heures', 'Heures', 'histo') + it('pointage', 'Pointage', 'qr', ou) + it('pconges', 'Congés', 'valise', ca) + it('equipe', 'Équipe', 'equipe').replace('data-tab="equipe"', 'data-act="rgeq"') + it('occup', 'Occupation', 'fauteuil') + it('instr', 'Instruments', 'rotatif') + it('accueil', 'Gestion de stock', 'boite')
+      + it('hub', 'Accueil', 'maison') + it('planning', 'Planning', 'calendrier') + it('heures', 'Heures', 'histo') + it('pointage', 'Pointage', 'qr', ou) + it('pconges', 'Congés', 'valise', ca) + it('equipe', 'Équipe', 'equipe').replace('data-tab="equipe"', 'data-act="rgeq"') + it('occup', 'Occupation', 'fauteuil') + it('instr', 'Instruments', 'rotatif') + it('pform', 'Formations', 'diplome', (foAlerteHub() || {}).n) + it('accueil', 'Gestion de stock', 'boite')
       + '<span class="rail-sp"></span>' + it('reglages', 'Réglages', 'reglage')
       + '<button class="rail-l rail-r" data-act="railmini" aria-label="' + (mini ? 'Afficher les noms des pages' : 'Réduire en icônes') + '" title="' + (mini ? 'Afficher les noms' : 'Réduire en icônes') + '"><span class="rail-i">' + ico(mini ? 'suiv' : 'prec', 20, 2.4) + '</span><span class="rail-t">' + (mini ? 'Afficher les noms' : 'Réduire en icônes') + '</span></button></nav>';
   }
@@ -559,6 +559,8 @@
     fiole: '<path d="M9 3h6M10 3v6l-5.5 9.5A1.6 1.6 0 0 0 5.9 21h12.2a1.6 1.6 0 0 0 1.4-2.5L14 9V3M7.5 15h9"/>',
     sauve: '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M4 19h16"/>',
     transfert: '<path d="M4 8h13M13.5 4.5L17 8l-3.5 3.5M20 16H7M10.5 12.5L7 16l3.5 3.5"/>',
+    diplome: '<path d="M2 9.5L12 5l10 4.5-10 4.5z"/><path d="M6 11.5V16c0 1.4 2.7 3 6 3s6-1.6 6-3v-4.5"/><path d="M22 9.5V15"/>',
+    trombone: '<path d="M21 12.5l-8.5 8.5a5 5 0 01-7-7L14 5.5a3.5 3.5 0 015 5l-8.5 8.5a2 2 0 01-3-3L15 8"/>',
     etoile: '<path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8zM18.5 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
     app: '<path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM11 18h2"/>',
     scan: '<path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3M7 8v8M10 8v8M13 8v8M16.5 8v8"/>',
@@ -1211,7 +1213,7 @@
 
   // ---------- Accueil de la référente et de la responsable (2 tuiles), Réglages, Équipe, Dentistes ----------
   // Écrans de la maquette « Accueil référente et responsable ». Chaque écran a son en-tête bleu.
-  var HUB = ['pplus', 'pessai', 'instr', 'occup', 'ptest', 'pwifi', 'mconges', 'mdemande', 'ptransfert', 'hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
+  var HUB = ['pform', 'pformmail', 'pplus', 'pessai', 'instr', 'occup', 'ptest', 'pwifi', 'mconges', 'mdemande', 'ptransfert', 'hub', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pconges', 'planning', 'pregles', 'heures', 'pointage', 'pvisible', 'ppostes', 'ptypes', 'pqui', 'proles', 'pqr', 'pprofils'];
   var JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'], JC = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
   // Affectations possibles d'une demi-journée (en plus des dentistes)
   // Postes (modifiables dans Réglages › Postes) ; École et « Ne travaille pas » sont fixes
@@ -1329,6 +1331,7 @@
       + (telephone() ? '' : tuileOccup()) + tuileInstr() + '</div>'
       + ((S.oublis || []).length ? '<button class="h-alerte" data-tab="pointage">' + ico('attente', 22) + '<span><b>' + S.oublis.length + ' ' + pl(S.oublis.length, 'oubli') + ' de pointage</b> ' + pl(S.oublis.length, 'signalé') + ' à valider</span>' + ico('suiv', 20, 2.2) + '</button>' : '')
       + (ca ? '<button class="h-alerte" data-tab="pconges">' + ico('attente', 22) + '<span><b>' + ca + ' ' + pl(ca, 'demande') + ' de congés</b> à traiter</span>' + ico('suiv', 20, 2.4) + '</button>' : '')
+      + (function () { var a = foAlerteHub(); return a ? '<button class="h-alerte" data-tab="pform">' + ico('diplome', 22) + '<span><b>' + a.t + '</b> ' + a.s + '</span>' + ico('suiv', 20, 2.4) + '</button>' : ''; })()
       + (telephone() ? '<div class="h-pc"><span class="h-pc-l">À ouvrir sur ordinateur</span><div class="h-pc-g"><span>' + ico('calendrier', 20) + '<b>Planning</b></span><span>' + ico('qr', 20) + '<b>Pointage</b></span><span>' + ico('fauteuil', 20) + '<b>Occupation des cabinets</b></span></div></div>' : '')
       + '</div>';
     return h;
@@ -1362,6 +1365,7 @@
     if (ca) af.push(tlAl('data-tab="pconges"', 'valise', 'warn', ca + ' ' + pl(ca, 'demande') + ' de congés', 'à valider'));
     if (att) af.push(tlAl('data-tab="demandes"', 'boite', 'warn', att + ' ' + pl(att, 'sortie') + ' à confirmer', 'au-delà de la réserve'));
     if (ob) af.push(tlAl('data-tab="pointage"', 'qr', 'warn', ob + ' ' + pl(ob, 'oubli') + ' de pointage', 'à valider'));
+    var foA = foAlerteHub(); if (foA) af.push(tlAl('data-tab="pform"', 'diplome', foA.ko ? 'ko' : 'warn', foA.t, foA.s));
     if (af.length) h += tlSec('À faire') + af.join('');
     var ins = sousInstr();
     h += tlSec('Aujourd’hui') + tlListe([
@@ -1385,6 +1389,7 @@
         { at: 'data-tab="instr"', ic: 'rotatif', te: 'eq', t: 'Instruments rotatifs', s: ins.s, sw: ins.w ? 'warn' : '' },
         { at: 'data-tab="pequipe"', ic: 'equipe', te: 'eq', t: 'L’équipe', s: 'Fiches, absences, semaine type' },
         { at: 'data-tab="pdent"', ic: 'moi', te: 'eq', t: 'Les dentistes', s: 'Jours, cabinet, absences' },
+        (function () { var a = foAlerteHub(); return { at: 'data-tab="pform"', ic: 'diplome', te: 'pl', t: 'Formations des dentistes', s: a ? a.t : 'Diplômes, échéances, rappels', sw: a ? 'warn' : '' }; })(),
         { at: 'data-tab="reglages"', ic: 'reglage', te: 'ap', t: 'Réglages', s: 'Profils, postes, pointage…' }
       ])
       + tlSec('Mon compte') + tlListe([
@@ -1535,7 +1540,7 @@
 
   // Réglages : tous les réglages de l'application, regroupés par outil
   // Réglages sur ordinateur : menu fixe à gauche, toujours visible, pour passer d'un réglage à l'autre en un clic
-  var RG_TABS = ['pessai', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pregles', 'ppostes', 'pqui', 'pqr', 'pwifi', 'ptest', 'pprofils', 'ptypes', 'proles', 'pvisible', 'ptransfert'];
+  var RG_TABS = ['pessai', 'reglages', 'pequipe', 'pfiche', 'pdent', 'dfiche', 'pregles', 'ppostes', 'pqui', 'pqr', 'pwifi', 'ptest', 'pprofils', 'ptypes', 'proles', 'pvisible', 'ptransfert', 'pformmail'];
   function navReglages() {
     var cur = S.tab === 'pfiche' ? 'pequipe' : S.tab === 'dfiche' ? 'pdent' : S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible' ? 'pprofils' : S.tab;
     var ouv = rgnOuv();
@@ -1635,6 +1640,9 @@
         CONFIG.env === 'dev' ? I('Module de test', 'data-tab="ptest"', 'ptest', 'fiole', 'site de test', 'essai simulation scénarios') : null] },
       { k: 'cg', t: 'Congés', ic: 'valise', d: 'Demandes et absences', l: [
         I('Demandes et planning', 'data-tab="pconges"', 'pconges', 'valise', ca ? ca + ' à traiter' : 'congés du mois', 'valider soldes absences', ca ? String(ca) : '', ca > 0)] },
+      { k: 'fo', t: 'Formations', ic: 'diplome', d: 'Diplômes des dentistes et rappels', l: [
+        I('Échéances des formations', 'data-tab="pform"', 'pform', 'diplome', (function () { var a = foAlerteHub(); return a ? a.n + ' à renouveler' : 'toutes les dates'; })(), 'diplôme radioprotection afgsu validité expiration', '', !!foAlerteHub()),
+        I('Rappels par mail', 'data-act="fmmail"', 'pformmail', 'cloche', S.fo && S.fo.cfg ? (foCfg().actif ? foDelaiTxt(foCfg().delai) : 'éteints') : 'mail avant échéance', 'brevo mail alerte échéance clé')] },
       { k: 'st', t: 'Stock', ic: 'boite', d: 'Articles et fournisseurs', l: [
         I('Articles', 'data-tab="articles"', '', 'boite', 'seuils, lieux', 'types de soins'),
         I('Fournisseurs', 'data-tab="fournisseurs"', '', 'camion', 'coordonnées, comptes', 'comptes')] },
@@ -2564,7 +2572,8 @@
   function vDFiche() {
     var F = S.df; if (!F) { S.tab = 'pdent'; return vPDent(); }
     var d = F.d, nouv = F.id === 'new', as = nouv ? {} : assistantesDe(F.id), tel = telephone();
-    var ONG = (nouv ? [] : [['apercu', 'Aperçu'], ['journal', 'Journal'], ['annee', 'Année']]).concat([['infos', 'Infos'], ['jours', 'Jours et assistance'], ['absences', 'Absences']]);
+    var ONG = (nouv ? [] : [['apercu', 'Aperçu'], ['journal', 'Journal'], ['annee', 'Année']]).concat([['infos', 'Infos'], ['jours', 'Jours et assistance'], ['absences', 'Absences']]).concat(nouv ? [] : [['formations', 'Formations']]);
+    var foN = nouv ? 0 : (foPret(), foNbAlerte(F.id));
     var og = ogDFiche(F);
     var h = '<header class="a-hd fixe"><div class="a-hd-row"><button class="a-back" ' + (tel && og && !nouv ? 'data-dfong=""' : listeACote() ? 'data-tab="hub"' : 'data-tab="pdent"') + '>' + ico('prec', 22, 2.4) + (tel && og && !nouv ? 'Dr ' + esc(d.prenom || '') : listeACote() ? 'Accueil' : 'Dentistes') + '</button><h1>' + (nouv ? 'Nouveau' : tel && og ? ONG.filter(function (o) { return o[0] === og; })[0][1] : 'Dr ' + esc(d.prenom || '…')) + '</h1><span class="a-cale"></span></div></header><div class="a-corps h-fiche fi">';
     // --- résumé
@@ -2600,19 +2609,421 @@
       }).join('') : '<p class="a-vide">Choisissez ses jours de présence dans « Infos ».</p>') + '</div><p class="a-aide">Départ anticipé : laissez vide s’il finit à l’heure habituelle. Il s’affiche dans le planning sur la case de la personne qui l’assiste, qui garde ses horaires. Pour changer qui l’assiste, modifiez la semaine type de cette personne (menu Équipe, sa fiche).</p>' + blocExtra(d);
     };
     R.absences = function () { return nouv ? avant : '<h3 class="fi-h3">Congés</h3>' + blocConges(true, F.id, d) + '<h3 class="fi-h3">Formations</h3>' + blocConges(true, F.id, d, true); };
+    R.formations = function () { return vDFForm(d, F); };
     R.apercu = function () { return fdApercu(d, F); };
     R.journal = function () { return fdJournal(d, F); };
     R.annee = function () { return fdAnnee(d, F); };
-    var desc = { apercu: 'cette semaine, assistance, congés, cabinet', journal: 'congés, formations, qui l’assiste au planning', annee: 'l’année jour par jour', infos: 'prénom, jours, cabinet, dates', jours: 'qui l’assiste, départs anticipés, jours en plus', absences: 'congés et formations' };
+    var desc = { apercu: 'cette semaine, assistance, congés, cabinet', journal: 'congés, formations, qui l’assiste au planning', annee: 'l’année jour par jour', infos: 'prénom, jours, cabinet, dates', jours: 'qui l’assiste, départs anticipés, jours en plus', absences: 'congés et formations', formations: foN ? foN + ' à renouveler' : 'diplômes, validité, rappels par mail' };
     if (tel && !og) {
       h += resume + '<div class="fi-liste">' + ONG.map(function (o) { return '<button class="fi-rub" data-dfong="' + o[0] + '"><span><b>' + o[1] + '</b><small>' + desc[o[0]] + '</small></span>' + ico('suiv', 18, 2.4) + '</button>'; }).join('') + '</div>';
       return h + '</div>';
     }
     var corps = '<div class="fi-corps' + (FE_VUES.indexOf(og) >= 0 ? ' fe-corps' : '') + '">' + R[og]() + '</div>';
     if (tel) return h + corps + '</div>';
-    h += resume + '<section class="fi-d"><nav class="fi-tabs" role="tablist" aria-label="Rubriques de la fiche">' + ONG.map(function (o) { return '<button role="tab" data-dfong="' + o[0] + '" aria-selected="' + (og === o[0]) + '"' + (og === o[0] ? ' class="on"' : '') + (nouv && o[0] !== 'infos' ? ' disabled' : '') + '>' + o[1] + '</button>'; }).join('') + '</nav>' + corps + '</section>';
+    h += resume + '<section class="fi-d"><nav class="fi-tabs" role="tablist" aria-label="Rubriques de la fiche">' + ONG.map(function (o) { return '<button role="tab" data-dfong="' + o[0] + '" aria-selected="' + (og === o[0]) + '"' + (og === o[0] ? ' class="on"' : '') + (nouv && o[0] !== 'infos' ? ' disabled' : '') + '>' + o[1] + (o[0] === 'formations' && foN ? '<span class="fo-tb">' + foN + '</span>' : '') + '</button>'; }).join('') + '</nav>' + corps + '</section>';
     return h + '</div>';
   }
+  // =====================================================================
+  // Formations et diplômes des dentistes (mise à jour 035) : onglet de la fiche, échéances, rappels par mail
+  // =====================================================================
+  var FO_FICHIER = null;   // justificatif choisi dans la fenêtre (gardé hors de S)
+  var FO_SUG = [['Radioprotection des patients', 120], ['Radioprotection des travailleurs', 36], ['AFGSU niveau 2', 48]];
+  function foEtat0() { return S.fo = S.fo || { l: null, rap: [], cfg: null, cle: null, env: null }; }
+  function foCfg() { var c = (S.fo && S.fo.cfg) || {}; return { actif: !!c.actif, a: c.a || '', cc: c.cc || '', de: c.de || '', delai: +c.delai > 0 ? +c.delai : 90, j30: c.j30 !== false, jour: c.jour !== false, hebdo: !!c.hebdo, url: c.url || '' }; }
+  function chargerForm(force) {
+    var F = foEtat0(); if (F.charge || (F.l && !force) || F.manque) return; F.charge = true;
+    Promise.all([
+      toutLire('formations', '*'),
+      toutLire('formation_rappels', 'formation_id,etape,expire_le,envoye_le').catch(function () { return []; }),
+      sb.from('parametres').select('valeur').eq('cle', 'formations_mail').maybeSingle(),
+      sb.rpc('formations_cle_ok')
+    ]).then(function (r) {
+      F.l = r[0] || []; F.rap = r[1] || []; F.cfg = r[2] && r[2].data ? r[2].data.valeur || {} : {}; F.cle = !!(r[3] && r[3].data); F.manque = false; F.err = null; F.charge = false; render();
+    }).catch(function (e) {
+      F.charge = false; F.l = null;
+      if (/formation|relation|does not exist|schema cache/i.test(String(e && (e.message || e.code)))) F.manque = true; else { F.err = msgErr(e); F.l = []; }
+      render();
+    });
+  }
+  function foPret() { var F = foEtat0(); if (!F.l && !F.charge && !F.manque && gestion()) chargerForm(); return !!F.l; }
+  function foById(id) { return ((S.fo && S.fo.l) || []).filter(function (f) { return String(f.id) === String(id); })[0]; }
+  function foDent(id) { return (S.dentistes || []).filter(function (d) { return String(d.id) === String(id); })[0]; }
+  function foDelai(f) { return +f.prevenir_jours > 0 ? +f.prevenir_jours : foCfg().delai; }
+  function foDuree(m) { m = +m; return !m ? '' : m % 12 === 0 ? (m / 12) + ' an' + (m > 12 ? 's' : '') : m + ' mois'; }
+  function foValTxt(f) { return +f.validite_mois ? foDuree(f.validite_mois) : f.expire_le ? 'Date fixée' : 'Sans limite'; }
+  function foLoin(nj) { if (nj === 1) return '1 jour'; if (nj < 60) return nj + ' jours'; var m = Math.round(nj / 30.44); return m < 24 ? m + ' mois' : Math.floor(nj / 365.25) + ' ans'; }
+  // État : ko (expirée), warn (dans le délai du premier mail), ok, non (sans échéance ou date à saisir)
+  function foEtat(f) {
+    if (f.archivee) return { k: 'non', t: 'Renouvelée', o: 5 };
+    if (!f.expire_le) return +f.validite_mois && !f.obtenu_le ? { k: 'non', t: 'Date à saisir', o: 3, saisir: true } : { k: 'non', t: 'Sans échéance', o: 4 };
+    var nj = nbJours(dIso(new Date()), String(f.expire_le).slice(0, 10));
+    if (nj < 0) return { k: 'ko', t: 'Expirée depuis ' + foLoin(-nj), c: 'expirée', o: 0, nj: nj };
+    if (nj === 0) return { k: 'ko', t: 'Expire aujourd’hui', c: 'auj.', o: 0, nj: 0 };
+    if (nj <= foDelai(f)) return { k: 'warn', t: 'Dans ' + foLoin(nj), c: nj < 60 ? nj + ' j' : foLoin(nj), o: 1, nj: nj };
+    return { k: 'ok', t: 'À jour', loin: 'Dans ' + foLoin(nj), o: 2, nj: nj };
+  }
+  function foTri(a, b) { var ea = foEtat(a), eb = foEtat(b); return (ea.o - eb.o) || String(a.expire_le || '9999').localeCompare(String(b.expire_le || '9999')) || String(a.nom).localeCompare(String(b.nom)); }
+  function foDuDentiste(id) { return ((S.fo && S.fo.l) || []).filter(function (f) { return String(f.dentiste_id) === String(id); }); }
+  function foActives() { return ((S.fo && S.fo.l) || []).filter(function (f) { var d = foDent(f.dentiste_id); return !f.archivee && d && d.actif; }); }
+  function foAlertes() { return foActives().filter(function (f) { var k = foEtat(f).k; return k === 'ko' || k === 'warn'; }).sort(foTri); }
+  function foDerRappel(f) {
+    var exp = String(f.expire_le || '').slice(0, 10);
+    return ((S.fo && S.fo.rap) || []).filter(function (r) { return String(r.formation_id) === String(f.id) && String(r.expire_le).slice(0, 10) === exp; }).sort(function (a, b) { return a.envoye_le < b.envoye_le ? 1 : -1; })[0];
+  }
+  function foRappelTxt(f) {
+    var C = foCfg(), e = foEtat(f);
+    if (!f.expire_le) return e.saisir ? 'Pas de rappel sans date' : '—';
+    if (!C.actif) return 'Rappels éteints';
+    var der = foDerRappel(f);
+    if (der) return 'Mail envoyé le ' + insDateC(der.envoye_le);
+    if (e.k === 'ko' && !C.jour && !C.hebdo) return 'Pas de rappel';
+    var prem = addJ(String(f.expire_le).slice(0, 10), -foDelai(f));
+    return prem > dIso(new Date()) ? 'Premier mail le ' + insDateC(prem) : 'Mail demain matin';
+  }
+  function foBadge(e, court) { return '<span class="fo-b ' + e.k + '">' + (court && e.c ? e.c : e.t) + '</span>'; }
+  function foVide(F) {
+    if (F.manque) return '<div class="ban warn">La mise à jour <b>035</b> de la base n’est pas encore faite : les formations ne peuvent pas être enregistrées. Lancez <code>035_formations.sql</code> dans Supabase.</div>';
+    if (F.err) return '<div class="ban warn">' + esc(F.err) + '</div>';
+    if (!F.l) return '<p class="a-vide">Chargement…</p>';
+    return '';
+  }
+  // Nombre affiché sur l'onglet de la fiche
+  function foNbAlerte(did) { return foDuDentiste(did).filter(function (f) { var k = !f.archivee && foEtat(f).k; return k === 'ko' || k === 'warn'; }).length; }
+
+  // ---------- Onglet « Formations » de la fiche d'un dentiste ----------
+  function vDFForm(d, F0) {
+    var F = foEtat0(); foPret(); var v = foVide(F); if (v) return v;
+    var l = foDuDentiste(F0.id), act = l.filter(function (f) { return !f.archivee; }).sort(foTri), arch = l.filter(function (f) { return f.archivee; }).sort(function (a, b) { return String(b.expire_le || '').localeCompare(String(a.expire_le || '')); });
+    var n = { ok: 0, warn: 0, ko: 0, non: 0 }; act.forEach(function (f) { n[foEtat(f).k]++; });
+    var C = foCfg(), al = act.filter(function (f) { var k = foEtat(f).k; return k === 'ko' || k === 'warn'; });
+    var hist = arch.length ? '<details class="fo-hist"><summary>Historique · ' + arch.length + ' ' + pl(arch.length, 'formation') + ' ' + pl(arch.length, 'renouvelée') + '</summary><div class="fo-tab">' + arch.map(function (f) { return foLigne(f, true); }).join('') + '</div></details>' : '';
+    if (telephone()) {
+      var avec = act.filter(function (f) { return f.expire_le || foEtat(f).saisir; }), sans = act.filter(function (f) { return !(f.expire_le || foEtat(f).saisir); });
+      var li = function (f) { var e = foEtat(f); return { at: 'data-fmed="' + f.id + '"', t: esc(f.nom), s: (f.obtenu_le ? 'Obtenue le ' + insDateC(f.obtenu_le) : 'Date d’obtention à saisir') + (f.validite_mois ? ' · ' + foDuree(f.validite_mois) : '') + (f.organisme ? ' · ' + esc(f.organisme) : ''), droite: f.expire_le ? (e.k === 'ok' ? '<span class="fo-b ok">' + insDateC(f.expire_le) + '</span>' : foBadge(e, true)) : e.saisir ? foBadge(e) : '' }; };
+      return al.map(function (f) { var e = foEtat(f); return '<button class="fo-al ' + e.k + '" data-fmed="' + f.id + '"><b>' + esc(f.nom) + '</b><span>' + (e.k === 'ko' ? e.t + ' (' + insDate(f.expire_le) + ')' : 'Expire le ' + insDate(f.expire_le) + ' · ' + e.t.toLowerCase()) + '</span></button>'; }).join('')
+        + (act.length ? '' : '<p class="a-vide">Aucune formation enregistrée.</p>')
+        + (avec.length ? tlSec('Avec échéance') + tlListe(avec.map(li)) : '') + (sans.length ? tlSec('Sans limite') + tlListe(sans.map(li)) : '')
+        + '<button class="a-btn navy fo-plus" data-act="fmnew">' + ico('plus', 20, 2.4) + 'Ajouter une formation</button>'
+        + '<p class="fo-aide">' + foRappelPhrase(C) + '</p>' + hist + foDlg();
+    }
+    var tab = '<div class="fo-tab"><div class="fo-th" aria-hidden="true"><span>Formation · diplôme</span><span>Obtenu le</span><span>Validité</span><span>Expire le</span><span>État</span><span></span></div>'
+      + (act.length ? act.map(function (f) { return foLigne(f); }).join('') : '<p class="fo-rien">Aucune formation enregistrée pour l’instant.</p>')
+      + '<button class="fo-add" data-act="fmnew">+ Ajouter une formation ou un diplôme</button></div>';
+    var stats = '<div class="fo-stats">' + [[n.ok, pl(n.ok, 'formation') + ' à jour', 'ok'], [n.warn, 'à renouveler bientôt', 'warn'], [n.ko, pl(n.ko, 'expirée'), 'ko']].map(function (s) { return '<div class="fo-st"><b class="c-' + s[2] + '">' + s[0] + '</b><span>' + s[1] + '</span></div>'; }).join('') + '</div>';
+    var cote = '<aside class="fo-side">' + foCarteRappels(C) + al.map(function (f) { var e = foEtat(f), der = foDerRappel(f); return '<button class="fo-al ' + e.k + '" data-fmed="' + f.id + '"><b>' + esc(f.nom) + '</b><span>' + (e.k === 'ko' ? e.t + ' (' + insDate(f.expire_le) + ').' : 'Expire le ' + insDate(f.expire_le) + ', ' + e.t.toLowerCase() + '.') + (der ? ' Mail envoyé le ' + insDateC(der.envoye_le).replace(/\.$/, '') + '.' : '') + '</span></button>'; }).join('') + '</aside>';
+    return '<div class="fo-g"><section class="fo-main">' + stats + tab + '<p class="fo-aide">Cliquez sur une ligne pour la modifier, ajouter le justificatif (photo ou PDF du diplôme) ou enregistrer un renouvellement. Les formations sans limite de validité restent dans la liste, sans rappel.</p>' + hist + '</section>' + cote + '</div>' + foDlg();
+  }
+  function foLigne(f, vieux) {
+    var e = foEtat(f);
+    return '<button class="fo-r k-' + (vieux ? 'non' : e.k) + '" data-fmed="' + f.id + '"><span class="fo-n"><b>' + esc(f.nom) + '</b>' + (f.organisme ? '<small>' + esc(f.organisme) + '</small>' : '') + '</span>'
+      + '<span>' + (f.obtenu_le ? insDateC(f.obtenu_le) : '<span class="mu">—</span>') + '</span><span>' + foValTxt(f) + '</span><span class="fo-ex">' + (f.expire_le ? insDateC(f.expire_le) : '—') + '</span>'
+      + '<span>' + (vieux ? '<span class="fo-b non">Renouvelée</span>' : foBadge(e)) + '</span><span class="fo-cl"' + (f.justificatif ? ' title="Justificatif joint"' : '') + '>' + (f.justificatif ? ico('trombone', 19, 2) : '') + '</span></button>';
+  }
+  function foRappelPhrase(C) {
+    if (!C.actif) return 'Rappels par mail éteints : rien ne part tant qu’ils ne sont pas activés.';
+    return 'Mail ' + foDelaiTxt(C.delai) + ' chaque échéance' + (C.j30 && C.delai > 30 ? ', puis 30 jours avant' : '') + (C.jour ? ', et le jour même' : '') + (C.hebdo ? ', puis chaque semaine une fois expirée' : '') + '.';
+  }
+  function foDelaiTxt(n) { return n === 180 ? '6 mois avant' : n + ' jours avant'; }
+  function foCarteRappels(C) {
+    return '<div class="fo-rap"><div class="fo-rap-t"><span class="fo-ri" aria-hidden="true">' + ico('cloche', 22, 2) + '</span><b>Rappels par mail</b><span class="fo-pt' + (C.actif ? ' on' : '') + '" role="img" aria-label="' + (C.actif ? 'Activés' : 'Éteints') + '"></span></div>'
+      + (C.actif ? '<p>Un mail à <b>' + esc(C.a || '…') + '</b> <b>' + foDelaiTxt(C.delai) + '</b> chaque échéance' + (C.j30 && C.delai > 30 ? ', puis un rappel <b>30 jours</b> avant' : '') + '.</p>' : '<p>Les rappels par mail sont éteints.</p>')
+      + '<small class="mu">Réglage commun à tous les dentistes, modifiable formation par formation.</small>'
+      + '<button class="lien fo-lien" data-act="fmmail">Changer le réglage ›</button></div>';
+  }
+
+  // ---------- Fenêtre « Ajouter / modifier une formation » ----------
+  function foOuvrir(id, did) {
+    var F = foEtat0(), f = id ? foById(id) : null; if (id && !f) return; FO_FICHIER = null;
+    if (f) F.ed = { id: f.id, dentiste_id: f.dentiste_id, nom: f.nom, organisme: f.organisme || '', obtenu_le: f.obtenu_le || '', mode: +f.validite_mois ? 'duree' : f.expire_le ? 'date' : 'sans', n: +f.validite_mois ? (f.validite_mois % 12 ? f.validite_mois : f.validite_mois / 12) : 3, u: +f.validite_mois && f.validite_mois % 12 ? 'mois' : 'ans', expire_le: f.expire_le || '', plusTot: !!f.prevenir_jours, prevenir_jours: f.prevenir_jours || 180, note: f.note || '', justificatif: f.justificatif, justificatif_nom: f.justificatif_nom, archivee: f.archivee };
+    else F.ed = { id: null, dentiste_id: did, nom: '', organisme: '', obtenu_le: '', mode: 'duree', n: 3, u: 'ans', expire_le: '', plusTot: false, prevenir_jours: 180, note: '' };
+    render();
+    setTimeout(function () { var i = document.querySelector('.fo-dlg [data-fmi="nom"]'); if (i && !f) i.focus(); }, 30);
+  }
+  function foRenouveler() {
+    var F = S.fo, E = F.ed; if (!E || !E.id) return;
+    FO_FICHIER = null;
+    F.ed = { id: null, remplace: E.id, ancien: { nom: E.nom, exp: E.expire_le }, dentiste_id: E.dentiste_id, nom: E.nom, organisme: E.organisme, obtenu_le: '', mode: E.mode === 'sans' ? 'duree' : E.mode, n: E.n, u: E.u, expire_le: '', plusTot: E.plusTot, prevenir_jours: E.prevenir_jours, note: '' };
+    render();
+    setTimeout(function () { var i = document.querySelector('.fo-dlg [data-fmi="obtenu_le"]'); if (i) i.focus(); }, 30);
+  }
+  function foMois(E) { var n = +String(E.n || '').replace(',', '.'); return n > 0 ? Math.round(n * (E.u === 'mois' ? 1 : 12)) : 0; }
+  function foExp(E) { return E.mode === 'sans' ? null : E.mode === 'date' ? (E.expire_le || null) : E.obtenu_le && foMois(E) ? addMois(E.obtenu_le, foMois(E)) : null; }
+  function foCalcTxt(E) {
+    var C = foCfg(), exp = foExp(E);
+    if (E.mode === 'sans') return 'Pas d’échéance : cette formation ne déclenche aucun rappel.';
+    if (E.mode === 'duree' && !E.obtenu_le) return 'Indiquez la date d’obtention : l’échéance se calcule toute seule.';
+    if (!exp) return 'Indiquez la date d’expiration.';
+    var auj = dIso(new Date()), nj = nbJours(auj, exp), del = E.plusTot && +E.prevenir_jours > 0 ? +E.prevenir_jours : C.delai, prem = addJ(exp, -del);
+    var t = 'Expire le <b>' + insDate(exp) + '</b>';
+    if (nj < 0) return t + ' : déjà expirée.';
+    if (!C.actif) return t + ' · rappels par mail éteints.';
+    return t + ' · premier mail ' + (prem > auj ? 'le <b>' + insDate(prem) + '</b> (' + foDelaiTxt(del) + ')' : '<b>demain matin</b> (échéance dans moins de ' + del + ' jours)');
+  }
+  function foDlg() {
+    var F = S.fo, E = F && F.ed; if (!E) return '';
+    var d = foDent(E.dentiste_id), qui = d ? 'Dr ' + esc(d.prenom) : '';
+    var deja = {}; foDuDentiste(E.dentiste_id).forEach(function (f) { if (!f.archivee) deja[norm(f.nom)] = 1; });
+    var vus = {}, sug = [];
+    ((F.l || []).slice().sort(function (a, b) { return String(b.modifie_le).localeCompare(String(a.modifie_le)); })).concat(FO_SUG.map(function (s) { return { nom: s[0], validite_mois: s[1] }; })).forEach(function (f) { var k = norm(f.nom); if (!k || vus[k] || deja[k]) return; vus[k] = 1; sug.push(f); });
+    sug = sug.slice(0, 6); F.sug = sug;
+    var mo = function (k, t) { return '<label class="fo-mo' + (E.mode === k ? ' on' : '') + '"><input type="radio" name="fomode" value="' + k + '"' + (E.mode === k ? ' checked' : '') + '>' + t + '</label>'; };
+    var titre = E.remplace ? 'Renouvellement · ' + qui : E.id ? (E.archivee ? 'Formation renouvelée · ' : 'Formation · ') + qui : 'Nouvelle formation · ' + qui;
+    return '<div class="dlg-bg fo-bg"><section class="dlg large fo-dlg" role="dialog" aria-modal="true" aria-labelledby="fo-t">'
+      + '<div class="fo-dh"><h2 id="fo-t">' + titre + '</h2><button class="fo-x" data-act="fmx" aria-label="Fermer">' + ico('croix', 20, 2.4) + '</button></div>'
+      + (E.remplace ? '<p class="fo-calc">L’ancienne (expire le ' + (E.ancien.exp ? insDate(E.ancien.exp) : '—') + ') passe dans l’historique et ses rappels s’arrêtent. Indiquez la date de la nouvelle attestation.</p>' : '')
+      + '<label class="fo-l">Formation ou diplôme<input class="in" data-fmi="nom" value="' + esc(E.nom) + '" autocomplete="off" placeholder="Ex. : Radioprotection des patients"></label>'
+      + (!E.id && !E.remplace && sug.length ? '<div class="fo-sug"><span>Déjà utilisées :</span>' + sug.map(function (f, i) { return '<button type="button" data-fmsug="' + i + '">' + esc(f.nom) + (f.validite_mois ? ' · ' + foDuree(f.validite_mois) : '') + '</button>'; }).join('') + '</div>' : '')
+      + '<div class="fo-g2"><label class="fo-l">Organisme<input class="in" data-fmi="organisme" value="' + esc(E.organisme) + '" autocomplete="off" placeholder="Facultatif"></label>'
+      + '<label class="fo-l">Obtenu le (date du diplôme)<input class="in" type="date" data-fmi="obtenu_le" value="' + esc(String(E.obtenu_le || '').slice(0, 10)) + '"></label></div>'
+      + '<fieldset class="fo-fs"><legend>Période de validité</legend><div class="fo-modes">' + mo('duree', 'Valable')
+      + (E.mode === 'duree' ? '<input class="in fo-nb" data-fmi="n" inputmode="decimal" value="' + esc(String(E.n)) + '" aria-label="Durée"><select class="in fo-u" data-fmi="u" aria-label="Unité"><option value="ans"' + (E.u !== 'mois' ? ' selected' : '') + '>ans</option><option value="mois"' + (E.u === 'mois' ? ' selected' : '') + '>mois</option></select>' : '')
+      + mo('date', 'Date d’expiration précise') + (E.mode === 'date' ? '<input class="in fo-dt" type="date" data-fmi="expire_le" value="' + esc(String(E.expire_le || '').slice(0, 10)) + '" aria-label="Date d’expiration">' : '') + mo('sans', 'Sans limite') + '</div>'
+      + '<p class="fo-calc" id="fo-calc">' + foCalcTxt(E) + '</p></fieldset>'
+      + (E.mode !== 'sans' ? '<label class="fo-tot"><input type="checkbox" data-fmk="plusTot"' + (E.plusTot ? ' checked' : '') + '>Pour cette formation, prévenir plus tôt :' + (E.plusTot ? '<input class="in" type="number" min="1" max="730" data-fmi="prevenir_jours" value="' + esc(String(E.prevenir_jours || '')) + '" aria-label="Nombre de jours"> jours avant' : '') + '</label>' : '')
+      + '<div class="fo-jus">' + ico('trombone', 22, 2) + '<span class="grow"><b>Justificatif</b> '
+      + (FO_FICHIER ? '· ' + esc(FO_FICHIER.name) + ' <span class="mu">(envoyé à l’enregistrement)</span>' : E.justificatif && !E.retirerJus ? '· ' + esc(E.justificatif_nom || 'fichier joint') : E.retirerJus ? '<span class="mu">· sera retiré à l’enregistrement</span>' : '<span class="mu">(facultatif) · photo ou PDF du diplôme ou de l’attestation</span>') + '</span>'
+      + (E.justificatif && !E.retirerJus && !FO_FICHIER ? '<button type="button" class="btn l sm" data-act="fmjus">Voir</button><button type="button" class="btn l sm" data-act="fmjusx">Retirer</button>' : FO_FICHIER ? '<button type="button" class="btn l sm" data-act="fmjusx">Retirer</button>' : '')
+      + '<label class="btn l sm fo-joindre">' + (E.justificatif || FO_FICHIER ? 'Remplacer' : 'Joindre') + '<input type="file" id="fo-fic" accept="image/*,application/pdf,.pdf" hidden></label></div>'
+      + '<label class="fo-l">Note<input class="in" data-fmi="note" value="' + esc(E.note || '') + '" autocomplete="off" placeholder="Facultatif"></label>'
+      + '<div class="fo-bas">' + (E.id ? '<button type="button" class="btn l fo-sup" data-act="fmdel">Supprimer</button>' : '') + (E.id && !E.archivee && E.mode !== 'sans' ? '<button type="button" class="btn l" data-act="fmren">' + ico('refaire', 17, 2.2) + 'Renouveler…</button>' : '')
+      + (S.tab === 'pform' && d ? '<button type="button" class="btn l" data-fmfiche="' + d.id + '">Fiche de ' + qui + '</button>' : '')
+      + '<span class="grow"></span><button type="button" class="btn l" data-act="fmx">Annuler</button><button type="button" class="btn" data-act="fmsave"' + (E.busy ? ' disabled' : '') + '>' + (E.busy ? 'Enregistrement…' : E.remplace ? 'Enregistrer le renouvellement' : 'Enregistrer') + '</button></div>'
+      + '</section></div>';
+  }
+  function foNomFichier(n) { return String(n || 'fichier').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/-+/g, '-').slice(-80); }
+  function foSauver() {
+    var F = S.fo, E = F && F.ed; if (!E || E.busy) return;
+    var nom = String(E.nom || '').trim(); if (!nom) { toast('Indiquez le nom de la formation'); return; }
+    if (E.mode === 'date' && !E.expire_le) { toast('Indiquez la date d’expiration'); return; }
+    var mois = E.mode === 'duree' ? foMois(E) : null;
+    if (E.mode === 'duree' && !(mois > 0 && mois <= 600)) { toast('Durée de validité à vérifier'); return; }
+    if (E.remplace && !E.obtenu_le) { toast('Indiquez la date de la nouvelle attestation'); return; }
+    var pj = E.mode !== 'sans' && E.plusTot && +E.prevenir_jours > 0 ? Math.min(730, Math.round(+E.prevenir_jours)) : null;
+    var row = { dentiste_id: +E.dentiste_id, nom: nom, organisme: String(E.organisme || '').trim() || null, obtenu_le: E.obtenu_le || null, validite_mois: mois, expire_le: foExp(E), prevenir_jours: pj, note: String(E.note || '').trim() || null, modifie_le: new Date().toISOString() };
+    E.busy = true; render();
+    var fic = FO_FICHIER;
+    (E.id ? sb.from('formations').update(row).eq('id', E.id).select().single() : sb.from('formations').insert(row).select().single()).then(async function (r) {
+      if (r.error) throw r.error; var x = r.data, avert = '';
+      if (E.retirerJus && E.justificatif && !fic) {
+        await sb.storage.from('justificatifs').remove([E.justificatif]);
+        var u0 = await sb.from('formations').update({ justificatif: null, justificatif_nom: null }).eq('id', x.id).select().single(); if (!u0.error) x = u0.data;
+      }
+      if (fic) {
+        var chemin = 'formation-' + x.id + '/' + Date.now() + '-' + foNomFichier(fic.name);
+        var up = await sb.storage.from('justificatifs').upload(chemin, fic, { contentType: fic.type || undefined, upsert: false });
+        if (up.error) avert = ' (le justificatif n’a pas pu être envoyé : ' + msgErr(up.error) + ')';
+        else {
+          if (x.justificatif) sb.storage.from('justificatifs').remove([x.justificatif]).then(function () {}, function () {});
+          var u1 = await sb.from('formations').update({ justificatif: chemin, justificatif_nom: fic.name }).eq('id', x.id).select().single(); if (!u1.error) x = u1.data;
+        }
+      }
+      if (E.remplace) {
+        var ua = await sb.from('formations').update({ archivee: true, modifie_le: new Date().toISOString() }).eq('id', E.remplace);
+        if (!ua.error) { var old = foById(E.remplace); if (old) old.archivee = true; }
+      }
+      var L = F.l || (F.l = []), i = L.findIndex(function (y) { return String(y.id) === String(x.id); }); if (i >= 0) L[i] = x; else L.push(x);
+      FO_FICHIER = null; F.ed = null; toast((avert ? '' : '✔ ') + (E.remplace ? 'Renouvellement enregistré' : 'Formation enregistrée') + avert); render();
+    }).catch(function (e) { E.busy = false; toast(msgErr(e)); render(); });
+  }
+  function foSupprimer() {
+    var F = S.fo, E = F && F.ed; if (!E || !E.id) return;
+    demander('Supprimer cette formation ?', E.nom + ' disparaît de la fiche' + (E.justificatif ? ', avec son justificatif' : '') + '. Pour une formation renouvelée, préférez « Renouveler » : l’ancienne reste dans l’historique.', 'Supprimer', true).then(function (o) {
+      if (!o) return;
+      (E.justificatif ? sb.storage.from('justificatifs').remove([E.justificatif]).then(function () {}, function () {}) : Promise.resolve()).then(function () {
+        return sb.from('formations').delete().eq('id', E.id);
+      }).then(function (r) {
+        if (r.error) throw r.error;
+        F.l = F.l.filter(function (y) { return String(y.id) !== String(E.id); }); F.ed = null; FO_FICHIER = null; toast('Formation supprimée'); render();
+      }).catch(function (e) { toast(msgErr(e)); });
+    });
+  }
+  function foVoirJus(chemin) {
+    if (!chemin) return;
+    var w = null; try { w = window.open('', '_blank'); } catch (e) {}
+    sb.storage.from('justificatifs').createSignedUrl(chemin, 300).then(function (r) {
+      if (r.error || !r.data) throw r.error || new Error('Lien indisponible');
+      if (w) w.location = r.data.signedUrl; else window.location.href = r.data.signedUrl;
+    }).catch(function (e) { if (w) w.close(); toast(msgErr(e)); });
+  }
+
+  // ---------- Page « Formations des dentistes » : toutes les échéances ----------
+  function vPForm() {
+    var F = foEtat0(); foPret();
+    var tel = telephone(), vue = S.foVue || 'ech';
+    var VUES = [['ech', 'Par échéance'], ['dent', 'Par dentiste'], ['form', 'Par formation']];
+    var btns = tel ? '<span class="hr-vide"></span>' : '<span class="pl-hbtns"><button class="pl-imp" data-act="fmmail">' + ico('cloche', 18, 2.2) + '<span class="m-hide">Rappels par mail</span></button></span>';
+    var h = '<header class="a-hd fixe pl-hd"><div class="a-hd-row"><button class="a-back" data-tab="' + (tel ? 'pplus' : 'hub') + '">' + ico('prec', 22, 2.4) + (tel ? 'Plus' : 'Accueil') + '</button><h1>' + (tel ? 'Formations' : 'Formations des dentistes') + '</h1>' + btns + '</div>'
+      + (tel ? '<div class="tl-segs" role="tablist">' + VUES.map(function (x) { return '<button role="tab" aria-selected="' + (vue === x[0]) + '" class="' + (vue === x[0] ? 'on' : '') + '" data-fmvue="' + x[0] + '">' + x[1].replace('Par é', 'É').replace('Par d', 'D').replace('Par f', 'F') + '</button>'; }).join('') + '</div>'
+        : bandeDate('<div class="hr-seg" role="group" aria-label="Afficher">' + VUES.map(function (x) { return '<button data-fmvue="' + x[0] + '" aria-pressed="' + (vue === x[0]) + '"' + (vue === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>'; }).join('') + '</div>', '', null))
+      + '</header><div class="a-corps fo-corps">';
+    var v = foVide(F); if (v) return h + v + '</div>';
+    var act = foActives(), n = { ok: 0, warn: 0, ko: 0, saisir: 0 };
+    act.forEach(function (f) { var e = foEtat(f); if (e.saisir) n.saisir++; else if (n[e.k] != null) n[e.k]++; });
+    var st = [[n.ko, pl(n.ko, 'expirée'), 'ko'], [n.warn, tel ? 'bientôt' : 'à renouveler bientôt', 'warn'], [n.ok, 'à jour', 'ok'], [n.saisir, tel ? 'date à saisir' : 'date à compléter', 'non']];
+    h += tel ? tlStat(st.map(function (s) { return { v: s[0], t: s[1], ton: s[2] === 'non' ? '' : s[2] }; })) : '<div class="fo-stats s4">' + st.map(function (s) { return '<div class="fo-st"><b class="c-' + s[2] + '">' + s[0] + '</b><span>' + s[1] + '</span></div>'; }).join('') + '</div>';
+    if (!act.length) return h + '<div class="card fo-vide"><b>Aucune formation enregistrée.</b><p class="mu">Ouvrez la fiche d’un dentiste, onglet « Formations », pour ajouter ses formations et diplômes.</p><button class="a-btn navy" data-tab="pdent">Les dentistes</button></div>' + foDlg() + '</div>';
+    var dr = function (f) { var d = foDent(f.dentiste_id); return d ? 'Dr ' + esc(d.prenom) : '?'; };
+    var ligneE = function (f, sansDr) {
+      var e = foEtat(f);
+      if (tel) return { at: 'data-fmed="' + f.id + '"', lettre: sansDr ? null : (foDent(f.dentiste_id) || {}).prenom ? String(foDent(f.dentiste_id).prenom).charAt(0).toUpperCase() : '?', t: (sansDr ? '' : dr(f) + ' · ') + esc(f.nom), s: f.expire_le ? 'Expire le ' + insDateC(f.expire_le) + (e.k === 'ok' ? ' · ' + e.loin.toLowerCase() : '') : e.saisir ? 'Date d’obtention à saisir' : 'Sans limite', droite: e.k === 'ok' ? '' : foBadge(e, true) };
+      return '<button class="fo-e k-' + e.k + (sansDr ? ' sd' : '') + '" data-fmed="' + f.id + '">' + (sansDr ? '' : '<b>' + dr(f) + '</b>') + '<span class="fo-n"><b>' + esc(f.nom) + '</b>' + (f.organisme ? '<small>' + esc(f.organisme) + '</small>' : '') + '</span><span class="mu">' + foValTxt(f) + '</span><span class="fo-ex">' + (f.expire_le ? insDateC(f.expire_le) : '—') + '</span><span>' + (e.k === 'ok' ? '<span class="fo-b ok">' + e.loin + '</span>' : foBadge(e)) + '</span><span class="mu fo-rp">' + foRappelTxt(f) + '</span></button>';
+    };
+    var tete = function (sansDr) { return '<div class="fo-eh' + (sansDr ? ' sd' : '') + '" aria-hidden="true">' + (sansDr ? '' : '<span>Dentiste</span>') + '<span>Formation</span><span>Validité</span><span>Expire le</span><span>État</span><span>Rappel</span></div>'; };
+    if (vue === 'ech') {
+      var l = act.filter(function (f) { return f.expire_le || foEtat(f).saisir; }).sort(foTri);
+      h += tel ? tlListe(l.map(function (f) { return ligneE(f); })) : '<div class="fo-tab">' + tete() + l.map(function (f) { return ligneE(f); }).join('') + '</div>';
+      h += '<p class="fo-aide">Les plus proches en haut. Les formations sans limite de validité n’y figurent pas : elles restent dans la fiche de chaque dentiste.</p>';
+    } else if (vue === 'dent') {
+      (S.dentistes || []).filter(function (d) { return d.actif; }).sort(function (a, b) { return (a.ordre - b.ordre) || a.prenom.localeCompare(b.prenom); }).forEach(function (d) {
+        var l2 = act.filter(function (f) { return String(f.dentiste_id) === String(d.id); }).sort(foTri);
+        h += '<div class="fo-gh"><h2>Dr ' + esc(d.prenom) + '</h2><span class="mu">' + (l2.length ? l2.length + ' ' + pl(l2.length, 'formation') : 'aucune formation') + '</span><button class="lien" data-fmfiche="' + d.id + '">Ouvrir la fiche ›</button></div>';
+        if (l2.length) h += tel ? tlListe(l2.map(function (f) { return ligneE(f, true); })) : '<div class="fo-tab">' + tete(true) + l2.map(function (f) { return ligneE(f, true); }).join('') + '</div>';
+      });
+    } else {
+      var G = {}, ordre = [];
+      act.forEach(function (f) { var k = norm(f.nom); if (!G[k]) { G[k] = { nom: f.nom, l: [] }; ordre.push(k); } G[k].l.push(f); });
+      ordre.sort(function (a, b) { return G[b].l.length - G[a].l.length || G[a].nom.localeCompare(G[b].nom); });
+      ordre.forEach(function (k) {
+        var g = G[k], ont = {}; g.l.sort(foTri).forEach(function (f) { ont[f.dentiste_id] = 1; });
+        var sans = (S.dentistes || []).filter(function (d) { return d.actif && !ont[d.id]; });
+        h += '<div class="fo-gh"><h2>' + esc(g.nom) + '</h2><span class="mu">' + g.l.length + ' ' + pl(g.l.length, 'dentiste') + '</span></div>';
+        h += tel ? tlListe(g.l.map(function (f) { return ligneE(f); })) : '<div class="fo-tab">' + tete() + g.l.map(function (f) { return ligneE(f); }).join('') + '</div>';
+        if (sans.length) h += '<p class="fo-sans">Sans cette formation : ' + sans.map(function (d) { return '<button class="lien" data-fmfiche="' + d.id + '">Dr ' + esc(d.prenom) + '</button>'; }).join(', ') + '</p>';
+      });
+    }
+    if (tel) h += '<button class="a-btn blanc fo-plus" data-act="fmmail">' + ico('cloche', 20, 2.2) + 'Rappels par mail</button>';
+    return h + foDlg() + '</div>';
+  }
+
+  // ---------- Réglages › Rappels des formations ----------
+  function foEnvois() {
+    var F = foEtat0(); if (F.envCh) return; F.envCh = true;
+    sb.rpc('formations_envois_etat').then(function (r) { F.envCh = false; F.env = r.error ? [] : r.data || []; render(); }, function () { F.envCh = false; F.env = []; render(); });
+  }
+  function foEnvoiTxt(e) {
+    var s = e.statut, m = '';
+    try { var j = JSON.parse(e.retour || '{}'); m = j.message || ''; } catch (x) { m = e.retour || ''; }
+    if (s == null) return ['att', 'en cours d’envoi…'];
+    if (s >= 200 && s < 300) return ['ok', 'accepté par Brevo'];
+    if (s === 401) return ['ko', 'clé Brevo refusée : vérifiez-la'];
+    if (s === 0) return ['ko', 'pas de réponse de Brevo' + (m ? ' (' + m + ')' : '')];
+    return ['ko', 'refusé par Brevo (' + s + ')' + (m ? ' : ' + m : '')];
+  }
+  function vPFormMail() {
+    var F = foEtat0(); foPret();
+    var h = hdA({ back: S.foRet === 'pform' ? ['data-tab="pform"', 'Formations'] : ['data-tab="reglages"', 'Réglages'], t: telephone() ? 'Rappels' : 'Rappels des formations', cab: '<span class="a-cale"></span>', fixe: true }) + '<div class="a-corps fo-m">';
+    var v = foVide(F); if (v) return h + v + '</div>';
+    var E = S.foMail = S.foMail || foCfg();
+    if (!F.env && !F.envCh) foEnvois();
+    var ch = [30, 60, 90, 180], autre = !!S.foAutre || ch.indexOf(+E.delai) < 0;
+    var cb = function (k, t) { return '<label class="fo-cb"><input type="checkbox" data-fmc="' + k + '"' + (E[k] ? ' checked' : '') + '>' + t + '</label>'; };
+    var gauche = '<section class="card fo-mc"><label class="fo-swl"><b>Prévenir par mail</b><input type="checkbox" class="fo-sw" data-fmc="actif"' + (E.actif ? ' checked' : '') + ' role="switch" aria-label="Prévenir par mail"></label>'
+      + '<label class="fo-l">Adresse qui reçoit les rappels<input class="in" type="email" data-fmm="a" value="' + esc(E.a) + '" autocomplete="email" placeholder="votre adresse mail"></label>'
+      + '<label class="fo-l">Copie à (facultatif)<input class="in" type="email" data-fmm="cc" value="' + esc(E.cc) + '" placeholder="adresse de la responsable, par exemple"></label>'
+      + '<div class="fo-l"><span>Premier mail</span><div class="fo-chips">' + ch.map(function (n) { var on = !autre && +E.delai === n; return '<button type="button" data-fmdl="' + n + '" aria-pressed="' + on + '"' + (on ? ' class="on"' : '') + '>' + foDelaiTxt(n) + '</button>'; }).join('')
+      + '<button type="button" data-fmdl="autre" aria-pressed="' + autre + '"' + (autre ? ' class="on"' : '') + '>Autre…</button>' + (autre ? '<span class="fo-autre"><input class="in" type="number" min="1" max="730" data-fmm="delai" value="' + esc(String(E.delai)) + '" aria-label="Nombre de jours avant"> jours avant</span>' : '') + '</div></div>'
+      + '<div class="fo-l"><span>Rappels ensuite</span>' + cb('j30', '30 jours avant') + cb('jour', 'Le jour de l’échéance') + cb('hebdo', 'Chaque semaine une fois expirée, tant que la formation n’est pas renouvelée') + '</div>'
+      + '<div class="fo-bas g"><button type="button" class="btn l" data-act="fmessai"' + (S.foEssai ? ' disabled' : '') + '>' + (S.foEssai ? 'Envoi…' : 'Envoyer un mail d’essai') + '</button><button type="button" class="btn" data-act="fmmsave">Enregistrer</button></div>'
+      + '<p class="fo-aide">Ce réglage vaut pour tous les dentistes. Une formation peut avoir son propre délai (dans sa fiche). Le renouvellement d’une formation arrête ses rappels. Les mails partent chaque matin vers 7 h.</p></section>';
+    var cle = '<section class="card fo-mc"><div class="fo-rap-t"><span class="fo-ri" aria-hidden="true">' + ico('cle', 22, 2) + '</span><b>Envoi des mails (Brevo)</b><span class="fo-b ' + (F.cle ? 'ok' : 'warn') + '">' + (F.cle ? 'Clé enregistrée' : 'Clé à enregistrer') + '</span></div>'
+      + '<p class="fo-aide">Les mails partent par Brevo (gratuit jusqu’à 300 mails par jour). Une seule fois : créez un compte sur brevo.com, validez l’adresse d’expéditeur (rubrique « Expéditeurs »), puis créez une clé API (« SMTP et API » › « Clés API ») et collez-la ici. Elle est rangée dans le coffre de Supabase : personne ne peut la relire, ni dans l’appli ni dans le code.</p>'
+      + '<label class="fo-l">Adresse d’expéditeur validée dans Brevo<input class="in" type="email" data-fmm="de" value="' + esc(E.de) + '" placeholder="si vide : l’adresse qui reçoit les rappels"></label>'
+      + '<div class="fo-cle"><input class="in" type="password" id="fo-cle" autocomplete="off" placeholder="' + (F.cle ? 'Nouvelle clé (pour la remplacer)' : 'Coller la clé API (xkeysib-…)') + '" aria-label="Clé API Brevo"><button type="button" class="btn" data-act="fmcle">Enregistrer la clé</button>' + (F.cle ? '<button type="button" class="btn l" data-act="fmcledel">Retirer</button>' : '') + '</div></section>';
+    var env = (F.env || []).slice(0, 5);
+    var journal = '<section class="card fo-mc"><b>Derniers envois</b>' + (!F.env ? '<p class="mu">Chargement…</p>' : env.length ? '<div class="fo-env">' + env.map(function (e) { var t = foEnvoiTxt(e); return '<div><span>' + new Date(e.le).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + ' · ' + new Date(e.le).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + (e.essai ? ' · essai' : ' · ' + e.nb + ' ' + pl(e.nb, 'rappel')) + '</span><b class="c-' + t[0] + '">' + esc(t[1]) + '</b></div>'; }).join('') + '</div><button class="lien" data-act="fmenv">Actualiser</button>' : '<p class="mu" style="margin:0">Aucun mail envoyé pour l’instant.</p>') + '</section>';
+    // Aperçu : la prochaine échéance réelle, sinon un exemple
+    var ex = foAlertes()[0] || foActives().filter(function (f) { return f.expire_le; }).sort(foTri)[0], exD = ex && foDent(ex.dentiste_id);
+    var exNom = ex ? esc(ex.nom) : 'Radioprotection des travailleurs', exQui = exD ? 'Dr ' + esc(exD.prenom) : 'Dr A', exExp = ex ? insDate(ex.expire_le) : insDate(addJ(dIso(new Date()), +E.delai || 90));
+    var apercu = '<section class="fo-ap" aria-label="Aperçu du mail reçu"><span class="fo-apt">Le mail que vous recevrez</span><div class="fo-mail"><div class="fo-mh"><span><b>De :</b> Evydent &lt;' + esc(E.de || E.a || 'votre adresse') + '&gt;</span><span><b>Objet :</b> Formation à renouveler : ' + exQui + ' · ' + exNom + '</span></div>'
+      + '<div class="fo-mb"><span>Bonjour,</span><span>Cette formation arrive à échéance :</span><div class="fo-mbx"><b>' + exQui + ' · ' + exNom + '</b><span>' + (ex && ex.obtenu_le ? 'Obtenue le ' + insDate(ex.obtenu_le) + ' · ' : '') + (ex ? foValTxt(ex).replace(/^(\d)/, 'valable $1') : 'valable 3 ans') + '</span><span>Expire le <b>' + exExp + '</b></span></div>'
+      + '<span class="fo-mbtn">Ouvrir l’appli</span><small>Plusieurs échéances le même jour arrivent dans un seul mail. Pour arrêter les rappels d’une formation, enregistrez son renouvellement dans la fiche.</small></div></div></section>';
+    return h + '<div class="fo-mg"><div class="fo-mcol">' + gauche + cle + journal + '</div>' + apercu + '</div></div>';
+  }
+  function foMailSauver(apres) {
+    var E = S.foMail; if (!E) return Promise.resolve(false);
+    var mail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    E.a = String(E.a || '').trim(); E.cc = String(E.cc || '').trim(); E.de = String(E.de || '').trim();
+    if (E.actif && !E.a) { toast('Indiquez l’adresse qui reçoit les rappels'); return Promise.resolve(false); }
+    if ((E.a && !mail.test(E.a)) || (E.cc && !mail.test(E.cc)) || (E.de && !mail.test(E.de))) { toast('Une adresse mail n’a pas la bonne forme'); return Promise.resolve(false); }
+    var d = Math.round(+E.delai); if (!(d >= 1 && d <= 730)) { toast('Délai du premier mail : entre 1 et 730 jours'); return Promise.resolve(false); }
+    var v = { actif: !!E.actif, a: E.a, cc: E.cc, de: E.de, delai: d, j30: !!E.j30, jour: !!E.jour, hebdo: !!E.hebdo, url: location.origin + location.pathname };
+    return sb.from('parametres').upsert({ cle: 'formations_mail', valeur: v, modifie_le: new Date().toISOString() }, { onConflict: 'cle' }).then(function (r) {
+      if (r.error) throw r.error; S.fo.cfg = v; S.foMail = null; if (!apres) toast('✔ Rappels enregistrés'); render(); return true;
+    }).catch(function (e) { toast(msgErr(e)); return false; });
+  }
+  function foEssai() {
+    if (S.foEssai) return;
+    if (!S.fo.cle) { toast('Enregistrez d’abord la clé Brevo'); return; }
+    S.foEssai = true; render();
+    foMailSauver(true).then(function (ok) {
+      if (!ok) { S.foEssai = false; render(); return; }
+      return sb.rpc('formations_mail_essai').then(function (r) {
+        S.foEssai = false;
+        if (r.error) throw r.error;
+        var o = r.data || {};
+        if (!o.ok) toast(o.msg || 'Envoi impossible'); else toast('✔ Mail d’essai envoyé à ' + (S.fo.cfg.a || '') + ' : regardez aussi dans les indésirables');
+        S.fo.env = null; setTimeout(foEnvois, 4000); render();
+      });
+    }).catch(function (e) { S.foEssai = false; toast(msgErr(e)); render(); });
+  }
+  function foCle(retirer) {
+    var i = document.getElementById('fo-cle'), k = retirer ? '' : String(i && i.value || '').trim();
+    if (!retirer && k.length < 20) { toast('Collez la clé API complète de Brevo'); return; }
+    (retirer ? demander('Retirer la clé Brevo ?', 'Plus aucun rappel ne partira tant qu’une nouvelle clé n’est pas enregistrée.', 'Retirer', true) : Promise.resolve(true)).then(function (o) {
+      if (!o) return;
+      sb.rpc('formations_cle', { p_cle: k }).then(function (r) {
+        if (r.error) throw r.error; S.fo.cle = !!(r.data && r.data.cle); toast(S.fo.cle ? '✔ Clé enregistrée dans le coffre' : 'Clé retirée'); render();
+      }).catch(function (e) { toast(msgErr(e)); });
+    });
+  }
+  // Clics de la partie Formations ; renvoie true si traité
+  function foAction(d) {
+    var F = S.fo;
+    if (d.fmed) { foOuvrir(d.fmed); return true; }
+    if (d.act === 'fmnew' && S.df) { foOuvrir(null, S.df.id); return true; }
+    if (d.fmfiche) { if (F) F.ed = null; FO_FICHIER = null; ouvrirDent(d.fmfiche); if (S.df) { S.df.onglet = 'formations'; render(); } return true; }
+    if (d.fmvue) { S.foVue = d.fmvue; render(); window.scrollTo(0, 0); return true; }
+    if (d.act === 'fmmail') { S.foRet = S.tab === 'pform' ? 'pform' : 'reglages'; S.foMail = null; S.foAutre = false; S.tab = 'pformmail'; render(); window.scrollTo(0, 0); return true; }
+    if (d.act === 'fmx') { if (F) { F.ed = null; FO_FICHIER = null; render(); } return true; }
+    if (d.act === 'fmsave') { foSauver(); return true; }
+    if (d.act === 'fmdel') { foSupprimer(); return true; }
+    if (d.act === 'fmren') { foRenouveler(); return true; }
+    if (d.act === 'fmjus' && F && F.ed) { foVoirJus(F.ed.justificatif); return true; }
+    if (d.act === 'fmjusx' && F && F.ed) { if (FO_FICHIER) FO_FICHIER = null; else F.ed.retirerJus = true; render(); return true; }
+    if (d.fmsug != null && F && F.ed && F.sug) { var s = F.sug[+d.fmsug]; if (s) { F.ed.nom = s.nom; if (+s.validite_mois) { F.ed.mode = 'duree'; F.ed.n = s.validite_mois % 12 ? s.validite_mois : s.validite_mois / 12; F.ed.u = s.validite_mois % 12 ? 'mois' : 'ans'; } if (s.organisme && !F.ed.organisme) F.ed.organisme = s.organisme; render(); } return true; }
+    if (d.fmdl && S.foMail) { if (d.fmdl === 'autre') { S.foAutre = true; } else { S.foMail.delai = +d.fmdl; S.foAutre = false; } render(); return true; }
+    if (d.act === 'fmmsave') { foMailSauver(); return true; }
+    if (d.act === 'fmessai') { foEssai(); return true; }
+    if (d.act === 'fmcle') { foCle(false); return true; }
+    if (d.act === 'fmcledel') { foCle(true); return true; }
+    if (d.act === 'fmenv') { if (F) F.env = null; foEnvois(); return true; }
+    return false;
+  }
+  // Saisie dans la fenêtre et les réglages (sans redessiner : le curseur reste dans le champ)
+  function foSaisie(t) {
+    var F = S.fo;
+    if (t.dataset.fmi != null && F && F.ed) { F.ed[t.dataset.fmi] = t.value; var c = document.getElementById('fo-calc'); if (c) c.innerHTML = foCalcTxt(F.ed); return true; }
+    if (t.dataset.fmm != null && S.foMail) { S.foMail[t.dataset.fmm] = t.value; return true; }
+    return false;
+  }
+  function foChange(t) {
+    var F = S.fo;
+    if (t.name === 'fomode' && F && F.ed) { F.ed.mode = t.value; render(); return true; }
+    if (t.dataset.fmk && F && F.ed) { F.ed[t.dataset.fmk] = t.checked; render(); return true; }
+    if (t.dataset.fmi != null && F && F.ed) { F.ed[t.dataset.fmi] = t.value; var c = document.getElementById('fo-calc'); if (c) c.innerHTML = foCalcTxt(F.ed); return true; }
+    if (t.id === 'fo-fic' && t.files && t.files[0] && F && F.ed) { var f = t.files[0]; if (f.size > 15 * 1024 * 1024) { toast('Fichier trop lourd (15 Mo au plus)'); t.value = ''; return true; } FO_FICHIER = f; F.ed.retirerJus = false; t.value = ''; render(); return true; }
+    if (t.dataset.fmc && S.foMail) { S.foMail[t.dataset.fmc] = t.checked; render(); return true; }
+    if (t.dataset.fmm != null && S.foMail) { S.foMail[t.dataset.fmm] = t.value; return true; }
+    return false;
+  }
+  // Accueil : tuile d'alerte
+  function foAlerteHub() {
+    if (!gestion()) return null; foPret();
+    var l = foAlertes(); if (!l.length) return null;
+    var ko = l.filter(function (f) { return foEtat(f).k === 'ko'; }).length;
+    return { n: l.length, ko: ko, t: l.length + ' ' + pl(l.length, 'formation') + ' à renouveler', s: ko ? ko + ' ' + pl(ko, 'expirée') : 'dans les ' + foCfg().delai + ' jours' };
+  }
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && S && S.fo && S.fo.ed && !document.querySelector('.dlg-bg:not(.fo-bg)')) { S.fo.ed = null; FO_FICHIER = null; render(); } });
   // =====================================================================
   // Fiche d'un dentiste : Aperçu, Journal, Année (même structure que la fiche d'équipe)
   // =====================================================================
@@ -2857,7 +3268,7 @@
     }).catch(function (e) { F.exBusy = false; F.d.extra = (dentById(F.id) || {}).extra || []; toast(msgErr(e)); render(); });
   }
   function vBarDFiche() {
-    var F = S.df; if (!F || FE_VUES.indexOf(ogDFiche(F)) >= 0) return '';
+    var F = S.df; if (!F || FE_VUES.indexOf(ogDFiche(F)) >= 0 || ogDFiche(F) === 'formations') return '';
     return '<div class="bar a-bar"><div class="bar-in"><button class="a-btn navy" data-act="dfsave"' + (F.busy ? ' disabled' : '') + '>' + (F.busy ? 'Enregistrement…' : 'Enregistrer') + '</button></div></div>';
   }
   function sauverDent() {
@@ -2960,10 +3371,10 @@
   }
   function renderH() {
     S.coulCat = null;
-    var ecr = { mconges: function () { moiG(); return vMesCongesA(); }, mdemande: function () { moiG(); return vDemandeA(); }, hub: vHub, occup: vOccup, instr: vInstr, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pwifi: vPWifi, ptest: vPTest, pprofils: vPProfils, ptransfert: vPTransfert, pessai: vPEssai, pplus: vPPlus }[S.tab] || vHub;
+    var ecr = { mconges: function () { moiG(); return vMesCongesA(); }, mdemande: function () { moiG(); return vDemandeA(); }, hub: vHub, occup: vOccup, instr: vInstr, reglages: vReglages, pequipe: vPEquipe, pfiche: vPFiche, pdent: vPDent, dfiche: vDFiche, pconges: vPConges, planning: vPlanning, pregles: vPRegles, heures: vHeures, pointage: vPointage, pvisible: vPProfils, ppostes: vPPostes, ptypes: vPProfils, pqui: vPQui, proles: vPProfils, pqr: vPQR, pwifi: vPWifi, ptest: vPTest, pprofils: vPProfils, ptransfert: vPTransfert, pessai: vPEssai, pplus: vPPlus, pform: vPForm, pformmail: vPFormMail }[S.tab] || vHub;
     if (S.tab === 'planning' && telephone()) ecr = vPlanningTel;
     var h = S.nouvelleVersion ? '<div class="a-maj"><span>Nouvelle version disponible (' + esc(S.nouvelleVersion) + ')</span><button class="btn sm" data-act="maj">Mettre à jour</button></div>' : '';
-    h += '<div class="a-app h-app' + (S.tab === 'reglages' && !telephone() ? ' rgv-w' : '') + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr' || S.tab === 'pequipe') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'occup' || S.tab === 'instr' || S.tab === 'heures' || S.tab === 'pointage' || ((S.tab === 'pconges' || S.tab === 'ppostes' || S.tab === 'pregles' || S.tab === 'pprofils' || S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible') && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
+    h += '<div class="a-app h-app' + (S.tab === 'reglages' && !telephone() ? ' rgv-w' : '') + (S.tab === 'hub' || ((S.tab === 'reglages' || S.tab === 'pfiche' || S.tab === 'proles' || S.tab === 'pqr' || S.tab === 'pequipe') && !telephone()) ? ' large' : S.tab === 'planning' || S.tab === 'occup' || S.tab === 'instr' || S.tab === 'heures' || S.tab === 'pointage' || ((S.tab === 'pform' || S.tab === 'pformmail' || S.tab === 'pconges' || S.tab === 'ppostes' || S.tab === 'pregles' || S.tab === 'pprofils' || S.tab === 'ptypes' || S.tab === 'proles' || S.tab === 'pvisible') && !telephone()) ? ' tres-large' : '') + '">' + ecr() + '</div>';
     [S.pf, S.df].forEach(function (F) { if (F && F.raz) { F.raz = false; F.o = JSON.stringify(F.d); } });
     if (S.tab === 'pfiche') h += vBarPFiche();
     if (S.tab === 'dfiche') h += vBarDFiche();
@@ -8801,6 +9212,7 @@
     if (d.act === 'rgeq' || d.act === 'rgde') { var dfi = d.act === 'rgde' ? S.df : S.pf; if (dfi && (S.tab === 'pfiche' || S.tab === 'dfiche') && dfi.o && dfi.o !== JSON.stringify(dfi.d)) { fenetre({ titre: 'Changements non enregistrés', texte: 'La fiche ouverte a été modifiée sans être enregistrée.\n\nSi vous changez de page maintenant, ces changements seront perdus.', ok: 'Changer sans enregistrer', non: 'Rester sur la fiche' }).then(function (v) { if (v) ouvrirDepuisMenu(d.act === 'rgde'); }); return; } return ouvrirDepuisMenu(d.act === 'rgde'); }
     if (feAction(d)) return;
     if (S.tab === 'instr' && insAction(d)) return;
+    if (foAction(d)) return;
     if ((d.act && d.act.indexOf('sc') === 0) || d.scok || d.scdel || d.screl || d.scqui || d.sclot) { if (scAction(d)) return; }
     if (d.rglp) return changerFiche('p', d.rglp);
     if (d.rgld) return changerFiche('d', d.rgld);
@@ -8975,6 +9387,7 @@
     if (e.target.dataset && e.target.dataset.insq != null) { var I0 = insEtat(); if (e.target.dataset.insq === 'tout') I0.q = e.target.value; else I0.qc[e.target.dataset.insq] = e.target.value; insFiltrer(); return; }
     if (e.target.dataset && e.target.dataset.fejq != null) { var q2 = norm(e.target.value.trim()); feEtat().jq = e.target.value; feFiltrerJournal(q2); return; }
     var t = e.target; if (!S.me) return;
+    if (t.dataset && foSaisie(t)) return;
     if (t.id === 'rgq') {   // recherche dans les réglages : on masque sans redessiner (le curseur reste dans le champ)
       var qq = norm(t.value).trim(), vus = 0;
       document.querySelectorAll('.rg-bloc').forEach(function (b) { var n = 0; b.querySelectorAll('[data-rgi]').forEach(function (x) { var ok = !qq || norm(x.dataset.rgi).indexOf(qq) >= 0 || norm(b.querySelector('h2').textContent).indexOf(qq) >= 0; x.hidden = !ok; if (ok) n++; }); b.hidden = !n; vus += n; });
@@ -9011,6 +9424,7 @@
   });
   document.addEventListener('change', function (e) {
     var t = e.target; if (!S.me) return;
+    if (t.dataset && foChange(t)) return;
     if (t.id === 'insfac' && t.files && t.files.length) { insImporter(t.files); t.value = ''; return; }
     if (t.dataset && t.dataset.insimp != null && S.ins && S.ins.imp) { S.ins.imp.sel[t.dataset.insimp] = t.checked; render(); return; }
     if (t.id === 'insimpcab' && S.ins && S.ins.imp) { S.ins.imp.cab = t.value; return; }

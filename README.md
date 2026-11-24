@@ -29,6 +29,8 @@ appliqués dans l'éditeur SQL de Supabase : d'abord sur Evydent-Dev, puis sur E
 
 **`034_codes_barres.sql`** (codes-barres et sortie par scan) — passée sur Evydent-Dev et Evydent-Prod le 21 novembre 2026. En prod : codes-barres allumés pour la référente et la responsable seulement (scan_actif = true, scan_qui = gestion, scan_sortie_equipe = false) ; aucun profil n’a la case « Scan », donc l’équipe ne voit aucun scan.
 
+**`035_formations.sql`** (formations et diplômes des dentistes, rappels par mail) — passée sur Evydent-Dev le 24 novembre 2026, pas encore sur la prod. Crée les tables formations, formation_envois, formation_rappels (gestion seulement), le dossier privé « justificatifs » (Storage), les extensions pg_net et pg_cron, et un envoi chaque matin à 6 h UTC (`rappels-formations`). Les mails partent par l’API Brevo : la clé se colle dans l’appli (Réglages › Formations › Rappels par mail) et reste dans le coffre (Vault) de Supabase, jamais dans le code. Rappels éteints par défaut.
+
 Tant que ce n'est pas fait, le site marche : la page Wi-Fi du centre affiche un message d'attente et « Occupation des cabinets » déduit le cabinet de celui de l'assistante.
 
 Dernière migration notée comme appliquée sur la prod : 027 (027_referent_profil.sql, version 2.4.1, 15/11/2026) — avant : passage-prod-007-026.sql (14/11/2026).
