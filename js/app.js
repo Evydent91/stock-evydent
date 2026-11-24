@@ -2905,7 +2905,7 @@
     try { var j = JSON.parse(e.retour || '{}'); m = j.message || ''; } catch (x) { m = e.retour || ''; }
     if (s == null) return ['att', 'en cours d’envoi…'];
     if (s >= 200 && s < 300) return ['ok', 'accepté par Brevo'];
-    if (s === 401) return ['ko', 'clé Brevo refusée : vérifiez-la'];
+    if (s === 401) return ['ko', 'clé Brevo refusée : il faut une clé API qui commence par xkeysib- (pas une clé SMTP)'];
     if (s === 0) return ['ko', 'pas de réponse de Brevo' + (m ? ' (' + m + ')' : '')];
     return ['ko', 'refusé par Brevo (' + s + ')' + (m ? ' : ' + m : '')];
   }
@@ -2926,7 +2926,7 @@
       + '<div class="fo-bas g"><button type="button" class="btn l" data-act="fmessai"' + (S.foEssai ? ' disabled' : '') + '>' + (S.foEssai ? 'Envoi…' : 'Envoyer un mail d’essai') + '</button><button type="button" class="btn" data-act="fmmsave">Enregistrer</button></div>'
       + '<p class="fo-aide">Ce réglage vaut pour tous les dentistes. Une formation peut avoir son propre délai (dans sa fiche). Le renouvellement d’une formation arrête ses rappels. Les mails partent chaque matin vers 7 h.</p></section>';
     var cle = '<section class="card fo-mc"><div class="fo-rap-t"><span class="fo-ri" aria-hidden="true">' + ico('cle', 22, 2) + '</span><b>Envoi des mails (Brevo)</b><span class="fo-b ' + (F.cle ? 'ok' : 'warn') + '">' + (F.cle ? 'Clé enregistrée' : 'Clé à enregistrer') + '</span></div>'
-      + '<p class="fo-aide">Les mails partent par Brevo (gratuit jusqu’à 300 mails par jour). Une seule fois : créez un compte sur brevo.com, validez l’adresse d’expéditeur (rubrique « Expéditeurs »), puis créez une clé API (« SMTP et API » › « Clés API ») et collez-la ici. Elle est rangée dans le coffre de Supabase : personne ne peut la relire, ni dans l’appli ni dans le code.</p>'
+      + '<p class="fo-aide">Les mails partent par Brevo (gratuit jusqu’à 300 mails par jour). Une seule fois : créez un compte sur brevo.com, validez l’adresse d’expéditeur (rubrique « Expéditeurs »), puis créez une clé API (« SMTP et API » › onglet « Clés API », elle commence par <b>xkeysib-</b> ; pas une clé SMTP) et collez-la ici. Elle est rangée dans le coffre de Supabase : personne ne peut la relire, ni dans l’appli ni dans le code.</p>'
       + '<label class="fo-l">Adresse d’expéditeur validée dans Brevo<input class="in" type="email" data-fmm="de" value="' + esc(E.de) + '" placeholder="si vide : l’adresse qui reçoit les rappels"></label>'
       + '<div class="fo-cle"><input class="in" type="password" id="fo-cle" autocomplete="off" placeholder="' + (F.cle ? 'Nouvelle clé (pour la remplacer)' : 'Coller la clé API (xkeysib-…)') + '" aria-label="Clé API Brevo"><button type="button" class="btn" data-act="fmcle">Enregistrer la clé</button>' + (F.cle ? '<button type="button" class="btn l" data-act="fmcledel">Retirer</button>' : '') + '</div></section>';
     var env = (F.env || []).slice(0, 5);
@@ -2968,6 +2968,7 @@
   }
   function foCle(retirer) {
     var i = document.getElementById('fo-cle'), k = retirer ? '' : String(i && i.value || '').trim();
+    if (!retirer && /^xsmtpsib/i.test(k)) { toast('C’est une clé SMTP : il faut une clé API (onglet « Clés API » de Brevo, elle commence par xkeysib-)'); return; }
     if (!retirer && k.length < 20) { toast('Collez la clé API complète de Brevo'); return; }
     (retirer ? demander('Retirer la clé Brevo ?', 'Plus aucun rappel ne partira tant qu’une nouvelle clé n’est pas enregistrée.', 'Retirer', true) : Promise.resolve(true)).then(function (o) {
       if (!o) return;
