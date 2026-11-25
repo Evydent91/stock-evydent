@@ -15,6 +15,7 @@ self.addEventListener('fetch', function (e) {
   if (/supabase\.(co|in)$/.test(u.hostname) && u.pathname.indexOf('/npm/') < 0) return;   // la base : jamais de cache
   var memeSite = u.origin === self.location.origin, bib = u.hostname === 'cdn.jsdelivr.net' || u.hostname === 'fonts.googleapis.com' || u.hostname === 'fonts.gstatic.com';
   if (!memeSite && !bib) return;
+  if (memeSite && u.pathname.indexOf('/compta/') >= 0) return;   // comptabilité : jamais de cache (données réservées, site à part)
   if (req.mode === 'navigate' || (memeSite && /\/(index\.html)?$/.test(u.pathname))) {
     // page : réseau d'abord, sinon la dernière copie
     e.respondWith(fetch(req).then(function (r) { var c2 = r.clone(); caches.open(CACHE).then(function (c) { c.put('index.html', c2); }); return r; })

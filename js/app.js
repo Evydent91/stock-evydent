@@ -8463,8 +8463,23 @@
       });
       items.forEach(function (it) { if (it.type === 'connu') it.prix = it.qte ? Math.round(it.total / it.qte * 10000) / 10000 : 0; });
       F.imp = { R: R, items: items, num: num };
+      comptaDepuisStock(R, nomFo, file);
       render(); window.scrollTo(0, 0);
     }).catch(function (e) { F.imp = null; toast('Lecture du PDF impossible : ' + (e && e.message || e)); render(); });
+  }
+  // Comptabilité (mise à jour 036, site /compta) : chaque facture importée dans une commande y arrive « à vérifier »,
+  // avec son PDF. Sans la 036, ou si la facture y est déjà (même fournisseur, même n°), rien ne change pour le stock.
+  function comptaDepuisStock(R, fo, file) {
+    if (!R || !R.facture || !fo) return;
+    var tot = (R.lignes || []).reduce(function (s0, x) { return s0 + (x.total != null ? +x.total : (+x.qte || 0) * (+x.prix || 0)); }, 0);
+    sb.rpc('compta_depuis_stock', { p_fournisseur: fo, p_numero: String(R.facture), p_date: /^\d{4}-\d\d-\d\d$/.test(R.date || '') ? R.date : null, p_montant: Math.round(tot * 100) / 100 }).then(function (r) {
+      if (r.error || !r.data) return;
+      var ch = 'stock/' + r.data + '.pdf';
+      sb.storage.from('compta').upload(ch, file, { contentType: 'application/pdf', upsert: false }).then(function (u) {
+        if (u.error) return;   // déjà déposé
+        sb.rpc('compta_stock_pdf', { p_facture: r.data, p_chemin: ch, p_nom: file.name || null, p_pages: null }).then(function () {});
+      });
+    }, function () {});
   }
   function vImport(c) {
     var I = S.fiche.imp, li = S.lignes[c.id] || [];
