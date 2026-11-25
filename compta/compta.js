@@ -290,8 +290,8 @@
   function vKtRefus() {
     var E = ktEt().etat || {};
     return '<div class="lg kt-lg"><div class="lg-top"></div><div class="lg-in"><div class="lg-card"><h1>Accès réservé</h1><p class="kt-lg-p">'
-      + (E.manque ? 'La mise à jour <b>036</b> de la base n’est pas encore faite : lancez <code>036_compta.sql</code> dans Supabase.' : 'La comptabilité est réservée à la directrice. Votre compte (' + esc(S.me ? S.me.nom : '') + ') n’y a pas accès.')
-      + '</p><button class="btn l" data-act="ktsortir">Se déconnecter</button></div></div></div>';
+      + (E.manque ? 'La mise à jour <b>036</b> de la base n’est pas encore faite : lancez <code>036_compta.sql</code> dans Supabase.' : 'La comptabilité est réservée à la directrice. Ce navigateur est connecté avec le compte de <b>' + esc(S.me ? S.me.nom : '') + '</b>, qui n’y a pas accès.</p><p class="kt-lg-p">La connexion est la même que celle d’Evydent : changez de compte pour entrer avec le vôtre.')
+      + '</p><button class="btn gold" data-act="ktsortir">Changer de compte</button></div></div></div>';
   }
 
   // ---------- Chargement ----------
