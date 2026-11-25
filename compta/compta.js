@@ -284,7 +284,7 @@
         : '<div class="pin-pts" aria-label="' + K.pin.length + ' chiffres sur 6">' + [0, 1, 2, 3, 4, 5].map(function (i) { return '<span class="' + (i < K.pin.length ? 'on' : '') + '"></span>'; }).join('') + '</div>'
         + (K.err ? '<p class="lg-err" role="alert">' + esc(K.err) + '</p>' : '')
         + '<div class="pin-pad">' + ['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(function (k) { return '<button type="button" class="pk" data-ktk="' + k + '">' + k + '</button>'; }).join('')
-        + '<button type="button" class="pk pk-x" data-ktk="x" aria-label="Effacer le dernier chiffre">Effacer</button><button type="button" class="pk" data-ktk="0">0</button><button type="button" class="pk pk-ok" data-act="ktsortir">' + (K.busy ? '…' : 'Quitter') + '</button></div>')
+        + '<button type="button" class="pk pk-x" data-ktk="x" aria-label="Effacer le dernier chiffre">Effacer</button><button type="button" class="pk" data-ktk="0">0</button><button type="button" class="pk pk-x" data-act="ktsortir" title="Se déconnecter">' + (K.busy ? '…' : 'Quitter') + '</button></div>')
         + '</div><p class="lg-foot">Se verrouille après ' + (E.verrou_min || 15) + ' minutes sans activité.<br>Les autres comptes d’Evydent n’ont pas accès à cette page.</p></div></div>';
   }
   function vKtRefus() {
