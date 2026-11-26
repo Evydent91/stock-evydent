@@ -313,6 +313,10 @@
       K.pai = {}; r[6].forEach(function (p) { K.pai[p.id] = p; });
       var manque = K.fac.filter(function (f) { return f.paiement_id && !K.pai[f.paiement_id]; }).map(function (f) { return f.paiement_id; });
       return (manque.length ? ktQ(sb.from('compta_paiements').select('*').in('id', manque)) : Promise.resolve([])).then(function (l) { l.forEach(function (p) { K.pai[p.id] = p; }); });
+    }).then(function () {   // moyen de paiement indiqué au dépôt du PDF (CB, prélèvement, chèque, virement)
+      var ids = K.fac.filter(function (f) { return f.fichier_id; }).map(function (f) { return f.fichier_id; }).filter(function (x, i, a) { return a.indexOf(x) === i; });
+      K.fmode = {};
+      return ids.length ? ktQ(sb.from('compta_fichiers').select('id,mode').in('id', ids)).then(function (l) { l.forEach(function (x) { K.fmode[x.id] = x.mode; }); }) : null;
     }).then(ktChargerFichiers).then(function () {
       K.an = an; K.charge = false; K.pret = true;
       Object.keys(K.sel).forEach(function (id) { if (!K.fac.some(function (f) { return f.id === +id && !f.paiement_id; })) delete K.sel[id]; });
@@ -358,7 +362,7 @@
     return a;
   }
   function ktARegler() { return ktEt().fac.filter(function (f) { return !f.paiement_id; }).sort(function (a, b) { return String(a.date_facture || '').localeCompare(String(b.date_facture || '')) || a.id - b.id; }); }
-  function ktChgVides(m) { var K = ktEt(); return ktComptes('charge').filter(function (c) { return !K.chg.some(function (x) { return x.mois === m && x.compte_code === c.code && ktChgMontant(x) > 0; }); }); }
+  function ktChgVides(m) { var K = ktEt(); return ktComptes('charge').filter(function (c) { return !K.chg.some(function (x) { return x.mois === m && x.compte_code === c.code && ktChgMontant(x) > 0; }) && !K.fac.some(function (f) { return f.mois === m && f.compte_code === c.code; }); }); }
   function ktAlertes() {
     var K = ktEt(), m = K.mois, out = [], R = ktARegler(), n30 = R.filter(function (f) { return ktAge(f) > 30; }).length, v = K.fac.filter(function (f) { return f.a_verifier; }).length;
     if (R.length) out.push({ at: 'data-tab="ktfac" data-ktfil="regler"', ic: 'attente', ton: n30 ? 'ko' : 'warn', t: R.length + ' ' + pl(R.length, 'facture') + ' à régler', s: eur(R.reduce(function (s, f) { return s + (+f.montant_ttc || 0); }, 0)) + ' TTC' + (n30 ? ', dont ' + n30 + ' de plus de 30 jours' : '') });
@@ -374,6 +378,7 @@
     var K = ktEt(), tel = telephone();
     return '<span class="kt-nav"><button class="kt-rond" data-ktm="-1" aria-label="Mois précédent">' + ico('prec', 20, 2.4) + '</button><button class="kt-mois" data-ktm="0" title="Revenir au mois en cours">' + ktNomMois(K.mois, tel) + '</button><button class="kt-rond" data-ktm="1" aria-label="Mois suivant">' + ico('suiv', 20, 2.4) + '</button></span>';
   }
+  function vKtSegC(l, cur, attr) { return '<div class="kt-segc" role="group">' + l.map(function (x) { var on = cur === x[0]; return '<button ' + attr + '="' + x[0] + '" aria-pressed="' + on + '"' + (on ? ' class="on"' : '') + '>' + x[1] + '</button>'; }).join('') + '</div>'; }
   function vKtSeg(l, cur, attr, label) { return '<div class="hr-seg" role="group" aria-label="' + label + '">' + l.map(function (x) { var on = cur === x[0]; return '<button ' + attr + '="' + x[0] + '" aria-pressed="' + on + '"' + (on ? ' class="on"' : '') + '>' + x[1] + '</button>'; }).join('') + '</div>'; }
   function vKtHd(t, droite, bande) {
     var tel = telephone();
@@ -462,7 +467,7 @@
     var h = vKtHd('Factures', vKtBtnsFac(), tel ? bandeDate(vKtNavMois(), '', null) + '<div class="kt-hd-seg">' + seg + '</div>' : bandeDate(vKtNavMois() + rech, seg, sous));
     h += '<div class="kt-corps' + (tel ? ' kt-tel' : '') + '">';
     if (tel) h += rech;
-    var cpts = ktComptes('dentaire').concat(ktComptes('facture'));
+    var cpts = ktComptes('dentaire').concat(ktComptes('facture')).concat(ktComptes('charge').filter(function (c) { return base.some(function (f) { return f.compte_code === c.code; }); }));
     h += '<div class="kt-tys" role="tablist" aria-label="Comptes"><button role="tab" aria-selected="' + !K.compte + '" class="' + (!K.compte ? 'on' : '') + '" data-ktcp="">Tous <b>' + base.length + '</b></button>'
       + cpts.map(function (c) { var n = base.filter(function (f) { return f.compte_code === c.code; }).length, on = K.compte === c.code; return '<button role="tab" aria-selected="' + on + '" class="' + (on ? 'on' : '') + '" data-ktcp="' + esc(c.code) + '">' + (KT_DOTS[c.code] ? '<i class="kt-dot" style="background:' + KT_DOTS[c.code] + '"></i>' : '') + esc(c.nom.replace(/ \(.*\)$/, '').replace(' & matériel', '').replace(' et contrats annuels', ' et contrats')) + ' <b>' + n + '</b></button>'; }).join('') + '</div>';
     var sel = Object.keys(K.sel).map(Number), selF = K.fac.filter(function (f) { return sel.indexOf(f.id) >= 0; });
@@ -496,7 +501,7 @@
   // Fenêtre d'une facture : saisie, PDF, règlement
   function ktOptionsComptes(cur) {
     var g = function (grp, lab) { var l = ktComptes(grp); return l.length ? '<optgroup label="' + lab + '">' + l.map(function (c) { return '<option value="' + esc(c.code) + '"' + (c.code === cur ? ' selected' : '') + '>' + esc(c.nom) + '</option>'; }).join('') + '</optgroup>' : ''; };
-    return g('dentaire', 'Dentaire (repère ' + ktP(ktSeuil()).replace(',0', '') + ')') + g('facture', 'Autres factures');
+    return g('dentaire', 'Dentaire (repère ' + ktP(ktSeuil()).replace(',0', '') + ')') + g('facture', 'Autres factures') + g('charge', 'Charges du mois (leasing, assurance, loyer…)');
   }
   function ktRadios(nom, l, cur, dis) { return '<div class="kt-radios" role="radiogroup">' + l.map(function (x) { return '<label class="kt-radio"><input type="radio" name="' + nom + '" value="' + x[0] + '"' + (x[0] === cur ? ' checked' : '') + (dis ? ' disabled' : '') + '><span>' + x[1] + '</span></label>'; }).join('') + '</div>'; }
   function ktFacture(id, defaut) {
@@ -540,6 +545,9 @@
       var fo = bg.querySelector('#ktf-fo'), fi = bg.querySelector('#ktf-file');
       if (fo) fo.addEventListener('change', function () { var x = ktFo(fo.value); if (!x) return; if (x.compte_code) bg.querySelector('#ktf-cpt').value = x.compte_code; var r = bg.querySelector('input[name="ktf-ent"][value="' + x.entite + '"]'); if (r) r.checked = true; var dj = bg.querySelector('#ktf-deja'); if (dj && x.mode) { dj.checked = x.mode === 'prelevement' || x.mode === 'cb'; bg.querySelector('#ktf-dmode').value = x.mode; } var pp = bg.querySelector('#ktf-prop'); pp.hidden = false; pp.textContent = 'Comme d’habitude pour ' + x.nom + ' : ' + ktCompte(x.compte_code).nom + ' · ' + x.entite; });
       if (fi) fi.addEventListener('change', function () { bg.querySelector('#ktf-fn').textContent = fi.files[0] ? fi.files[0].name : ''; });
+      var dte = bg.querySelector('#ktf-date'), mo = bg.querySelector('#ktf-mois'), moTouche = false;   // octobre / novembre : le mois suit la date de la facture
+      if (mo) mo.addEventListener('input', function () { moTouche = true; });
+      if (dte && mo) dte.addEventListener('change', function () { if (!moTouche && dte.value) mo.value = dte.value.slice(0, 7); var dd = bg.querySelector('#ktf-ddate'); if (dd && dte.value && ktModeFichier(f) !== 'virement') dd.value = dte.value; });
       var vo = bg.querySelector('[data-ktvoir]'); if (vo) vo.addEventListener('click', function () { ktVoirPdf(f); });   // la fenêtre arrête les clics : on écoute ici
     }, 0);
     pr.then(function (r) {
@@ -553,8 +561,12 @@
     setTimeout(function () { var bg = document.querySelector('.dlg-bg:last-child'); if (!bg) return; bg.querySelectorAll('[data-dlgb]').forEach(function (bb) { if (boutons[+bb.dataset.dlgb] && boutons[+bb.dataset.dlgb].v === 'regler') bb.addEventListener('click', function (e) { if (lire(bg) === false) e.stopImmediatePropagation(); }, true); }); }, 0);
   }
   // Prélèvement ou CB : la facture est souvent déjà payée quand on la saisit
-  function ktModeParDefaut(f) { var x = ktFo(f.fournisseur); return x && x.mode ? x.mode : f.compte_code === 'prlvt' ? 'prelevement' : f.compte_code === 'cb' ? 'cb' : 'virement'; }
-  function ktDejaParDefaut(f) { var m = ktModeParDefaut(f); return !!f.fournisseur && (m === 'prelevement' || m === 'cb'); }
+  function ktModeFichier(f) { var K = ktEt(); return f.fichier_id && K.fmode ? K.fmode[f.fichier_id] || null : null; }
+  function ktModeParDefaut(f) { var mf = ktModeFichier(f); if (mf) return mf; var x = ktFo(f.fournisseur); return x && x.mode ? x.mode : f.compte_code === 'prlvt' || ktCompte(f.compte_code).groupe === 'charge' ? 'prelevement' : f.compte_code === 'cb' ? 'cb' : 'virement'; }
+  function ktDejaParDefaut(f) { var mf = ktModeFichier(f); if (mf) return mf !== 'virement'; var m = ktModeParDefaut(f); return !!f.fournisseur && (m === 'prelevement' || m === 'cb'); }
+  // Compte proposé d'après le moyen du dépôt : CB → Frais CB, chèque → Frais divers (remboursements), sinon l'habitude du fournisseur
+  function ktCompteDepot(mode, fo) { if (mode === 'cb') return 'cb'; if (mode === 'cheque') return 'divers'; if (fo && fo.compte_code) return fo.compte_code; return mode === 'prelevement' ? 'prlvt' : 'conso'; }
+  var KT_DEPMODES = [['virement', 'Virement'], ['prelevement', 'Prélèvement'], ['cb', 'CB'], ['cheque', 'Chèque'], ['', 'Je ne sais pas']];
   function ktApprendre(d) {   // le fournisseur garde le dernier compte et la dernière entité choisis
     var x = ktFo(d.fournisseur);
     if (x) { if (x.compte_code === d.compte_code && x.entite === d.entite) return Promise.resolve(); return sb.from('compta_fournisseurs').update({ compte_code: d.compte_code, entite: d.entite }).eq('id', x.id).then(function () {}); }
@@ -667,7 +679,7 @@
     h += '<div class="kt-corps' + (tel ? ' kt-tel' : '') + '">' + (tel ? '<div class="kt-card kt-ca-t">' + caIn + '</div>' + (!ro && aPrev ? '<button class="btn l" data-act="ktreprendre">' + ico('refaire', 18, 2.2) + 'Reprendre les lignes de ' + KT_MOIS[+prev.slice(5, 7) - 1] + '</button>' : '') : '') + '<div class="kt-chgs">';
     var sel = function (k, cur, l) { return '<select class="kt-in" data-k="' + k + '"' + dis + ' aria-label="' + (k === 'entite' ? 'Entité' : 'Moyen') + '">' + l.map(function (x) { return '<option value="' + x[0] + '"' + (x[0] === (cur || '') ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select>'; };
     ktComptes('charge').forEach(function (c) {
-      var l = K.chg.filter(function (x) { return x.mois === m && x.compte_code === c.code; }), tot = l.reduce(function (s, x) { return s + ktChgMontant(x); }, 0), sal = c.code === 'salaires';
+      var l = K.chg.filter(function (x) { return x.mois === m && x.compte_code === c.code; }), sal = c.code === 'salaires', lf = ktFacMois(m).filter(function (f) { return f.compte_code === c.code; }), totF = lf.reduce(function (s, f) { return s + (+f.montant_ttc || 0); }, 0), tot = l.reduce(function (s, x) { return s + ktChgMontant(x); }, 0) + totF;
       h += '<section class="kt-card kt-chg"><h2>' + esc(c.nom) + (sal ? ' <small>brut + charges</small>' : '') + '<em' + (tot ? '' : ' class="kt-vide"') + '>' + (tot ? ktE(tot) : 'à saisir') + '</em></h2>';
       if (l.length) h += '<div class="kt-cl h' + (sal ? ' sal' : '') + '" aria-hidden="true">' + (sal ? '<span>Ligne</span><span class="d">Brut</span><span class="d">Charges</span><span class="d">Chargé</span><span class="d">% CA</span>' : '<span>Libellé</span><span>Entité</span><span>Moyen</span><span>Date</span><span class="d">Montant</span>') + '<span></span></div>';
       l.forEach(function (x) {
@@ -677,6 +689,7 @@
             : sel('entite', x.entite, [['ASSO', 'ASSO'], ['SAS', 'SAS']]) + sel('mode', x.mode, [['', '—'], ['prelevement', 'Prélèv.'], ['virement', 'Virement'], ['cheque', 'Chèque'], ['cb', 'CB']]) + '<input class="kt-in" type="date" data-k="date_op" value="' + esc(x.date_op || '') + '" aria-label="Date"' + dis + '><input class="kt-in d" data-k="montant" inputmode="decimal" value="' + esc(ktSaisieNb(x.montant)) + '" placeholder="0,00" aria-label="Montant"' + dis + '>')
           + (ro ? '<span></span>' : '<button class="kt-x" data-ktchgdel="' + x.id + '" aria-label="Supprimer la ligne">' + ico('croix', 16, 2.4) + '</button>') + '</div>';
       });
+      if (lf.length) h += '<button class="kt-cfac" data-tab="ktfac" data-ktcp="' + esc(c.code) + '" data-ktfil="mois">' + ico('ktfacture', 16, 2) + '<span>' + lf.length + ' ' + pl(lf.length, 'facture') + ' de ce compte : ' + esc(lf.map(function (f) { return f.fournisseur; }).filter(function (x, i, a) { return x && a.indexOf(x) === i; }).slice(0, 3).join(', ')) + '</span><b>' + eur(totF) + '</b></button>';
       if (!ro) h += '<button class="kt-add" data-ktchgadd="' + esc(c.code) + '">' + ico('plus', 16, 2.4) + 'Ajouter une ligne</button>';
       if (sal) h += '<p class="kt-note">Repères de votre tableur : salariés ' + (K.params.repere_sal_salaries || 15) + ' %, praticiens ' + (K.params.repere_sal_praticiens || 45) + ' % du CA.</p>';
       h += '</section>';
@@ -739,7 +752,7 @@
     return pages.then(function (n) {
       return sb.storage.from('compta').upload(chemin, file, { contentType: file.type || (pdf ? 'application/pdf' : 'image/jpeg'), upsert: false }).then(function (u) {
         if (u.error) throw u.error;
-        return ktQ(sb.from('compta_fichiers').insert({ chemin: chemin, nom: file.name, pages: n, origine: origine || 'depot' }).select().single());
+        return ktQ(sb.from('compta_fichiers').insert({ chemin: chemin, nom: file.name, pages: n, origine: origine || 'depot', mode: ktEt().depMode || null }).select().single());
       });
     });
   }
@@ -751,7 +764,7 @@
       try {
         var fi = await ktEnvoyerFichier(files[i], origine);
         if ((fi.pages || 1) > 1) multi.push(fi);
-        else { var r = await sb.from('compta_factures').insert({ fichier_id: fi.id, page_debut: 1, page_fin: 1, a_verifier: true, source: origine === 'photo' ? 'photo' : 'depot', mois: K.mois }).select().single(); if (r.error) throw r.error; crees.push(r.data.id); }
+        else { var g = await ktLireUnePage(files[i], fi).catch(function () { return {}; }); var r = await sb.from('compta_factures').insert(ktLigneDevinee(fi, g, 1, 1)).select().single(); if (r.error) throw r.error; crees.push(r.data.id); }
       } catch (e) { toast(files[i].name + ' : ' + msgErr(e)); }
     }
     await ktCharger();
@@ -759,6 +772,14 @@
     if (multi.length === 1 && !crees.length) { S.tab = 'ktajout'; ktOuvrirDecoupe(multi[0].id); }
     else if (crees.length === 1 && !multi.length) ktFacture(crees[0]);
     else { S.tab = 'ktajout'; render(); }
+  }
+  // Fichier d'une page (photo, ticket CB, chèque) : lecture tout de suite pour proposer fournisseur, n°, date et montant
+  var KT_W = null;
+  async function ktLireUnePage(file, fi) {
+    var T = await ktChargerOcr(); if (!KT_W) KT_W = await T.createWorker('fra');
+    var src = file;
+    if (/pdf/i.test(file.type) || /\.pdf$/i.test(file.name)) { var buf = await file.arrayBuffer(), pj = await ktPdfjs(), doc = await pj.getDocument({ data: new Uint8Array(buf), verbosity: 0 }).promise, pg = await doc.getPage(1), v0 = pg.getViewport({ scale: 1 }), v = pg.getViewport({ scale: 1700 / v0.width }), cv = document.createElement('canvas'); cv.width = v.width; cv.height = v.height; var cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); await pg.render({ canvasContext: cx, viewport: v }).promise; src = cv; }
+    var r = await KT_W.recognize(src); return ktInfosPage(r.data.text || '');
   }
   function ktTelecharger(chemin) { return sb.storage.from('compta').download(chemin).then(function (r) { if (r.error) throw r.error; return r.data; }); }
   function ktOuvrirDecoupe(fid) {
@@ -799,14 +820,14 @@
         var p = i + 1, c = KT_COUL[idx[p] % KT_COUL.length], inf = D.infos[p];
         return '<button class="kt-pg' + (D.coupes[p] ? ' deb' : '') + '" data-ktpg="' + p + '" aria-pressed="' + !!D.coupes[p] + '" aria-label="Page ' + p + (D.coupes[p] ? ', début de facture' : '') + '" style="--c:' + c + '">' + (D.coupes[p] ? '<em class="kt-cis" aria-hidden="true">' + ico('ktciseau', 12, 2.6) + '</em>' : '') + '<span class="kt-feuille">' + (D.vign[p] ? '<img src="' + D.vign[p] + '" alt="">' : '') + '</span><span class="kt-pgn">' + p + (inf && inf.px ? ' · ' + inf.px + '/' + inf.py : '') + '</span></button>';
       }).join('') + '</div>') + '</section>';
-    h += '<div class="kt-dec-c"><section class="kt-card"><h2>' + segs.length + ' ' + pl(segs.length, 'facture') + ' dans ce PDF</h2><div class="kt-segs">' + segs.map(function (s, i) {
-      var g = ktDevine(s); return '<div class="kt-seg"><i style="background:' + KT_COUL[i % KT_COUL.length] + '"></i><span><b>' + (g.fo ? esc(g.fo) : 'Facture ' + (i + 1)) + (g.num ? ' · ' + esc(g.num) : '') + '</b><small>' + (s.d === s.f ? 'page ' + s.d : 'pages ' + s.d + ' à ' + s.f) + '</small></span></div>';
+    h += '<div class="kt-dec-c"><section class="kt-card kt-depm"><b>Payées par</b>' + vKtSegC(KT_DEPMODES, D.f.mode || '', 'data-ktdecm') + '</section><section class="kt-card"><h2>' + segs.length + ' ' + pl(segs.length, 'facture') + ' dans ce PDF</h2><div class="kt-segs">' + segs.map(function (s, i) {
+      var g = ktDevine(s); return '<div class="kt-seg"><i style="background:' + KT_COUL[i % KT_COUL.length] + '"></i><span><b>' + (g.fo ? esc(g.fo) : 'Facture ' + (i + 1)) + (g.num ? ' · ' + esc(g.num) : '') + '</b><small>' + (s.d === s.f ? 'page ' + s.d : 'pages ' + s.d + ' à ' + s.f) + (g.date ? ' · ' + ktDateL(g.date) : '') + (g.mt != null ? ' · ' + eur(g.mt) : '') + '</small></span></div>';
     }).join('') + '</div></section>'
       + '<div class="kt-dec-b"><button class="btn l" data-act="ktdecx">Plus tard</button>' + (ktEcrit() ? '<button class="btn" data-act="ktdecok"' + (D.charge || D.lecture ? ' disabled' : '') + '>Créer ' + (segs.length > 1 ? 'les ' + segs.length + ' factures' : 'la facture') + '</button>' : '') + '</div>'
       + '<p class="kt-note">Chaque facture garde ses pages du PDF. Vous compléterez ensuite fournisseur, montant et compte dans « À vérifier ».</p></div></div>';
     return h;
   }
-  function ktDevine(s) { var D = ktEt().dec, r = {}; for (var p = s.d; p <= s.f; p++) { var i = D.infos[p]; if (!i) continue; if (!r.fo && i.fo) r.fo = i.fo; if (!r.num && i.num) r.num = i.num; } return r; }
+  function ktDevine(s) { var D = ktEt().dec, r = {}; for (var p = s.d; p <= s.f; p++) { var i = D.infos[p]; if (!i) continue; if (!r.fo && i.fo) r.fo = i.fo; if (!r.num && i.num) r.num = i.num; if (!r.date && i.date) r.date = i.date; if (i.mtFort != null) r.mt = i.mtFort; else if (i.mt != null && r.mt == null) r.mt = i.mt; } return r; }
   // Lecture des pages (OCR dans le navigateur, Tesseract) : « Page 1/13 », n° de facture, fournisseur connu
   function ktChargerOcr() { return window.Tesseract ? Promise.resolve(window.Tesseract) : new Promise(function (ok, ko) { var s = document.createElement('script'); s.src = KT_OCR; s.onload = function () { ok(window.Tesseract); }; s.onerror = function () { ko(new Error('Lecture automatique indisponible (pas de réseau ?)')); }; document.head.appendChild(s); }); }
   var KT_MOTS = ['site', 'chat', 'pret', 'loyer', 'leasing', 'total', 'facture', 'action', 'client', 'centre', 'dentaire', 'labo', 'laboratoire', 'impots', 'tresor public'];   // noms trop courants pour reconnaître un fournisseur
@@ -819,6 +840,12 @@
     var plat = ' ' + n.replace(/[^a-z0-9]+/g, ' ') + ' ', best = null;
     K.fourn.forEach(function (x) { var k = norm(x.nom).replace(/[^a-z0-9]+/g, ' ').trim(); if (k.replace(/ /g, '').length < 4 || KT_MOTS.indexOf(k) >= 0) return; var i = plat.indexOf(' ' + k + ' '); if (i >= 0 && (!best || i < best.i || (i === best.i && k.length > best.k.length))) best = { i: i, k: k, nom: x.nom }; });
     if (best) r.fo = best.nom;
+    // date de la facture : la première date lisible de la page ; montant : le dernier « net à payer / total TTC »
+    var dm = t.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](20\d\d)/);
+    if (dm && +dm[2] >= 1 && +dm[2] <= 12 && +dm[1] >= 1 && +dm[1] <= 31) r.date = dm[3] + '-' + dm[2].padStart(2, '0') + '-' + dm[1].padStart(2, '0');
+    var re = /(net\s*[àa]\s*payer|total\s*t\.?t\.?c\.?|montant\s*t\.?t\.?c\.?|total\s*[àa]\s*payer|montant\s*total|solde\s*d[uû]|total\s*eur|montant\s*:|total)[^\d\n-]{0,18}(-?\s?\d{1,3}(?:[ .\u202f\u00a0]?\d{3})*[,.]\d{2})/gi, mm, best = null;
+    while ((mm = re.exec(t))) { var v = Math.abs(parseFloat(mm[2].replace(/\s(?=\d)/, '').replace(/[ .\u202f\u00a0](?=\d{3}([,.]|$|[ .\u202f\u00a0]))/g, '').replace(',', '.'))); if (!isNaN(v) && v > 0) best = { v: v, fort: /net|ttc|payer|solde/i.test(mm[1]) || (best && best.fort ? false : false) }; if (best && /net|ttc|payer|solde/i.test(mm[1])) r.mtFort = v; }
+    if (r.mtFort != null) r.mt = r.mtFort; else if (best) r.mt = best.v;
     r.vide = t.replace(/\s/g, '').length < 30;
     return r;
   }
@@ -860,9 +887,15 @@
     }
     return c;
   }
+  // Facture « à vérifier » préparée d'après la lecture des pages et le moyen indiqué au dépôt
+  function ktLigneDevinee(fi, g, d, f) {
+    var K = ktEt(), fo = g.fo ? ktFo(g.fo) : null, mode = fi.mode || '', dt = g.date && g.date >= '2020-01-01' && g.date <= ktIso(new Date(Date.now() + 864e5 * 60)) ? g.date : null;
+    return { fichier_id: fi.id, page_debut: d, page_fin: f, fournisseur: g.fo || (mode === 'cheque' ? 'Remboursement patient' : null), numero: g.num || null, date_facture: dt, mois: dt ? ktMois(dt) : K.mois,
+      montant_ttc: g.mt != null ? Math.round(g.mt * 100) / 100 : null, compte_code: ktCompteDepot(mode, fo), entite: fo ? fo.entite : 'ASSO', a_verifier: true, source: fi.origine === 'photo' ? 'photo' : 'depot' };
+  }
   async function ktCreerDecoupe() {
     var K = ktEt(), D = K.dec; if (!D) return;
-    var segs = ktSegments(), rows = segs.map(function (s) { var g = ktDevine(s), fo = g.fo ? ktFo(g.fo) : null; return { fichier_id: D.f.id, page_debut: s.d, page_fin: s.f, fournisseur: g.fo || null, numero: g.num || null, compte_code: fo && fo.compte_code || 'conso', entite: fo ? fo.entite : 'ASSO', a_verifier: true, source: D.f.origine === 'photo' ? 'photo' : 'depot', mois: K.mois }; });
+    var segs = ktSegments(), rows = segs.map(function (s) { return ktLigneDevinee(D.f, ktDevine(s), s.d, s.f); });
     var r = await sb.from('compta_factures').insert(rows);
     if (r.error) { toast(/duplicate|unique/i.test(r.error.message) ? 'Une de ces factures existe déjà (même fournisseur, même numéro) : retirez le n° lu ou corrigez la découpe.' : msgErr(r.error)); return; }
     K.dec = null; KT_DOC = null; toast('✔ ' + rows.length + ' ' + pl(rows.length, 'facture') + ' ' + pl(rows.length, 'créée') + ' : à compléter'); K.f = 'verif'; ktCharger();
@@ -887,7 +920,8 @@
     var K = ktEt(), tel = telephone();
     if (K.dec) return vKtHd(tel ? 'Découper' : '« ' + esc(K.dec.f.nom || 'PDF') + ' » · ' + K.dec.n + ' pages', '<span class="a-cale"></span>') + '<div class="kt-corps' + (tel ? ' kt-tel' : '') + '">' + vKtDecoupe() + '</div>';
     var h = vKtHd(tel ? 'Ajouter' : 'Ajouter des factures', '<span class="a-cale"></span>') + '<div class="kt-corps' + (tel ? ' kt-tel' : '') + '">';
-    if (ktEcrit()) h += '<label class="kt-depot" id="ktzone">' + ico('haut', 34, 2) + '<b>' + (tel ? 'Choisir des PDF ou des photos' : 'Déposez ici les PDF ou photos de factures') + '</b><span>' + (tel ? '' : 'ou cliquez pour les choisir · ') + 'plusieurs à la fois · un PDF de plusieurs factures se découpe ensuite</span><input type="file" id="ktdepot" accept="application/pdf,image/*" multiple hidden></label>'
+    if (ktEcrit()) h += '<div class="kt-card kt-depm"><b>Ces factures ont été payées par</b>' + vKtSegC(KT_DEPMODES, K.depMode || '', 'data-ktdm') + '<span class="kt-note">' + ({ virement: 'Compte habituel de chaque fournisseur · à régler', prelevement: 'Leasing ou prélèvements et contrats selon le fournisseur · déjà réglées', cb: 'Frais CB · déjà réglées par carte', cheque: 'Frais divers (remboursements patients) · réglées par chèque', '': 'Compte habituel du fournisseur · vous direz ensuite si elles sont réglées' }[K.depMode || '']) + '</span></div>'
+      + '<label class="kt-depot" id="ktzone">' + ico('haut', 34, 2) + '<b>' + (tel ? 'Choisir des PDF ou des photos' : 'Déposez ici les PDF ou photos de factures') + '</b><span>' + (tel ? '' : 'ou cliquez pour les choisir · ') + 'plusieurs à la fois · un PDF de plusieurs factures se découpe ensuite</span><input type="file" id="ktdepot" accept="application/pdf,image/*" multiple hidden></label>'
       + (tel ? '<label class="btn gros kt-photo">' + ico('ktphoto', 22, 2) + 'Photographier une facture<input type="file" id="ktphoto" accept="image/*" capture="environment" hidden></label>' : '<p class="kt-note">Factures reçues par mail : faites glisser les pièces jointes depuis Outlook. Factures papier : scannez-les en un seul PDF (l’appli repère où chaque facture commence) ou photographiez-les avec le téléphone.</p>');
     var V = K.fac.filter(function (f) { return f.a_verifier; });
     if (K.fich.length) h += (tel ? tlSec('À découper · ' + K.fich.length) : '<h2 class="kt-h2">À découper · ' + K.fich.length + '</h2>') + '<div class="tl-liste">' + K.fich.map(function (x) { return '<div class="tl-l kt-lt"><span class="tl-i te-warn">' + ico('ktciseau', 22, 2) + '</span><button class="kt-ltb" data-ktdec="' + x.id + '"><span class="tl-n"><b>' + esc(x.nom || 'PDF') + '</b><span>' + (x.pages || '?') + ' pages · déposé le ' + ktDateL(String(x.cree_le).slice(0, 10)) + '</span></span><span class="kt-p warn">Découper</span></button>' + (ktEcrit() ? '<button class="kt-x" data-ktfichdel="' + x.id + '" aria-label="Supprimer ce PDF">' + ico('poubelle', 18, 2) + '</button>' : '') + '</div>'; }).join('') + '</div>';
@@ -1139,6 +1173,8 @@
     if (d.ktfil) { K.f = d.ktfil; render(); return true; }
     if (d.ktcp != null) { K.compte = d.ktcp; render(); return true; }
     if (d.ktpm != null) { K.pm = d.ktpm; render(); return true; }
+    if (d.ktdm != null) { K.depMode = d.ktdm; render(); return true; }
+    if (d.ktdecm != null && K.dec) { var fm = d.ktdecm || null; K.dec.f.mode = fm; sb.from('compta_fichiers').update({ mode: fm }).eq('id', K.dec.f.id).then(function (r) { if (r.error) toast(msgErr(r.error)); }); render(); return true; }
     if (d.ktexp) { K.expAn = d.ktexp === 'a'; render(); return true; }
     if (d.ktf) { ktFacture(+d.ktf); return true; }
     if (d.ktvoir) { var f = K.fac.filter(function (x) { return x.id === +d.ktvoir; })[0]; if (f) ktVoirPdf(f); return true; }

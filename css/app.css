@@ -3695,3 +3695,12 @@ body.tablette .kt-mois{font-size:20px;min-width:150px}
   .kt-kpis{gap:8px}
 }
 body.kt-tel-on .toast{bottom:calc(var(--nav,64px) + 20px)}
+
+.kt-depm{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap}
+.kt-depm > b{font-size:15.5px}
+.kt-depm .kt-note{flex-basis:100%;margin:0}
+.kt-segc{display:inline-flex;flex-wrap:wrap;gap:6px}
+.kt-segc button{height:40px;padding:0 14px;border-radius:999px;border:1.5px solid var(--line);background:#fff;font:inherit;font-size:15px;font-weight:700;color:var(--ink2);cursor:pointer}
+.kt-segc button.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.kt-cfac{display:flex;align-items:center;gap:8px;width:100%;margin-top:6px;padding:8px 10px;border:none;border-radius:10px;background:#f7f6f2;font:inherit;font-size:14.5px;color:var(--ink2);text-align:left;cursor:pointer}
+.kt-cfac span{flex:1;min-width:0}.kt-cfac .ic{color:var(--navy)}

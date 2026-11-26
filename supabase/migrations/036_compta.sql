@@ -168,6 +168,8 @@ create table if not exists public.compta_fichiers (
   cree_par uuid default auth.uid(),
   cree_le  timestamptz not null default now()
 );
+-- moyen de paiement indiqué au dépôt (CB, chèque, prélèvement, virement) : il sert de valeur par défaut à ses factures
+alter table public.compta_fichiers add column if not exists mode text check (mode in ('virement','cheque','cb','prelevement'));
 
 create table if not exists public.compta_paiements (
   id            bigserial primary key,
